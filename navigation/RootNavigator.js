@@ -3,8 +3,14 @@
 // - If user is logged in -> show TabNavigator + authed stacks
 // - If user is logged out -> show Login/Register screens
 
-import React from "react";
-import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  ActivityIndicator,
+  Text,
+  StyleSheet,
+  Pressable,
+} from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -15,7 +21,6 @@ import { colors } from "../theme/colors";
 import TabNavigator from "./TabNavigator";
 
 import EventDetailScreen from "../screens/events/EventDetailScreen";
-import MyEventsScreen from "../screens/events/MyEventsScreen";
 import EditEventScreen from "../screens/events/EditEventScreen";
 
 import CommunityPostScreen from "../screens/community/CommunityPostScreen";
@@ -27,26 +32,65 @@ import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
 
 const Stack = createNativeStackNavigator();
+const BOOTSTRAP_FALLBACK_DELAY_MS = 12000;
 
 //  While auth is still checking for an existing token (restore from storage),
 //  show a branded loading screen.
 
-function AuthLoadingScreen() {
+function AuthLoadingScreen({
+  debugMessage,
+  onRetry,
+  onContinueToLogin,
+}) {
+  const [showFallbackActions, setShowFallbackActions] = useState(false);
+
+  useEffect(() => {
+    setShowFallbackActions(false);
+    const timeoutId = setTimeout(() => {
+      setShowFallbackActions(true);
+    }, BOOTSTRAP_FALLBACK_DELAY_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [debugMessage]);
+
   return (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={colors.textLight} />
       <Text style={styles.loadingText}>Loading Summit Scene...</Text>
+      <Text style={styles.debugText}>{debugMessage}</Text>
+      {showFallbackActions ? (
+        <View style={styles.actions}>
+          <Pressable style={styles.primaryButton} onPress={onRetry}>
+            <Text style={styles.primaryButtonText}>Retry</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={onContinueToLogin}>
+            <Text style={styles.secondaryButtonText}>Continue to Login</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 export default function RootNavigator() {
-  const { user, isAuthLoading } = useAuth();
+  const {
+    user,
+    isSessionBootstrapping,
+    authDebugMessage,
+    retrySessionRestore,
+    skipSessionRestore,
+  } = useAuth();
   const { theme } = useTheme();
 
   // While AuthContext is restoring user/token from AsyncStorage
-  if (isAuthLoading) {
-    return <AuthLoadingScreen />;
+  if (isSessionBootstrapping) {
+    return (
+      <AuthLoadingScreen
+        debugMessage={authDebugMessage}
+        onRetry={retrySessionRestore}
+        onContinueToLogin={skipSessionRestore}
+      />
+    );
   }
 
   return (
@@ -85,11 +129,6 @@ export default function RootNavigator() {
           />
 
           {/* Events flow */}
-          <Stack.Screen
-            name="MyEvents"
-            component={MyEventsScreen}
-            options={{ title: "My Events" }}
-          />
           <Stack.Screen
             name="EditEvent"
             component={EditEventScreen}
@@ -150,5 +189,41 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: colors.textMuted,
     fontSize: 14,
+  },
+  debugText: {
+    marginTop: 10,
+    paddingHorizontal: 24,
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  actions: {
+    marginTop: 20,
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 24,
+  },
+  primaryButton: {
+    backgroundColor: colors.textLight,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.textMuted,
+  },
+  secondaryButtonText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

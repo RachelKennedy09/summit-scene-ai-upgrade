@@ -3,7 +3,6 @@
 // - Shows profile header
 // - Links to Edit Profile (where avatar + details are edited)
 // - Theme picker
-// - Business tools (My Events)
 // - Upgrade to business
 // - Logout
 
@@ -138,16 +137,6 @@ function AccountScreen() {
           toggleLightDark={toggleLightDark}
         />
 
-        {/* BUSINESS ONLY: VIEW MY EVENTS */}
-        {isBusiness && (
-          <Pressable
-            style={[styles.accountButton, { backgroundColor: colors.cta }]}
-            onPress={() => navigation.navigate("MyEvents")}
-          >
-            <Text style={styles.accountButtonText}>View My Events</Text>
-          </Pressable>
-        )}
-
         {/* LOCAL ONLY: UPGRADE TO BUSINESS */}
         {isLocal && (
           <Pressable
@@ -220,18 +209,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
-  },
-  accountButton: {
-    backgroundColor: colors.cta,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  accountButtonText: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 15,
   },
   accountButtonSecondary: {
     backgroundColor: colors.secondary,

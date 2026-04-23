@@ -5,7 +5,7 @@
 // - Gives the event owner edit/delete actions (EventOwnerSection)
 // - Includes "Open in Maps" deep link for the event location
 
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { deleteEvent } from "../../services/eventsApi";
 import { useTheme } from "../../context/ThemeContext";
+import { getDetailScheduleLabels } from "../../utils/eventSchedule";
 
 import EventHostSection from "../../components/events/EventHostSection";
 import EventOwnerSection from "../../components/events/EventOwnerSection";
@@ -84,6 +85,7 @@ export default function EventDetailScreen({ route }) {
   const { theme } = useTheme();
 
   const { event } = route.params || {};
+  const [heroImageFailed, setHeroImageFailed] = useState(false);
 
   // Defensive fallback if the screen is opened without an event
   if (!event) {
@@ -129,7 +131,7 @@ export default function EventDetailScreen({ route }) {
             }
             navigation.goBack();
           } catch (error) {
-            console.error("Failed to delete event:", error);
+            console.warn("Delete event issue:", error.message);
             Alert.alert("Error", error.message || "Failed to delete event.");
           }
         },
@@ -140,54 +142,35 @@ export default function EventDetailScreen({ route }) {
   const title = event.title || "Untitled event";
   const category = event.category || "Event";
   const town = event.town || "";
-  const location = event.location || "";
+  const locationName = event.locationName || event.location || "";
+  const address = event.address || "";
   const description = event.description || "No detailed description added yet.";
 
-  const hasDate = Boolean(event.date);
-  const hasStartTime = Boolean(event.time);
-  const hasEndTime = Boolean(event.endTime);
-
-  // Friendlier date label (e.g. "Saturday, December 6")
-  let dateLabel = "Date TBA";
-  if (hasDate) {
-    const parsed = new Date(event.date);
-    if (!isNaN(parsed)) {
-      dateLabel = parsed.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
-    } else {
-      // Fallback to raw string if parsing fails
-      dateLabel = event.date;
-    }
-  }
-
-  // Time label based on which fields are present
-  let timeLabel = "Time TBA";
-  if (hasStartTime && hasEndTime) {
-    timeLabel = `${event.time} - ${event.endTime}`;
-  } else if (hasStartTime) {
-    timeLabel = event.time;
-  } else if (hasEndTime) {
-    timeLabel = `Until ${event.endTime}`;
-  }
+  const { dateLabel, timeLabel } = getDetailScheduleLabels(event);
 
   // Open native maps app (Apple Maps / Android geo / web) using location/town/title as a query
   const handleOpenMaps = () => {
-    const query = encodeURIComponent(location || town || title);
-    if (!query) return;
+    const hasExactCoords =
+      Number.isFinite(event.latitude) && Number.isFinite(event.longitude);
+    const query = encodeURIComponent(address || locationName || town || title);
+    if (!hasExactCoords && !query) return;
 
-    const url = Platform.select({
-      ios: `http://maps.apple.com/?q=${query}`,
-      android: `geo:0,0?q=${query}`,
-      default: `https://www.google.com/maps/search/?api=1&query=${query}`,
-    });
+    const url = hasExactCoords
+      ? Platform.select({
+          ios: `http://maps.apple.com/?ll=${event.latitude},${event.longitude}&q=${query}`,
+          android: `geo:${event.latitude},${event.longitude}?q=${event.latitude},${event.longitude}(${query})`,
+          default: `https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`,
+        })
+      : Platform.select({
+          ios: `http://maps.apple.com/?q=${query}`,
+          android: `geo:0,0?q=${query}`,
+          default: `https://www.google.com/maps/search/?api=1&query=${query}`,
+        });
 
     if (!url) return;
 
     Linking.openURL(url).catch((err) =>
-      console.error("Error opening maps:", err)
+      console.warn("Open maps issue:", err?.message || "Failed to open maps.")
     );
   };
 
@@ -206,9 +189,31 @@ export default function EventDetailScreen({ route }) {
           ]}
         >
           {/* Hero image (optional)*/}
-          {event.imageUrl ? (
-            <Image source={{ uri: event.imageUrl }} style={styles.heroImage} />
-          ) : null}
+          {event.imageUrl && !heroImageFailed ? (
+            <Image
+              source={{ uri: event.imageUrl }}
+              style={styles.heroImage}
+              onError={() => setHeroImageFailed(true)}
+            />
+          ) : (
+            <View
+              style={[
+                styles.heroFallback,
+                { backgroundColor: theme.accentSoft || theme.card },
+              ]}
+            >
+              <Text style={[styles.heroFallbackTitle, { color: theme.text }]}>
+                {title}
+              </Text>
+              <Text
+                style={[styles.heroFallbackSubtitle, { color: theme.textMuted }]}
+              >
+                {heroImageFailed
+                  ? "Event image could not be loaded."
+                  : "No event image provided."}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.content}>
             {/* Category + town row */}
@@ -259,14 +264,23 @@ export default function EventDetailScreen({ route }) {
             </View>
 
             {/* Location + map link */}
-            {location ? (
+            {locationName || address ? (
               <View style={styles.locationBlock}>
                 <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
                   Location
                 </Text>
-                <Text style={[styles.locationText, { color: theme.text }]}>
-                  {location}
-                </Text>
+                {locationName ? (
+                  <Text style={[styles.locationText, { color: theme.text }]}>
+                    {locationName}
+                  </Text>
+                ) : null}
+                {address ? (
+                  <Text
+                    style={[styles.addressText, { color: theme.textMuted }]}
+                  >
+                    {address}
+                  </Text>
+                ) : null}
 
                 <Pressable
                   style={[
@@ -333,6 +347,22 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 220,
   },
+  heroFallback: {
+    width: "100%",
+    height: 220,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    justifyContent: "flex-end",
+  },
+  heroFallbackTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  heroFallbackSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   content: {
     padding: 16,
   },
@@ -384,6 +414,11 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
+    marginBottom: 4,
+  },
+  addressText: {
+    fontSize: 13,
+    lineHeight: 18,
     marginBottom: 8,
   },
   mapButton: {

@@ -13,6 +13,61 @@ const API_BASE_URL =
 
 // Single place for token key
 const TOKEN_KEY = "authToken";
+const SESSION_RESTORE_TIMEOUT_MS = 10000;
+const AUTH_REQUEST_TIMEOUT_MS = 30000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function normalizeNetworkError(error, fallbackMessage) {
+  if (error?.name === "AbortError") {
+    return new Error(fallbackMessage);
+  }
+
+  if (
+    typeof error?.message === "string" &&
+    error.message.toLowerCase().includes("aborted")
+  ) {
+    return new Error(fallbackMessage);
+  }
+
+  return error;
+}
+
+async function readJsonSafely(response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function isExpectedAuthFailure(error) {
+  if (!error?.message) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("invalid email or password") ||
+    message.includes("login failed") ||
+    message.includes("registration failed")
+  );
+}
 
 // Create the context object
 const AuthContext = createContext(null);
@@ -31,77 +86,144 @@ export function AuthProvider({ children }) {
   // user will hold {_id, email, name, role, town, avatarKey, ...} from backend
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // JWT from the backend
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // true while restoring session
+  const [isSessionBootstrapping, setIsSessionBootstrapping] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authDebugMessage, setAuthDebugMessage] = useState(
+    "Booting auth session..."
+  );
 
   // On app start, try to restore a saved session from AsyncStorage
   useEffect(() => {
     restoreSession();
   }, []);
 
+  function buildUser(rawUser) {
+    return {
+      ...rawUser,
+      avatarKey: rawUser?.avatarKey ?? null,
+    };
+  }
+
+  async function setLoggedOutState(debugMessage) {
+    if (debugMessage) {
+      setAuthDebugMessage(debugMessage);
+    }
+
+    setToken(null);
+    setUser(null);
+    await AsyncStorage.removeItem(TOKEN_KEY);
+  }
+
+  async function setLoggedInState(nextToken, rawUser, debugMessage) {
+    const normalizedUser = buildUser(rawUser || {});
+
+    if (debugMessage) {
+      setAuthDebugMessage(debugMessage);
+    }
+
+    await AsyncStorage.setItem(TOKEN_KEY, nextToken);
+    setToken(nextToken);
+    setUser(normalizedUser);
+
+    return normalizedUser;
+  }
+
   async function restoreSession() {
     try {
-      setIsAuthLoading(true);
+      setIsSessionBootstrapping(true);
+      setAuthDebugMessage("Checking saved session token...");
+      console.log("restoreSession started");
 
       const savedToken = await AsyncStorage.getItem(TOKEN_KEY);
       if (!savedToken) {
-        // No token saved - user is logged out
-        setToken(null);
-        setUser(null);
+        console.log("No saved token, skipping restore");
+        await setLoggedOutState("No saved token found. Opening logged-out app.");
         return;
       }
+
+      setAuthDebugMessage("Saved token found. Restoring session...");
+      console.log("Restoring session from:", `${API_BASE_URL}/api/auth/me`);
+      setAuthDebugMessage(`Calling ${API_BASE_URL}/api/auth/me`);
 
       // Check that the token is still valid and get the current user
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${savedToken}`,
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/auth/me`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${savedToken}`,
+          },
         },
-      });
+        SESSION_RESTORE_TIMEOUT_MS
+      );
+
+      const data = await readJsonSafely(response);
 
       if (!response.ok) {
-        // Token invalid or expired - clear it
-        await AsyncStorage.removeItem(TOKEN_KEY);
-        setToken(null);
-        setUser(null);
+        console.log("Session restore failed:", response.status, data?.message);
+        await setLoggedOutState(
+          `Session restore failed (${response.status}). Clearing saved token.`
+        );
+        return;
+      }
+      const rawUser = data.user || data;
+      if (!rawUser || !rawUser._id) {
+        await setLoggedOutState(
+          "Session restore returned no user. Clearing saved token."
+        );
         return;
       }
 
-      const data = await response.json();
-      const rawUser = data.user || data;
-
-      // Keep avatarKey if backend returns it; otherwise fall back to null
-      const restoredUser = {
-        ...rawUser,
-        avatarKey: rawUser.avatarKey ?? null,
-      };
-
-      setToken(savedToken);
-      setUser(restoredUser);
+      await setLoggedInState(
+        savedToken,
+        rawUser,
+        "Session restored. User loaded."
+      );
     } catch (error) {
-      console.error("Error restoring auth session:", error);
-      // On any error, treat as logged out
-      setToken(null);
-      setUser(null);
-      await AsyncStorage.removeItem(TOKEN_KEY);
+      const normalizedError = normalizeNetworkError(
+        error,
+        "Session restore timed out."
+      );
+      console.error("Error restoring auth session:", normalizedError);
+      await setLoggedOutState(
+        `Session restore error: ${normalizedError.message}. Clearing token.`
+      );
     } finally {
-      setIsAuthLoading(false);
+      setAuthDebugMessage((current) => `${current} Done.`);
+      setIsSessionBootstrapping(false);
+      console.log("restoreSession finished");
     }
+  }
+
+  async function retrySessionRestore() {
+    await restoreSession();
+  }
+
+  async function skipSessionRestore() {
+    setAuthDebugMessage("Session restore skipped. Opening logged-out app.");
+    await setLoggedOutState("Session restore skipped. Opening logged-out app.");
+    setIsSessionBootstrapping(false);
   }
 
   // LOGIN: call backend /api/auth/login, save token and user
   async function login({ email, password }) {
     try {
       setIsAuthLoading(true);
+      console.log("Logging in against:", `${API_BASE_URL}/api/auth/login`);
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
         },
-        body: JSON.stringify({ email, password }),
-      });
+        AUTH_REQUEST_TIMEOUT_MS
+      );
 
-      const data = await response.json();
+      const data = await readJsonSafely(response);
 
       if (!response.ok) {
         // backend should send { message: "Invalid email or password" }
@@ -109,22 +231,24 @@ export function AuthProvider({ children }) {
         throw new Error(message);
       }
 
-      // Normalize user shape + avatarKey
-      const rawUser = data.user || {};
-      const mergedUser = {
-        ...rawUser,
-        avatarKey: rawUser.avatarKey ?? null,
-      };
-
-      // Save token and user in state and AsyncStorage
-      setToken(data.token);
-      setUser(mergedUser);
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
+      const mergedUser = await setLoggedInState(
+        data.token,
+        data.user || {},
+        "Login successful. Opening app."
+      );
 
       return { ...data, user: mergedUser }; // screen can react if needed
     } catch (error) {
-      console.error("Error in login:", error);
-      throw error; // let screen show an alert
+      const normalizedError = normalizeNetworkError(
+        error,
+        "Login request timed out. Check the backend URL/server and try again."
+      );
+      if (isExpectedAuthFailure(normalizedError)) {
+        console.log("Login rejected:", normalizedError.message);
+      } else {
+        console.warn("Login request issue:", normalizedError.message);
+      }
+      throw normalizedError; // let screen show an alert
     } finally {
       setIsAuthLoading(false);
     }
@@ -146,49 +270,60 @@ export function AuthProvider({ children }) {
     try {
       setIsAuthLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            role,
+            town: town || undefined,
+            bio: bio || undefined,
+            lookingFor: lookingFor || undefined,
+            instagram: instagram || undefined,
+            website: website || undefined,
+            avatarKey: avatarKey || undefined,
+          }),
         },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          role,
-          town: town || undefined,
-          bio: bio || undefined,
-          lookingFor: lookingFor || undefined,
-          instagram: instagram || undefined,
-          website: website || undefined,
-          avatarKey: avatarKey || undefined,
-        }),
-      });
+        AUTH_REQUEST_TIMEOUT_MS
+      );
 
-      const data = await response.json();
+      const data = await readJsonSafely(response);
 
       if (!response.ok) {
         const message = data?.message || "Registration failed.";
         throw new Error(message);
       }
 
-      // Ensure avatarKey is present even if backend forgot to return it
       const rawUser = data.user || {};
-      const mergedUser = {
-        ...rawUser,
-        avatarKey: rawUser.avatarKey ?? avatarKey ?? null,
-      };
+      const mergedUser = await setLoggedInState(
+        data.token,
+        {
+          ...rawUser,
+          avatarKey: rawUser.avatarKey ?? avatarKey ?? null,
+        },
+        "Registration successful. Opening app."
+      );
 
       console.log("Merged user in AuthContext.register:", mergedUser);
 
-      setToken(data.token);
-      setUser(mergedUser);
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
-
       return { ...data, user: mergedUser };
     } catch (error) {
-      console.error("Error in register:", error);
-      throw error;
+      const normalizedError = normalizeNetworkError(
+        error,
+        "Registration request timed out. Check the backend URL/server and try again."
+      );
+      if (isExpectedAuthFailure(normalizedError)) {
+        console.log("Registration rejected:", normalizedError.message);
+      } else {
+        console.warn("Registration request issue:", normalizedError.message);
+      }
+      throw normalizedError;
     } finally {
       setIsAuthLoading(false);
     }
@@ -214,7 +349,7 @@ export function AuthProvider({ children }) {
         }
       );
 
-      const data = await response.json();
+      const data = await readJsonSafely(response);
 
       if (!response.ok) {
         const message = data?.message || "Upgrade failed.";
@@ -243,16 +378,20 @@ export function AuthProvider({ children }) {
     try {
       setIsAuthLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/users/me`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updates),
         },
-        body: JSON.stringify(updates),
-      });
+        AUTH_REQUEST_TIMEOUT_MS
+      );
 
-      const data = await response.json();
+      const data = await readJsonSafely(response);
 
       if (!response.ok) {
         const message = data?.message || "Failed to update profile.";
@@ -276,9 +415,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       setIsAuthLoading(true);
-      setUser(null);
-      setToken(null);
-      await AsyncStorage.removeItem(TOKEN_KEY);
+      await setLoggedOutState("Logging out. Clearing session.");
     } catch (error) {
       console.error("Error in logout:", error);
     } finally {
@@ -289,7 +426,11 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     token,
+    isSessionBootstrapping,
     isAuthLoading,
+    authDebugMessage,
+    retrySessionRestore,
+    skipSessionRestore,
     login,
     register,
     logout,

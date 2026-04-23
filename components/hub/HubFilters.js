@@ -3,7 +3,7 @@
 // Lets users choose Town, Category, and Date range using pills + modals.
 
 import React, { useState } from "react";
-import { View, Text, Pressable, Modal, StyleSheet } from "react-native";
+import { View, Text, Pressable, Modal, StyleSheet, ScrollView } from "react-native";
 
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";

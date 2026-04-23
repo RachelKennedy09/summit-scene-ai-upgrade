@@ -8,7 +8,6 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -50,6 +49,7 @@ function LoginScreen() {
   const [email, setEmail] = useState(""); // user email
   const [password, setPassword] = useState(""); // user password
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
+  const [errorMessage, setErrorMessage] = useState("");
 
   // ----- HANDLERS -----
 
@@ -57,10 +57,11 @@ function LoginScreen() {
   async function handleLogin() {
     // Prevent sending empty requests
     if (!email || !password) {
-      Alert.alert("Missing info", "Please enter both email and password.");
+      setErrorMessage("Please enter both email and password.");
       return;
     }
 
+    setErrorMessage("");
     setIsSubmitting(true);
 
     try {
@@ -69,8 +70,7 @@ function LoginScreen() {
       // If successful, AuthContext will update user + token
       // Navigation is handled by RootNavigator based on auth state
     } catch (error) {
-      console.error("Login failed:", error);
-      Alert.alert("Login failed", error.message || "Please try again.");
+      setErrorMessage(error.message || "Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +116,12 @@ function LoginScreen() {
                   },
                 ]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (errorMessage) {
+                    setErrorMessage("");
+                  }
+                }}
                 placeholder="you@example.com"
                 placeholderTextColor={theme.textMuted}
                 autoCapitalize="none"
@@ -140,12 +145,23 @@ function LoginScreen() {
                   },
                 ]}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (errorMessage) {
+                    setErrorMessage("");
+                  }
+                }}
                 placeholder="••••••••"
                 placeholderTextColor={theme.textMuted}
                 secureTextEntry
               />
             </View>
+
+            {errorMessage ? (
+              <Text style={[styles.errorText, { color: "#D14343" }]}>
+                {errorMessage}
+              </Text>
+            ) : null}
 
             {/* LOGIN BUTTON */}
             <Pressable
@@ -242,6 +258,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: "center",
     fontSize: 14,
+  },
+  errorText: {
+    marginTop: -4,
+    marginBottom: 12,
+    fontSize: 13,
   },
   logoContainer: {
     alignItems: "center",

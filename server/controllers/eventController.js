@@ -16,6 +16,191 @@
 
 import Event from "../models/Event.js";
 import User from "../models/User.js";
+import { geocodeEventAddress } from "../services/geocoding.js";
+import { getNextOccurrenceDateString } from "../../utils/eventSchedule.js";
+
+const VALID_RECURRENCE_FREQUENCIES = [
+  "daily",
+  "weekly",
+  "selected_weekdays",
+];
+const VALID_WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function normalizeOptionalString(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function normalizeRequiredString(value) {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+function buildTodayString() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeTimeSlots(timeSlots, fallbackTime, fallbackEndTime, isAllDay) {
+  if (isAllDay) {
+    return [];
+  }
+
+  const sourceSlots = Array.isArray(timeSlots)
+    ? timeSlots
+    : fallbackTime || fallbackEndTime
+    ? [{ startTime: fallbackTime, endTime: fallbackEndTime }]
+    : [];
+
+  return sourceSlots
+    .map((slot) => ({
+      startTime: normalizeOptionalString(slot?.startTime),
+      endTime: normalizeOptionalString(slot?.endTime),
+    }))
+    .filter((slot) => slot.startTime || slot.endTime);
+}
+
+function validateTimeSlots(timeSlots) {
+  for (const slot of timeSlots) {
+    if (slot.endTime && !slot.startTime) {
+      throw new Error(
+        "Each time slot needs a start time before you add an end time."
+      );
+    }
+  }
+}
+
+function normalizeRecurrence(recurrence, scheduleType) {
+  if (scheduleType !== "recurring") {
+    return undefined;
+  }
+
+  const frequency = normalizeRequiredString(recurrence?.frequency || "daily");
+  if (!VALID_RECURRENCE_FREQUENCIES.includes(frequency)) {
+    throw new Error("Please choose a valid recurrence frequency.");
+  }
+
+  const weekdays = Array.isArray(recurrence?.weekdays)
+    ? recurrence.weekdays
+        .map((day) => normalizeRequiredString(day))
+        .filter((day) => VALID_WEEKDAYS.includes(day))
+    : [];
+
+  if (frequency === "selected_weekdays" && weekdays.length === 0) {
+    throw new Error("Choose at least one weekday for this recurring event.");
+  }
+
+  const untilDate = normalizeOptionalString(recurrence?.untilDate);
+
+  return {
+    frequency,
+    weekdays: frequency === "selected_weekdays" ? weekdays : [],
+    untilDate,
+  };
+}
+
+function buildLegacyTimeFields(timeSlots, isAllDay) {
+  if (isAllDay || !timeSlots.length) {
+    return {
+      time: undefined,
+      endTime: undefined,
+    };
+  }
+
+  return {
+    time: timeSlots[0].startTime,
+    endTime: timeSlots[0].endTime,
+  };
+}
+
+function buildLegacyLocation(locationName, address) {
+  return locationName || address || undefined;
+}
+
+async function buildGeocodedEventFields({ address, town }) {
+  const normalizedAddress = normalizeRequiredString(address);
+  const normalizedTown = normalizeRequiredString(town);
+
+  if (!normalizedAddress) {
+    throw new Error("A full street address is required for map placement.");
+  }
+
+  const geocoded = await geocodeEventAddress({
+    address: normalizedAddress,
+    town: normalizedTown,
+  });
+
+  return {
+    address: normalizedAddress,
+    latitude: geocoded.latitude,
+    longitude: geocoded.longitude,
+  };
+}
+
+function normalizeCoordinate(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parsePositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function buildDateFilterRange(dateFilter) {
+  const normalizedFilter = normalizeRequiredString(dateFilter);
+  if (!normalizedFilter || normalizedFilter === "All") {
+    return null;
+  }
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(todayStart);
+
+  if (normalizedFilter === "Today") {
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+  } else if (normalizedFilter === "Next 3 days") {
+    rangeEnd.setDate(rangeEnd.getDate() + 3);
+  } else if (normalizedFilter === "Next 7 days") {
+    rangeEnd.setDate(rangeEnd.getDate() + 7);
+  } else if (normalizedFilter === "Next 30 days") {
+    rangeEnd.setDate(rangeEnd.getDate() + 30);
+  } else {
+    return null;
+  }
+
+  return { start: todayStart, end: rangeEnd };
+}
+
+function matchesDateFilter(event, dateFilter) {
+  const range = buildDateFilterRange(dateFilter);
+  if (!range) return true;
+
+  const effectiveDate = getNextOccurrenceDateString(event) || event?.date;
+  if (!effectiveDate || typeof effectiveDate !== "string") {
+    return false;
+  }
+
+  const [year, month, day] = effectiveDate.split("-").map(Number);
+  if (!year || !month || !day) {
+    return false;
+  }
+
+  const eventDay = new Date(year, month - 1, day);
+  return eventDay >= range.start && eventDay < range.end;
+}
 
 // -------------------------------------------
 // GET /api/events
@@ -27,22 +212,76 @@ import User from "../models/User.js";
 // -------------------------------------------
 export async function getAllEvents(req, res) {
   try {
-    // Build today's date in YYYY-MM-DD format
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const todayStr = `${year}-${month}-${day}`;
+    const todayStr = buildTodayString();
+    const normalizedTown = normalizeRequiredString(req.query?.town);
+    const normalizedCategory = normalizeRequiredString(req.query?.category);
+    const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
+    const requestedPage = parsePositiveInt(req.query?.page, 1);
+    const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), 50);
+    const shouldPaginate =
+      req.query?.page !== undefined || req.query?.limit !== undefined;
 
-    // Only events on or after today
-    const events = await Event.find({ date: { $gte: todayStr } })
-      .sort({ date: 1 })
+    const baseQuery = {
+      $or: [
+        {
+          $or: [
+            { scheduleType: { $exists: false } },
+            { scheduleType: "single" },
+          ],
+          date: { $gte: todayStr },
+        },
+        {
+          scheduleType: "recurring",
+          $or: [
+            { "recurrence.untilDate": { $exists: false } },
+            { "recurrence.untilDate": null },
+            { "recurrence.untilDate": "" },
+            { "recurrence.untilDate": { $gte: todayStr } },
+          ],
+        },
+      ],
+    };
+
+    if (normalizedTown && normalizedTown !== "All") {
+      baseQuery.town = normalizedTown;
+    }
+
+    if (normalizedCategory && normalizedCategory !== "All") {
+      baseQuery.category = normalizedCategory;
+    }
+
+    const events = await Event.find(baseQuery)
+      .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
         "name email role avatarKey town bio lookingFor instagram website"
       );
 
-    return res.json(events);
+    const filteredEvents =
+      normalizedDateFilter && normalizedDateFilter !== "All"
+        ? events.filter((event) => matchesDateFilter(event, normalizedDateFilter))
+        : events;
+
+    if (!shouldPaginate) {
+      return res.json(filteredEvents);
+    }
+
+    const totalCount = filteredEvents.length;
+    const startIndex = (requestedPage - 1) * requestedLimit;
+    const pagedEvents = filteredEvents.slice(
+      startIndex,
+      startIndex + requestedLimit
+    );
+    const totalPages = Math.max(1, Math.ceil(totalCount / requestedLimit));
+
+    return res.json({
+      events: pagedEvents,
+      page: requestedPage,
+      limit: requestedLimit,
+      totalCount,
+      totalPages,
+      hasMore: requestedPage < totalPages,
+    });
   } catch (error) {
     console.error("Error in GET /api/events:", error);
     return res.status(500).json({
@@ -86,6 +325,7 @@ export async function createEvent(req, res) {
         .json({ message: "Only business accounts can post events." });
     }
 
+    const rawBody = req.body || {};
     const {
       title,
       description,
@@ -94,27 +334,117 @@ export async function createEvent(req, res) {
       date,
       time,
       endTime,
+      scheduleType,
+      isAllDay,
+      recurrence,
+      timeSlots,
+      latitude,
+      longitude,
+      locationName,
+      address,
       location,
       imageUrl,
-    } = req.body || {};
+    } = rawBody;
+
+    const normalizedTitle = normalizeRequiredString(title);
+    const normalizedTown = normalizeRequiredString(town);
+    const normalizedCategory = normalizeRequiredString(category);
+    const normalizedDate = normalizeRequiredString(date);
+    const normalizedLocationName = normalizeOptionalString(
+      locationName ?? location
+    );
+    const normalizedScheduleType =
+      normalizeRequiredString(scheduleType || "single") || "single";
+    const normalizedIsAllDay = Boolean(isAllDay);
 
     // Basic validation
-    if (!title || !town || !category || !date) {
+    if (
+      !normalizedTitle ||
+      !normalizedTown ||
+      !normalizedCategory ||
+      !normalizedDate
+    ) {
       return res.status(400).json({
         message: "title, town, category and date are required.",
       });
     }
 
+    if (!["single", "recurring"].includes(normalizedScheduleType)) {
+      return res.status(400).json({
+        message: "Please choose a valid schedule type.",
+      });
+    }
+
+    let normalizedRecurrence;
+    let normalizedTimeSlots;
+
+    try {
+      normalizedRecurrence = normalizeRecurrence(
+        recurrence,
+        normalizedScheduleType
+      );
+      normalizedTimeSlots = normalizeTimeSlots(
+        timeSlots,
+        time,
+        endTime,
+        normalizedIsAllDay
+      );
+      validateTimeSlots(normalizedTimeSlots);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    let geocodedFields;
+
+    const normalizedLatitude = normalizeCoordinate(latitude);
+    const normalizedLongitude = normalizeCoordinate(longitude);
+
+    if (
+      normalizedLatitude !== undefined &&
+      normalizedLongitude !== undefined
+    ) {
+      geocodedFields = {
+        address: normalizeRequiredString(address),
+        latitude: normalizedLatitude,
+        longitude: normalizedLongitude,
+      };
+    } else {
+      try {
+        geocodedFields = await buildGeocodedEventFields({
+          address,
+          town: normalizedTown,
+        });
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+
+    const legacyTimeFields = buildLegacyTimeFields(
+      normalizedTimeSlots,
+      normalizedIsAllDay
+    );
+
     const event = new Event({
-      title,
-      description,
-      town,
-      category,
-      date,
-      time,
-      endTime,
-      location,
-      imageUrl,
+      title: normalizedTitle,
+      description: normalizeOptionalString(description),
+      town: normalizedTown,
+      category: normalizedCategory,
+      date: normalizedDate,
+      time: legacyTimeFields.time,
+      endTime: legacyTimeFields.endTime,
+      scheduleType: normalizedScheduleType,
+      isAllDay: normalizedIsAllDay,
+      recurrence: normalizedRecurrence,
+      timeSlots: normalizedTimeSlots,
+      locationName: normalizedLocationName,
+      address: geocodedFields.address,
+      location: buildLegacyLocation(
+        normalizedLocationName,
+        geocodedFields.address
+      ),
+      latitude: geocodedFields.latitude,
+      longitude: geocodedFields.longitude,
+      imageUrl: normalizeOptionalString(imageUrl),
       createdBy: userId,
     });
 
@@ -190,6 +520,7 @@ export async function updateEvent(req, res) {
     }
 
     // Only update allowed fields
+    const rawBody = req.body || {};
     const {
       title,
       description,
@@ -198,19 +529,136 @@ export async function updateEvent(req, res) {
       date,
       time,
       endTime,
+      scheduleType,
+      isAllDay,
+      recurrence,
+      timeSlots,
+      latitude,
+      longitude,
+      locationName,
+      address,
       location,
       imageUrl,
-    } = req.body || {};
+    } = rawBody;
 
-    if (title !== undefined) event.title = title;
-    if (description !== undefined) event.description = description;
-    if (town !== undefined) event.town = town;
-    if (category !== undefined) event.category = category;
-    if (date !== undefined) event.date = date;
-    if (time !== undefined) event.time = time;
-    if (endTime !== undefined) event.endTime = endTime;
-    if (location !== undefined) event.location = location;
-    if (imageUrl !== undefined) event.imageUrl = imageUrl;
+    if (title !== undefined) {
+      const normalizedTitle = normalizeRequiredString(title);
+      if (!normalizedTitle) {
+        return res.status(400).json({ message: "Event title is required." });
+      }
+      event.title = normalizedTitle;
+    }
+    if (description !== undefined) {
+      event.description = normalizeOptionalString(description);
+    }
+    if (town !== undefined) {
+      const normalizedTown = normalizeRequiredString(town);
+      if (!normalizedTown) {
+        return res.status(400).json({ message: "Town is required." });
+      }
+      event.town = normalizedTown;
+    }
+    if (category !== undefined) {
+      const normalizedCategory = normalizeRequiredString(category);
+      if (!normalizedCategory) {
+        return res.status(400).json({ message: "Category is required." });
+      }
+      event.category = normalizedCategory;
+    }
+    if (date !== undefined) {
+      const normalizedDate = normalizeRequiredString(date);
+      if (!normalizedDate) {
+        return res.status(400).json({ message: "Event date is required." });
+      }
+      event.date = normalizedDate;
+    }
+    if (scheduleType !== undefined) {
+      const normalizedScheduleType = normalizeRequiredString(scheduleType);
+      if (!["single", "recurring"].includes(normalizedScheduleType)) {
+        return res
+          .status(400)
+          .json({ message: "Please choose a valid schedule type." });
+      }
+      event.scheduleType = normalizedScheduleType;
+    }
+    if (isAllDay !== undefined) {
+      event.isAllDay = Boolean(isAllDay);
+    }
+    if (locationName !== undefined || location !== undefined) {
+      event.locationName = normalizeOptionalString(locationName ?? location);
+    }
+    if (imageUrl !== undefined) event.imageUrl = normalizeOptionalString(imageUrl);
+
+    if (
+      recurrence !== undefined ||
+      timeSlots !== undefined ||
+      time !== undefined ||
+      endTime !== undefined ||
+      scheduleType !== undefined ||
+      isAllDay !== undefined
+    ) {
+      try {
+        const normalizedRecurrence = normalizeRecurrence(
+          recurrence ?? event.recurrence,
+          event.scheduleType || "single"
+        );
+        const normalizedTimeSlots = normalizeTimeSlots(
+          timeSlots !== undefined ? timeSlots : event.timeSlots,
+          time !== undefined ? time : event.time,
+          endTime !== undefined ? endTime : event.endTime,
+          event.isAllDay
+        );
+        validateTimeSlots(normalizedTimeSlots);
+
+        event.recurrence = normalizedRecurrence;
+        event.timeSlots = normalizedTimeSlots;
+
+        const legacyTimeFields = buildLegacyTimeFields(
+          normalizedTimeSlots,
+          event.isAllDay
+        );
+        event.time = legacyTimeFields.time;
+        event.endTime = legacyTimeFields.endTime;
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+
+    if (
+      address !== undefined ||
+      town !== undefined ||
+      latitude !== undefined ||
+      longitude !== undefined
+    ) {
+      const normalizedLatitude = normalizeCoordinate(latitude);
+      const normalizedLongitude = normalizeCoordinate(longitude);
+
+      if (
+        normalizedLatitude !== undefined &&
+        normalizedLongitude !== undefined
+      ) {
+        event.address = normalizeRequiredString(
+          address !== undefined ? address : event.address
+        );
+        event.latitude = normalizedLatitude;
+        event.longitude = normalizedLongitude;
+      } else {
+        try {
+          const geocodedFields = await buildGeocodedEventFields({
+            address: address !== undefined ? address : event.address,
+            town: event.town,
+          });
+
+          event.address = geocodedFields.address;
+          event.latitude = geocodedFields.latitude;
+          event.longitude = geocodedFields.longitude;
+        } catch (error) {
+          return res.status(400).json({ message: error.message });
+        }
+      }
+    }
+
+    event.location = buildLegacyLocation(event.locationName, event.address);
 
     const updated = await event.save();
 

@@ -11,6 +11,7 @@
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
+const COMMUNITY_REQUEST_TIMEOUT_MS = 15000;
 
 // Helper to build headers conditionally (token optional)
 function buildHeaders(token) {
@@ -20,26 +21,74 @@ function buildHeaders(token) {
   };
 }
 
+async function fetchWithTimeout(
+  url,
+  options = {},
+  timeoutMs = COMMUNITY_REQUEST_TIMEOUT_MS
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readJsonSafely(response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function normalizeCommunityError(error, fallbackMessage) {
+  if (error?.name === "AbortError") {
+    return new Error(fallbackMessage);
+  }
+
+  if (
+    typeof error?.message === "string" &&
+    error.message.toLowerCase().includes("aborted")
+  ) {
+    return new Error(fallbackMessage);
+  }
+
+  return error;
+}
+
 //  FETCH COMMUNITY POSTS
 //  GET /api/community?type=highwayconditions | eventbuddy | rideshare
 //  Returns: array of posts
 
 export async function fetchCommunityPosts(type, token) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/community?type=${type}`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/community?type=${type}`, {
       method: "GET",
       headers: buildHeaders(token),
     });
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || `Failed to load posts (${res.status})`);
+      throw new Error(data.message || `Failed to load posts (${res.status})`);
     }
 
-    return await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("fetchCommunityPosts error:", error);
-    throw error;
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Community posts request timed out. Check the backend and try again."
+    );
+    console.warn("fetchCommunityPosts issue:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -49,20 +98,24 @@ export async function fetchCommunityPosts(type, token) {
 
 export async function deleteCommunityPost(postId, token) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/community/${postId}`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/community/${postId}`, {
       method: "DELETE",
       headers: buildHeaders(token),
     });
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || `Failed to delete post (${res.status})`);
+      throw new Error(data.message || `Failed to delete post (${res.status})`);
     }
 
     return true;
   } catch (error) {
-    console.error("deleteCommunityPost error:", error);
-    throw error;
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Delete post request timed out. Check the backend and try again."
+    );
+    console.warn("deleteCommunityPost issue:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -73,37 +126,90 @@ export async function deleteCommunityPost(postId, token) {
 
 export async function createCommunityReply(postId, replyText, token) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/community/${postId}/replies`, {
-      method: "POST",
-      headers: buildHeaders(token),
-      body: JSON.stringify({ body: replyText }),
-    });
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/community/${postId}/replies`,
+      {
+        method: "POST",
+        headers: buildHeaders(token),
+        body: JSON.stringify({ body: replyText }),
+      }
+    );
+
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || `Failed to send reply (${res.status})`);
+      throw new Error(data.message || `Failed to send reply (${res.status})`);
     }
 
-    return await res.json();
+    return data;
   } catch (error) {
-    console.error("createCommunityReply error:", error);
-    throw error;
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Reply request timed out. Check the backend and try again."
+    );
+    console.warn("createCommunityReply issue:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
-//
-//    TOGGLE LIKE
-//    POST /api/community/:postId/likes
-//    Returns: updated likes info (backend-defined)
-//
+export async function createCommunityPost(postData, token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/community`, {
+      method: "POST",
+      headers: buildHeaders(token),
+      body: JSON.stringify(postData),
+    });
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `Failed to create post (${res.status})`);
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Create post request timed out. Check the backend and try again."
+    );
+    console.warn("createCommunityPost issue:", normalizedError.message);
+    throw normalizedError;
+  }
+}
+
+export async function updateCommunityPost(postId, postData, token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/community/${postId}`, {
+      method: "PUT",
+      headers: buildHeaders(token),
+      body: JSON.stringify(postData),
+    });
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `Failed to update post (${res.status})`);
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Update post request timed out. Check the backend and try again."
+    );
+    console.warn("updateCommunityPost issue:", normalizedError.message);
+    throw normalizedError;
+  }
+}
+
 export async function toggleCommunityLike(postId, token) {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/community/${postId}/likes`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/community/${postId}/likes`, {
       method: "POST",
       headers: buildHeaders(token),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
       throw new Error(data.message || `Failed to update like (${res.status})`);
@@ -111,7 +217,11 @@ export async function toggleCommunityLike(postId, token) {
 
     return data;
   } catch (error) {
-    console.error("toggleCommunityLike error:", error);
-    throw error;
+    const normalizedError = normalizeCommunityError(
+      error,
+      "Like request timed out. Check the backend and try again."
+    );
+    console.warn("toggleCommunityLike issue:", normalizedError.message);
+    throw normalizedError;
   }
 }

@@ -1,48 +1,28 @@
-// components/events/EventCard.js
+// components/cards/EventCard.js
 // A reusable card for displaying a single event on the Hub screen.
-// FEATURES:
-// • Shows category, town, title, location, date, and time
-// • Handles many date/time combinations (“date only”, “time only”, both, etc.)
-// • Fully theme-aware (colors pulled from ThemeContext)
-// • Pressable wrapper for navigation to Event Details
 
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { getCardScheduleLabels } from "../../utils/eventSchedule";
 
 export default function EventCard({ event, onPress }) {
   const { theme } = useTheme();
 
-  // If somehow event is undefined, avoid crashing the list
   if (!event) return null;
 
-  // ------------------------------------------------------------
-  // Build a human-friendly date/time label
-  // ------------------------------------------------------------
-  const hasDate = Boolean(event.date);
-  const hasStartTime = Boolean(event.time);
-  const hasEndTime = Boolean(event.endTime);
+  const { primary: primaryDateLabel, secondary: secondaryTimeLabel } =
+    getCardScheduleLabels(event);
 
-  let dateTimeLabel = "Date & time TBA";
-
-  if (hasDate && hasStartTime && hasEndTime) {
-    dateTimeLabel = `${event.date} • ${event.time} – ${event.endTime}`;
-  } else if (hasDate && hasStartTime) {
-    dateTimeLabel = `${event.date} • ${event.time}`;
-  } else if (hasDate) {
-    dateTimeLabel = event.date;
-  } else if (hasStartTime && hasEndTime) {
-    dateTimeLabel = `${event.time} – ${event.endTime}`;
-  } else if (hasStartTime) {
-    dateTimeLabel = event.time;
-  }
+  const locationLabel =
+    event.locationName || event.location || event.address || "Location TBA";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.cardWrapper,
-        pressed && styles.cardPressed, // subtle interaction feedback
+        pressed && styles.cardPressed,
       ]}
     >
       <View
@@ -54,7 +34,6 @@ export default function EventCard({ event, onPress }) {
           },
         ]}
       >
-        {/* Row: Category pill + Town */}
         <View style={styles.topRow}>
           {event.category ? (
             <View
@@ -78,25 +57,51 @@ export default function EventCard({ event, onPress }) {
           ) : null}
         </View>
 
-        {/* Title (largest text on the card) */}
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {event.title || "Untitled event"}
         </Text>
 
-        {/* Location */}
-        {event.location ? (
-          <Text
-            style={[styles.location, { color: theme.text }]}
-            numberOfLines={1}
-          >
-            📍 {event.location}
-          </Text>
-        ) : null}
+        <View style={styles.metaStack}>
+          <View style={styles.metaBlock}>
+            <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
+              When
+            </Text>
+            <Text style={[styles.metaValue, { color: theme.text }]}>
+              {primaryDateLabel}
+            </Text>
+            <Text style={[styles.metaSubvalue, { color: theme.textMuted }]}>
+              {secondaryTimeLabel}
+            </Text>
+          </View>
 
-        {/* Date + Time label */}
-        <Text style={[styles.datetime, { color: theme.textMuted }]}>
-          {dateTimeLabel}
-        </Text>
+          <View style={styles.metaBlock}>
+            <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
+              Where
+            </Text>
+            <Text
+              style={[styles.metaValue, { color: theme.text }]}
+              numberOfLines={2}
+            >
+              {locationLabel}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.footerRow,
+            {
+              borderTopColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.footerText, { color: theme.textMuted }]}>
+            {event.category || "Event"}
+          </Text>
+          <Text style={[styles.footerCta, { color: theme.accent }]}>
+            View details
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -104,50 +109,87 @@ export default function EventCard({ event, onPress }) {
 
 const styles = StyleSheet.create({
   cardWrapper: {
-    borderRadius: 14,
-    marginBottom: 12,
+    borderRadius: 18,
+    marginBottom: 14,
   },
   cardPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.99 }],
+    opacity: 0.92,
+    transform: [{ scale: 0.992 }],
   },
   card: {
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     borderWidth: 1,
   },
   topRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: 10,
+    gap: 10,
   },
   categoryPill: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 999,
+    maxWidth: "70%",
   },
   categoryText: {
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
   },
   townText: {
     fontSize: 12,
     fontWeight: "500",
+    textAlign: "right",
+    flexShrink: 1,
+    paddingTop: 2,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
+    lineHeight: 24,
+    marginBottom: 14,
+  },
+  metaStack: {
+    gap: 10,
+  },
+  metaBlock: {
+    minWidth: 0,
+  },
+  metaLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
     marginBottom: 4,
   },
-  location: {
-    fontSize: 13,
-    marginBottom: 2,
+  metaValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 19,
   },
-  datetime: {
+  metaSubvalue: {
     fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
+  },
+  footerRow: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  footerText: {
+    fontSize: 12,
+  },
+  footerCta: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

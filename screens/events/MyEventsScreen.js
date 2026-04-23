@@ -3,7 +3,7 @@
 // Business users can manage(view / edit / delete) their own events in one place.
 // Also splits events into "Upcoming" vs "Past" based on today's date.
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,23 +14,38 @@ import {
   RefreshControl,
   Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import AppLogoHeader from "../../components/AppLogoHeader";
 import { useAuth } from "../../context/AuthContext";
-import { deleteEvent } from "../../services/eventsApi";
+import {
+  deleteEvent,
+  fetchMyEvents as fetchMyEventsFromApi,
+  sortEventsByUpcomingDate,
+} from "../../services/eventsApi";
 import { useTheme } from "../../context/ThemeContext";
-// Use same base URL as the rest of app (Expo env var with fallback)
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
+import { getListScheduleLabel, isEventUpcoming } from "../../utils/eventSchedule";
 
-export default function MyEventsScreen({ navigation }) {
+export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const isBusiness = user?.role === "business";
+  const successMessage = route?.params?.successMessage || "";
+  const postedEventId = route?.params?.postedEventId || "";
+  const updatedEventId = route?.params?.updatedEventId || "";
 
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+
+  const clearSuccessState = useCallback(() => {
+    navigation.setParams({
+      successMessage: undefined,
+      postedEventId: undefined,
+      updatedEventId: undefined,
+    });
+  }, [navigation]);
 
   // Fetch events owned by the current business user.
   // This is separate from the general Hub fetch because the endpoint is /events/mine.
@@ -49,54 +64,29 @@ export default function MyEventsScreen({ navigation }) {
       }
 
       setIsLoading(true);
-
-      const response = await fetch(`${API_BASE_URL}/api/events/mine`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const text = await response.text();
-      let data = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { error: text };
-      }
-
-      if (!response.ok) {
-        const message =
-          data.error ||
-          data.message ||
-          `Failed to load your events. (Status ${response.status})`;
-        console.log("My events error:", response.status, data);
-        throw new Error(message);
-      }
+      const data = await fetchMyEventsFromApi(token);
 
       // Sort events by date (earlier first) so the list feels chronological
-      const sorted = (data || []).slice().sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateA - dateB;
-      });
-      setEvents(sorted);
+      setEvents(sortEventsByUpcomingDate(data));
     } catch (err) {
-      console.error("Error fetching my events:", err);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   }, [token, isBusiness]);
 
-  // Initial load (and re-run if token or business role changes).
-  useEffect(() => {
-    if (token) {
-      fetchMyEvents();
-    } else {
-      setIsLoading(false);
-    }
-  }, [token, isBusiness, fetchMyEvents]);
+  // Reload whenever this screen comes into focus so newly posted/edited events appear immediately.
+  useFocusEffect(
+    useCallback(() => {
+      if (token && isBusiness) {
+        fetchMyEvents();
+      } else {
+        setEvents([]);
+        setError(null);
+        setIsLoading(false);
+      }
+    }, [token, isBusiness, fetchMyEvents])
+  );
 
   // Pull-to-refresh handler wraps fetchMyEvents and toggles a refreshing spinner.
   const onRefresh = useCallback(async () => {
@@ -108,19 +98,12 @@ export default function MyEventsScreen({ navigation }) {
     }
   }, [fetchMyEvents]);
 
-  // ---- Split into upcoming + past based on today's date ----
-  // We compare string dates in "YYYY-MM-DD" format, which sort correctly lexicographically.
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  const todayStr = `${year}-${month}-${day}`;
-
-  const upcomingEvents = events.filter(
-    (event) => event.date && event.date >= todayStr
-  );
-  const pastEvents = events.filter(
-    (event) => event.date && event.date < todayStr
+  const upcomingEvents = events.filter((event) => isEventUpcoming(event));
+  const pastEvents = events.filter((event) => !isEventUpcoming(event));
+  const highlightedEventId = postedEventId || updatedEventId;
+  const highlightedEvent = useMemo(
+    () => events.find((event) => event._id === highlightedEventId) || null,
+    [events, highlightedEventId]
   );
 
   // Build a user-friendly "date + time" label based on which fields are present
@@ -180,20 +163,27 @@ export default function MyEventsScreen({ navigation }) {
 
       onRefresh();
     } catch (error) {
-      console.error("Error deleting event:", error);
+      console.warn("Delete event issue:", error.message);
       Alert.alert("Error", error.message || "Failed to delete event.");
     }
   }
 
   // Renders a single event row for My Events.
   function renderEventItem({ item }) {
-    const dateTimeLabel = buildDateTimeLabel(item);
+    const dateTimeLabel = getListScheduleLabel(item);
+    const locationLabel = item.locationName || item.location || item.address;
+    const isHighlighted = item._id === highlightedEventId;
 
     return (
       <View
         style={[
           styles.card,
-          { backgroundColor: theme.card, borderColor: theme.border },
+          {
+            backgroundColor: isHighlighted
+              ? theme.accentSoft || theme.card
+              : theme.card,
+            borderColor: isHighlighted ? theme.accent : theme.border,
+          },
         ]}
       >
         {/* Tap the main card to open EventDetail */}
@@ -214,9 +204,9 @@ export default function MyEventsScreen({ navigation }) {
           <Text style={[styles.dateText, { color: theme.text }]}>
             {dateTimeLabel}
           </Text>
-          {item.location ? (
+          {locationLabel ? (
             <Text style={[styles.location, { color: theme.textMuted }]}>
-              {item.location}
+              {locationLabel}
             </Text>
           ) : null}
         </Pressable>
@@ -262,77 +252,93 @@ export default function MyEventsScreen({ navigation }) {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>
-          Loading your events...
-        </Text>
-      </View>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+      >
+        <AppLogoHeader />
+        <View style={[styles.center, styles.screenShell]}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <Text style={[styles.loadingText, { color: theme.text }]}>
+            Loading your events...
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text
-          style={[
-            styles.errorText,
-            { color: theme.error || theme.danger || "#ff4d4f" },
-          ]}
-        >
-          {error}
-        </Text>
-        {isBusiness && (
-          <Pressable
-            style={[styles.retryButton, { borderColor: theme.accent }]}
-            onPress={fetchMyEvents}
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+      >
+        <AppLogoHeader />
+        <View style={[styles.center, styles.screenShell]}>
+          <Text
+            style={[
+              styles.errorText,
+              { color: theme.error || theme.danger || "#ff4d4f" },
+            ]}
           >
-            <Text style={[styles.retryText, { color: theme.accent }]}>
-              Try again
-            </Text>
-          </Pressable>
-        )}
-      </View>
+            {error}
+          </Text>
+          {isBusiness && (
+            <Pressable
+              style={[styles.retryButton, { borderColor: theme.accent }]}
+              onPress={fetchMyEvents}
+            >
+              <Text style={[styles.retryText, { color: theme.accent }]}>
+                Try again
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!events.length) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          No events yet
-        </Text>
-        <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
-          Events you create with your business account will show up here.
-        </Text>
-        {isBusiness && (
-          <Pressable
-            style={[styles.primaryButton, { backgroundColor: theme.success }]}
-            onPress={() => navigation.navigate("tabs", { screen: "Post" })}
-          >
-            <Text
-              style={[
-                styles.primaryButtonText,
-                { color: theme.onSuccess || theme.background },
-              ]}
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+      >
+        <AppLogoHeader />
+        <View style={[styles.center, styles.screenShell]}>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            No events yet
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
+            Events you create with your business account will show up here.
+          </Text>
+          {isBusiness && (
+            <Pressable
+              style={[styles.primaryButton, { backgroundColor: theme.success }]}
+              onPress={() => navigation.navigate("Post")}
             >
-              Create your first event
-            </Text>
-          </Pressable>
-        )}
-      </View>
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  { color: theme.onSuccess || theme.background },
+                ]}
+              >
+                Create your first event
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </SafeAreaView>
     );
   }
 
   // ---- Build single FlatList data with section headers ----
   const listData = [];
 
+  listData.push({
+    type: "heading",
+    id: "heading-upcoming",
+    title: "Upcoming Events",
+  });
+
   if (upcomingEvents.length > 0) {
-    listData.push({
-      type: "heading",
-      id: "heading-upcoming",
-      title: "My Upcoming Events",
-    });
     upcomingEvents.forEach((event) => {
       listData.push({
         type: "event",
@@ -340,14 +346,22 @@ export default function MyEventsScreen({ navigation }) {
         event,
       });
     });
+  } else {
+    listData.push({
+      type: "empty-state",
+      id: "empty-upcoming",
+      title: "No upcoming events",
+      subtitle: "Your next published event will appear here.",
+    });
   }
 
+  listData.push({
+    type: "heading",
+    id: "heading-past",
+    title: "Past Events",
+  });
+
   if (pastEvents.length > 0) {
-    listData.push({
-      type: "heading",
-      id: "heading-past",
-      title: "My Past Events",
-    });
     pastEvents.forEach((event) => {
       listData.push({
         type: "event",
@@ -355,66 +369,181 @@ export default function MyEventsScreen({ navigation }) {
         event,
       });
     });
+  } else {
+    listData.push({
+      type: "empty-state",
+      id: "empty-past",
+      title: "No past events",
+      subtitle: "Completed events will move here once their schedule has passed.",
+    });
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.screenTitle, { color: theme.text }]}>My Events</Text>
-      <Text style={[styles.screenSubtitle, { color: theme.textMuted }]}>
-        Events created by {user?.name || user?.email}
-      </Text>
-
-      {isBusiness && (
-        <Pressable
-          style={[styles.primaryButton, { backgroundColor: theme.success }]}
-          onPress={() => navigation.navigate("tabs", { screen: "Post" })}
-        >
-          <Text
-            style={[
-              styles.primaryButtonText,
-              { color: theme.onSuccess || theme.background },
-            ]}
-          >
-            Post a new event
-          </Text>
-        </Pressable>
-      )}
-
-      <FlatList
-        data={listData}
-        keyExtractor={(item) =>
-          item.type === "heading" ? item.id : item.event._id
-        }
-        renderItem={({ item }) => {
-          if (item.type === "heading") {
-            return (
-              <Text style={[styles.sectionHeading, { color: theme.text }]}>
-                {item.title}
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
+      <AppLogoHeader />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <FlatList
+          data={listData}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          ListHeaderComponent={
+            <>
+              <Text style={[styles.screenTitle, { color: theme.text }]}>
+                {user?.name ? `${user.name}'s Events` : "Events by Business"}
               </Text>
-            );
-          }
+              <Text style={[styles.screenSubtitle, { color: theme.textMuted }]}>
+                Manage your upcoming and past event listings
+              </Text>
 
-          // item.type === "event"
-          return renderEventItem({ item: item.event });
-        }}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.accent}
-          />
-        }
-      />
-    </View>
+              {successMessage ? (
+                <View
+                  style={[
+                    styles.successBanner,
+                    {
+                      backgroundColor: theme.accentSoft || theme.card,
+                      borderColor: theme.accent,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.successTitle, { color: theme.text }]}>
+                    {postedEventId ? "Your event is live" : "Changes saved"}
+                  </Text>
+                  <Text style={[styles.successText, { color: theme.textMuted }]}>
+                    {successMessage}
+                  </Text>
+                  <View style={styles.successActions}>
+                    {highlightedEvent ? (
+                      <Pressable
+                        style={[styles.inlineAction, { borderColor: theme.accent }]}
+                        onPress={() =>
+                          navigation.navigate("EventDetail", {
+                            event: highlightedEvent,
+                            eventId: highlightedEvent._id,
+                          })
+                        }
+                      >
+                        <Text
+                          style={[styles.inlineActionText, { color: theme.accent }]}
+                        >
+                          View event
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      style={[styles.inlineAction, { borderColor: theme.accent }]}
+                      onPress={() => navigation.navigate("Post")}
+                    >
+                      <Text
+                        style={[styles.inlineActionText, { color: theme.accent }]}
+                      >
+                        Post another
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.inlineAction, { borderColor: theme.accent }]}
+                      onPress={() => navigation.navigate("Hub")}
+                    >
+                      <Text
+                        style={[styles.inlineActionText, { color: theme.accent }]}
+                      >
+                        Go to Hub
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.inlineAction, { borderColor: theme.border }]}
+                      onPress={clearSuccessState}
+                    >
+                      <Text
+                        style={[styles.inlineActionText, { color: theme.textMuted }]}
+                      >
+                        Dismiss
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
+
+              {isBusiness && (
+                <Pressable
+                  style={[styles.primaryButton, { backgroundColor: theme.success }]}
+                  onPress={() => navigation.navigate("Post")}
+                >
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: theme.onSuccess || theme.background },
+                    ]}
+                  >
+                    Post a new event
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          }
+          renderItem={({ item }) => {
+            if (item.type === "heading") {
+              return (
+                <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                  {item.title}
+                </Text>
+              );
+            }
+
+            if (item.type === "empty-state") {
+              return (
+                <View
+                  style={[
+                    styles.inlineEmptyCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.inlineEmptyTitle, { color: theme.text }]}>
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.inlineEmptySubtitle,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    {item.subtitle}
+                  </Text>
+                </View>
+              );
+            }
+
+            return renderEventItem({ item: item.event });
+          }}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.accent}
+            />
+          }
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  screenShell: {
+    paddingHorizontal: 16,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
   },
   screenTitle: {
     fontSize: 22,
@@ -423,16 +552,66 @@ const styles = StyleSheet.create({
   },
   screenSubtitle: {
     fontSize: 13,
+    marginBottom: 2,
+  },
+  successBanner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 12,
+  },
+  successTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  successText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  successActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  inlineAction: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineActionText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   sectionHeading: {
     fontSize: 16,
     fontWeight: "600",
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 8,
+  },
+  inlineEmptyCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  inlineEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  inlineEmptySubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   listContent: {
     paddingBottom: 8,
+    paddingRight: 10,
+  },
+  list: {
+    paddingRight: 4,
   },
   card: {
     borderRadius: 12,
@@ -494,7 +673,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 10,
-    marginTop: 8,
+    marginTop: 0,
+    marginBottom: 2,
   },
   primaryButtonText: {
     fontWeight: "700",

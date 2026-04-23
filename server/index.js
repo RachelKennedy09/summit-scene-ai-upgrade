@@ -14,6 +14,8 @@ import eventRoutes from "./routes/events.js";
 import authRouter from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import communityRoutes from "./routes/community.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import placesRoutes from "./routes/placesRoutes.js";
 
 // ---------------------------
 // APP SETUP
@@ -28,6 +30,8 @@ app.use(cors());
 
 // Automatically parse JSON request bodies into req.body
 app.use(express.json());
+
+
 
 // ---------------------------
 // HEALTH + ROOT ROUTES
@@ -59,6 +63,12 @@ app.use("/api/community", communityRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);
+
+// Ai routes for generating event descriptions
+app.use("/api/ai", aiRoutes);
+
+// Free address autocomplete and place lookup helpers
+app.use("/api/places", placesRoutes);
 
 // ---------------------------
 // SERVER STARTUP

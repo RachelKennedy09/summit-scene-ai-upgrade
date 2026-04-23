@@ -1,5 +1,7 @@
 // services/eventsApi.js
 // Centralized helper functions for interacting with the Events API.
+
+import { getNextOccurrenceDateString } from "../utils/eventSchedule";
 //
 // Endpoints used:
 //   GET    /api/events                     → fetch all events
@@ -11,6 +13,7 @@
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
+const EVENTS_REQUEST_TIMEOUT_MS = 15000;
 
 // Build headers helper (optional token)
 function buildHeaders(token) {
@@ -20,22 +23,148 @@ function buildHeaders(token) {
   };
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = EVENTS_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readJsonSafely(response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+function normalizeEventsError(error, fallbackMessage) {
+  if (error?.name === "AbortError") {
+    return new Error(fallbackMessage);
+  }
+
+  if (
+    typeof error?.message === "string" &&
+    error.message.toLowerCase().includes("aborted")
+  ) {
+    return new Error(fallbackMessage);
+  }
+
+  return error;
+}
+
+function toSortableEventTime(event) {
+  const sortableDate = getNextOccurrenceDateString(event) || event?.date;
+
+  if (!sortableDate || typeof sortableDate !== "string") {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  const [year, month, day] = sortableDate.split("-").map(Number);
+  if (!year || !month || !day) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  let hours = 23;
+  let minutes = 59;
+
+  if (event.time && typeof event.time === "string") {
+    const match = event.time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match) {
+      hours = Number(match[1]) % 12;
+      minutes = Number(match[2]);
+      const meridiem = match[3].toUpperCase();
+      if (meridiem === "PM") {
+        hours += 12;
+      }
+    }
+  }
+
+  return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime();
+}
+
+export function sortEventsByUpcomingDate(events) {
+  return (Array.isArray(events) ? events : []).slice().sort((a, b) => {
+    return toSortableEventTime(a) - toSortableEventTime(b);
+  });
+}
+
+function buildEventsQueryString(options = {}) {
+  const params = new URLSearchParams();
+
+  if (options.page) {
+    params.set("page", String(options.page));
+  }
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.town && options.town !== "All") {
+    params.set("town", options.town);
+  }
+  if (options.category && options.category !== "All") {
+    params.set("category", options.category);
+  }
+  if (options.dateFilter && options.dateFilter !== "All") {
+    params.set("dateFilter", options.dateFilter);
+  }
+
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
 //    FETCH ALL EVENTS
 //    GET /api/events
 //    Returns: array of event objects
 
-export async function fetchEvents() {
+export async function fetchEvents(options = {}) {
+  const queryString = buildEventsQueryString(options);
+  const url = `${BASE_URL}/api/events${queryString}`;
+  const expectsPaginatedResponse = Boolean(options.page || options.limit);
+
   try {
-    const res = await fetch(`${BASE_URL}/api/events`);
+    const res = await fetchWithTimeout(url);
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch events (${res.status})`);
+      console.error("fetchEvents backend failure:", {
+        url,
+        status: res.status,
+        message: data.message || data.error || "Unknown backend error",
+      });
+      throw new Error(
+        data.message || data.error || `Failed to fetch events (${res.status})`
+      );
     }
 
-    return await res.json();
+    if (expectsPaginatedResponse) {
+      return {
+        events: sortEventsByUpcomingDate(data.events),
+        page: data.page || options.page || 1,
+        limit: data.limit || options.limit || 20,
+        totalCount: Number.isFinite(data.totalCount) ? data.totalCount : 0,
+        totalPages: Number.isFinite(data.totalPages) ? data.totalPages : 1,
+        hasMore: Boolean(data.hasMore),
+      };
+    }
+
+    return sortEventsByUpcomingDate(data);
   } catch (error) {
-    console.error("fetchEvents error:", error);
-    throw error;
+    const normalizedError = normalizeEventsError(
+      error,
+      "Events request timed out. Check the backend and try again."
+    );
+    console.error("fetchEvents load failure:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -44,13 +173,18 @@ export async function fetchEvents() {
 
 export async function fetchMyEvents(token) {
   try {
-    const res = await fetch(`${BASE_URL}/api/events/mine`, {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events/mine`, {
       headers: buildHeaders(token),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
+      console.error("fetchMyEvents backend failure:", {
+        url: `${BASE_URL}/api/events/mine`,
+        status: res.status,
+        message: data.message || data.error || "Unknown backend error",
+      });
       const message =
         data.message ||
         data.error ||
@@ -58,10 +192,14 @@ export async function fetchMyEvents(token) {
       throw new Error(message);
     }
 
-    return data; // array of events
+    return sortEventsByUpcomingDate(data);
   } catch (error) {
-    console.error("fetchMyEvents error:", error);
-    throw error;
+    const normalizedError = normalizeEventsError(
+      error,
+      "My Events request timed out. Check the backend and try again."
+    );
+    console.error("fetchMyEvents load failure:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -72,13 +210,13 @@ export async function fetchMyEvents(token) {
 
 export async function createEvent(eventData, token) {
   try {
-    const res = await fetch(`${BASE_URL}/api/events`, {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events`, {
       method: "POST",
       headers: buildHeaders(token),
       body: JSON.stringify(eventData),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await readJsonSafely(res);
 
     return {
       ok: res.ok,
@@ -86,11 +224,15 @@ export async function createEvent(eventData, token) {
       data,
     };
   } catch (error) {
-    console.error("createEvent error:", error);
+    const normalizedError = normalizeEventsError(
+      error,
+      "Create event request timed out. Check the backend and try again."
+    );
+    console.warn("createEvent issue:", normalizedError.message);
     return {
       ok: false,
       status: 0,
-      data: { message: error.message || "Network error" },
+      data: { message: normalizedError.message || "Network error" },
     };
   }
 }
@@ -101,7 +243,7 @@ export async function createEvent(eventData, token) {
 
 export async function deleteEvent(eventId, token) {
   try {
-    const res = await fetch(`${BASE_URL}/api/events/${eventId}`, {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events/${eventId}`, {
       method: "DELETE",
       headers: buildHeaders(token),
     });
@@ -113,8 +255,12 @@ export async function deleteEvent(eventId, token) {
 
     return true;
   } catch (error) {
-    console.error("deleteEvent error:", error);
-    throw error;
+    const normalizedError = normalizeEventsError(
+      error,
+      "Delete event request timed out. Check the backend and try again."
+    );
+    console.warn("deleteEvent issue:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -125,16 +271,15 @@ export async function deleteEvent(eventId, token) {
 
 export async function updateEvent(eventId, eventData, token) {
   try {
-    const res = await fetch(`${BASE_URL}/api/events/${eventId}`, {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events/${eventId}`, {
       method: "PUT",
       headers: buildHeaders(token),
       body: JSON.stringify(eventData),
     });
 
-    const data = await res.json().catch(() => ({}));
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      console.error("updateEvent error response:", data);
       const message =
         data.message || `Failed to update event (status ${res.status})`;
       throw new Error(message);
@@ -142,8 +287,12 @@ export async function updateEvent(eventId, eventData, token) {
 
     return data;
   } catch (error) {
-    console.error("updateEvent error:", error);
-    throw error;
+    const normalizedError = normalizeEventsError(
+      error,
+      "Update event request timed out. Check the backend and try again."
+    );
+    console.warn("updateEvent issue:", normalizedError.message);
+    throw normalizedError;
   }
 }
 
@@ -153,15 +302,27 @@ export async function updateEvent(eventId, eventData, token) {
 
 export async function fetchEventById(eventId) {
   try {
-    const res = await fetch(`${BASE_URL}/api/events/${eventId}`);
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events/${eventId}`);
+    const data = await readJsonSafely(res);
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch event (${res.status})`);
+      console.error("fetchEventById backend failure:", {
+        url: `${BASE_URL}/api/events/${eventId}`,
+        status: res.status,
+        message: data.message || data.error || "Unknown backend error",
+      });
+      throw new Error(
+        data.message || data.error || `Failed to fetch event (${res.status})`
+      );
     }
 
-    return await res.json();
+    return data;
   } catch (error) {
-    console.error("fetchEventById error:", error);
-    throw error;
+    const normalizedError = normalizeEventsError(
+      error,
+      "Event details request timed out. Check the backend and try again."
+    );
+    console.error("fetchEventById load failure:", normalizedError.message);
+    throw normalizedError;
   }
 }

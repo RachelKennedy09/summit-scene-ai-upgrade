@@ -79,7 +79,6 @@ export default function CommunityScreen({ navigation }) {
       const data = await fetchCommunityPosts(selectedType, token);
       setPosts(data);
     } catch (error) {
-      console.error("Error fetching community posts:", error);
       setError(error.message || "Something went wrong.");
     } finally {
       setLoading(false);
@@ -106,7 +105,6 @@ export default function CommunityScreen({ navigation }) {
             await deleteCommunityPost(postId, token);
             fetchPosts();
           } catch (error) {
-            console.error("Error deleting community post:", error);
             Alert.alert("Error", error.message || "Failed to delete post.");
           }
         },
@@ -135,7 +133,6 @@ export default function CommunityScreen({ navigation }) {
       setReplyForPostId(null);
       fetchPosts();
     } catch (error) {
-      console.error("Error sending reply:", error);
       Alert.alert("Error", error.message || "Failed to send reply.");
     } finally {
       setSubmittingReply(false);
@@ -153,7 +150,6 @@ export default function CommunityScreen({ navigation }) {
       await toggleCommunityLike(postId, token);
       fetchPosts();
     } catch (error) {
-      console.error("Error toggling like:", error);
       Alert.alert("Error", error.message || "Failed to update like.");
     }
   }

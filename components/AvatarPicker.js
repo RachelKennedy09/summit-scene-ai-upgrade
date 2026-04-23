@@ -5,7 +5,10 @@
 import React from "react";
 import { View, Pressable, Image, StyleSheet } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { AVATARS, AVATAR_KEYS } from "../assets/avatars/avatarConfig";
+import {
+  AVATAR_KEYS,
+  AVATAR_PICKER_SOURCES,
+} from "../assets/avatars/avatarConfig";
 
 export default function AvatarPicker({ value, onChange }) {
   const { theme } = useTheme();
@@ -13,7 +16,7 @@ export default function AvatarPicker({ value, onChange }) {
   return (
     <View style={styles.grid}>
       {AVATAR_KEYS.map((key) => {
-        const source = AVATARS[key];
+        const source = AVATAR_PICKER_SOURCES[key];
         const isSelected = key === value;
 
         return (

@@ -16,12 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-
-// Use the same API base that the rest of the app uses,
-// so Expo can swap between local + deployed backends via env vars.
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
+import { updateCommunityPost } from "../../services/communityApi";
 
 export default function EditCommunityPostScreen({ route, navigation }) {
   const { post } = route.params; // post passed in from CommunityScreen
@@ -67,33 +62,13 @@ export default function EditCommunityPostScreen({ route, navigation }) {
         targetDate: targetDate.toISOString(),
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/community/${post._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        let data = {};
-        try {
-          data = await res.json();
-        } catch {
-          data = {};
-        }
-        throw new Error(data.error || "Failed to update post");
-      }
-
-      await res.json();
+      await updateCommunityPost(post._id, payload, token);
 
       Alert.alert("Post updated", "Your community post has been updated.");
       // CommunityScreen uses useFocusEffect to refetch,
       // so going back is enough to show the updated version.
       navigation.goBack(); // CommunityScreen will refetch on focus
     } catch (err) {
-      console.error("Error updating community post:", err);
       setError(err.message || "Something went wrong.");
     } finally {
       setSubmitting(false);

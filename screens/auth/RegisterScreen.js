@@ -101,7 +101,6 @@ function RegisterScreen() {
       // After successful registration, the AuthContext logs the user in
       // and the RootNavigator switches screens based on auth state.
     } catch (error) {
-      console.error("Error in /register:", error);
       Alert.alert(
         "Registration failed",
         error.message || "Please check your details and try again."

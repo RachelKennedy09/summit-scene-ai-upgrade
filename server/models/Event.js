@@ -7,9 +7,50 @@
 //  - Supports category filtering
 //  - Uses a string date ("YYYY-MM-DD") to avoid timezone issues
 //  - Stores creator reference (business user)
-//  - Includes optional fields: time, endTime, location, imageUrl
+//  - Includes optional fields: time, endTime, venue/address, imageUrl, coordinates
 
 import mongoose from "mongoose";
+
+const timeSlotSchema = new mongoose.Schema(
+  {
+    startTime: {
+      type: String,
+      trim: true,
+    },
+    endTime: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const recurrenceSchema = new mongoose.Schema(
+  {
+    frequency: {
+      type: String,
+      enum: ["daily", "weekly", "selected_weekdays"],
+    },
+    weekdays: {
+      type: [String],
+      enum: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+      default: undefined,
+    },
+    untilDate: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],
+    },
+  },
+  { _id: false }
+);
 
 const eventSchema = new mongoose.Schema(
   {
@@ -50,6 +91,12 @@ const eventSchema = new mongoose.Schema(
         "Retail",
         "Outdoors",
         "Food & Drink",
+        "Networking",
+        "Fundraiser",
+        "Seasonal/Holiday Special",
+        "Nightlife",
+        "Sports/Watch Party",
+        "Community Info Session",
         "Art",
         "Other",
       ],
@@ -79,13 +126,55 @@ const eventSchema = new mongoose.Schema(
       trim: true,
     },
 
+    scheduleType: {
+      type: String,
+      enum: ["single", "recurring"],
+      default: "single",
+    },
+
+    isAllDay: {
+      type: Boolean,
+      default: false,
+    },
+
+    recurrence: recurrenceSchema,
+
+    timeSlots: {
+      type: [timeSlotSchema],
+      default: undefined,
+    },
+
     // -------------------------------------------
     // LOCATION & IMAGES
     // -------------------------------------------
     // Venue or meeting place (used in card + detail view)
+    locationName: {
+      type: String,
+      trim: true,
+    },
+
+    // Full address used for exact map placement and external maps links
+    address: {
+      type: String,
+      trim: true,
+    },
+
+    // Legacy display field kept for backward compatibility with older clients
     location: {
       type: String,
       trim: true,
+    },
+
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90,
+    },
+
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180,
     },
 
     // Optional image poster for event card / detail hero

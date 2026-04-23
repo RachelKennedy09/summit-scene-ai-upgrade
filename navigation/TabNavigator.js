@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import HubScreen from "../screens/hub/HubScreen";
 import MapScreen from "../screens/map/MapScreen";
 import PostEventScreen from "../screens/events/PostEventScreen";
+import MyEventsScreen from "../screens/events/MyEventsScreen";
 import CommunityScreen from "../screens/community/CommunityScreen";
 import AccountScreen from "../screens/account/AccountScreen";
 
@@ -51,6 +52,8 @@ export default function TabNavigator() {
             iconName = focused ? "map" : "map-outline";
           } else if (route.name === "Post") {
             iconName = focused ? "add-circle" : "add-circle-outline";
+          } else if (route.name === "MyEvents") {
+            iconName = focused ? "calendar" : "calendar-outline";
           } else if (route.name === "Community") {
             iconName = focused ? "chatbubbles" : "chatbubbles-outline";
           } else if (route.name === "Account") {
@@ -65,6 +68,14 @@ export default function TabNavigator() {
       <Tab.Screen name="Hub" component={HubScreen} options={{ title: "Hub" }} />
 
       <Tab.Screen name="Map" component={MapScreen} options={{ title: "Map" }} />
+
+      {isBusiness && (
+        <Tab.Screen
+          name="MyEvents"
+          component={MyEventsScreen}
+          options={{ title: "My Events" }}
+        />
+      )}
 
       {/* Only business users see Post Event */}
       {isBusiness && (

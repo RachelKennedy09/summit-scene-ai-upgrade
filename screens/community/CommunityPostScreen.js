@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { createCommunityPost } from "../../services/communityApi";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import AppLogoHeader from "../../components/AppLogoHeader";
 // Board + town options are defined as config arrays,
@@ -32,10 +33,6 @@ const TOWNS = [
   { label: "Canmore", value: "Canmore" },
   { label: "Lake Louise", value: "Lake Louise" },
 ];
-
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
 
 export default function CommunityPostScreen({ navigation }) {
   const { token } = useAuth();
@@ -99,21 +96,7 @@ export default function CommunityPostScreen({ navigation }) {
         targetDate: targetDate.toISOString(),
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/community`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to create post");
-      }
-
-      await res.json();
+      await createCommunityPost(payload, token);
 
       Alert.alert(
         "Post shared!",
@@ -126,7 +109,6 @@ export default function CommunityPostScreen({ navigation }) {
       setTargetDate(new Date());
       navigation.goBack();
     } catch (error) {
-      console.error("Error creating community post:", error);
       setError(error.message || "Something went wrong");
     } finally {
       setSubmitting(false);

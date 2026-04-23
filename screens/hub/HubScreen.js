@@ -5,7 +5,7 @@
 // - Shows events in a FlatList with pull-to-refresh
 // - Navigates to EventDetail when an event card is tapped.
 
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,9 +13,10 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import AppLogoHeader from "../../components/AppLogoHeader";
 
@@ -25,7 +26,9 @@ import { useTheme } from "../../context/ThemeContext";
 import EventCard from "../../components/cards/EventCard";
 import HubFilters from "../../components/hub/HubFilters";
 
-import { fetchEvents as fetchEventsFromApi } from "../../services/eventsApi";
+import {
+  fetchEvents as fetchEventsFromApi,
+} from "../../services/eventsApi";
 import { colors } from "../../theme/colors";
 
 // Simple list of towns for the selector modal
@@ -41,8 +44,15 @@ const CATEGORIES = [
   "Family",
   "Retail",
   "Outdoors",
-  "Food",
+  "Food & Drink",
+  "Networking",
+  "Fundraiser",
+  "Seasonal/Holiday Special",
+  "Nightlife",
+  "Sports/Watch Party",
+  "Community Info Session",
   "Art",
+  "Other",
 ];
 
 // Date filter options (relative ranges)
@@ -53,6 +63,7 @@ const DATE_FILTERS = [
   "Next 7 days",
   "Next 30 days",
 ];
+const EVENTS_PAGE_SIZE = 20;
 
 export default function HubScreen() {
   const { user } = useAuth();
@@ -71,105 +82,73 @@ export default function HubScreen() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
 
-  // Fetch events from the API.
-  // Reused pattern with MapScreen: sort by date ascending for a consistent feed.
-  const loadEvents = useCallback(async (isRefresh = false) => {
+  const loadEvents = useCallback(async ({ nextPage = 1, mode = "initial" } = {}) => {
     try {
-      if (!isRefresh) {
-        setLoading(true);
-      } else {
+      if (mode === "refresh") {
         setRefreshing(true);
+      } else if (mode === "loadMore") {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
       }
 
       setError(null);
 
-      const data = await fetchEventsFromApi();
-
-      const sorted = (Array.isArray(data) ? data : []).slice().sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateA - dateB;
+      const data = await fetchEventsFromApi({
+        page: nextPage,
+        limit: EVENTS_PAGE_SIZE,
+        town: selectedTown,
+        category: selectedCategory,
+        dateFilter: selectedDateFilter,
       });
 
-      setEvents(sorted);
+      const nextEvents = Array.isArray(data?.events) ? data.events : [];
+
+      setEvents((current) =>
+        mode === "loadMore" ? [...current, ...nextEvents] : nextEvents
+      );
+      setPage(data.page || nextPage);
+      setHasMore(Boolean(data.hasMore));
+      setTotalCount(Number.isFinite(data.totalCount) ? data.totalCount : 0);
     } catch (error) {
-      console.error("Error fetching events:", error.message);
-      setError("Could not load events. Pull to refresh to try again.");
+      setError(
+        mode === "loadMore"
+          ? "Could not load more events. Try again."
+          : "Could not load events. Pull to refresh to try again."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
-  }, []);
+  }, [selectedTown, selectedCategory, selectedDateFilter]);
 
-  // Initial load on mount
-  useEffect(() => {
-    loadEvents(false);
-  }, [loadEvents]);
+  // Reload on focus so newly posted events appear when the user returns to the Hub.
+  useFocusEffect(
+    useCallback(() => {
+      loadEvents({ nextPage: 1, mode: "initial" });
+    }, [loadEvents])
+  );
 
   const handleRefresh = () => {
-    loadEvents(true);
+    loadEvents({ nextPage: 1, mode: "refresh" });
   };
 
-  // Apply town/category/date filters to the events list.
-  // Logic mirrors the MapScreen so both tabs stay consistent.
-  const eventsToShow = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-
-    let rangeStart = null;
-    let rangeEnd = null;
-
-    if (selectedDateFilter === "Today") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 1);
-    } else if (selectedDateFilter === "Next 3 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 3);
-    } else if (selectedDateFilter === "Next 7 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 7);
-    } else if (selectedDateFilter === "Next 30 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 30);
+  const handleLoadMore = useCallback(() => {
+    if (loading || refreshing || loadingMore || !hasMore) {
+      return;
     }
 
-    return events.filter((event) => {
-      const categoryMatch =
-        selectedCategory === "All" || event.category === selectedCategory;
+    loadEvents({ nextPage: page + 1, mode: "loadMore" });
+  }, [loading, refreshing, loadingMore, hasMore, page, loadEvents]);
 
-      const townMatch = selectedTown === "All" || event.town === selectedTown;
-
-      let dateMatch = true;
-
-      if (selectedDateFilter !== "All") {
-        if (!event.date || typeof event.date !== "string") {
-          dateMatch = false;
-        } else {
-          const [y, m, d] = event.date.split("-").map(Number);
-          if (!y || !m || !d) {
-            dateMatch = false;
-          } else {
-            const eventDay = new Date(y, m - 1, d);
-            if (rangeStart && rangeEnd) {
-              dateMatch = eventDay >= rangeStart && eventDay < rangeEnd;
-            }
-          }
-        }
-      }
-
-      return categoryMatch && townMatch && dateMatch;
-    });
-  }, [events, selectedCategory, selectedTown, selectedDateFilter]);
+  const eventsToShow = events;
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
@@ -198,7 +177,7 @@ export default function HubScreen() {
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
-    const count = eventsToShow.length;
+    const count = totalCount;
 
     const townLabel = selectedTown === "All" ? "all towns" : ` ${selectedTown}`;
     const categoryLabel =
@@ -220,7 +199,7 @@ export default function HubScreen() {
     }
 
     return `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [eventsToShow.length, selectedTown, selectedCategory, selectedDateFilter]);
+  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter]);
 
   // Inital loading state (before there are any events)
   if (loading && !refreshing && events.length === 0) {
@@ -248,9 +227,14 @@ export default function HubScreen() {
           <Text style={[styles.errorText, { color: colors.error }]}>
             {error}
           </Text>
-          <Text style={[styles.loadingText, { color: theme.textMuted }]}>
-            Pull down to try again.
-          </Text>
+          <Pressable
+            style={[styles.retryButton, { borderColor: theme.accent }]}
+            onPress={() => loadEvents(false)}
+          >
+            <Text style={[styles.retryText, { color: theme.accent }]}>
+              Try again
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -266,6 +250,19 @@ export default function HubScreen() {
     />
   );
 
+  const renderFooter = () => {
+    if (!loadingMore) return <View style={styles.footerSpacer} />;
+
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.accent} />
+        <Text style={[styles.footerLoaderText, { color: theme.textMuted }]}>
+          Loading more events...
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
@@ -275,7 +272,7 @@ export default function HubScreen() {
         <FlatList
           data={eventsToShow}
           keyExtractor={(item) =>
-            item._id?.toString() || Math.random().toString()
+            item._id?.toString() || `${item.title}-${item.date}-${item.time}`
           }
           renderItem={renderEvent}
           contentContainerStyle={
@@ -316,6 +313,9 @@ export default function HubScreen() {
               {emptyMessage}
             </Text>
           }
+          ListFooterComponent={renderFooter}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.6}
           showsVerticalScrollIndicator={false}
         />
 
@@ -356,6 +356,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
   },
+  footerSpacer: {
+    height: 16,
+  },
+  footerLoader: {
+    paddingTop: 8,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
+  footerLoaderText: {
+    marginTop: 8,
+    fontSize: 13,
+  },
   center: {
     flex: 1,
     alignItems: "center",
@@ -364,6 +376,17 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 8,
     fontSize: 14,
+  },
+  retryButton: {
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   // Semi-transparent overlay used while refreshing, so the user sees a spinner
   // on top of the existing events instead of a blank screen.
