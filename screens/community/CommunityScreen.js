@@ -29,6 +29,7 @@ import { useAuth } from "../../context/AuthContext";
 import { colors } from "../../theme/colors";
 import { useTheme } from "../../context/ThemeContext";
 import CommunityPostCard from "../../components/cards/CommunityPostCard";
+import PageHeader from "../../components/common/PageHeader";
 
 // Board types are defined here once and reused
 // so both frontend and backend stay in sync via these values.
@@ -159,24 +160,18 @@ export default function CommunityScreen({ navigation }) {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
        <AppLogoHeader />
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.heading, { color: theme.textMain }]}>
-            Community
-          </Text>
-          <Text style={[styles.subheading, { color: theme.textMuted }]}>
-            A space for locals to share road conditions, rides, and event
-            buddies.
-          </Text>
-        </View>
-        <Pressable
-          style={[styles.newPostButton, { backgroundColor: theme.accent }]}
-          onPress={() => navigation.navigate("CommunityPost")}
-        >
-          <Text style={styles.newPostButtonText}>New Post</Text>
-        </Pressable>
-      </View>
+      <PageHeader
+        title="Community"
+        subtitle="A space for locals to share road conditions, rides, and event buddies."
+        rightAccessory={
+          <Pressable
+            style={[styles.newPostButton, { backgroundColor: theme.accent }]}
+            onPress={() => navigation.navigate("CommunityPost")}
+          >
+            <Text style={styles.newPostButtonText}>New Post</Text>
+          </Pressable>
+        }
+      />
 
       {/* Board selector pills */}
       <View style={styles.typeRow}>
@@ -343,22 +338,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  heading: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.textLight,
-    marginBottom: 4,
-  },
-  subheading: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: 16,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
   newPostButton: {
     marginLeft: 8,
     paddingHorizontal: 10,
@@ -368,8 +347,8 @@ const styles = StyleSheet.create({
   },
   newPostButtonText: {
     color: colors.textLight,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
   },
   typeRow: {
     flexDirection: "row",
@@ -389,7 +368,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   summaryText: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textMuted,
     marginBottom: 8,
   },
@@ -407,7 +386,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.textLight,
     marginBottom: 4,
   },

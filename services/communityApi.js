@@ -8,6 +8,8 @@
 //   POST   /api/community/:postId/replies  → create a reply
 //   POST   /api/community/:postId/likes    → toggle like/unlike
 
+import { toUserFriendlyError } from "../utils/friendlyErrors";
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
@@ -88,7 +90,10 @@ export async function fetchCommunityPosts(type, token) {
       "Community posts request timed out. Check the backend and try again."
     );
     console.warn("fetchCommunityPosts issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't load community posts right now. Please try again."
+    );
   }
 }
 
@@ -115,7 +120,10 @@ export async function deleteCommunityPost(postId, token) {
       "Delete post request timed out. Check the backend and try again."
     );
     console.warn("deleteCommunityPost issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't delete this post right now. Please try again."
+    );
   }
 }
 
@@ -148,7 +156,10 @@ export async function createCommunityReply(postId, replyText, token) {
       "Reply request timed out. Check the backend and try again."
     );
     console.warn("createCommunityReply issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't send your reply right now. Please try again."
+    );
   }
 }
 
@@ -173,7 +184,10 @@ export async function createCommunityPost(postData, token) {
       "Create post request timed out. Check the backend and try again."
     );
     console.warn("createCommunityPost issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't share your post right now. Please try again."
+    );
   }
 }
 
@@ -198,7 +212,10 @@ export async function updateCommunityPost(postId, postData, token) {
       "Update post request timed out. Check the backend and try again."
     );
     console.warn("updateCommunityPost issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't save your post changes. Please try again."
+    );
   }
 }
 
@@ -222,6 +239,9 @@ export async function toggleCommunityLike(postId, token) {
       "Like request timed out. Check the backend and try again."
     );
     console.warn("toggleCommunityLike issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't update your like right now. Please try again."
+    );
   }
 }

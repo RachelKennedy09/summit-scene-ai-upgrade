@@ -25,6 +25,11 @@ function getPostAuthor(post) {
   const avatarKey = userObj?.avatarKey || post.avatarKey || null;
 
   const town = userObj?.town || post.town || "";
+  const userType = userObj?.userType || "";
+  const interests = userObj?.interests || [];
+  const languages = userObj?.languages || [];
+  const skillLevel = userObj?.skillLevel || {};
+  const socialAccounts = userObj?.socialAccounts || [];
   const lookingFor = userObj?.lookingFor || "";
   const instagram = userObj?.instagram || "";
   const bio = userObj?.bio || "";
@@ -36,6 +41,11 @@ function getPostAuthor(post) {
     role,
     avatarKey,
     town,
+    userType,
+    interests,
+    languages,
+    skillLevel,
+    socialAccounts,
     lookingFor,
     instagram,
     bio,
@@ -71,6 +81,11 @@ export default function CommunityPostCard({
     role,
     avatarKey,
     town,
+    userType,
+    interests,
+    languages,
+    skillLevel,
+    socialAccounts,
     lookingFor,
     instagram,
     bio,
@@ -250,7 +265,13 @@ export default function CommunityPostCard({
           >
             <Text style={styles.editButtonText}>Edit</Text>
           </Pressable>
-          <Pressable style={styles.deleteButton} onPress={onDelete}>
+          <Pressable
+            style={[
+              styles.deleteButton,
+              { backgroundColor: theme.accentWarm || colors.accentWarm },
+            ]}
+            onPress={onDelete}
+          >
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </View>
@@ -266,6 +287,11 @@ export default function CommunityPostCard({
               name,
               role,
               town,
+              userType,
+              interests,
+              languages,
+              skillLevel,
+              socialAccounts,
               avatarKey,
               lookingFor,
               instagram,
@@ -347,12 +373,12 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
   authorEmailText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
   },
   timestampText: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -365,18 +391,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   roleBadge: {
-    fontSize: 11,
+    fontSize: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
     overflow: "hidden",
   },
   dateBadge: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
   },
   ownerBadge: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.accent,
     fontWeight: "700",
   },
@@ -411,7 +437,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: colors.danger,
   },
   deleteButtonText: {
     color: colors.textLight,
@@ -432,7 +457,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   profileButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.accent,
     fontWeight: "600",
   },
@@ -457,12 +482,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   likeButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     color: colors.textLight,
   },
   likesCountText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textMuted,
   },
 });

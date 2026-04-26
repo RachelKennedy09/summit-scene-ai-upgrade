@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     maxWidth: "70%",
   },
   categoryText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.7,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metaLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.6,
@@ -173,8 +173,8 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   metaSubvalue: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     marginTop: 2,
   },
   footerRow: {
@@ -186,10 +186,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 13,
   },
   footerCta: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
 });

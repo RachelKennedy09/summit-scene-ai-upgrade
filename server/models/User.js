@@ -11,6 +11,31 @@
 
 import mongoose from "mongoose";
 
+export const PROFILE_TOWNS = ["Banff", "Canmore", "Lake Louise", "LL", "All"];
+export const USER_TYPES = ["local", "seasonal", "visitor"];
+export const ACTIVITY_SKILL_LEVELS = ["beginner", "casual", "experienced"];
+export const SOCIAL_PROVIDERS = [
+  "instagram",
+  "tiktok",
+  "facebook",
+  "linkedin",
+  "website",
+];
+
+const skillLevelSchema = new mongoose.Schema(
+  {
+    hiking: {
+      type: String,
+      enum: ACTIVITY_SKILL_LEVELS,
+    },
+    skiing: {
+      type: String,
+      enum: ACTIVITY_SKILL_LEVELS,
+    },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     // -------------------------------------------
@@ -55,8 +80,30 @@ const userSchema = new mongoose.Schema(
 
     town: {
       type: String,
+      enum: PROFILE_TOWNS,
       trim: true,
-      maxlength: 60,
+    },
+
+    // Social profile type. Separate from role, which controls permissions.
+    userType: {
+      type: String,
+      enum: USER_TYPES,
+      default: "local",
+    },
+
+    languages: {
+      type: [String],
+      default: [],
+    },
+
+    interests: {
+      type: [String],
+      default: [],
+    },
+
+    skillLevel: {
+      type: skillLevelSchema,
+      default: {},
     },
 
     // Short personal description ("I love markets and open mic nights")
@@ -79,6 +126,39 @@ const userSchema = new mongoose.Schema(
     // Website for business users
     website: {
       type: String,
+    },
+
+    socialAccounts: {
+      type: [
+        {
+          provider: {
+            type: String,
+            enum: SOCIAL_PROVIDERS,
+            required: true,
+          },
+          handle: {
+            type: String,
+            trim: true,
+          },
+          url: {
+            type: String,
+            trim: true,
+          },
+          providerUserId: {
+            type: String,
+            trim: true,
+          },
+          verified: {
+            type: Boolean,
+            default: false,
+          },
+          connectedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
     },
 
     // Avatar key used to render one of the 16 preset avatars
@@ -113,6 +193,12 @@ userSchema.virtual("safeProfile").get(function () {
     role: this.role,
     avatarKey: this.avatarKey,
     town: this.town,
+    userType: this.userType,
+    languages: this.languages,
+    interests: this.interests,
+    skillLevel: this.skillLevel,
+    lookingFor: this.lookingFor,
+    socialAccounts: this.socialAccounts,
   };
 });
 

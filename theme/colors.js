@@ -1,41 +1,48 @@
 // theme/colors.js
-// Global color palette for SummitScene
-// Centralizes brand colors so we stay consistent across screens and components.
+// Summit Scene fixed brand palette using the approved sage-green hex codes.
 
 export const colors = {
-  // BRAND COLORS
-  primary: "#0b1522", // deep mountain blue (backgrounds, headers)
-  secondary: "#1e293b", // slate dark (cards, tab backgrounds)
-  accent: "#3b82f6", // bright blue (buttons, categories)
-  pinkAccent: "#f7b4d5ff", // optional accent for chips or highlights
+  // Core brand palette
+  evergreen: "#254A3B",
+  sage: "#6B7F62",
+  lightSage: "#A3B18A",
+  warmStone: "#E6E1D6",
+  offWhite: "#F5F3EE",
+  lightGreige: "#D6D2C4",
+  stoneBlue: "#8BA6BE",
+  sunset: "#E9B89A",
+  charcoal: "#1F1F1F",
+  textSecondary: "#6B6B6B",
+  white: "#FFFFFF",
 
-  // TEXT
-  textLight: "#e2e8f0", // light gray-blue (text on dark backgrounds)
-  textDark: "#0f172a", // dark slate (text on white cards)
-  textMuted: "#94a3b8", // soft muted gray for subtitles
+  // Product surfaces
+  background: "#F5F3EE",
+  section: "#E6E1D6",
+  surface: "#E6E1D6",
+  surfaceMuted: "#EEF2E8",
+  card: "#FFFFFF",
+  pill: "#A3B18A",
+  border: "#D6D2C4",
+  hairline: "#DDD9CD",
 
-  // SURFACES
-  card: "#ffffff", // event cards or white elements
-  cardDark: "#334155", // dark mode card
+  // Text
+  textPrimary: "#1F1F1F",
+  textDark: "#1F1F1F",
+  textMuted: "#6B6B6B",
+  textOnAccent: "#FFFFFF",
+  textLight: "#FFFFFF",
 
-  // BORDERS & LINES
-  border: "#475569",
-
-  // STATUS COLORS
-  success: "#22c55e",
-  error: "#ef4444",
-  warning: "#facc15",
-  successTint: "#022c22",
-
-  // MAP MARKER COLORS (FUTURE for custom pin colors)
-  markerDefault: "#3b82f6",
-  markerFood: "#f97316",
-  markerMusic: "#8b5cf6",
-  markerOutdoor: "#22c55e",
-
-  // Misc brand helpers
-  cta: "#FF8A3D", // call-to-action orange (buttons, highlights)
-  danger: "#b91c1c", // delete buttons
-  teal: "#0f766e", // business-owner badge color
-  tealTint: "#0f766e10", // soft teal translucent background
+  // Semantic / accent usage
+  accent: "#254A3B",
+  accentSoft: "rgba(37, 74, 59, 0.12)",
+  accentWarm: "#E9B89A",
+  success: "#567A5D",
+  error: "#B35340",
+  warning: "#E9B89A",
+  successTint: "#E7EEE6",
+  cta: "#254A3B",
+  danger: "#9E4437",
+  teal: "#8BA6BE",
+  tealTint: "rgba(139, 166, 190, 0.12)",
+  logoWordmark: "#254A3B",
 };

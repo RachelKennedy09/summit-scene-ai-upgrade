@@ -18,32 +18,13 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
-import Logo from "../../assets/logo.png";
+import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
+import AppButton from "../../components/common/AppButton";
 
 function LoginScreen() {
   const { login, isAuthLoading } = useAuth(); // login() talks to backend, isAuthLoading = global auth state
   const navigation = useNavigation();
-  const { isDark } = useTheme();
-
-  // Logged-out auth screens intentionally ignore the user's saved palette.
-  // They only follow light/dark appearance with a neutral black/white UI.
-  const theme = isDark
-    ? {
-        background: "#000000",
-        card: "#111111",
-        border: "#2A2A2A",
-        text: "#FFFFFF",
-        textMuted: "#B3B3B3",
-        accent: "#FFFFFF",
-      }
-    : {
-        background: "#FFFFFF",
-        card: "#F5F5F5",
-        border: "#D4D4D4",
-        text: "#111111",
-        textMuted: "#5C5C5C",
-        accent: "#111111",
-      };
+  const { theme } = useTheme();
 
   // ----- FORM STATE -----
   const [email, setEmail] = useState(""); // user email
@@ -92,15 +73,14 @@ function LoginScreen() {
             {/* App logo */}
             <View style={styles.logoContainer}>
               <Image source={Logo} style={styles.logo} resizeMode="contain" />
+              <Text style={[styles.tagline, { color: theme.textMuted }]}>
+                Your Rocky Mountain Social & Events Hub
+              </Text>
             </View>
 
-            {/* Headline + intro text */}
-            <Text style={[styles.title, { color: theme.text }]}>
-              Welcome To Summit Scene Hub!
-            </Text>
             <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-              Log in to see and post local events in Banff, Canmore and Lake
-              Louise.
+              Log in to explore events, meet locals, and see what’s happening
+              across Banff, Canmore, and Lake Louise.
             </Text>
 
             {/* EMAIL FIELD */}
@@ -164,29 +144,20 @@ function LoginScreen() {
             ) : null}
 
             {/* LOGIN BUTTON */}
-            <Pressable
-              style={[
-                styles.button,
-                {
-                  backgroundColor: theme.accent,
-                },
-                (isSubmitting || isAuthLoading) && styles.buttonDisabled,
-              ]}
+            <AppButton
+              title={isSubmitting || isAuthLoading ? "Logging in..." : "Log In"}
               onPress={handleLogin}
-              disabled={isSubmitting || isAuthLoading}
-            >
-              <Text
-                style={[
-                styles.buttonText,
-                {
-                    // On auth screens the accent is black or white, so invert text.
-                    color: isDark ? "#000000" : "#FFFFFF",
-                  },
-                ]}
-              >
-                {isSubmitting || isAuthLoading ? "Logging in..." : "Log In"}
-              </Text>
-            </Pressable>
+              loading={isSubmitting || isAuthLoading}
+              size="lg"
+              style={{
+                marginTop: 8,
+                backgroundColor: theme.accent,
+                borderColor: theme.accent,
+              }}
+              textStyle={{
+                color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
+              }}
+            />
 
             {/* LINK → REGISTER SCREEN */}
             <Pressable onPress={() => navigation.navigate("Register")}>
@@ -219,14 +190,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 80,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
   subtitle: {
     fontSize: 14,
+    lineHeight: 20,
     marginBottom: 24,
+    textAlign: "center",
   },
   inputGroup: {
     marginBottom: 16,
@@ -240,19 +208,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-  },
-  button: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    fontWeight: "700",
-    fontSize: 16,
   },
   linkText: {
     marginTop: 16,
@@ -270,8 +225,16 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   logo: {
-    width: 160,
-    height: 180,
+    width: 170,
+    height: 182,
     opacity: 0.95,
+  },
+  tagline: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: "600",
+    fontStyle: "italic",
+    textAlign: "center",
+    letterSpacing: 0.2,
   },
 });

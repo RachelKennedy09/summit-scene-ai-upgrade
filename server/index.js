@@ -14,6 +14,7 @@ import eventRoutes from "./routes/events.js";
 import authRouter from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import communityRoutes from "./routes/community.js";
+import buddyPostRoutes from "./routes/buddyPosts.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import placesRoutes from "./routes/placesRoutes.js";
 
@@ -60,6 +61,9 @@ app.use("/api/users", userRoutes);
 
 // Community routes: posts, likes, comments, etc.
 app.use("/api/community", communityRoutes);
+
+// Buddy post routes: find people for events, hiking, skiing/snowboarding, etc.
+app.use("/api/buddy-posts", buddyPostRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);

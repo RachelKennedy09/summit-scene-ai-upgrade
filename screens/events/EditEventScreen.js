@@ -26,6 +26,8 @@ import { useTheme } from "../../context/ThemeContext";
 import DatePickerModal from "../../components/events/DatePickerModal.js";
 import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal.js";
+import AppButton from "../../components/common/AppButton.js";
+import PageHeader from "../../components/common/PageHeader";
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 const CATEGORIES = [
@@ -476,10 +478,10 @@ export default function EditEventScreen({ route, navigation }) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         >
-          <Text style={[styles.heading, { color: theme.text }]}>Edit Event</Text>
-          <Text style={[styles.formHint, { color: theme.textMuted }]}>
-            Fields marked "Required" must be completed before saving.
-          </Text>
+          <PageHeader
+            title="Edit Event"
+            subtitle='Fields marked "Required" must be completed before saving.'
+          />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
           Basics
@@ -1070,15 +1072,14 @@ export default function EditEventScreen({ route, navigation }) {
         )}
 
         {/* Save button */}
-        <Pressable
-          style={submitButtonStyles}
+        <AppButton
+          title={loading ? "Saving..." : "Save Changes"}
           onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={[styles.buttonText, { color: theme.background }]}>
-            {loading ? "Saving..." : "Save Changes"}
-          </Text>
-        </Pressable>
+          loading={loading}
+          variant="primary"
+          size="lg"
+          style={submitButtonStyles}
+        />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1227,29 +1228,20 @@ const styles = StyleSheet.create({
     padding: 16,
     flexGrow: 1,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  formHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 16,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginTop: 10,
+    marginTop: 16,
     marginBottom: 4,
   },
   sectionDescription: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
     marginBottom: 12,
   },
   label: {
     fontSize: 14,
+    fontWeight: "600",
     marginBottom: 4,
   },
   optionRow: {
@@ -1290,7 +1282,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   slotTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 8,
   },
@@ -1299,20 +1291,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   clearInlineText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
   helperText: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: -4,
     marginBottom: 12,
-    lineHeight: 17,
+    lineHeight: 19,
   },
   errorHelperText: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: -4,
     marginBottom: 12,
-    lineHeight: 17,
+    lineHeight: 19,
   },
   suggestionsCard: {
     borderWidth: 1,
@@ -1327,13 +1319,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   suggestionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     marginBottom: 2,
   },
   suggestionSubtitle: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
   },
   previewCard: {
     borderWidth: 1,
@@ -1352,8 +1344,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   previewError: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
   },
   textArea: {
     height: 100,
@@ -1378,9 +1370,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  buttonText: {
-    fontWeight: "700",
-    fontSize: 16,
   },
 });

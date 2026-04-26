@@ -10,6 +10,7 @@
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import User from "../models/User.js";
+import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 
 const router = express.Router();
 
@@ -45,20 +46,7 @@ router.patch("/upgrade-to-business", authMiddleware, async (req, res) => {
 
     return res.json({
       message: "Account upgraded to business.",
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        createdAt: user.createdAt,
-        // Include profile fields so frontend stays in sync
-        avatarKey: user.avatarKey,
-        town: user.town,
-        bio: user.bio,
-        lookingFor: user.lookingFor,
-        instagram: user.instagram,
-        website: user.website,
-      },
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Error upgrading to business:", error);
@@ -70,7 +58,8 @@ router.patch("/upgrade-to-business", authMiddleware, async (req, res) => {
    PATCH /api/users/me
    AUTH: required (must be logged in)
    - Update the logged-in user's profile fields:
-     name, town, bio, lookingFor, instagram, website, avatarKey
+     name, town, userType, languages, interests, skillLevel, socialAccounts,
+     bio, lookingFor, instagram, website, avatarKey
    - Only updates fields that are provided and of the correct type.
    - Trims strings before saving.
    - Special handling for avatarKey:
@@ -82,28 +71,7 @@ router.patch("/me", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const { name, town, bio, lookingFor, instagram, website, avatarKey } =
-      req.body || {};
-
-    const updates = {};
-
-    // Only update if the field is a string; trim whitespace
-    if (typeof name === "string") updates.name = name.trim();
-    if (typeof town === "string") updates.town = town.trim();
-    if (typeof bio === "string") updates.bio = bio.trim();
-    if (typeof lookingFor === "string") updates.lookingFor = lookingFor.trim();
-    if (typeof instagram === "string") updates.instagram = instagram.trim();
-    if (typeof website === "string") updates.website = website.trim();
-
-    // Always respect avatarKey when it is present in the body,
-    //    even if it's null (used to clear the avatar).
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "avatarKey")) {
-      if (avatarKey === null) {
-        updates.avatarKey = null; // explicitly clear avatar
-      } else if (typeof avatarKey === "string") {
-        updates.avatarKey = avatarKey.trim();
-      }
-    }
+    const updates = buildProfileUpdates(req.body);
 
     // Guard: if no valid fields were provided, don't hit the DB
     if (Object.keys(updates).length === 0) {
@@ -123,19 +91,7 @@ router.patch("/me", authMiddleware, async (req, res) => {
 
     return res.json({
       message: "Profile updated.",
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatarKey: user.avatarKey,
-        town: user.town,
-        bio: user.bio,
-        lookingFor: user.lookingFor,
-        instagram: user.instagram,
-        website: user.website,
-        createdAt: user.createdAt,
-      },
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Error updating profile:", error);

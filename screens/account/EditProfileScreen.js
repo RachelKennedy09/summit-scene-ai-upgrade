@@ -7,16 +7,116 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  Pressable,
   ScrollView,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import AvatarPicker from "../../components/AvatarPicker";
+import AppButton from "../../components/common/AppButton";
+import PageHeader from "../../components/common/PageHeader";
+
+const SOCIAL_PROVIDERS = [
+  { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
+  { provider: "tiktok", label: "TikTok", placeholder: "@yourhandle" },
+  { provider: "facebook", label: "Facebook", placeholder: "Profile link" },
+  { provider: "linkedin", label: "LinkedIn", placeholder: "Profile link" },
+  { provider: "website", label: "Website", placeholder: "https://..." },
+];
+const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
+const USER_TYPE_OPTIONS = [
+  { value: "local", label: "Local" },
+  { value: "seasonal", label: "Seasonal" },
+  { value: "visitor", label: "Visitor" },
+];
+const INTEREST_OPTIONS = [
+  "Hiking",
+  "Skiing",
+  "Snowboarding",
+  "Climbing",
+  "Live music",
+  "Markets",
+  "Wellness",
+  "Food & drink",
+  "Nightlife",
+  "Coffee",
+  "Book club",
+  "Art",
+  "Walking",
+  "Bingo",
+  "Trivia",
+  "Shopping",
+];
+const SKILL_OPTIONS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "casual", label: "Casual" },
+  { value: "experienced", label: "Experienced" },
+];
+
+function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
+  return (
+    <View style={styles.chipRow}>
+      {options.map((option) => {
+        const optionValue = typeof option === "string" ? option : option.value;
+        const optionLabel = typeof option === "string" ? option : option.label;
+        const isSelected = values
+          ? values.includes(optionValue)
+          : value === optionValue;
+
+        return (
+          <Pressable
+            key={optionValue}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: isSelected
+                  ? theme.accentSoft || theme.card
+                  : theme.card,
+                borderColor: isSelected ? theme.accent : theme.border,
+              },
+            ]}
+            onPress={() =>
+              onToggle ? onToggle(optionValue) : onChange(optionValue)
+            }
+          >
+            <Text
+              style={[
+                styles.chipText,
+                { color: isSelected ? theme.accent : theme.textMuted },
+              ]}
+            >
+              {optionLabel}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function getSocialValue(accounts, provider) {
+  const account = accounts.find((item) => item.provider === provider);
+  return account?.handle || account?.url || "";
+}
+
+function buildSocialAccounts(values) {
+  return SOCIAL_PROVIDERS.map(({ provider }) => {
+    const value = values[provider]?.trim();
+    if (!value) return null;
+
+    const isHandle = value.startsWith("@") || !value.includes(".");
+    return {
+      provider,
+      handle: isHandle ? value : undefined,
+      url: isHandle ? undefined : value,
+      verified: false,
+    };
+  }).filter(Boolean);
+}
 
 export default function EditProfileScreen({ navigation }) {
   const { user, updateProfile, isAuthLoading } = useAuth();
@@ -29,12 +129,10 @@ export default function EditProfileScreen({ navigation }) {
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.container}>
-          <Text style={[styles.heading, { color: theme.text }]}>
-            Edit profile
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            You need to be logged in to edit your profile.
-          </Text>
+          <PageHeader
+            title="Edit profile"
+            subtitle="You need to be logged in to edit your profile."
+          />
         </View>
       </SafeAreaView>
     );
@@ -51,21 +149,59 @@ export default function EditProfileScreen({ navigation }) {
   // Pre-fill fields from current user
   const [name, setName] = useState(user.name || "");
   const [town, setTown] = useState(user.town || "");
+  const [userType, setUserType] = useState(user.userType || "local");
+  const [languagesText, setLanguagesText] = useState(
+    Array.isArray(user.languages) ? user.languages.join(", ") : ""
+  );
+  const [interests, setInterests] = useState(
+    Array.isArray(user.interests) ? user.interests : []
+  );
+  const [hikingSkill, setHikingSkill] = useState(
+    user.skillLevel?.hiking || ""
+  );
+  const [skiingSkill, setSkiingSkill] = useState(
+    user.skillLevel?.skiing || ""
+  );
   const [bio, setBio] = useState(user.bio || "");
   const [lookingFor, setLookingFor] = useState(user.lookingFor || "");
   const [instagram, setInstagram] = useState(user.instagram || "");
   const [website, setWebsite] = useState(user.website || "");
   const [avatarKey, setAvatarKey] = useState(user?.avatarKey || null);
+  const [socialValues, setSocialValues] = useState(() => {
+    const accounts = Array.isArray(user.socialAccounts)
+      ? user.socialAccounts
+      : [];
+
+    return SOCIAL_PROVIDERS.reduce((current, { provider }) => {
+      current[provider] = getSocialValue(accounts, provider);
+      return current;
+    }, {});
+  });
 
   async function handleSave() {
     try {
+      const languages = languagesText
+        .split(",")
+        .map((language) => language.trim())
+        .filter(Boolean);
+
       const updates = {
         name,
         town,
         bio,
-        lookingFor,
-        instagram,
+        userType: isBusiness ? undefined : userType,
+        languages: isBusiness ? undefined : languages,
+        interests: isBusiness ? undefined : interests,
+        skillLevel: isBusiness
+          ? undefined
+          : {
+              ...(hikingSkill ? { hiking: hikingSkill } : {}),
+              ...(skiingSkill ? { skiing: skiingSkill } : {}),
+            },
+        lookingFor: isBusiness ? lookingFor : "",
+        instagram: socialValues.instagram || instagram,
         avatarKey,
+        socialAccounts: buildSocialAccounts(socialValues),
       };
 
       if (isBusiness) {
@@ -89,6 +225,21 @@ export default function EditProfileScreen({ navigation }) {
     navigation.goBack();
   }
 
+  function handleSocialChange(provider, value) {
+    setSocialValues((current) => ({
+      ...current,
+      [provider]: value,
+    }));
+  }
+
+  function handleToggleInterest(interest) {
+    setInterests((current) =>
+      current.includes(interest)
+        ? current.filter((item) => item !== interest)
+        : [...current, interest]
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
@@ -103,14 +254,7 @@ export default function EditProfileScreen({ navigation }) {
           contentContainerStyle={{ paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Role-based heading + helper */}
-          <Text style={[styles.heading, { color: theme.text }]}>
-            {titleText}
-          </Text>
-
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            {helperText}
-          </Text>
+          <PageHeader title={titleText} subtitle={helperText} />
 
           {/* Name */}
           <Text style={[styles.label, { color: theme.text }]}>Name</Text>
@@ -129,56 +273,119 @@ export default function EditProfileScreen({ navigation }) {
             placeholderTextColor={theme.textMuted}
           />
 
-          {/* Town */}
-          <Text style={[styles.label, { color: theme.text }]}>
-            {isBusiness
-              ? "Where is your business located?"
-              : "Where do you live?"}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={town}
-            onChangeText={setTown}
-            placeholder={
-              isBusiness
-                ? "Banff, Canmore, Lake Louise..."
-                : "Banff, Canmore, Lake Louise... or visiting?"
-            }
-            placeholderTextColor={theme.textMuted}
-          />
+          {isBusiness ? (
+            <>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Where is your business located?
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={town}
+                onChangeText={setTown}
+                placeholder="Banff, Canmore, Lake Louise..."
+                placeholderTextColor={theme.textMuted}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={[styles.label, { color: theme.text }]}>Town</Text>
+              <ChipGroup
+                options={TOWN_OPTIONS}
+                value={town}
+                onChange={setTown}
+                theme={theme}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>I am a</Text>
+              <ChipGroup
+                options={USER_TYPE_OPTIONS}
+                value={userType}
+                onChange={setUserType}
+                theme={theme}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Languages spoken
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="English, French, Spanish..."
+                placeholderTextColor={theme.textMuted}
+                value={languagesText}
+                onChangeText={setLanguagesText}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Interests
+              </Text>
+              <ChipGroup
+                options={INTEREST_OPTIONS}
+                values={interests}
+                onToggle={handleToggleInterest}
+                theme={theme}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Hiking level
+              </Text>
+              <ChipGroup
+                options={SKILL_OPTIONS}
+                value={hikingSkill}
+                onChange={setHikingSkill}
+                theme={theme}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Skiing/Snowboarding level
+              </Text>
+              <ChipGroup
+                options={SKILL_OPTIONS}
+                value={skiingSkill}
+                onChange={setSkiingSkill}
+                theme={theme}
+              />
+            </>
+          )}
 
           {/* Looking for / business type */}
-          <Text style={[styles.label, { color: theme.text }]}>
-            {isBusiness ? "Business type" : "What are you looking for?"}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.multiline,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={lookingFor}
-            onChangeText={setLookingFor}
-            multiline
-            numberOfLines={3}
-            placeholder={
-              isBusiness
-                ? "Cafe, yoga studio, music venue..."
-                : "Markets, yoga buddies, music nights, hiking friends..."
-            }
-            placeholderTextColor={theme.textMuted}
-          />
+          {isBusiness ? (
+            <>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Business type
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.multiline,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={lookingFor}
+                onChangeText={setLookingFor}
+                multiline
+                numberOfLines={3}
+                placeholder="Cafe, yoga studio, music venue..."
+                placeholderTextColor={theme.textMuted}
+              />
+            </>
+          ) : null}
 
           {/* Bio */}
           <Text style={[styles.label, { color: theme.text }]}>Short bio</Text>
@@ -204,27 +411,43 @@ export default function EditProfileScreen({ navigation }) {
             placeholderTextColor={theme.textMuted}
           />
 
-          {/* Instagram */}
-          <Text style={[styles.label, { color: theme.text }]}>
-            Instagram (optional)
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={instagram}
-            onChangeText={setInstagram}
-            placeholder="@yourhandle"
-            placeholderTextColor={theme.textMuted}
-            autoCapitalize="none"
-          />
-
           {/* Website – business only */}
+          <Text
+            style={[
+              styles.label,
+              { marginTop: 16, fontWeight: "700", color: theme.text },
+            ]}
+          >
+            Connected socials
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Add links people can use to recognize you. These show as unverified
+            until connected through the social platform.
+          </Text>
+
+          {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
+            <View key={provider}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                {label} (optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={socialValues[provider]}
+                onChangeText={(value) => handleSocialChange(provider, value)}
+                placeholder={placeholder}
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="none"
+              />
+            </View>
+          ))}
+
           {isBusiness && (
             <>
               <Text style={[styles.label, { color: theme.text }]}>
@@ -266,43 +489,21 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
-            <Pressable
-              style={[
-                styles.secondaryButton,
-                {
-                  borderColor: theme.border,
-                },
-              ]}
+            <AppButton
+              title="Cancel"
               onPress={handleCancel}
               disabled={isAuthLoading}
-            >
-              <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-                Cancel
-              </Text>
-            </Pressable>
+              variant="outline"
+              style={styles.flexButton}
+            />
 
-            <Pressable
-              style={[
-                styles.primaryButton,
-                {
-                  backgroundColor: theme.accent,
-                },
-                isAuthLoading && styles.buttonDisabled,
-              ]}
+            <AppButton
+              title={isAuthLoading ? "Saving..." : "Save changes"}
               onPress={handleSave}
-              disabled={isAuthLoading}
-            >
-              <Text
-                style={[
-                  styles.primaryButtonText,
-                  {
-                    color: theme.background,
-                  },
-                ]}
-              >
-                {isAuthLoading ? "Saving..." : "Save changes"}
-              </Text>
-            </Pressable>
+              loading={isAuthLoading}
+              variant="primary"
+              style={styles.flexButton}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -319,11 +520,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
   },
-  heading: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
   helperText: {
     fontSize: 12,
     marginBottom: 16,
@@ -332,6 +528,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 4,
     marginTop: 10,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   input: {
     borderRadius: 8,
@@ -348,28 +560,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 24,
   },
-  primaryButton: {
+  flexButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  secondaryButton: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
   },
 });

@@ -33,7 +33,7 @@ export default function CommunityRepliesSection({
   onToggleReply,
   onChangeReplyText,
   onSubmitReply,
-  onOpenProfilem,
+  onOpenProfile,
 }) {
   const trimmed = replyText?.trim?.() ?? "";
   const disabled = !trimmed || submittingReply;
@@ -73,6 +73,11 @@ export default function CommunityRepliesSection({
                       name: replyName,
                       role: replyRole,
                       town: replyTown,
+                      userType: replyUserObj.userType || "",
+                      interests: replyUserObj.interests || [],
+                      languages: replyUserObj.languages || [],
+                      skillLevel: replyUserObj.skillLevel || {},
+                      socialAccounts: replyUserObj.socialAccounts || [],
                       avatarKey: replyAvatarKey,
                       lookingFor: replyUserObj.lookingFor || "",
                       instagram: replyUserObj.instagram || "",

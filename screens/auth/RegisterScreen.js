@@ -21,37 +21,35 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
+import { Image } from "react-native";
 
 import AvatarPicker from "../../components/AvatarPicker";
 import LocalFields from "../../components/register/LocalFields";
 import BusinessFields from "../../components/register/BusinessFields";
+import AppButton from "../../components/common/AppButton";
+import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
+
+const SOCIAL_PROVIDERS = ["instagram", "tiktok", "facebook", "linkedin", "website"];
+
+function buildSocialAccounts(values) {
+  return SOCIAL_PROVIDERS.map((provider) => {
+    const value = values[provider]?.trim();
+    if (!value) return null;
+
+    const isHandle = value.startsWith("@") || !value.includes(".");
+    return {
+      provider,
+      handle: isHandle ? value : undefined,
+      url: isHandle ? undefined : value,
+      verified: false,
+    };
+  }).filter(Boolean);
+}
 
 function RegisterScreen() {
   const { register, isAuthLoading } = useAuth();
   const navigation = useNavigation();
-  const { isDark } = useTheme();
-
-  // Logged-out auth screens intentionally ignore the saved palette choice.
-  // They only use a neutral black/white light or dark appearance.
-  const theme = isDark
-    ? {
-        background: "#000000",
-        card: "#111111",
-        border: "#2A2A2A",
-        text: "#FFFFFF",
-        textMuted: "#B3B3B3",
-        accent: "#FFFFFF",
-        accentSoft: "#1A1A1A",
-      }
-    : {
-        background: "#FFFFFF",
-        card: "#F5F5F5",
-        border: "#D4D4D4",
-        text: "#111111",
-        textMuted: "#5C5C5C",
-        accent: "#111111",
-        accentSoft: "#ECECEC",
-      };
+  const { theme } = useTheme();
 
   const [avatarKey, setAvatarKey] = useState(null);
   const [name, setName] = useState(""); // display name (required so posts can show a name)
@@ -66,6 +64,18 @@ function RegisterScreen() {
 
   // profile / business fields
   const [town, setTown] = useState("");
+  const [userType, setUserType] = useState("local");
+  const [languagesText, setLanguagesText] = useState("");
+  const [interests, setInterests] = useState([]);
+  const [hikingSkill, setHikingSkill] = useState("");
+  const [skiingSkill, setSkiingSkill] = useState("");
+  const [socialValues, setSocialValues] = useState({
+    instagram: "",
+    tiktok: "",
+    facebook: "",
+    linkedin: "",
+    website: "",
+  });
   const [bio, setBio] = useState("");
   const [lookingFor, setLookingFor] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -83,6 +93,11 @@ function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
+      const languages = languagesText
+        .split(",")
+        .map((language) => language.trim())
+        .filter(Boolean);
+
       // avatarKey is a stable string (like "w3_dark_blackpony")
       // that can be stored in MongoDB. The front-end uses avatarConfig to map it
       // back to a local PNG.
@@ -92,9 +107,19 @@ function RegisterScreen() {
         password,
         role,
         town,
+        userType: isLocal ? userType : undefined,
+        languages: isLocal ? languages : undefined,
+        interests: isLocal ? interests : undefined,
+        skillLevel: isLocal
+          ? {
+              ...(hikingSkill ? { hiking: hikingSkill } : {}),
+              ...(skiingSkill ? { skiing: skiingSkill } : {}),
+            }
+          : undefined,
+        socialAccounts: isLocal ? buildSocialAccounts(socialValues) : undefined,
         bio,
-        lookingFor,
-        instagram,
+        lookingFor: isBusiness ? lookingFor : undefined,
+        instagram: isBusiness ? instagram : socialValues.instagram,
         website,
         avatarKey,
       });
@@ -113,6 +138,21 @@ function RegisterScreen() {
   const isLocal = role === "local";
   const isBusiness = role === "business";
 
+  function handleToggleInterest(interest) {
+    setInterests((current) =>
+      current.includes(interest)
+        ? current.filter((item) => item !== interest)
+        : [...current, interest]
+    );
+  }
+
+  function handleSocialChange(provider, value) {
+    setSocialValues((current) => ({
+      ...current,
+      [provider]: value,
+    }));
+  }
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -125,6 +165,13 @@ function RegisterScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.inner}>
+              <View style={styles.logoContainer}>
+                <Image source={Logo} style={styles.logo} resizeMode="contain" />
+                <Text style={[styles.tagline, { color: theme.textMuted }]}>
+                  Your Rocky Mountain Social & Events Hub
+                </Text>
+              </View>
+
               <Text style={[styles.title, { color: theme.text }]}>
                 Create your Summit Scene account{" "}
               </Text>
@@ -261,13 +308,21 @@ function RegisterScreen() {
               {isLocal && (
                 <LocalFields
                   town={town}
+                  userType={userType}
+                  languagesText={languagesText}
+                  interests={interests}
+                  hikingSkill={hikingSkill}
+                  skiingSkill={skiingSkill}
+                  socialValues={socialValues}
                   bio={bio}
-                  lookingFor={lookingFor}
-                  instagram={instagram}
                   onChangeTown={setTown}
+                  onChangeUserType={setUserType}
+                  onChangeLanguagesText={setLanguagesText}
+                  onToggleInterest={handleToggleInterest}
+                  onChangeHikingSkill={setHikingSkill}
+                  onChangeSkiingSkill={setSkiingSkill}
+                  onChangeSocial={handleSocialChange}
                   onChangeBio={setBio}
-                  onChangeLookingFor={setLookingFor}
-                  onChangeInstagram={setInstagram}
                   theme={theme}
                 />
               )}
@@ -301,30 +356,24 @@ function RegisterScreen() {
               <AvatarPicker value={avatarKey} onChange={setAvatarKey} />
 
               {/* Sign up button*/}
-              <Pressable
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor: theme.accent,
-                  },
-                  (isSubmitting || isAuthLoading) && styles.buttonDisabled,
-                ]}
-                onPress={handleRegister}
-                disabled={isSubmitting || isAuthLoading}
-              >
-                <Text
-                  style={[
-                styles.buttonText,
-                {
-                      color: isDark ? "#000000" : "#FFFFFF",
-                    },
-                  ]}
-                >
-                  {isSubmitting || isAuthLoading
+              <AppButton
+                title={
+                  isSubmitting || isAuthLoading
                     ? "Creating account..."
-                    : "Create Account"}
-                </Text>
-              </Pressable>
+                    : "Create Account"
+                }
+                onPress={handleRegister}
+                loading={isSubmitting || isAuthLoading}
+                size="lg"
+                style={{
+                  marginTop: 8,
+                  backgroundColor: theme.accent,
+                  borderColor: theme.accent,
+                }}
+                textStyle={{
+                  color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
+                }}
+              />
 
               <Pressable onPress={() => navigation.navigate("Login")}>
                 <Text
@@ -400,22 +449,27 @@ const styles = StyleSheet.create({
   roleSubtitle: {
     fontSize: 12,
   },
-  button: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    fontWeight: "700",
-    fontSize: 16,
-  },
   linkText: {
     marginTop: 16,
     textAlign: "center",
     fontSize: 14,
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  logo: {
+    width: 170,
+    height: 182,
+    opacity: 0.95,
+  },
+  tagline: {
+    marginTop: 6,
+    fontSize: 14,
+    fontWeight: "600",
+    fontStyle: "italic",
+    textAlign: "center",
+    letterSpacing: 0.2,
   },
 });

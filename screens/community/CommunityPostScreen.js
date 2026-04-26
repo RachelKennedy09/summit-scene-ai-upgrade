@@ -20,6 +20,8 @@ import { useTheme } from "../../context/ThemeContext";
 import { createCommunityPost } from "../../services/communityApi";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import AppLogoHeader from "../../components/AppLogoHeader";
+import AppButton from "../../components/common/AppButton";
+import PageHeader from "../../components/common/PageHeader";
 // Board + town options are defined as config arrays,
 // so it’s easy to add more types/towns later without changing the JSX.
 const POST_TYPES = [
@@ -131,13 +133,10 @@ export default function CommunityPostScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <AppLogoHeader />
-          <Text style={[styles.heading, { color: theme.text }]}>
-            New Community Post
-          </Text>
-          <Text style={[styles.subheading, { color: theme.textMuted }]}>
-            Share highway conditions, rides, or find an event buddy. Your
-            account name will appear on this post and its replies.
-          </Text>
+          <PageHeader
+            title="New Community Post"
+            subtitle="Share highway conditions, rides, or find an event buddy. Your account name will appear on this post and its replies."
+          />
 
           {/* Board selector */}
           <Text style={[styles.label, { color: theme.textMuted }]}>Board</Text>
@@ -299,28 +298,14 @@ export default function CommunityPostScreen({ navigation }) {
             </Text>
           )}
 
-          <Pressable
+          <AppButton
+            title={submitting ? "Posting..." : "Share Post"}
             onPress={handleSubmit}
-            disabled={submitting}
-            style={[
-              styles.submitButton,
-              {
-                backgroundColor: theme.accent,
-              },
-              submitting && { opacity: 0.6 },
-            ]}
-          >
-            <Text
-              style={[
-                styles.submitButtonText,
-                {
-                  color: theme.background,
-                },
-              ]}
-            >
-              {submitting ? "Posting..." : "Share Post"}
-            </Text>
-          </Pressable>
+            loading={submitting}
+            variant="primary"
+            size="lg"
+            style={styles.submitButton}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -335,15 +320,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 32,
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  subheading: {
-    fontSize: 14,
-    marginBottom: 16,
   },
   label: {
     fontSize: 14,
@@ -385,12 +361,6 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 20,
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  submitButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+    marginBottom: 4,
   },
 });

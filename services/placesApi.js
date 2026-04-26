@@ -1,3 +1,5 @@
+import { toUserFriendlyError } from "../utils/friendlyErrors";
+
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
@@ -71,9 +73,9 @@ export async function searchAddressSuggestions(query, town) {
 
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    throw normalizePlacesError(
-      error,
-      "Address suggestions timed out. Please try again."
+    throw toUserFriendlyError(
+      normalizePlacesError(error, "Address suggestions timed out. Please try again."),
+      "We couldn't load address suggestions right now. Please try again."
     );
   }
 }

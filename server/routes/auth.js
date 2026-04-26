@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 
 import User from "../models/User.js";
 import authMiddleware from "../middleware/auth.js";
+import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 
 // Load environment variables (JWT_SECRET, etc.)
 dotenv.config();
@@ -52,8 +53,8 @@ function createToken(user) {
        email,
        password,
        name,
-       role?, town?, bio?, lookingFor?,
-       instagram?, website?, avatarKey?
+       role?, town?, userType?, languages?, interests?, skillLevel?,
+       socialAccounts?, bio?, lookingFor?, instagram?, website?, avatarKey?
      }
 
    - Create a new user account and return a JWT + basic profile.
@@ -71,12 +72,6 @@ router.post("/register", async (req, res) => {
       password,
       name,
       role,
-      town,
-      bio,
-      lookingFor,
-      instagram,
-      website,
-      avatarKey,
     } = req.body || {};
 
     // Basic validation for required fields
@@ -114,12 +109,7 @@ router.post("/register", async (req, res) => {
       passwordHash,
       name,
       role: finalRole,
-      town,
-      bio,
-      lookingFor,
-      instagram,
-      website,
-      avatarKey,
+      ...buildProfileUpdates(req.body),
     });
 
     // Create JWT token for the new user
@@ -128,20 +118,7 @@ router.post("/register", async (req, res) => {
     // Send minimal, safe user data back (no passwordHash)
     res.status(201).json({
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        createdAt: user.createdAt,
-        town: user.town,
-        bio: user.bio,
-        lookingFor: user.lookingFor,
-        instagram: user.instagram,
-        // website is mostly meaningful for business users, but harmless to include
-        website: user.website,
-        avatarKey: user.avatarKey,
-      },
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Error in POST /api/auth/register:", error);
@@ -183,23 +160,9 @@ router.post("/login", async (req, res) => {
 
     const token = createToken(user);
 
-    const safeUser = {
-      _id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role || "local",
-      createdAt: user.createdAt,
-      town: user.town,
-      bio: user.bio,
-      lookingFor: user.lookingFor,
-      instagram: user.instagram,
-      website: user.website,
-      avatarKey: user.avatarKey,
-    };
-
     res.json({
       token,
-      user: safeUser,
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Error in POST /api/auth/login:", error);
@@ -223,21 +186,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const safeUser = {
-      _id: user._id,
-      email: user.email,
-      name: user.name,
-      role: user.role || "local",
-      createdAt: user.createdAt,
-      town: user.town,
-      bio: user.bio,
-      lookingFor: user.lookingFor,
-      instagram: user.instagram,
-      website: user.website,
-      avatarKey: user.avatarKey,
-    };
-
-    res.json({ user: safeUser });
+    res.json({ user: buildSafeUser(user) });
   } catch (error) {
     console.error("Error in GET /api/auth/me:", error);
     res.status(500).json({ message: "Server error while fetching user." });

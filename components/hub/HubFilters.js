@@ -9,7 +9,6 @@ import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
 
 export default function HubFilters({
-  displayName, // ex: "Rachel" (for greeting)
   selectedTown, // current town filter
   selectedCategory, // current category filter
   selectedDateFilter, // current date filter label, e.g. "This Week"
@@ -21,6 +20,10 @@ export default function HubFilters({
   onSelectTown, // callback when user chooses a town
   onSelectCategory, // callback when user chooses a category
   onSelectDateFilter, // callback when user chooses a date range
+  isNearMeEnabled,
+  isNearMeLoading,
+  nearMeMessage,
+  onToggleNearMe,
 }) {
   const { theme } = useTheme();
 
@@ -50,17 +53,6 @@ export default function HubFilters({
     <>
       {/* Greeting + helper text + error + top filter pills */}
       <View style={styles.headerContainer}>
-        <Text style={[styles.heading, { color: theme.textMain }]}>
-          Hello {displayName}!
-        </Text>
-
-        <Text style={[styles.subheading, { color: theme.textMuted }]}>
-          Welcome to your Summit Scene Hub
-        </Text>
-        <Text style={[styles.subheading, { color: theme.textMuted }]}>
-          Choose a town and category to start exploring events near you.
-        </Text>
-
         {/* Error message (if the parent passes one down) */}
         {error ? (
           <Text
@@ -130,6 +122,39 @@ export default function HubFilters({
               {selectedDateFilter} ▾
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.nearMeRow}>
+          <Pressable
+            style={[
+              styles.nearMeChip,
+              {
+                backgroundColor: isNearMeEnabled
+                  ? theme.accentSoft || theme.card
+                  : theme.pill || theme.card,
+                borderColor: isNearMeEnabled ? theme.accent : theme.border,
+              },
+            ]}
+            onPress={onToggleNearMe}
+          >
+            <Text
+              style={[
+                styles.nearMeChipText,
+                { color: isNearMeEnabled ? theme.accent : theme.textMain },
+              ]}
+            >
+              {isNearMeLoading
+                ? "Locating..."
+                : isNearMeEnabled
+                  ? "Near me on"
+                  : "Near me"}
+            </Text>
+          </Pressable>
+          {nearMeMessage ? (
+            <Text style={[styles.nearMeMessage, { color: theme.textMuted }]}>
+              {nearMeMessage}
+            </Text>
+          ) : null}
         </View>
 
         {/* Thin line + result summary text */}
@@ -234,6 +259,10 @@ export default function HubFilters({
               Choose a category
             </Text>
 
+            <ScrollView
+              style={styles.modalOptionsScroll}
+              showsVerticalScrollIndicator
+            >
             {categories.map((category) => {
               const isSelected = category === selectedCategory;
               return (
@@ -271,6 +300,7 @@ export default function HubFilters({
                 </Pressable>
               );
             })}
+            </ScrollView>
 
             <Pressable
               style={styles.modalCloseButton}
@@ -362,15 +392,6 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 20,
   },
-  heading: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  subheading: {
-    fontSize: 14,
-    marginBottom: 12,
-  },
   errorText: {
     marginBottom: 8,
     fontSize: 13,
@@ -379,13 +400,32 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  nearMeRow: {
+    marginBottom: 8,
+  },
+  nearMeChip: {
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  nearMeChipText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  nearMeMessage: {
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
+  },
   pill: {
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   pillLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -401,17 +441,19 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   filterSummaryText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 32,
   },
   modalCard: {
-    width: "85%",
-    maxHeight: "70%",
+    width: "100%",
+    maxHeight: "82%",
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -421,6 +463,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 12,
+  },
+  modalOptionsScroll: {
+    maxHeight: 420,
   },
   townOption: {
     flexDirection: "row",

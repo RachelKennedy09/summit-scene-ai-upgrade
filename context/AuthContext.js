@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { toUserFriendlyError } from "../utils/friendlyErrors";
 
 // API base URL (Expo public env OR fallback to Render backend)
 const API_BASE_URL =
@@ -101,6 +102,13 @@ export function AuthProvider({ children }) {
     return {
       ...rawUser,
       avatarKey: rawUser?.avatarKey ?? null,
+      userType: rawUser?.userType ?? "local",
+      languages: Array.isArray(rawUser?.languages) ? rawUser.languages : [],
+      interests: Array.isArray(rawUser?.interests) ? rawUser.interests : [],
+      skillLevel: rawUser?.skillLevel ?? {},
+      socialAccounts: Array.isArray(rawUser?.socialAccounts)
+        ? rawUser.socialAccounts
+        : [],
     };
   }
 
@@ -185,8 +193,12 @@ export function AuthProvider({ children }) {
         "Session restore timed out."
       );
       console.error("Error restoring auth session:", normalizedError);
+      const friendlyError = toUserFriendlyError(
+        normalizedError,
+        "We couldn't restore your session. Please log in again."
+      );
       await setLoggedOutState(
-        `Session restore error: ${normalizedError.message}. Clearing token.`
+        `Session restore error: ${friendlyError.message}. Clearing token.`
       );
     } finally {
       setAuthDebugMessage((current) => `${current} Done.`);
@@ -243,12 +255,16 @@ export function AuthProvider({ children }) {
         error,
         "Login request timed out. Check the backend URL/server and try again."
       );
+      const friendlyError = toUserFriendlyError(
+        normalizedError,
+        "We couldn't log you in right now. Please try again."
+      );
       if (isExpectedAuthFailure(normalizedError)) {
-        console.log("Login rejected:", normalizedError.message);
+        console.log("Login rejected:", friendlyError.message);
       } else {
-        console.warn("Login request issue:", normalizedError.message);
+        console.warn("Login request issue:", friendlyError.message);
       }
-      throw normalizedError; // let screen show an alert
+      throw friendlyError; // let screen show an alert
     } finally {
       setIsAuthLoading(false);
     }
@@ -261,6 +277,11 @@ export function AuthProvider({ children }) {
     password,
     role,
     town,
+    userType,
+    languages,
+    interests,
+    skillLevel,
+    socialAccounts,
     bio,
     lookingFor,
     instagram,
@@ -283,6 +304,13 @@ export function AuthProvider({ children }) {
             password,
             role,
             town: town || undefined,
+            userType: userType || undefined,
+            languages: Array.isArray(languages) ? languages : undefined,
+            interests: Array.isArray(interests) ? interests : undefined,
+            skillLevel: skillLevel || undefined,
+            socialAccounts: Array.isArray(socialAccounts)
+              ? socialAccounts
+              : undefined,
             bio: bio || undefined,
             lookingFor: lookingFor || undefined,
             instagram: instagram || undefined,
@@ -318,12 +346,16 @@ export function AuthProvider({ children }) {
         error,
         "Registration request timed out. Check the backend URL/server and try again."
       );
+      const friendlyError = toUserFriendlyError(
+        normalizedError,
+        "We couldn't create your account right now. Please try again."
+      );
       if (isExpectedAuthFailure(normalizedError)) {
-        console.log("Registration rejected:", normalizedError.message);
+        console.log("Registration rejected:", friendlyError.message);
       } else {
-        console.warn("Registration request issue:", normalizedError.message);
+        console.warn("Registration request issue:", friendlyError.message);
       }
-      throw normalizedError;
+      throw friendlyError;
     } finally {
       setIsAuthLoading(false);
     }
@@ -363,7 +395,10 @@ export function AuthProvider({ children }) {
       return data.user;
     } catch (error) {
       console.error("Error in upgradeToBusiness:", error);
-      throw error;
+      throw toUserFriendlyError(
+        error,
+        "We couldn't upgrade your account right now. Please try again."
+      );
     } finally {
       setIsAuthLoading(false);
     }
@@ -405,7 +440,10 @@ export function AuthProvider({ children }) {
       return data.user;
     } catch (error) {
       console.error("Error in updateProfile:", error);
-      throw error;
+      throw toUserFriendlyError(
+        error,
+        "We couldn't save your profile right now. Please try again."
+      );
     } finally {
       setIsAuthLoading(false);
     }

@@ -29,6 +29,9 @@ import { useTheme } from "../../context/ThemeContext";
 import DatePickerModal from "../../components/events/DatePickerModal.js";
 import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal";
+import AppButton from "../../components/common/AppButton";
+import AppLogoHeader from "../../components/AppLogoHeader";
+import PageHeader from "../../components/common/PageHeader";
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -583,6 +586,7 @@ export default function PostEventScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
+      <AppLogoHeader />
       <ScrollView
         style={[styles.scrollView, { backgroundColor: theme.background }]}
         contentContainerStyle={[
@@ -593,12 +597,10 @@ export default function PostEventScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
-          <Text style={[styles.heading, { color: theme.text }]}>
-            Post a New Event
-          </Text>
-        <Text style={[styles.formHint, { color: theme.textMuted }]}>
-          Fields marked "Required" must be completed before posting.
-        </Text>
+        <PageHeader
+          title="Post a New Event"
+          subtitle='Fields marked "Required" must be completed before posting.'
+        />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
           Basics
@@ -1269,26 +1271,14 @@ export default function PostEventScreen() {
 
 
           {/* Submit button */}
-          <Pressable
-            style={[
-              styles.button,
-              {
-                backgroundColor: theme.accent,
-                opacity: loading ? 0.6 : 1,
-              },
-            ]}
+          <AppButton
+            title={loading ? "Posting..." : "Post Event"}
             onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text
-              style={[
-                styles.buttonText,
-                { color: theme.onAccent || theme.background },
-              ]}
-            >
-              {loading ? "Posting..." : "Post Event"}
-            </Text>
-          </Pressable>
+            loading={loading}
+            variant="primary"
+            size="lg"
+            style={styles.button}
+          />
       </ScrollView>
 
       {/* Town Select Modal (shared) */}
@@ -1433,31 +1423,23 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 16,
+    paddingTop: 0,
     flexGrow: 1,
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  formHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginTop: 10,
+    marginTop: 16,
     marginBottom: 4,
   },
   sectionDescription: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
     marginBottom: 12,
   },
   label: {
     fontSize: 14,
+    fontWeight: "600",
     marginBottom: 4,
     marginTop: 4,
   },
@@ -1492,16 +1474,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   helperText: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: -4,
     marginBottom: 12,
-    lineHeight: 17,
+    lineHeight: 19,
   },
   errorHelperText: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: -4,
     marginBottom: 12,
-    lineHeight: 17,
+    lineHeight: 19,
   },
   suggestionsCard: {
     borderWidth: 1,
@@ -1516,13 +1498,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   suggestionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     marginBottom: 2,
   },
   suggestionSubtitle: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
   },
   previewCard: {
     borderWidth: 1,
@@ -1538,11 +1520,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   previewHint: {
-    fontSize: 12,
+    fontSize: 13,
   },
   previewError: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 19,
   },
   extraSlotCard: {
     borderWidth: 1,
@@ -1551,7 +1533,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   slotTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 8,
   },
@@ -1603,10 +1585,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
     marginBottom: 40,
-  },
-  buttonText: {
-    fontWeight: "700",
-    fontSize: 16,
   },
   secondaryButton: {
     borderRadius: 8,

@@ -2,21 +2,23 @@
 import React from "react";
 import { View, Image, StyleSheet } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import logo from "../assets/logo.png"; // update path if needed
+import logo from "../assets/logo-app-earth-transparent-alpha.png";
 
 export default function AppLogoHeader() {
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { borderBottomColor: theme.border }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.headerBackground || theme.background,
+        },
+      ]}
+    >
       <Image
         source={logo}
-        style={[
-          styles.logo,
-          {
-            tintColor: theme.text, // auto-adapts to light/dark
-          },
-        ]}
+        style={styles.logo}
         resizeMode="contain"
       />
     </View>
@@ -29,11 +31,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     alignItems: "center",
-    borderBottomWidth: 0.5,
     marginBottom: 8,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 108,
+    height: 116,
   },
 });

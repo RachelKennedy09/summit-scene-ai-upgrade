@@ -48,6 +48,7 @@ function getEventHost(event) {
   const avatarKey = userObj.avatarKey || null;
   const website = userObj.website || "";
   const instagram = userObj.instagram || "";
+  const socialAccounts = userObj.socialAccounts || [];
   const bio = userObj.bio || "";
   const businessType = userObj.lookingFor || "";
 
@@ -57,6 +58,7 @@ function getEventHost(event) {
     avatarKey,
     website,
     instagram,
+    socialAccounts,
     bio,
     businessType,
     role: userObj.role,
@@ -360,8 +362,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   heroFallbackSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   content: {
     padding: 16,
@@ -378,7 +380,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   categoryText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -402,8 +404,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   metaLabel: {
-    fontSize: 12,
-    marginBottom: 2,
+    fontSize: 13,
+    marginBottom: 3,
   },
   metaValue: {
     fontSize: 14,
@@ -417,8 +419,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   addressText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 8,
   },
   mapButton: {
@@ -429,7 +431,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   mapButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
   },
   section: {

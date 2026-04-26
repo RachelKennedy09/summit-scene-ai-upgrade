@@ -18,6 +18,7 @@ import Event from "../models/Event.js";
 import User from "../models/User.js";
 import { geocodeEventAddress } from "../services/geocoding.js";
 import { getNextOccurrenceDateString } from "../../utils/eventSchedule.js";
+import { getEventDistanceKm } from "../../utils/proximity.js";
 
 const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
@@ -159,6 +160,11 @@ function parsePositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseCoordinate(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function buildDateFilterRange(dateFilter) {
   const normalizedFilter = normalizeRequiredString(dateFilter);
   if (!normalizedFilter || normalizedFilter === "All") {
@@ -218,6 +224,9 @@ export async function getAllEvents(req, res) {
     const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
     const requestedPage = parsePositiveInt(req.query?.page, 1);
     const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), 50);
+    const nearLat = parseCoordinate(req.query?.nearLat);
+    const nearLng = parseCoordinate(req.query?.nearLng);
+    const radiusKm = parseCoordinate(req.query?.radiusKm);
     const shouldPaginate =
       req.query?.page !== undefined || req.query?.limit !== undefined;
 
@@ -254,7 +263,7 @@ export async function getAllEvents(req, res) {
       .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
-        "name email role avatarKey town bio lookingFor instagram website"
+        "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
       );
 
     const filteredEvents =
@@ -262,13 +271,32 @@ export async function getAllEvents(req, res) {
         ? events.filter((event) => matchesDateFilter(event, normalizedDateFilter))
         : events;
 
+    const nearMeEvents =
+      nearLat !== null && nearLng !== null
+        ? filteredEvents
+            .map((event) => ({
+              event,
+              distanceKm: getEventDistanceKm(event, {
+                latitude: nearLat,
+                longitude: nearLng,
+              }),
+            }))
+            .filter(
+              ({ distanceKm }) =>
+                distanceKm !== null &&
+                (radiusKm === null || distanceKm <= radiusKm)
+            )
+            .sort((a, b) => a.distanceKm - b.distanceKm)
+            .map(({ event }) => event)
+        : filteredEvents;
+
     if (!shouldPaginate) {
-      return res.json(filteredEvents);
+      return res.json(nearMeEvents);
     }
 
-    const totalCount = filteredEvents.length;
+    const totalCount = nearMeEvents.length;
     const startIndex = (requestedPage - 1) * requestedLimit;
-    const pagedEvents = filteredEvents.slice(
+    const pagedEvents = nearMeEvents.slice(
       startIndex,
       startIndex + requestedLimit
     );
@@ -472,7 +500,7 @@ export async function getEventById(req, res) {
 
     const event = await Event.findById(id).populate(
       "createdBy",
-      "name email role avatarKey town bio lookingFor instagram website"
+      "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
     );
 
     if (!event) {
@@ -728,7 +756,7 @@ export async function getMyEvents(req, res) {
       .sort({ date: 1 })
       .populate(
         "createdBy",
-        "name email role avatarKey town bio lookingFor instagram website"
+        "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
       );
 
     return res.json(events);
@@ -740,3 +768,4 @@ export async function getMyEvents(req, res) {
     });
   }
 }
+

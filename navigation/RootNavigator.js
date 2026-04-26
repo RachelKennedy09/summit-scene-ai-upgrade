@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   ActivityIndicator,
+  Image,
   Text,
   StyleSheet,
   Pressable,
@@ -17,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { colors } from "../theme/colors";
+import logo from "../assets/logo-app-earth-transparent-alpha.png";
 
 import TabNavigator from "./TabNavigator";
 
@@ -55,7 +57,8 @@ function AuthLoadingScreen({
 
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={colors.textLight} />
+      <Image source={logo} style={styles.loadingLogo} resizeMode="contain" />
+      <ActivityIndicator size="large" color={colors.accent} />
       <Text style={styles.loadingText}>Loading Summit Scene...</Text>
       <Text style={styles.debugText}>{debugMessage}</Text>
       {showFallbackActions ? (
@@ -181,9 +184,15 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  loadingLogo: {
+    width: 170,
+    height: 182,
+    marginBottom: 20,
   },
   loadingText: {
     marginTop: 12,
@@ -204,13 +213,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   primaryButton: {
-    backgroundColor: colors.textLight,
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
   },
   primaryButtonText: {
-    color: colors.primary,
+    color: colors.textOnAccent,
     fontSize: 14,
     fontWeight: "700",
   },

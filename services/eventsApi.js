@@ -2,6 +2,7 @@
 // Centralized helper functions for interacting with the Events API.
 
 import { getNextOccurrenceDateString } from "../utils/eventSchedule";
+import { toUserFriendlyError } from "../utils/friendlyErrors";
 //
 // Endpoints used:
 //   GET    /api/events                     → fetch all events
@@ -117,6 +118,16 @@ function buildEventsQueryString(options = {}) {
   if (options.dateFilter && options.dateFilter !== "All") {
     params.set("dateFilter", options.dateFilter);
   }
+  if (
+    Number.isFinite(options.nearLat) &&
+    Number.isFinite(options.nearLng)
+  ) {
+    params.set("nearLat", String(options.nearLat));
+    params.set("nearLng", String(options.nearLng));
+  }
+  if (Number.isFinite(options.radiusKm)) {
+    params.set("radiusKm", String(options.radiusKm));
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
@@ -164,7 +175,10 @@ export async function fetchEvents(options = {}) {
       "Events request timed out. Check the backend and try again."
     );
     console.error("fetchEvents load failure:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't load events right now. Please try again."
+    );
   }
 }
 
@@ -199,7 +213,10 @@ export async function fetchMyEvents(token) {
       "My Events request timed out. Check the backend and try again."
     );
     console.error("fetchMyEvents load failure:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't load your events right now. Please try again."
+    );
   }
 }
 
@@ -232,7 +249,12 @@ export async function createEvent(eventData, token) {
     return {
       ok: false,
       status: 0,
-      data: { message: normalizedError.message || "Network error" },
+      data: {
+        message: toUserFriendlyError(
+          normalizedError,
+          "We couldn't publish your event. Please try again."
+        ).message,
+      },
     };
   }
 }
@@ -260,7 +282,10 @@ export async function deleteEvent(eventId, token) {
       "Delete event request timed out. Check the backend and try again."
     );
     console.warn("deleteEvent issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't delete this event right now. Please try again."
+    );
   }
 }
 
@@ -292,7 +317,10 @@ export async function updateEvent(eventId, eventData, token) {
       "Update event request timed out. Check the backend and try again."
     );
     console.warn("updateEvent issue:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't save your event changes. Please try again."
+    );
   }
 }
 
@@ -323,6 +351,9 @@ export async function fetchEventById(eventId) {
       "Event details request timed out. Check the backend and try again."
     );
     console.error("fetchEventById load failure:", normalizedError.message);
-    throw normalizedError;
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't load this event right now. Please try again."
+    );
   }
 }

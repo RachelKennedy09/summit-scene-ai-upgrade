@@ -23,14 +23,14 @@ import { useTheme } from "../../context/ThemeContext";
 import AppLogoHeader from "../../components/AppLogoHeader";
 import AccountHeaderCard from "../../components/account/AccountHeaderCard";
 import ProfileCard from "../../components/account/ProfileCard";
-import ThemeSection from "../../components/account/ThemeSection";
+import AppButton from "../../components/common/AppButton";
+import PageHeader from "../../components/common/PageHeader";
 
 function AccountScreen() {
   const { user, logout, isAuthLoading, upgradeToBusiness } = useAuth();
   const navigation = useNavigation();
 
-  const { theme, themeName, setThemeName, toggleLightDark } = useTheme();
-  const isDark = theme.isDark;
+  const { theme } = useTheme();
 
   const isBusiness = user?.role === "business";
   const isLocal = user?.role === "local";
@@ -94,12 +94,12 @@ function AccountScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
+      <AppLogoHeader />
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <AppLogoHeader />
-        <Text style={[styles.title, { color: theme.text }]}>Account</Text>
+        <PageHeader title="Account" />
 
         {/* PROFILE HEADER CARD
            - Shows avatar, name, email, role, town, joined date
@@ -124,17 +124,6 @@ function AccountScreen() {
           user={user}
           isBusiness={isBusiness}
           onEditProfile={() => navigation.navigate("EditProfile")}
-        />
-
-        {/* THEME + APPEARANCE
-           - Lets users toggle between theme presets and light/dark
-        */}
-        <ThemeSection
-          theme={theme}
-          themeName={themeName}
-          setThemeName={setThemeName}
-          isDark={isDark}
-          toggleLightDark={toggleLightDark}
         />
 
         {/* LOCAL ONLY: UPGRADE TO BUSINESS */}
@@ -169,15 +158,14 @@ function AccountScreen() {
         )}
 
         {/* LOG OUT */}
-        <Pressable
-          style={[styles.logoutButton, isAuthLoading && styles.buttonDisabled]}
+        <AppButton
+          title={isAuthLoading ? "Logging out..." : "Log Out"}
           onPress={handleLogout}
-          disabled={isAuthLoading}
-        >
-          <Text style={styles.logoutButtonText}>
-            {isAuthLoading ? "Logging out..." : "Log Out"}
-          </Text>
-        </Pressable>
+          loading={isAuthLoading}
+          variant="highlight"
+          size="lg"
+          style={{ marginTop: 4 }}
+        />
 
         <Text style={[styles.helperText, { color: theme.textMuted }]}>
           Logging out will clear your session on this device.{"\n"}
@@ -198,13 +186,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 0,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "700",
     color: colors.textLight,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   subtitle: {
     fontSize: 14,
@@ -215,38 +203,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 10,
-    marginBottom: 16,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: colors.accent,
   },
   accountButtonSecondaryText: {
     color: colors.textLight,
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 14,
     marginBottom: 4,
   },
   accountButtonSecondarySubtext: {
     color: colors.textMuted,
-    fontSize: 12,
-  },
-  logoutButton: {
-    backgroundColor: colors.danger,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
-  logoutButtonText: {
-    color: colors.textLight,
-    fontWeight: "700",
-    fontSize: 16,
-  },
   helperText: {
-    marginTop: 12,
+    marginTop: 14,
     color: colors.textMuted,
     fontSize: 12,
+    lineHeight: 18,
   },
 });

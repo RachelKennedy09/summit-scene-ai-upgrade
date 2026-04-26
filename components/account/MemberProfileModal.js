@@ -1,25 +1,81 @@
-// screens/community/MemberProfileModal.js
-// Reusable modal for viewing a member's profile from the Community tab.
-//
-// Used when you tap a user's avatar or name on posts/replies.
-// Shows:
-//   - Avatar (prefers avatarKey → avatarUrl → initial)
-//   - Name, town, role (Local vs Business host)
-//   - Bio, "Looking for" / Business type, Instagram, Website (business only)
-
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Modal, Image } from "react-native";
-import { colors } from "../../theme/colors"; // fallback palette
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Modal,
+  Image,
+  ScrollView,
+  Linking,
+} from "react-native";
+import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 
-export default function MemberProfileModal({ visible, user, theme, onClose }) {
-  // If not visible or we don't have a user, don't render anything.
-  if (!visible || !user) return null;
+function titleCase(value) {
+  return String(value || "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
-  // Avatar resolution logic:
-  // 1) If user.avatarKey exists in our AVATARS map → use that pre-made avatar.
-  // 2) Else if user.avatarUrl exists → use remote image URL.
-  // 3) Else → show a simple initial inside a colored circle.
+function getSocialUrl(account) {
+  const value = account.url || account.handle || "";
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const handle = value.replace(/^@/, "");
+  switch (account.provider) {
+    case "instagram":
+      return `https://instagram.com/${handle}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${handle}`;
+    case "facebook":
+    case "linkedin":
+    case "website":
+      return value.includes(".") ? `https://${value.replace(/^https?:\/\//i, "")}` : "";
+    default:
+      return "";
+  }
+}
+
+function Chip({ label, theme }) {
+  return (
+    <View
+      style={[
+        styles.chip,
+        {
+          backgroundColor: theme.accentSoft || theme.pill || theme.card,
+          borderColor: theme.border,
+        },
+      ]}
+    >
+      <Text style={[styles.chipText, { color: theme.textMain || theme.text }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function Section({ label, children, theme }) {
+  if (!children) return null;
+
+  return (
+    <View style={styles.profileSection}>
+      <Text
+        style={[
+          styles.profileSectionLabel,
+          { color: theme.textMuted || colors.textMuted },
+        ]}
+      >
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+export default function MemberProfileModal({ visible, user, theme, onClose }) {
+  if (!visible || !user) return null;
 
   const avatarSource =
     user.avatarKey && AVATARS[user.avatarKey]
@@ -30,6 +86,15 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
 
   const displayName = user.name || "SummitScene member";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "M";
+  const town = user.town || "";
+  const userType = user.userType ? titleCase(user.userType) : "";
+  const interests = Array.isArray(user.interests) ? user.interests : [];
+  const languages = Array.isArray(user.languages) ? user.languages : [];
+  const socialAccounts = Array.isArray(user.socialAccounts)
+    ? user.socialAccounts
+    : [];
+  const skillLevel = user.skillLevel || {};
+  const hasSkills = Boolean(skillLevel.hiking || skillLevel.skiing);
 
   return (
     <Modal
@@ -48,8 +113,7 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
             },
           ]}
         >
-          {/* Header: title + Close button */}
-          <View className="header-row" style={styles.profileModalHeader}>
+          <View style={styles.profileModalHeader}>
             <Text
               style={[
                 styles.profileModalTitle,
@@ -70,147 +134,154 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
             </Pressable>
           </View>
 
-          {/* Top row: Avatar + name / town / role */}
-          <View style={styles.profileTopRow}>
-            <View
-              style={[
-                styles.profileAvatar,
-                { backgroundColor: theme.cardDark || colors.cardDark },
-              ]}
-            >
-              {avatarSource ? (
-                <Image
-                  source={avatarSource}
-                  style={styles.profileAvatarImage}
-                />
-              ) : (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.profileTopRow}>
+              <View
+                style={[
+                  styles.profileAvatar,
+                  { backgroundColor: theme.pill || colors.surfaceMuted },
+                ]}
+              >
+                {avatarSource ? (
+                  <Image
+                    source={avatarSource}
+                    style={styles.profileAvatarImage}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      styles.profileAvatarInitial,
+                      { color: theme.textMain || theme.text },
+                    ]}
+                  >
+                    {initial}
+                  </Text>
+                )}
+              </View>
+
+              <View style={{ flex: 1 }}>
                 <Text
                   style={[
-                    styles.profileAvatarInitial,
+                    styles.profileName,
                     { color: theme.textMain || theme.text },
                   ]}
                 >
-                  {initial}
+                  {displayName}
                 </Text>
-              )}
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.profileName,
-                  { color: theme.textMain || theme.text },
-                ]}
-              >
-                {displayName}
-              </Text>
-
-              {user.town ? (
                 <Text
                   style={[
-                    styles.profileTown,
+                    styles.profileRole,
                     { color: theme.textMuted || colors.textMuted },
                   ]}
                 >
-                  {user.town}
+                  {user.role === "business" ? "Business host" : "Community member"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.chipRow}>
+              {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
+              {userType ? <Chip label={userType} theme={theme} /> : null}
+              {user.lookingFor && user.role === "business" ? (
+                <Chip label={user.lookingFor} theme={theme} />
+              ) : null}
+            </View>
+
+            <Section label="Bio" theme={theme}>
+              {user.bio ? (
+                <Text
+                  style={[
+                    styles.profileSectionText,
+                    { color: theme.textMain || theme.text },
+                  ]}
+                >
+                  {user.bio}
                 </Text>
               ) : null}
+            </Section>
 
-              <Text
-                style={[
-                  styles.profileRole,
-                  { color: theme.textMuted || colors.textMuted },
-                ]}
-              >
-                {user.role === "business" ? "Business host" : "Local member"}
-              </Text>
-            </View>
-          </View>
+            {interests.length ? (
+              <Section label="Interests" theme={theme}>
+                <View style={styles.chipRow}>
+                  {interests.map((interest) => (
+                    <Chip key={interest} label={interest} theme={theme} />
+                  ))}
+                </View>
+              </Section>
+            ) : null}
 
-          {/* Sections: About, Looking For / Business type, Instagram, Website */}
-          {user.bio ? (
-            <View style={styles.profileSection}>
-              <Text
-                style={[
-                  styles.profileSectionLabel,
-                  { color: theme.textMuted || colors.textMuted },
-                ]}
-              >
-                About
-              </Text>
-              <Text
-                style={[
-                  styles.profileSectionText,
-                  { color: theme.textMain || theme.text },
-                ]}
-              >
-                {user.bio}
-              </Text>
-            </View>
-          ) : null}
+            {hasSkills ? (
+              <Section label="Activity level" theme={theme}>
+                <View style={styles.chipRow}>
+                  {skillLevel.hiking ? (
+                    <Chip
+                      label={`Hiking: ${titleCase(skillLevel.hiking)}`}
+                      theme={theme}
+                    />
+                  ) : null}
+                  {skillLevel.skiing ? (
+                    <Chip
+                      label={`Ski/Snowboard: ${titleCase(skillLevel.skiing)}`}
+                      theme={theme}
+                    />
+                  ) : null}
+                </View>
+              </Section>
+            ) : null}
 
-          {user.lookingFor ? (
-            <View style={styles.profileSection}>
-              <Text
-                style={[
-                  styles.profileSectionLabel,
-                  { color: theme.textMuted || colors.textMuted },
-                ]}
-              >
-                {user.role === "business" ? "Business type" : "Looking for"}
-              </Text>
-              <Text
-                style={[
-                  styles.profileSectionText,
-                  { color: theme.textMain || theme.text },
-                ]}
-              >
-                {user.lookingFor}
-              </Text>
-            </View>
-          ) : null}
+            {languages.length ? (
+              <Section label="Languages" theme={theme}>
+                <Text
+                  style={[
+                    styles.profileSectionText,
+                    { color: theme.textMain || theme.text },
+                  ]}
+                >
+                  {languages.join(", ")}
+                </Text>
+              </Section>
+            ) : null}
 
-          {user.instagram ? (
-            <View style={styles.profileSection}>
-              <Text
-                style={[
-                  styles.profileSectionLabel,
-                  { color: theme.textMuted || colors.textMuted },
-                ]}
-              >
-                Instagram
-              </Text>
-              <Text
-                style={[
-                  styles.profileLinkText,
-                  { color: theme.accent || colors.accent },
-                ]}
-              >
-                {user.instagram}
-              </Text>
-            </View>
-          ) : null}
-
-          {user.role === "business" && user.website ? (
-            <View style={styles.profileSection}>
-              <Text
-                style={[
-                  styles.profileSectionLabel,
-                  { color: theme.textMuted || colors.textMuted },
-                ]}
-              >
-                Website
-              </Text>
-              <Text
-                style={[
-                  styles.profileLinkText,
-                  { color: theme.accent || colors.accent },
-                ]}
-              >
-                {user.website}
-              </Text>
-            </View>
-          ) : null}
+            {socialAccounts.length ? (
+              <Section label="Social accounts" theme={theme}>
+                {socialAccounts.map((account) => {
+                  const value = account.handle || account.url || "";
+                  const url = getSocialUrl(account);
+                  return (
+                    <Pressable
+                      key={`${account.provider}-${value}`}
+                      onPress={() => {
+                        if (url) Linking.openURL(url);
+                      }}
+                      disabled={!url}
+                      style={styles.socialRow}
+                    >
+                      <Text
+                        style={[
+                          styles.profileLinkText,
+                          { color: theme.accent || colors.accent },
+                        ]}
+                      >
+                        {titleCase(account.provider)}: {value}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color: account.verified
+                              ? theme.accent || colors.accent
+                              : theme.textMuted || colors.textMuted,
+                          },
+                        ]}
+                      >
+                        {account.verified ? "Verified" : "Unverified"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </Section>
+            ) : null}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -222,14 +293,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
   profileModalCard: {
-    backgroundColor: colors.secondary,
+    maxHeight: "82%",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   profileModalHeader: {
     flexDirection: "row",
@@ -240,11 +310,9 @@ const styles = StyleSheet.create({
   profileModalTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.textLight,
   },
   profileModalClose: {
     fontSize: 14,
-    color: colors.accent,
     fontWeight: "600",
   },
   profileTopRow: {
@@ -253,54 +321,67 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.cardDark,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
   profileAvatarImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   profileAvatarInitial: {
     fontSize: 22,
     fontWeight: "700",
-    color: colors.textLight,
   },
   profileName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    color: colors.textLight,
-  },
-  profileTown: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 2,
   },
   profileRole: {
-    fontSize: 12,
-    color: colors.textMuted,
+    fontSize: 13,
     marginTop: 2,
   },
   profileSection: {
-    marginTop: 10,
+    marginTop: 12,
   },
   profileSectionLabel: {
     fontSize: 12,
-    fontWeight: "600",
-    color: colors.textMuted,
-    marginBottom: 2,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
   },
   profileSectionText: {
-    fontSize: 13,
-    color: colors.textLight,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  socialRow: {
+    marginBottom: 8,
   },
   profileLinkText: {
-    fontSize: 13,
-    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  statusText: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

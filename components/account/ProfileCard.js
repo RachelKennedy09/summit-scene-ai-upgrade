@@ -1,43 +1,82 @@
-// components/account/ProfileCard.js
-// Shows a snapshot of the logged-in user's profile inside the Account screen.
-// - For locals: shows their "Community profile" (used on posts/replies).
-// - For businesses: shows their "Event posting profile" (used on events).
-
-
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Image } from "react-native";
-import { colors } from "../../theme/colors"; // fallback palette
+import { View, Text, StyleSheet, Image, Pressable, Linking } from "react-native";
+import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import AppButton from "../common/AppButton";
+
+function titleCase(value) {
+  return String(value || "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getSocialLabel(account) {
+  const provider = titleCase(account.provider);
+  const value = account.handle || account.url || "";
+  return `${provider}: ${value}`;
+}
+
+function getSocialUrl(account) {
+  const value = account.url || account.handle || "";
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+
+  const handle = value.replace(/^@/, "");
+  switch (account.provider) {
+    case "instagram":
+      return `https://instagram.com/${handle}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${handle}`;
+    case "linkedin":
+      return value.includes("linkedin.com")
+        ? `https://${value.replace(/^https?:\/\//i, "")}`
+        : "";
+    case "facebook":
+      return value.includes("facebook.com")
+        ? `https://${value.replace(/^https?:\/\//i, "")}`
+        : "";
+    case "website":
+      return value.includes(".") ? `https://${value.replace(/^https?:\/\//i, "")}` : "";
+    default:
+      return "";
+  }
+}
+
+function Chip({ label, theme }) {
+  return (
+    <View
+      style={[
+        styles.chip,
+        {
+          backgroundColor: theme.accentSoft || theme.pill || theme.card,
+          borderColor: theme.border,
+        },
+      ]}
+    >
+      <Text style={[styles.chipText, { color: theme.text }]}>{label}</Text>
+    </View>
+  );
+}
+
+function Section({ label, children, theme }) {
+  if (!children) return null;
+
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
 
 export default function ProfileCard({
-  theme,         // current theme from ThemeContext (passed down from AccountScreen)
-  user,          // logged-in user object
-  isBusiness,    // boolean: user.role === "business"
-  onEditProfile, // function called when the user taps "Edit profile"
+  theme,
+  user,
+  isBusiness,
+  onEditProfile,
 }) {
-  // Role-based heading + helper
-  const profileSectionTitle = isBusiness
-    ? "Event posting profile"
-    : "Community profile";
-
-  const profileSectionSubtitle = isBusiness
-    ? "This is how your profile appears on Hub and Map when you post events."
-    : "This is how your profile appears on Community posts and replies.";
-
-  // If none of these are present, we show a friendly "empty state" message
-  const hasProfileDetails = Boolean(
-    user.bio ||
-      user.lookingFor ||
-      user.instagram ||
-      (isBusiness && user.website)
-  );
-
-
-  // Avatar logic:
-  // 1) If user.avatarKey is set and matches our AVATARS map → use that image.
-  // 2) Else if user.avatarUrl is set → use remote URL.
-  // 3) Else → show an initial (first letter of the name).
-
   const avatarSource =
     user?.avatarKey && AVATARS[user.avatarKey]
       ? AVATARS[user.avatarKey]
@@ -47,7 +86,16 @@ export default function ProfileCard({
 
   const displayName = user?.name || "SummitScene member";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
-  const town = user?.town || "Rockies local";
+  const town = user?.town || "";
+  const userType = user?.userType ? titleCase(user.userType) : "";
+  const interests = Array.isArray(user?.interests) ? user.interests : [];
+  const languages = Array.isArray(user?.languages) ? user.languages : [];
+  const socialAccounts = Array.isArray(user?.socialAccounts)
+    ? user.socialAccounts
+    : [];
+  const skillLevel = user?.skillLevel || {};
+  const hasSkills = Boolean(skillLevel.hiking || skillLevel.skiing);
+  const businessType = isBusiness ? user?.lookingFor : "";
 
   return (
     <View
@@ -59,23 +107,17 @@ export default function ProfileCard({
         },
       ]}
     >
-      {/* Header row: Avatar + name + town */}
       <View style={styles.headerRow}>
         <View
           style={[
             styles.avatar,
-            { backgroundColor: theme.pill || colors.cardDark },
+            { backgroundColor: theme.pill || colors.surfaceMuted },
           ]}
         >
           {avatarSource ? (
             <Image source={avatarSource} style={styles.avatarImage} />
           ) : (
-            <Text
-              style={[
-                styles.avatarInitial,
-                { color: theme.onAccent || theme.text },
-              ]}
-            >
+            <Text style={[styles.avatarInitial, { color: theme.text }]}>
               {initial}
             </Text>
           )}
@@ -85,174 +127,186 @@ export default function ProfileCard({
           <Text style={[styles.headerName, { color: theme.text }]}>
             {displayName}
           </Text>
-          <Text style={[styles.headerTown, { color: theme.textMuted }]}>
-            {town}
+          <Text style={[styles.headerSubtitle, { color: theme.textMuted }]}>
+            {isBusiness ? "Business host" : "Community member"}
           </Text>
         </View>
       </View>
 
-      {/* Section labels: Role-based title + description */}
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        {profileSectionTitle}
-      </Text>
-      <Text style={[styles.sectionSubtitle, { color: theme.textMuted }]}>
-        {profileSectionSubtitle}
-      </Text>
+      <View style={styles.chipRow}>
+        {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
+        {userType ? <Chip label={userType} theme={theme} /> : null}
+        {businessType ? <Chip label={businessType} theme={theme} /> : null}
+      </View>
 
-      {/* Profile details (bio, lookingFor / business type, Instagram, website) */}
-      {hasProfileDetails ? (
-        <>
-          {user.bio ? (
-            <>
-              <Text style={[styles.label, { color: theme.textMuted }]}>
-                About
-              </Text>
-              <Text style={[styles.value, { color: theme.text }]}>
-                {user.bio}
-              </Text>
-            </>
-          ) : null}
+      <Section label="Bio" theme={theme}>
+        {user?.bio ? (
+          <Text style={[styles.value, { color: theme.text }]}>{user.bio}</Text>
+        ) : (
+          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+            Add a short bio so people know who you are.
+          </Text>
+        )}
+      </Section>
 
-          {user.lookingFor ? (
-            <>
-              <Text style={[styles.label, { color: theme.textMuted }]}>
-                {isBusiness ? "Business type" : "What you're looking for"}
-              </Text>
-              <Text style={[styles.value, { color: theme.text }]}>
-                {user.lookingFor}
-              </Text>
-            </>
-          ) : null}
+      {interests.length ? (
+        <Section label="Interests" theme={theme}>
+          <View style={styles.chipRow}>
+            {interests.map((interest) => (
+              <Chip key={interest} label={interest} theme={theme} />
+            ))}
+          </View>
+        </Section>
+      ) : null}
 
-          {user.instagram ? (
-            <>
-              <Text style={[styles.label, { color: theme.textMuted }]}>
-                Instagram
-              </Text>
-              <Text style={[styles.linkValue, { color: theme.accent }]}>
-                {user.instagram}
-              </Text>
-            </>
-          ) : null}
+      {hasSkills ? (
+        <Section label="Activity level" theme={theme}>
+          <View style={styles.chipRow}>
+            {skillLevel.hiking ? (
+              <Chip label={`Hiking: ${titleCase(skillLevel.hiking)}`} theme={theme} />
+            ) : null}
+            {skillLevel.skiing ? (
+              <Chip
+                label={`Ski/Snowboard: ${titleCase(skillLevel.skiing)}`}
+                theme={theme}
+              />
+            ) : null}
+          </View>
+        </Section>
+      ) : null}
 
-          {isBusiness && user.website ? (
-            <>
-              <Text style={[styles.label, { color: theme.textMuted }]}>
-                Website
-              </Text>
-              <Text style={[styles.linkValue, { color: theme.accent }]}>
-                {user.website}
-              </Text>
-            </>
-          ) : null}
-        </>
-      ) : (
-        // Friendly empty state if they haven't filled out their profile yet
-        <Text style={[styles.value, { color: theme.textMuted }]}>
-          This is where your{" "}
-          {isBusiness ? "event posting" : "community"} profile details will
-          show. Tap “Edit profile” to add more information.
-        </Text>
-      )}
+      {languages.length ? (
+        <Section label="Languages" theme={theme}>
+          <Text style={[styles.value, { color: theme.text }]}>
+            {languages.join(", ")}
+          </Text>
+        </Section>
+      ) : null}
 
-      {/* Edit Profile Button
-          Navigates to EditProfileScreen through the callback */}
-      <Pressable
-        style={[styles.editButton, { backgroundColor: theme.accent }]}
+      {socialAccounts.length ? (
+        <Section label="Social accounts" theme={theme}>
+          {socialAccounts.map((account) => {
+            const url = getSocialUrl(account);
+            return (
+              <Pressable
+                key={`${account.provider}-${account.handle || account.url}`}
+                onPress={() => {
+                  if (url) Linking.openURL(url);
+                }}
+                disabled={!url}
+                style={styles.socialRow}
+              >
+                <Text style={[styles.linkValue, { color: theme.accent }]}>
+                  {getSocialLabel(account)}
+                </Text>
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: account.verified ? theme.accent : theme.textMuted },
+                  ]}
+                >
+                  {account.verified ? "Verified" : "Unverified"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </Section>
+      ) : null}
+
+      <AppButton
+        title="Edit profile"
         onPress={onEditProfile}
-      >
-        <Text
-          style={[
-            styles.editButtonText,
-            { color: theme.onAccent || theme.background },
-          ]}
-        >
-          Edit profile
-        </Text>
-      </Pressable>
+        variant="primary"
+        style={styles.editButton}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   profileCard: {
-    backgroundColor: colors.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: 12,
+    gap: 12,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.cardDark,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarInitial: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
-    color: colors.textLight,
   },
   headerTextCol: {
     flex: 1,
   },
   headerName: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
   },
-  headerTown: {
+  headerSubtitle: {
     fontSize: 13,
+    marginTop: 2,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.textLight,
-    marginBottom: 4,
-    marginTop: 8,
+  section: {
+    marginTop: 12,
   },
-  sectionSubtitle: {
+  sectionLabel: {
     fontSize: 12,
-    color: colors.textMuted,
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 8,
-    marginBottom: 2,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
   },
   value: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  emptyText: {
     fontSize: 13,
-    color: colors.textLight,
+    lineHeight: 19,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  socialRow: {
+    marginBottom: 8,
   },
   linkValue: {
-    fontSize: 13,
-    color: colors.accent,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  statusText: {
+    fontSize: 12,
+    marginTop: 2,
   },
   editButton: {
-    marginTop: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-  },
-  editButtonText: {
-    color: colors.textLight,
-    fontWeight: "600",
-    fontSize: 14,
+    marginTop: 16,
   },
 });

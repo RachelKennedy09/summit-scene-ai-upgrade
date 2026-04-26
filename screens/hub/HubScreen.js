@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import AppLogoHeader from "../../components/AppLogoHeader";
+import PageHeader from "../../components/common/PageHeader";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -29,6 +30,7 @@ import HubFilters from "../../components/hub/HubFilters";
 import {
   fetchEvents as fetchEventsFromApi,
 } from "../../services/eventsApi";
+import { requestCurrentLocation } from "../../services/locationService";
 import { colors } from "../../theme/colors";
 
 // Simple list of towns for the selector modal
@@ -64,6 +66,7 @@ const DATE_FILTERS = [
   "Next 30 days",
 ];
 const EVENTS_PAGE_SIZE = 20;
+const NEAR_ME_RADIUS_KM = 15;
 
 export default function HubScreen() {
   const { user } = useAuth();
@@ -77,6 +80,10 @@ export default function HubScreen() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTown, setSelectedTown] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("All");
+  const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
+  const [nearMeLocation, setNearMeLocation] = useState(null);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
+  const [nearMeMessage, setNearMeMessage] = useState("");
 
   // Events + loading state
   const [events, setEvents] = useState([]);
@@ -106,6 +113,9 @@ export default function HubScreen() {
         town: selectedTown,
         category: selectedCategory,
         dateFilter: selectedDateFilter,
+        nearLat: isNearMeEnabled ? nearMeLocation?.latitude : undefined,
+        nearLng: isNearMeEnabled ? nearMeLocation?.longitude : undefined,
+        radiusKm: isNearMeEnabled ? NEAR_ME_RADIUS_KM : undefined,
       });
 
       const nextEvents = Array.isArray(data?.events) ? data.events : [];
@@ -127,7 +137,7 @@ export default function HubScreen() {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [selectedTown, selectedCategory, selectedDateFilter]);
+  }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation]);
 
   // Reload on focus so newly posted events appear when the user returns to the Hub.
   useFocusEffect(
@@ -148,10 +158,45 @@ export default function HubScreen() {
     loadEvents({ nextPage: page + 1, mode: "loadMore" });
   }, [loading, refreshing, loadingMore, hasMore, page, loadEvents]);
 
+  const handleToggleNearMe = useCallback(async () => {
+    if (nearMeLoading) return;
+
+    if (isNearMeEnabled) {
+      setIsNearMeEnabled(false);
+      setNearMeLocation(null);
+      setNearMeMessage("");
+      return;
+    }
+
+    try {
+      setNearMeLoading(true);
+      setNearMeMessage("");
+      const location = await requestCurrentLocation();
+      setNearMeLocation(location);
+      setIsNearMeEnabled(true);
+      setNearMeMessage(`Showing events within ${NEAR_ME_RADIUS_KM} km of you.`);
+    } catch (error) {
+      setNearMeLocation(null);
+      setIsNearMeEnabled(false);
+      setNearMeMessage(error.message || "Could not get your location.");
+    } finally {
+      setNearMeLoading(false);
+    }
+  }, [isNearMeEnabled, nearMeLoading]);
+
   const eventsToShow = events;
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
+    if (
+      isNearMeEnabled &&
+      selectedCategory === "All" &&
+      selectedTown === "All" &&
+      selectedDateFilter === "All"
+    ) {
+      return "No nearby events found right now. Try turning off Near me or choosing a town.";
+    }
+
     if (
       selectedCategory === "All" &&
       selectedTown === "All" &&
@@ -173,7 +218,7 @@ export default function HubScreen() {
     }
 
     return `No ${selectedCategory} events found in ${selectedTown}.`;
-  }, [selectedCategory, selectedTown, selectedDateFilter]);
+  }, [selectedCategory, selectedTown, selectedDateFilter, isNearMeEnabled]);
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
@@ -191,15 +236,21 @@ export default function HubScreen() {
         : ` (${selectedDateFilter.toLowerCase()})`;
 
     if (count === 0) {
-      return "No events match your current filters.";
+      return isNearMeEnabled
+        ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
+        : "No events match your current filters.";
     }
 
     if (count === 1) {
-      return `Showing 1 event in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+      return isNearMeEnabled
+        ? `Showing 1 event near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
+        : `Showing 1 event in ${townLabel} for ${categoryLabel}${dateLabel}.`;
     }
 
-    return `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter]);
+    return isNearMeEnabled
+      ? `Showing ${count} events near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
+      : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled]);
 
   // Inital loading state (before there are any events)
   if (loading && !refreshing && events.length === 0) {
@@ -269,6 +320,12 @@ export default function HubScreen() {
     >
       <AppLogoHeader />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <PageHeader
+          title={`Hello ${displayName}!`}
+          subtitle={
+            "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you."
+          }
+        />
         <FlatList
           data={eventsToShow}
           keyExtractor={(item) =>
@@ -294,7 +351,6 @@ export default function HubScreen() {
           // HubFilters renders the filter chips + greeting + result summary at the top of the list.
           ListHeaderComponent={
             <HubFilters
-              displayName={displayName}
               selectedTown={selectedTown}
               selectedCategory={selectedCategory}
               selectedDateFilter={selectedDateFilter}
@@ -306,6 +362,10 @@ export default function HubScreen() {
               onSelectTown={setSelectedTown}
               onSelectCategory={setSelectedCategory}
               onSelectDateFilter={setSelectedDateFilter}
+              isNearMeEnabled={isNearMeEnabled}
+              isNearMeLoading={nearMeLoading}
+              nearMeMessage={nearMeMessage}
+              onToggleNearMe={handleToggleNearMe}
             />
           }
           ListEmptyComponent={
@@ -336,7 +396,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 0,
   },
   errorText: {
     color: colors.error,
@@ -344,11 +404,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   listContent: {
-    paddingTop: 4,
+    paddingTop: 0,
     paddingBottom: 32,
   },
   emptyContainer: {
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 32,
   },
   emptyText: {

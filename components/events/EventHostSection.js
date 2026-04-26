@@ -22,6 +22,9 @@ export default function EventHostSection({ host }) {
 
   // For this screen, host.avatarKey comes from getEventHost(event) in EventDetailScreen
   const avatarSource = host.avatarKey ? getAvatarSource(host.avatarKey) : null;
+  const hasConnectedInstagram = host.socialAccounts?.some(
+    (account) => account.provider === "instagram"
+  );
 
   return (
     <>
@@ -186,7 +189,7 @@ export default function EventHostSection({ host }) {
               ) : null}
 
               {/* Instagram */}
-              {host.instagram ? (
+              {host.instagram && !hasConnectedInstagram ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -201,6 +204,28 @@ export default function EventHostSection({ host }) {
                   >
                     {host.instagram}
                   </Text>
+                </View>
+              ) : null}
+
+              {host.socialAccounts?.length ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Connected socials
+                  </Text>
+                  {host.socialAccounts.map((account) => (
+                    <Text
+                      key={`${account.provider}-${account.handle || account.url}`}
+                      style={[styles.profileLinkText, { color: theme.accent }]}
+                    >
+                      {account.provider}: {account.handle || account.url}{" "}
+                      {account.verified ? "Verified" : "Unverified"}
+                    </Text>
+                  ))}
                 </View>
               ) : null}
 

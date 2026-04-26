@@ -30,6 +30,7 @@ import {
   sortEventsByUpcomingDate,
 } from "../../services/eventsApi.js";
 import { useAuth } from "../../context/AuthContext";
+import { requestCurrentLocation } from "../../services/locationService";
 import { useTheme } from "../../context/ThemeContext";
 import MapFilters from "../../components/map/MapFilters";
 import {
@@ -37,6 +38,7 @@ import {
   getNextOccurrenceDateString,
   getRecurrenceLabel,
 } from "../../utils/eventSchedule";
+import { getEventDistanceKm } from "../../utils/proximity";
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
@@ -70,6 +72,7 @@ const DATE_FILTERS = [
   "Next 7 days",
   "Next 30 days",
 ];
+const NEAR_ME_RADIUS_KM = 15;
 
 // Static coordinates for each town
 const TOWN_COORDS = {
@@ -159,6 +162,10 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("All");
   const [showOnlyMyEvents, setShowOnlyMyEvents] = useState(false);
+  const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
+  const [nearMeLocation, setNearMeLocation] = useState(null);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
+  const [nearMeMessage, setNearMeMessage] = useState("");
 
   // Data + status state
   const [events, setEvents] = useState([]);
@@ -181,6 +188,32 @@ export default function MapScreen() {
       setLoading(false);
     }
   }, []);
+
+  const handleToggleNearMe = useCallback(async () => {
+    if (nearMeLoading) return;
+
+    if (isNearMeEnabled) {
+      setIsNearMeEnabled(false);
+      setNearMeLocation(null);
+      setNearMeMessage("");
+      return;
+    }
+
+    try {
+      setNearMeLoading(true);
+      setNearMeMessage("");
+      const location = await requestCurrentLocation();
+      setNearMeLocation(location);
+      setIsNearMeEnabled(true);
+      setNearMeMessage(`Showing events within ${NEAR_ME_RADIUS_KM} km of you.`);
+    } catch (error) {
+      setNearMeLocation(null);
+      setIsNearMeEnabled(false);
+      setNearMeMessage(error.message || "Could not get your location.");
+    } finally {
+      setNearMeLoading(false);
+    }
+  }, [isNearMeEnabled, nearMeLoading]);
 
   useFocusEffect(
     useCallback(() => {
@@ -235,6 +268,12 @@ export default function MapScreen() {
 
       const categoryMatch =
         selectedCategory === "All" || event.category === selectedCategory;
+      const nearMeMatch =
+        !isNearMeEnabled ||
+        (() => {
+          const distanceKm = getEventDistanceKm(event, nearMeLocation);
+          return distanceKm !== null && distanceKm <= NEAR_ME_RADIUS_KM;
+        })();
 
       let dateMatch = true;
       const effectiveDate = getNextOccurrenceDateString(event) || event.date;
@@ -257,7 +296,7 @@ export default function MapScreen() {
         }
       }
 
-      return ownershipMatch && townMatch && categoryMatch && dateMatch;
+      return ownershipMatch && townMatch && categoryMatch && dateMatch && nearMeMatch;
     });
   }, [
     events,
@@ -266,6 +305,8 @@ export default function MapScreen() {
     selectedDateFilter,
     showOnlyMyEvents,
     currentUserId,
+    isNearMeEnabled,
+    nearMeLocation,
   ]);
 
   const markersForMap = useMemo(() => {
@@ -321,18 +362,24 @@ export default function MapScreen() {
         : ` (${selectedDateFilter.toLowerCase()})`;
 
     if (count === 0) {
-      return showOnlyMyEvents
+      return isNearMeEnabled
+        ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
+        : showOnlyMyEvents
         ? "No posted events match your current map filters."
         : "No events match your current map filters.";
     }
 
     if (count === 1) {
       return `Showing 1 ${
+        isNearMeEnabled ? "nearby " : ""
+      }${
         showOnlyMyEvents ? "posted event" : "event"
       } in ${townLabel} for ${categoryLabel}${dateLabel}.`;
     }
 
     return `Showing ${count} ${
+      isNearMeEnabled ? "nearby " : ""
+    }${
       showOnlyMyEvents ? "posted events" : "events"
     } in ${townLabel} for ${categoryLabel}${dateLabel}.`;
   }, [
@@ -341,11 +388,36 @@ export default function MapScreen() {
     selectedCategory,
     selectedDateFilter,
     showOnlyMyEvents,
+    isNearMeEnabled,
   ]);
 
   // Keep the camera aligned with the actual filtered markers.
   useEffect(() => {
     if (!mapRef.current || loading || error) return;
+
+    if (isNearMeEnabled && nearMeLocation && markersForMap.length === 0) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: nearMeLocation.latitude,
+          longitude: nearMeLocation.longitude,
+          latitudeDelta: 0.12,
+          longitudeDelta: 0.12,
+        },
+        500
+      );
+      return;
+    }
+
+    if (isNearMeEnabled && nearMeLocation && markersForMap.length > 0) {
+      mapRef.current.fitToCoordinates(
+        [nearMeLocation, ...markersForMap.map((marker) => marker.coordinate)],
+        {
+          edgePadding: { top: 90, right: 60, bottom: 90, left: 60 },
+          animated: true,
+        }
+      );
+      return;
+    }
 
     if (markersForMap.length === 0) {
       const targetRegion =
@@ -383,7 +455,7 @@ export default function MapScreen() {
         animated: true,
       }
     );
-  }, [selectedTown, markersForMap, loading, error]);
+  }, [selectedTown, markersForMap, loading, error, isNearMeEnabled, nearMeLocation]);
 
   // Navigate to EventDetail when a marker is pressed.
   function handleMarkerPress(event) {
@@ -395,80 +467,85 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
-      {/* Filters header and summary (reused logic from Hub in a shared MapFilters component) */}
-      <MapFilters
-        selectedTown={selectedTown}
-        selectedCategory={selectedCategory}
-        selectedDateFilter={selectedDateFilter}
-        filterSummary={filterSummary}
-        error={error}
-        towns={TOWNS}
-        categories={CATEGORIES}
-        dateFilters={DATE_FILTERS}
-        onSelectTown={setSelectedTown}
-        onSelectCategory={setSelectedCategory}
-        onSelectDateFilter={setSelectedDateFilter}
-      />
-      {isBusiness ? (
-        <View style={styles.businessToggleRow}>
-          <Pressable
-            style={[
-              styles.toggleChip,
-              {
-                backgroundColor: !showOnlyMyEvents
-                  ? theme.accentSoft || theme.card
-                  : theme.card,
-                borderColor: !showOnlyMyEvents ? theme.accent : theme.border,
-              },
-            ]}
-            onPress={() => setShowOnlyMyEvents(false)}
-          >
-            <Text
-              style={{
-                color: !showOnlyMyEvents ? theme.accent : theme.text,
-                fontWeight: !showOnlyMyEvents ? "700" : "500",
-              }}
+      <View style={styles.container}>
+        {/* Filters header and summary (reused logic from Hub in a shared MapFilters component) */}
+        <MapFilters
+          selectedTown={selectedTown}
+          selectedCategory={selectedCategory}
+          selectedDateFilter={selectedDateFilter}
+          filterSummary={filterSummary}
+          error={error}
+          towns={TOWNS}
+          categories={CATEGORIES}
+          dateFilters={DATE_FILTERS}
+          onSelectTown={setSelectedTown}
+          onSelectCategory={setSelectedCategory}
+          onSelectDateFilter={setSelectedDateFilter}
+          isNearMeEnabled={isNearMeEnabled}
+          isNearMeLoading={nearMeLoading}
+          nearMeMessage={nearMeMessage}
+          onToggleNearMe={handleToggleNearMe}
+        />
+        {isBusiness ? (
+          <View style={styles.businessToggleRow}>
+            <Pressable
+              style={[
+                styles.toggleChip,
+                {
+                  backgroundColor: !showOnlyMyEvents
+                    ? theme.accentSoft || theme.card
+                    : theme.card,
+                  borderColor: !showOnlyMyEvents ? theme.accent : theme.border,
+                },
+              ]}
+              onPress={() => setShowOnlyMyEvents(false)}
             >
-              All events
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.toggleChip,
-              {
-                backgroundColor: showOnlyMyEvents
-                  ? theme.accentSoft || theme.card
-                  : theme.card,
-                borderColor: showOnlyMyEvents ? theme.accent : theme.border,
-              },
-            ]}
-            onPress={() => setShowOnlyMyEvents(true)}
-          >
-            <Text
-              style={{
-                color: showOnlyMyEvents ? theme.accent : theme.text,
-                fontWeight: showOnlyMyEvents ? "700" : "500",
-              }}
+              <Text
+                style={{
+                  color: !showOnlyMyEvents ? theme.accent : theme.text,
+                  fontWeight: !showOnlyMyEvents ? "700" : "500",
+                }}
+              >
+                All events
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.toggleChip,
+                {
+                  backgroundColor: showOnlyMyEvents
+                    ? theme.accentSoft || theme.card
+                    : theme.card,
+                  borderColor: showOnlyMyEvents ? theme.accent : theme.border,
+                },
+              ]}
+              onPress={() => setShowOnlyMyEvents(true)}
             >
-              My events
-            </Text>
-          </Pressable>
-        </View>
-      ) : null}
+              <Text
+                style={{
+                  color: showOnlyMyEvents ? theme.accent : theme.text,
+                  fontWeight: showOnlyMyEvents ? "700" : "500",
+                }}
+              >
+                My events
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
-      {/* Map area */}
-      <View
-        style={[
-          styles.mapContainer,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-          },
-        ]}
-      >
+        {/* Map area */}
+        <View
+          style={[
+            styles.mapContainer,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
         {loading ? (
           <View style={styles.mapLoading}>
             <ActivityIndicator size="large" color={theme.accent} />
@@ -496,6 +573,7 @@ export default function MapScreen() {
             style={styles.map}
             initialRegion={INITIAL_REGION}
             moveOnMarkerPress={false}
+            showsUserLocation={isNearMeEnabled}
           >
             {markersForMap.map((marker) => {
               const isSelected = marker.id === selectedMarkerId;
@@ -579,30 +657,34 @@ export default function MapScreen() {
             })}
           </MapView>
         )}
-      </View>
+        </View>
 
-      {!loading && eventsForMap.length === 0 && !error && (
-        <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-          No events match this town + date range. Try another filter combo.
-        </Text>
-      )}
+        {!loading && eventsForMap.length === 0 && !error && (
+          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+            No events match this town + date range. Try another filter combo.
+          </Text>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 0,
   },
 
   // ---- Map ----
   businessToggleRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: 6,
+    marginBottom: 14,
   },
   toggleChip: {
     borderWidth: 1,

@@ -17,6 +17,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { updateCommunityPost } from "../../services/communityApi";
+import AppButton from "../../components/common/AppButton";
+import PageHeader from "../../components/common/PageHeader";
 
 export default function EditCommunityPostScreen({ route, navigation }) {
   const { post } = route.params; // post passed in from CommunityScreen
@@ -83,12 +85,10 @@ export default function EditCommunityPostScreen({ route, navigation }) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.heading, { color: theme.text }]}>
-          Edit Community Post
-        </Text>
-        <Text style={[styles.subheading, { color: theme.textMuted }]}>
-          Update the details of your post. Board and town stay the same.
-        </Text>
+        <PageHeader
+          title="Edit Community Post"
+          subtitle="Update the details of your post. Board and town stay the same."
+        />
 
         {/* Readonly context: which board + town this post belongs t */}
         <View style={styles.readonlyRow}>
@@ -188,21 +188,14 @@ export default function EditCommunityPostScreen({ route, navigation }) {
           </Text>
         )}
 
-        <Pressable
+        <AppButton
+          title={submitting ? "Saving..." : "Save Changes"}
           onPress={handleSave}
-          disabled={submitting}
-          style={[
-            styles.submitButton,
-            {
-              backgroundColor: theme.accent,
-            },
-            submitting && { opacity: 0.6 },
-          ]}
-        >
-          <Text style={[styles.submitButtonText, { color: theme.background }]}>
-            {submitting ? "Saving..." : "Save Changes"}
-          </Text>
-        </Pressable>
+          loading={submitting}
+          variant="primary"
+          size="lg"
+          style={styles.submitButton}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -217,17 +210,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 32,
-  },
-
-  heading: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-
-  subheading: {
-    fontSize: 14,
-    marginBottom: 16,
   },
 
   /* ---- READONLY FIELDS ---- */
@@ -277,13 +259,6 @@ const styles = StyleSheet.create({
   /* ---- SUBMIT BUTTON ---- */
   submitButton: {
     marginTop: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
-    alignItems: "center",
-  },
-
-  submitButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+    marginBottom: 4,
   },
 });

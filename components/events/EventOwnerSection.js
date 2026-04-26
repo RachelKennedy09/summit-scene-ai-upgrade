@@ -9,8 +9,9 @@
 //   onDelete()  → confirms + deletes from backend
 
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import AppButton from "../common/AppButton";
 
 export default function EventOwnerSection({ onEdit, onDelete }) {
   const { theme } = useTheme();
@@ -41,45 +42,19 @@ export default function EventOwnerSection({ onEdit, onDelete }) {
 
       {/* Edit + Delete buttons */}
       <View style={styles.ownerButtonsRow}>
-        {/* Edit */}
-        <Pressable
+        <AppButton
+          title="Edit Event"
           onPress={onEdit}
-          style={[
-            styles.ownerButton,
-            {
-              backgroundColor: theme.accent,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.ownerButtonText,
-              { color: theme.textOnAccent || theme.background },
-            ]}
-          >
-            Edit Event
-          </Text>
-        </Pressable>
+          variant="primary"
+          style={styles.ownerButton}
+        />
 
-        {/* Delete */}
-        <Pressable
+        <AppButton
+          title="Delete Event"
           onPress={onDelete}
-          style={[
-            styles.ownerButton,
-            {
-              backgroundColor: theme.danger || "#ff4d4f",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.ownerButtonText,
-              { color: theme.textOnDanger || theme.background },
-            ]}
-          >
-            Delete Event
-          </Text>
-        </Pressable>
+          variant="highlight"
+          style={styles.ownerButton}
+        />
       </View>
     </View>
   );
@@ -111,14 +86,5 @@ const styles = StyleSheet.create({
 
   ownerButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  ownerButtonText: {
-    fontWeight: "700",
-    fontSize: 14,
   },
 });

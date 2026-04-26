@@ -17,6 +17,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import AppLogoHeader from "../../components/AppLogoHeader";
+import AppButton from "../../components/common/AppButton";
+import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import {
   deleteEvent,
@@ -213,36 +215,23 @@ export default function MyEventsScreen({ navigation, route }) {
 
         {/* Action buttons: Edit and Delete */}
         <View style={styles.cardActions}>
-          <Pressable
-            style={[styles.actionButton, { backgroundColor: theme.accent }]}
+          <AppButton
+            title="Edit"
             onPress={() => handleEdit(item)}
-          >
-            <Text
-              style={[
-                styles.actionButtonText,
-                { color: theme.onAccent || theme.background },
-              ]}
-            >
-              Edit
-            </Text>
-          </Pressable>
+            variant="primary"
+            size="sm"
+            fullWidth={false}
+            style={styles.actionButton}
+          />
 
-          <Pressable
-            style={[
-              styles.actionButton,
-              { backgroundColor: theme.danger || "#ff4d4f" },
-            ]}
+          <AppButton
+            title="Delete"
             onPress={() => handleDelete(item)}
-          >
-            <Text
-              style={[
-                styles.actionButtonText,
-                { color: theme.onDanger || theme.background },
-              ]}
-            >
-              Delete
-            </Text>
-          </Pressable>
+            variant="highlight"
+            size="sm"
+            fullWidth={false}
+            style={styles.actionButton}
+          />
         </View>
       </View>
     );
@@ -282,14 +271,13 @@ export default function MyEventsScreen({ navigation, route }) {
             {error}
           </Text>
           {isBusiness && (
-            <Pressable
-              style={[styles.retryButton, { borderColor: theme.accent }]}
+            <AppButton
+              title="Try again"
               onPress={fetchMyEvents}
-            >
-              <Text style={[styles.retryText, { color: theme.accent }]}>
-                Try again
-              </Text>
-            </Pressable>
+              variant="outline"
+              fullWidth={false}
+              style={styles.retryButton}
+            />
           )}
         </View>
       </SafeAreaView>
@@ -310,19 +298,20 @@ export default function MyEventsScreen({ navigation, route }) {
             Events you create with your business account will show up here.
           </Text>
           {isBusiness && (
-            <Pressable
-              style={[styles.primaryButton, { backgroundColor: theme.success }]}
+            <AppButton
+              title="Create your first event"
               onPress={() => navigation.navigate("Post")}
-            >
-              <Text
-                style={[
-                  styles.primaryButtonText,
-                  { color: theme.onSuccess || theme.background },
-                ]}
-              >
-                Create your first event
-              </Text>
-            </Pressable>
+              variant="primary"
+              size="lg"
+              style={[
+                styles.primaryButton,
+                {
+                  backgroundColor: theme.accent,
+                  borderColor: theme.accent,
+                },
+              ]}
+              textStyle={{ color: theme.onAccent || theme.textOnAccent }}
+            />
           )}
         </View>
       </SafeAreaView>
@@ -390,12 +379,10 @@ export default function MyEventsScreen({ navigation, route }) {
           style={styles.list}
           ListHeaderComponent={
             <>
-              <Text style={[styles.screenTitle, { color: theme.text }]}>
-                {user?.name ? `${user.name}'s Events` : "Events by Business"}
-              </Text>
-              <Text style={[styles.screenSubtitle, { color: theme.textMuted }]}>
-                Manage your upcoming and past event listings
-              </Text>
+              <PageHeader
+                title={user?.name ? `${user.name}'s Events` : "Events by Business"}
+                subtitle="Manage your upcoming and past event listings"
+              />
 
               {successMessage ? (
                 <View
@@ -415,70 +402,64 @@ export default function MyEventsScreen({ navigation, route }) {
                   </Text>
                   <View style={styles.successActions}>
                     {highlightedEvent ? (
-                      <Pressable
-                        style={[styles.inlineAction, { borderColor: theme.accent }]}
+                      <AppButton
+                        title="View event"
                         onPress={() =>
                           navigation.navigate("EventDetail", {
                             event: highlightedEvent,
                             eventId: highlightedEvent._id,
                           })
                         }
-                      >
-                        <Text
-                          style={[styles.inlineActionText, { color: theme.accent }]}
-                        >
-                          View event
-                        </Text>
-                      </Pressable>
+                        variant="outline"
+                        size="sm"
+                        fullWidth={false}
+                        style={styles.inlineAction}
+                      />
                     ) : null}
-                    <Pressable
-                      style={[styles.inlineAction, { borderColor: theme.accent }]}
+                    <AppButton
+                      title="Post another"
                       onPress={() => navigation.navigate("Post")}
-                    >
-                      <Text
-                        style={[styles.inlineActionText, { color: theme.accent }]}
-                      >
-                        Post another
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.inlineAction, { borderColor: theme.accent }]}
+                      variant="outline"
+                      size="sm"
+                      fullWidth={false}
+                      style={styles.inlineAction}
+                    />
+                    <AppButton
+                      title="Go to Hub"
                       onPress={() => navigation.navigate("Hub")}
-                    >
-                      <Text
-                        style={[styles.inlineActionText, { color: theme.accent }]}
-                      >
-                        Go to Hub
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.inlineAction, { borderColor: theme.border }]}
+                      variant="outline"
+                      size="sm"
+                      fullWidth={false}
+                      style={styles.inlineAction}
+                    />
+                    <AppButton
+                      title="Dismiss"
                       onPress={clearSuccessState}
-                    >
-                      <Text
-                        style={[styles.inlineActionText, { color: theme.textMuted }]}
-                      >
-                        Dismiss
-                      </Text>
-                    </Pressable>
+                      variant="outline"
+                      size="sm"
+                      fullWidth={false}
+                      style={styles.inlineAction}
+                      textStyle={{ color: theme.textMuted }}
+                    />
                   </View>
                 </View>
               ) : null}
 
               {isBusiness && (
-                <Pressable
-                  style={[styles.primaryButton, { backgroundColor: theme.success }]}
+                <AppButton
+                  title="Post a new event"
                   onPress={() => navigation.navigate("Post")}
-                >
-                  <Text
-                    style={[
-                      styles.primaryButtonText,
-                      { color: theme.onSuccess || theme.background },
-                    ]}
-                  >
-                    Post a new event
-                  </Text>
-                </Pressable>
+                  variant="primary"
+                  size="lg"
+                  style={[
+                    styles.primaryButton,
+                    {
+                      backgroundColor: theme.accent,
+                      borderColor: theme.accent,
+                    },
+                  ]}
+                  textStyle={{ color: theme.onAccent || theme.textOnAccent }}
+                />
               )}
             </>
           }
@@ -543,22 +524,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  screenTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  screenSubtitle: {
-    fontSize: 13,
-    marginBottom: 2,
+    paddingTop: 0,
   },
   successBanner: {
     borderWidth: 1,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   successTitle: {
     fontSize: 16,
@@ -566,8 +538,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   successText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 10,
   },
   successActions: {
@@ -586,10 +558,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sectionHeading: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 14,
+    marginBottom: 10,
   },
   inlineEmptyCard: {
     borderWidth: 1,
@@ -598,13 +570,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   inlineEmptyTitle: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     marginBottom: 4,
   },
   inlineEmptySubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   listContent: {
     paddingBottom: 8,
@@ -620,8 +592,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   title: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
     marginBottom: 4,
   },
   meta: {
@@ -650,13 +622,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  retryText: {
-    fontWeight: "600",
+    minWidth: 132,
   },
   emptyTitle: {
     fontSize: 18,
@@ -670,14 +636,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   primaryButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
     borderRadius: 10,
-    marginTop: 0,
-    marginBottom: 2,
-  },
-  primaryButtonText: {
-    fontWeight: "700",
+    marginTop: 4,
+    marginBottom: 10,
   },
   cardActions: {
     flexDirection: "row",
@@ -686,12 +647,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
+    minWidth: 92,
   },
 });
