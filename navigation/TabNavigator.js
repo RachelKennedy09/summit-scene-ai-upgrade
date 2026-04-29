@@ -22,9 +22,11 @@ export default function TabNavigator() {
   const { user } = useAuth();
   const { theme } = useTheme();
 
-  // If no user or missing role -> treat as non-business
-  const isBusiness = user?.role === "business";
-  const isLocal = user?.role === "local";
+  // Official event tools are only available after business review.
+  const isVerifiedBusiness =
+    user?.role === "business" &&
+    user?.businessVerificationStatus === "verified";
+  const canUseCommunity = !isVerifiedBusiness;
 
   return (
     <Tab.Navigator
@@ -69,7 +71,7 @@ export default function TabNavigator() {
 
       <Tab.Screen name="Map" component={MapScreen} options={{ title: "Map" }} />
 
-      {isBusiness && (
+      {isVerifiedBusiness && (
         <Tab.Screen
           name="MyEvents"
           component={MyEventsScreen}
@@ -77,8 +79,8 @@ export default function TabNavigator() {
         />
       )}
 
-      {/* Only business users see Post Event */}
-      {isBusiness && (
+      {/* Only verified business users see Post Event */}
+      {isVerifiedBusiness && (
         <Tab.Screen
           name="Post"
           component={PostEventScreen}
@@ -86,8 +88,8 @@ export default function TabNavigator() {
         />
       )}
 
-      {/* Only locals/visitors see Community tab */}
-      {isLocal && (
+      {/* Community is available until an account becomes a verified event host. */}
+      {canUseCommunity && (
         <Tab.Screen
           name="Community"
           component={CommunityScreen}

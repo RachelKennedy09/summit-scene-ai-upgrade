@@ -31,7 +31,9 @@ import { getListScheduleLabel, isEventUpcoming } from "../../utils/eventSchedule
 export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
-  const isBusiness = user?.role === "business";
+  const isBusiness =
+    user?.role === "business" &&
+    user?.businessVerificationStatus === "verified";
   const successMessage = route?.params?.successMessage || "";
   const postedEventId = route?.params?.postedEventId || "";
   const updatedEventId = route?.params?.updatedEventId || "";
@@ -61,7 +63,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
       if (!isBusiness) {
         throw new Error(
-          "Only business accounts have 'My Events'. Switch to a business account to see your events."
+          "My Events is for official hosted events from business or organizer profiles."
         );
       }
 
@@ -295,7 +297,8 @@ export default function MyEventsScreen({ navigation, route }) {
             No events yet
           </Text>
           <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
-            Events you create with your business account will show up here.
+            Official events you create with your business profile will show up
+            here.
           </Text>
           {isBusiness && (
             <AppButton

@@ -1,6 +1,5 @@
 // server/routes/users.js
-// User-related routes (upgrade account & profile updates)
-//  - Upgrade a regular user account to a "business" account
+// User-related routes (profile updates, safety tools, and admin review)
 //  - Allow logged-in users to update their own profile fields
 //
 // All routes in this file:
@@ -9,24 +8,22 @@
 
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
+import isAdmin from "../middleware/isAdmin.js";
 import User from "../models/User.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 
 const router = express.Router();
 
-/* -------------------------------------------
-   PATCH /api/users/upgrade-to-business
-   AUTH: required (must be logged in)
-   - Upgrade the current user's role from "local" to "business".
+const BUSINESS_REVIEW_FIELDS =
+  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio lookingFor instagram website socialAccounts createdAt";
 
-   1) Read userId from JWT (authMiddleware attaches req.user)
-   2) Find user in MongoDB
-   3) If user not found -> 404
-   4) If already business -> 400
-   5) Set role = "business", save
-   6) Return updated user (no passwordHash)
+/* -------------------------------------------
+   PATCH /api/users/revert-to-local
+   AUTH: required
+   - Temporary self-serve testing path for switching a business profile back to
+     a community/local profile.
 ------------------------------------------- */
-router.patch("/upgrade-to-business", authMiddleware, async (req, res) => {
+router.patch("/revert-to-local", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
@@ -35,22 +32,197 @@ router.patch("/upgrade-to-business", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    if (user.role === "business") {
-      return res
-        .status(400)
-        .json({ message: "Account is already a business account." });
-    }
-
-    user.role = "business";
+    user.role = "local";
+    user.businessVerificationStatus = "none";
+    user.businessVerificationRequestedAt = undefined;
+    user.businessVerifiedAt = undefined;
     await user.save();
 
     return res.json({
-      message: "Account upgraded to business.",
+      message: "Account switched back to community profile.",
       user: buildSafeUser(user),
     });
   } catch (error) {
-    console.error("Error upgrading to business:", error);
-    res.status(500).json({ message: "Server error while upgrading account." });
+    console.error("Error reverting to local profile:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while switching back to community profile." });
+  }
+});
+
+router.get("/admin/business-requests", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const status = ["pending", "verified", "rejected"].includes(req.query?.status)
+      ? req.query.status
+      : "pending";
+
+    const users = await User.find({
+      role: "business",
+      businessVerificationStatus: status,
+    })
+      .select(BUSINESS_REVIEW_FIELDS)
+      .sort({ businessVerificationRequestedAt: -1, createdAt: -1 })
+      .limit(100);
+
+    return res.json(users.map(buildSafeUser));
+  } catch (error) {
+    console.error("Error loading business requests:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while loading business requests." });
+  }
+});
+
+router.patch(
+  "/admin/business-requests/:id",
+  authMiddleware,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const status = req.body?.status;
+      if (!["verified", "rejected", "pending"].includes(status)) {
+        return res
+          .status(400)
+          .json({ message: "Invalid business verification status." });
+      }
+
+      const user = await User.findById(req.params.id);
+      if (!user || user.role !== "business") {
+        return res.status(404).json({ message: "Business profile not found." });
+      }
+
+      user.businessVerificationStatus = status;
+      user.businessVerifiedAt = status === "verified" ? new Date() : undefined;
+      if (!user.businessVerificationRequestedAt) {
+        user.businessVerificationRequestedAt = new Date();
+      }
+
+      await user.save();
+
+      return res.json({
+        message:
+          status === "verified"
+            ? "Business profile verified."
+            : status === "rejected"
+              ? "Business profile rejected."
+              : "Business profile moved back to pending review.",
+        user: buildSafeUser(user),
+      });
+    } catch (error) {
+      console.error("Error updating business request:", error);
+      return res.status(500).json({
+        message: "Server error while updating business request.",
+      });
+    }
+  }
+);
+
+router.patch("/me/safety-tips-seen", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.hasSeenSafetyTips = true;
+    await user.save();
+
+    return res.json({
+      message: "Safety tips marked as seen.",
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error marking safety tips seen:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while saving safety tips state." });
+  }
+});
+
+/* -------------------------------------------
+   POST /api/users/:id/block
+   AUTH: required
+   - Block another user. Their posts/replies are hidden from the blocker.
+------------------------------------------- */
+router.post("/:id/block", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const targetUserId = req.params.id;
+
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: "You cannot block yourself." });
+    }
+
+    const [user, targetUser] = await Promise.all([
+      User.findById(userId),
+      User.findById(targetUserId).select("_id"),
+    ]);
+
+    if (!user || !targetUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const alreadyBlocked = (user.blockedUsers || []).some(
+      (id) => id.toString() === targetUserId
+    );
+
+    if (!alreadyBlocked) {
+      user.blockedUsers.push(targetUserId);
+      await user.save();
+    }
+
+    return res.json({
+      message: "User blocked.",
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    return res.status(500).json({ message: "Server error while blocking user." });
+  }
+});
+
+router.delete("/:id/block", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const targetUserId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.blockedUsers = (user.blockedUsers || []).filter(
+      (id) => id.toString() !== targetUserId
+    );
+    await user.save();
+
+    return res.json({
+      message: "User unblocked.",
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error unblocking user:", error);
+    return res.status(500).json({ message: "Server error while unblocking user." });
+  }
+});
+
+router.get("/me/blocked-users", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).populate(
+      "blockedUsers",
+      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    return res.json({ blockedUsers: user.blockedUsers || [] });
+  } catch (error) {
+    console.error("Error loading blocked users:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while loading blocked users." });
   }
 });
 
@@ -100,3 +272,4 @@ router.patch("/me", authMiddleware, async (req, res) => {
 });
 
 export default router;
+

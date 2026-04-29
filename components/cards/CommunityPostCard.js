@@ -20,12 +20,16 @@ function getPostAuthor(post) {
   const name = userObj?.name || post.name || "SummitScene member";
   const email = userObj?.email || "";
   const role = userObj?.role || "local"; // e.g. "local" or "business"
+  const businessVerificationStatus =
+    userObj?.businessVerificationStatus || "none";
 
   // avatarKey maps into our premade avatar set
   const avatarKey = userObj?.avatarKey || post.avatarKey || null;
+  const profileImageUrl = userObj?.profileImageUrl || post.profileImageUrl || "";
 
   const town = userObj?.town || post.town || "";
   const userType = userObj?.userType || "";
+  const originallyFrom = userObj?.originallyFrom || "";
   const interests = userObj?.interests || [];
   const languages = userObj?.languages || [];
   const skillLevel = userObj?.skillLevel || {};
@@ -36,12 +40,17 @@ function getPostAuthor(post) {
   const website = userObj?.website || "";
 
   return {
+    _id: userObj?._id || userObj?.id || post.user || "",
+    id: userObj?._id || userObj?.id || post.user || "",
     name,
     email,
     role,
+    businessVerificationStatus,
     avatarKey,
+    profileImageUrl,
     town,
     userType,
+    originallyFrom,
     interests,
     languages,
     skillLevel,
@@ -53,9 +62,10 @@ function getPostAuthor(post) {
   };
 }
 
-function getAvatarSource(avatarKey) {
-  if (!avatarKey) return null;
-  return AVATARS[avatarKey] || null;
+function getAvatarSource(avatarKey, profileImageUrl) {
+  if (avatarKey && AVATARS[avatarKey]) return AVATARS[avatarKey];
+  if (profileImageUrl) return { uri: profileImageUrl };
+  return null;
 }
 
 // ----- Main Card Component -----
@@ -74,14 +84,18 @@ export default function CommunityPostCard({
   onEdit,
   onToggleLike,
   onOpenProfile,
+  onReport,
 }) {
   const {
     name,
     email,
     role,
+    businessVerificationStatus,
     avatarKey,
+    profileImageUrl,
     town,
     userType,
+    originallyFrom,
     interests,
     languages,
     skillLevel,
@@ -95,7 +109,7 @@ export default function CommunityPostCard({
   const createdDate = post.createdAt ? new Date(post.createdAt) : null;
 
   // Map avatarKey -> local image asset
-  const avatarSource = getAvatarSource(avatarKey);
+  const avatarSource = getAvatarSource(avatarKey, profileImageUrl);
 
   // Likes
   const likesArray = Array.isArray(post.likes) ? post.likes : [];
@@ -126,6 +140,8 @@ export default function CommunityPostCard({
 
   // ----- Role pill-----
   const isBusiness = role === "business";
+  const isVerifiedBusiness =
+    isBusiness && businessVerificationStatus === "verified";
 
   const roleBgColor =
     theme.rolePillBg || (theme.accentSoft ? theme.accentSoft : colors.tealTint);
@@ -204,7 +220,11 @@ export default function CommunityPostCard({
               },
             ]}
           >
-            {isBusiness ? "Business host" : "Local member"}
+            {isVerifiedBusiness
+              ? "Verified business"
+              : isBusiness
+                ? "Business pending"
+                : "Local member"}
           </Text>
 
           {post.targetDate ? (
@@ -285,14 +305,18 @@ export default function CommunityPostCard({
             onOpenProfile &&
             onOpenProfile({
               name,
+              _id: post.user?._id || post.user?.id || post.user || "",
+              id: post.user?._id || post.user?.id || post.user || "",
               role,
               town,
               userType,
+              originallyFrom,
               interests,
               languages,
               skillLevel,
               socialAccounts,
               avatarKey,
+              profileImageUrl,
               lookingFor,
               instagram,
               bio,
@@ -302,6 +326,19 @@ export default function CommunityPostCard({
         >
           <Text style={[styles.profileButtonText, { color: theme.accent }]}>
             View profile
+          </Text>
+        </Pressable>
+        <Pressable
+          style={styles.reportButton}
+          onPress={() =>
+            onReport?.({
+              targetType: "communityPost",
+              targetId: post._id || post.id,
+            })
+          }
+        >
+          <Text style={[styles.reportButtonText, { color: theme.textMuted }]}>
+            Report
           </Text>
         </Pressable>
       </View>
@@ -320,6 +357,14 @@ export default function CommunityPostCard({
         onChangeReplyText={onChangeReplyText}
         onSubmitReply={onSubmitReply}
         onOpenProfile={onOpenProfile}
+        onReport={(reply) =>
+          onReport?.({
+            targetType: "communityReply",
+            targetId: reply._id || reply.id,
+            parentType: "communityPost",
+            parentId: post._id || post.id,
+          })
+        }
       />
     </View>
   );
@@ -447,7 +492,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
     flexDirection: "row",
-    justifyContent: "flex-start",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
   profileButton: {
     paddingHorizontal: 10,
@@ -460,6 +507,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.accent,
     fontWeight: "600",
+  },
+  reportButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  reportButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   replyDivider: {
     height: 1,

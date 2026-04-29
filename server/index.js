@@ -15,6 +15,8 @@ import authRouter from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import communityRoutes from "./routes/community.js";
 import buddyPostRoutes from "./routes/buddyPosts.js";
+import eventPreferenceRoutes from "./routes/eventPreferences.js";
+import reportRoutes from "./routes/reports.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import placesRoutes from "./routes/placesRoutes.js";
 
@@ -64,6 +66,12 @@ app.use("/api/community", communityRoutes);
 
 // Buddy post routes: find people for events, hiking, skiing/snowboarding, etc.
 app.use("/api/buddy-posts", buddyPostRoutes);
+
+// Event preferences: saved events, reminder settings, in-app reminders
+app.use("/api/event-preferences", eventPreferenceRoutes);
+
+// Report routes: safety reports for posts, replies, events, and users
+app.use("/api/reports", reportRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);

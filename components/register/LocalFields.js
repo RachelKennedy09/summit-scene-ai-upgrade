@@ -11,6 +11,13 @@ const USER_TYPE_OPTIONS = [
   { value: "visitor", label: "Visitor" },
 ];
 const INTEREST_OPTIONS = [
+  "Find local events",
+  "Discover things to do",
+  "Meet people through activities",
+  "Join group plans",
+  "Share local updates",
+  "Support local businesses",
+  "Just exploring",
   "Hiking",
   "Skiing",
   "Snowboarding",
@@ -22,6 +29,7 @@ const INTEREST_OPTIONS = [
   "Nightlife",
   "Coffee",
   "Book club",
+  "Disc golf",
   "Art",
   "Walking",
   "Bingo",
@@ -86,17 +94,21 @@ function LocalFields({
   town,
   userType,
   languagesText,
+  originallyFrom,
   interests,
   hikingSkill,
   skiingSkill,
+  discGolfSkill,
   socialValues,
   bio,
   onChangeTown,
   onChangeUserType,
   onChangeLanguagesText,
+  onChangeOriginallyFrom,
   onToggleInterest,
   onChangeHikingSkill,
   onChangeSkiingSkill,
+  onChangeDiscGolfSkill,
   onChangeSocial,
   onChangeBio,
   theme,
@@ -104,12 +116,12 @@ function LocalFields({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionLabel, { color: theme.text }]}>
-        Tell visitors and locals a bit about you
+        Help Summit Scene personalize events, plans, and groups around you.
       </Text>
 
       {/* TOWN / PLACE OF RESIDENCE */}
       <Text style={[styles.label, { color: theme.text }]}>
-        Town
+        Where are you based?
       </Text>
       <ChipGroup
         options={TOWN_OPTIONS}
@@ -118,7 +130,9 @@ function LocalFields({
         theme={theme}
       />
 
-      <Text style={[styles.label, { color: theme.text }]}>I am a</Text>
+      <Text style={[styles.label, { color: theme.text }]}>
+        How should people know you?
+      </Text>
       <ChipGroup
         options={USER_TYPE_OPTIONS}
         value={userType}
@@ -127,7 +141,25 @@ function LocalFields({
       />
 
       <Text style={[styles.label, { color: theme.text }]}>
-        Languages spoken
+        Originally from (optional)
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
+        placeholder="Toronto, Australia, Japan..."
+        placeholderTextColor={theme.textMuted}
+        value={originallyFrom}
+        onChangeText={onChangeOriginallyFrom}
+      />
+
+      <Text style={[styles.label, { color: theme.text }]}>
+        Languages spoken (optional)
       </Text>
       <TextInput
         style={[
@@ -144,13 +176,22 @@ function LocalFields({
         onChangeText={onChangeLanguagesText}
       />
 
-      <Text style={[styles.label, { color: theme.text }]}>Interests</Text>
+      <Text style={[styles.label, { color: theme.text }]}>
+        What would you like to see here? (optional)
+      </Text>
       <ChipGroup
         options={INTEREST_OPTIONS}
         values={interests}
         onToggle={onToggleInterest}
         theme={theme}
       />
+
+      <Text style={[styles.label, { color: theme.text }]}>
+        Optional activity levels
+      </Text>
+      <Text style={[styles.helperText, { color: theme.textMuted }]}>
+        Skip anything that does not apply.
+      </Text>
 
       <Text style={[styles.label, { color: theme.text }]}>Hiking level</Text>
       <ChipGroup
@@ -170,8 +211,20 @@ function LocalFields({
         theme={theme}
       />
 
+      <Text style={[styles.label, { color: theme.text }]}>
+        Disc golf level
+      </Text>
+      <ChipGroup
+        options={SKILL_OPTIONS}
+        value={discGolfSkill}
+        onChange={onChangeDiscGolfSkill}
+        theme={theme}
+      />
+
       {/* SHORT BIO */}
-      <Text style={[styles.label, { color: theme.text }]}>Short bio</Text>
+      <Text style={[styles.label, { color: theme.text }]}>
+        Short bio (optional)
+      </Text>
       <TextInput
         style={[
           styles.input,
@@ -182,7 +235,7 @@ function LocalFields({
             color: theme.text,
           },
         ]}
-        placeholder="Tell people who you are and what you love..."
+        placeholder="A little about you, your season, or what you like doing around town..."
         placeholderTextColor={theme.textMuted}
         multiline
         numberOfLines={3}
@@ -200,7 +253,7 @@ function LocalFields({
       </Text>
       <Text style={[styles.helperText, { color: theme.textMuted }]}>
         Add links people can use to recognize you. These show as unverified
-        until connected through the social platform.
+        until connected through the social platform. Optional at signup.
       </Text>
 
       {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (

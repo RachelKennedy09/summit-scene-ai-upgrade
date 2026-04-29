@@ -31,7 +31,7 @@ import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
 const SOCIAL_PROVIDERS = ["instagram", "tiktok", "facebook", "linkedin", "website"];
 
-function buildSocialAccounts(values) {
+function buildSocialAccounts(values, profileImageUrl = "") {
   return SOCIAL_PROVIDERS.map((provider) => {
     const value = values[provider]?.trim();
     if (!value) return null;
@@ -41,6 +41,10 @@ function buildSocialAccounts(values) {
       provider,
       handle: isHandle ? value : undefined,
       url: isHandle ? undefined : value,
+      profileImageUrl:
+        profileImageUrl && ["facebook", "instagram"].includes(provider)
+          ? profileImageUrl
+          : undefined,
       verified: false,
     };
   }).filter(Boolean);
@@ -65,10 +69,12 @@ function RegisterScreen() {
   // profile / business fields
   const [town, setTown] = useState("");
   const [userType, setUserType] = useState("local");
+  const [originallyFrom, setOriginallyFrom] = useState("");
   const [languagesText, setLanguagesText] = useState("");
   const [interests, setInterests] = useState([]);
   const [hikingSkill, setHikingSkill] = useState("");
   const [skiingSkill, setSkiingSkill] = useState("");
+  const [discGolfSkill, setDiscGolfSkill] = useState("");
   const [socialValues, setSocialValues] = useState({
     instagram: "",
     tiktok: "",
@@ -80,6 +86,7 @@ function RegisterScreen() {
   const [lookingFor, setLookingFor] = useState("");
   const [instagram, setInstagram] = useState("");
   const [website, setWebsite] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
 
   async function handleRegister() {
     if (!name || !email || !password) {
@@ -88,6 +95,17 @@ function RegisterScreen() {
         "Please enter your name, email, and password."
       );
       return;
+    }
+
+    if (role === "business") {
+      const hasProofLink = Boolean(website.trim() || instagram.trim());
+      if (!town.trim() || !lookingFor.trim() || !hasProofLink) {
+        Alert.alert(
+          "Business verification info needed",
+          "Please add your business town, business type, and either a website or Instagram so Summit Scene can review the profile."
+        );
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -108,20 +126,25 @@ function RegisterScreen() {
         role,
         town,
         userType: isLocal ? userType : undefined,
+        originallyFrom: isLocal ? originallyFrom : undefined,
         languages: isLocal ? languages : undefined,
         interests: isLocal ? interests : undefined,
         skillLevel: isLocal
           ? {
               ...(hikingSkill ? { hiking: hikingSkill } : {}),
               ...(skiingSkill ? { skiing: skiingSkill } : {}),
+              ...(discGolfSkill ? { discGolf: discGolfSkill } : {}),
             }
           : undefined,
-        socialAccounts: isLocal ? buildSocialAccounts(socialValues) : undefined,
+        socialAccounts: isLocal
+          ? buildSocialAccounts(socialValues, profileImageUrl)
+          : undefined,
         bio,
         lookingFor: isBusiness ? lookingFor : undefined,
         instagram: isBusiness ? instagram : socialValues.instagram,
         website,
         avatarKey,
+        profileImageUrl,
       });
       // After successful registration, the AuthContext logs the user in
       // and the RootNavigator switches screens based on auth state.
@@ -176,8 +199,8 @@ function RegisterScreen() {
                 Create your Summit Scene account{" "}
               </Text>
               <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-                Sign up to post, save, and/or explore local events in your
-                mountain town.
+                Sign up to explore events, local plans, groups, and useful
+                mountain-town updates.
               </Text>
 
               {/* Name */}
@@ -247,7 +270,7 @@ function RegisterScreen() {
                   Local accounts see community boards + Hub.
                   Business accounts unlock Post/My Events host tools. */}
               <Text style={[styles.sectionLabel, { color: theme.text }]}>
-                What type of account is this?
+                How will you use Summit Scene?
               </Text>
 
               <View style={styles.roleColumn}>
@@ -267,13 +290,12 @@ function RegisterScreen() {
                   onPress={() => setRole("local")}
                 >
                   <Text style={[styles.roleTitle, { color: theme.text }]}>
-                    I'm here to find things to do!
+                    Explore as a community member
                   </Text>
                   <Text
                     style={[styles.roleSubtitle, { color: theme.textMuted }]}
                   >
-                    Discover what's happening in Banff, Canmore, and Lake
-                    Louise.
+                    Browse events, local plans, groups, updates, and profiles.
                   </Text>
                 </Pressable>
 
@@ -298,8 +320,10 @@ function RegisterScreen() {
                   <Text
                     style={[styles.roleSubtitle, { color: theme.textMuted }]}
                   >
-                    Post and manage events for your venue, shop, or
-                    organization.
+                    Request a verified profile for official events from your
+                    venue, shop, or organization. Use official links, or email
+                    / DM Summit Scene from the business account if proof is
+                    unclear.
                   </Text>
                 </Pressable>
               </View>
@@ -309,18 +333,22 @@ function RegisterScreen() {
                 <LocalFields
                   town={town}
                   userType={userType}
+                  originallyFrom={originallyFrom}
                   languagesText={languagesText}
                   interests={interests}
                   hikingSkill={hikingSkill}
                   skiingSkill={skiingSkill}
+                  discGolfSkill={discGolfSkill}
                   socialValues={socialValues}
                   bio={bio}
                   onChangeTown={setTown}
                   onChangeUserType={setUserType}
+                  onChangeOriginallyFrom={setOriginallyFrom}
                   onChangeLanguagesText={setLanguagesText}
                   onToggleInterest={handleToggleInterest}
                   onChangeHikingSkill={setHikingSkill}
                   onChangeSkiingSkill={setSkiingSkill}
+                  onChangeDiscGolfSkill={setDiscGolfSkill}
                   onChangeSocial={handleSocialChange}
                   onChangeBio={setBio}
                   theme={theme}
@@ -341,6 +369,50 @@ function RegisterScreen() {
                   theme={theme}
                 />
               )}
+
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  { marginTop: 16, color: theme.text },
+                ]}
+              >
+                Profile photo from social media
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Optional for launch: paste a public Facebook or Instagram
+                profile photo URL if you want your real photo to appear on your
+                Summit Scene profile.
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={profileImageUrl}
+                onChangeText={setProfileImageUrl}
+                placeholder="https://..."
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="none"
+              />
+              {profileImageUrl ? (
+                <Pressable
+                  style={[styles.useSocialPhotoButton, { borderColor: theme.accent }]}
+                  onPress={() => setAvatarKey(null)}
+                >
+                  <Text
+                    style={[
+                      styles.useSocialPhotoText,
+                      { color: theme.accent },
+                    ]}
+                  >
+                    Use this social photo instead of an avatar
+                  </Text>
+                </Pressable>
+              ) : null}
 
               {/* Avatar picker */}
               <Text
@@ -448,6 +520,24 @@ const styles = StyleSheet.create({
   },
   roleSubtitle: {
     fontSize: 12,
+  },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  useSocialPhotoButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  useSocialPhotoText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   linkText: {
     marginTop: 16,

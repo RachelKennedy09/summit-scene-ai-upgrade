@@ -59,7 +59,7 @@ export default function CommunityPostScreen({ navigation }) {
       return "Where you're leaving from, time, number of seats, gear space, and cost split if any.";
     }
     if (type === "eventbuddy") {
-      return "Which event, date, meetup spot, vibe you're looking for (chill night, dancing, etc.).";
+      return "Which event, date, meetup spot, and general vibe for the plan.";
     }
     return "Add helpful info (conditions, times, meetup spot, etc.)";
   }, [type]);

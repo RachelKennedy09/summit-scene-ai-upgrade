@@ -1,32 +1,43 @@
 // server/middleware/isBusiness.js
 // Authorization middleware for SummitScene
-//  - Ensures the logged-in user has role "business"
-//  - Protects routes like:
-//       • POST /api/events
-//       • PUT /api/events/:id
-//       • DELETE /api/events/:id
-//
-// REQUIREMENTS:
-//  - Must run *after* authMiddleware
-//  - Expects req.user to contain { userId, role, name, email }
+//  - Ensures the logged-in user has a verified business profile
+//  - Protects official event routes like POST/PUT/DELETE /api/events
 
-export default function isBusiness(req, res, next) {
-  const user = req.user; // populated by authMiddleware
+import User from "../models/User.js";
 
-  // If authentication unexpectedly failed earlier
+export default async function isBusiness(req, res, next) {
+  const user = req.user;
+
   if (!user) {
     return res
       .status(401)
       .json({ message: "Not authenticated. Please log in." });
   }
 
-  // Authorization check
-  if (user.role !== "business") {
-    return res.status(403).json({
-      message: "Business account required to perform this action.",
+  try {
+    const fullUser = await User.findById(user.userId).select(
+      "role businessVerificationStatus"
+    );
+
+    if (!fullUser) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
+    if (
+      fullUser.role !== "business" ||
+      fullUser.businessVerificationStatus !== "verified"
+    ) {
+      return res.status(403).json({
+        message:
+          "A verified business or organizer profile is required for official event posting.",
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error("Business verification check failed:", error);
+    return res.status(500).json({
+      message: "Server error while checking business verification.",
     });
   }
-
-  // Success → User is a business account
-  return next();
 }

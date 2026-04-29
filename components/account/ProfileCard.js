@@ -75,27 +75,45 @@ export default function ProfileCard({
   theme,
   user,
   isBusiness,
+  roleLabel,
+  email,
+  joinedText,
   onEditProfile,
 }) {
   const avatarSource =
     user?.avatarKey && AVATARS[user.avatarKey]
       ? AVATARS[user.avatarKey]
-      : user?.avatarUrl
-      ? { uri: user.avatarUrl }
+      : user?.profileImageUrl || user?.avatarUrl
+      ? { uri: user.profileImageUrl || user.avatarUrl }
       : null;
 
   const displayName = user?.name || "SummitScene member";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
   const town = user?.town || "";
   const userType = user?.userType ? titleCase(user.userType) : "";
+  const originallyFrom = user?.originallyFrom || "";
   const interests = Array.isArray(user?.interests) ? user.interests : [];
   const languages = Array.isArray(user?.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user?.socialAccounts)
     ? user.socialAccounts
     : [];
   const skillLevel = user?.skillLevel || {};
-  const hasSkills = Boolean(skillLevel.hiking || skillLevel.skiing);
+  const hasSkills = Boolean(
+    skillLevel.hiking || skillLevel.skiing || skillLevel.discGolf
+  );
   const businessType = isBusiness ? user?.lookingFor : "";
+  const businessStatus = user?.businessVerificationStatus || "none";
+  const profileTypeLabel = roleLabel || (isBusiness
+    ? businessStatus === "verified"
+      ? "Verified business host"
+      : businessStatus === "pending"
+        ? "Business review pending"
+        : "Business profile"
+    : "Community member");
+  const accountDetails = [
+    email ? `Email: ${email}` : "",
+    joinedText ? `Member since: ${joinedText}` : "",
+  ].filter(Boolean);
 
   return (
     <View
@@ -128,14 +146,22 @@ export default function ProfileCard({
             {displayName}
           </Text>
           <Text style={[styles.headerSubtitle, { color: theme.textMuted }]}>
-            {isBusiness ? "Business host" : "Community member"}
+            {profileTypeLabel}
           </Text>
+          {accountDetails.length ? (
+            <Text style={[styles.accountMeta, { color: theme.textMuted }]}>
+              {accountDetails.join(" | ")}
+            </Text>
+          ) : null}
         </View>
       </View>
 
       <View style={styles.chipRow}>
         {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
         {userType ? <Chip label={userType} theme={theme} /> : null}
+        {originallyFrom ? (
+          <Chip label={`Originally from ${originallyFrom}`} theme={theme} />
+        ) : null}
         {businessType ? <Chip label={businessType} theme={theme} /> : null}
       </View>
 
@@ -168,6 +194,12 @@ export default function ProfileCard({
             {skillLevel.skiing ? (
               <Chip
                 label={`Ski/Snowboard: ${titleCase(skillLevel.skiing)}`}
+                theme={theme}
+              />
+            ) : null}
+            {skillLevel.discGolf ? (
+              <Chip
+                label={`Disc golf: ${titleCase(skillLevel.discGolf)}`}
                 theme={theme}
               />
             ) : null}
@@ -262,6 +294,11 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  accountMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
   },
   section: {
     marginTop: 12,

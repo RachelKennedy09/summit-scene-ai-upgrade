@@ -17,10 +17,12 @@ import {
   updateEvent,
   deleteEvent,
   getMyEvents,
+  toggleEventAttendance,
 } from "../controllers/eventController.js";
 
 import authMiddleware from "../middleware/auth.js";
 import isBusiness from "../middleware/isBusiness.js";
+import optionalAuth from "../middleware/optionalAuth.js";
 
 const router = express.Router();
 
@@ -43,13 +45,17 @@ router.get("/", getAllEvents);
 //   - Requires a valid JWT (authMiddleware).
 router.get("/mine", authMiddleware, getMyEvents);
 
+// POST /api/events/:id/attendance
+//   Toggle "I'm going" for the logged-in user.
+router.post("/:id/attendance", authMiddleware, toggleEventAttendance);
+
 // -------------------------------------------
 // PUBLIC SINGLE EVENT ROUTE
 // -------------------------------------------
 // GET /api/events/:id
 //   Return detailed info for a single event.
 //   Used when the user taps into an event details screen.
-router.get("/:id", getEventById);
+router.get("/:id", optionalAuth, getEventById);
 
 // -------------------------------------------
 // BUSINESS-ONLY ROUTES (CREATE / UPDATE / DELETE)

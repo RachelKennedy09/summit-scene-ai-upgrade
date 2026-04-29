@@ -14,6 +14,12 @@ import mongoose from "mongoose";
 export const PROFILE_TOWNS = ["Banff", "Canmore", "Lake Louise", "LL", "All"];
 export const USER_TYPES = ["local", "seasonal", "visitor"];
 export const ACTIVITY_SKILL_LEVELS = ["beginner", "casual", "experienced"];
+export const BUSINESS_VERIFICATION_STATUSES = [
+  "none",
+  "pending",
+  "verified",
+  "rejected",
+];
 export const SOCIAL_PROVIDERS = [
   "instagram",
   "tiktok",
@@ -29,6 +35,10 @@ const skillLevelSchema = new mongoose.Schema(
       enum: ACTIVITY_SKILL_LEVELS,
     },
     skiing: {
+      type: String,
+      enum: ACTIVITY_SKILL_LEVELS,
+    },
+    discGolf: {
       type: String,
       enum: ACTIVITY_SKILL_LEVELS,
     },
@@ -74,6 +84,21 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Business profiles must be approved before they can publish official events.
+    businessVerificationStatus: {
+      type: String,
+      enum: BUSINESS_VERIFICATION_STATUSES,
+      default: "none",
+    },
+
+    businessVerificationRequestedAt: {
+      type: Date,
+    },
+
+    businessVerifiedAt: {
+      type: Date,
+    },
+
     // -------------------------------------------
     // PROFILE FIELDS VISIBLE ON ACCOUNT SCREEN
     // -------------------------------------------
@@ -96,6 +121,12 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
+    originallyFrom: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+    },
+
     interests: {
       type: [String],
       default: [],
@@ -112,7 +143,7 @@ const userSchema = new mongoose.Schema(
       maxlength: 300,
     },
 
-    // What experiences the user is looking for
+    // Business type or optional profile context
     lookingFor: {
       type: String,
       maxlength: 200,
@@ -156,15 +187,40 @@ const userSchema = new mongoose.Schema(
             type: Date,
             default: Date.now,
           },
+          profileImageUrl: {
+            type: String,
+            trim: true,
+          },
         },
       ],
       default: [],
+    },
+
+    blockedUsers: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+    },
+
+    hasSeenSafetyTips: {
+      type: Boolean,
+      default: false,
     },
 
     // Avatar key used to render one of the 16 preset avatars
     avatarKey: {
       type: String,
       default: null,
+    },
+
+    // Optional remote photo from a connected/recognized social profile.
+    profileImageUrl: {
+      type: String,
+      trim: true,
     },
   },
   {
@@ -191,10 +247,14 @@ userSchema.virtual("safeProfile").get(function () {
     name: this.name,
     email: this.email,
     role: this.role,
+    businessVerificationStatus: this.businessVerificationStatus || "none",
+    hasSeenSafetyTips: Boolean(this.hasSeenSafetyTips),
     avatarKey: this.avatarKey,
+    profileImageUrl: this.profileImageUrl,
     town: this.town,
     userType: this.userType,
     languages: this.languages,
+    originallyFrom: this.originallyFrom,
     interests: this.interests,
     skillLevel: this.skillLevel,
     lookingFor: this.lookingFor,

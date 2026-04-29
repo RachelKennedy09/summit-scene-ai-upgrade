@@ -7,6 +7,7 @@ import { View, Text, Pressable, Modal, StyleSheet, ScrollView } from "react-nati
 
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
+import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
 export default function HubFilters({
   selectedTown, // current town filter
@@ -15,7 +16,8 @@ export default function HubFilters({
   resultSummary, // summary text like "Showing 8 events in Banff this week"
   error, // optional error message (string)
   towns, // array of town options: ["All", "Banff", "Canmore", ...]
-  categories, // array of category options: ["All", "Music", "Markets", ...]
+  categories, // array of category options: ["All", "Live Music", "Markets", ...]
+  categoryGroups,
   dateFilters, // array of date filter labels: ["Any date", "This week", ...]
   onSelectTown, // callback when user chooses a town
   onSelectCategory, // callback when user chooses a category
@@ -239,8 +241,20 @@ export default function HubFilters({
       </Modal>
 
       {/* --- Category Selector Modal --- */}
+      {categoryGroups ? (
+        <GroupedCategoryModal
+          visible={isCategoryModalVisible}
+          groups={categoryGroups}
+          selectedValue={selectedCategory}
+          onSelect={(category) => {
+            handleCategoryPress(category);
+          }}
+          onClose={() => setIsCategoryModalVisible(false)}
+        />
+      ) : null}
+
       <Modal
-        visible={isCategoryModalVisible}
+        visible={!categoryGroups && isCategoryModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setIsCategoryModalVisible(false)}

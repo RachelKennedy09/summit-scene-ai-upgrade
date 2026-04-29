@@ -32,30 +32,20 @@ import {
 } from "../../services/eventsApi";
 import { requestCurrentLocation } from "../../services/locationService";
 import { colors } from "../../theme/colors";
+import {
+  EVENT_CATEGORIES,
+  getEventCategoryGroups,
+} from "../../constants/eventCategories";
+import { buildBuddyPostFromEventSearch } from "../../utils/buddyPostPrefill";
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
 
-// List of categories for selector modal
-const CATEGORIES = [
-  "All",
-  "Market",
-  "Wellness",
-  "Music",
-  "Workshop",
-  "Family",
-  "Retail",
-  "Outdoors",
-  "Food & Drink",
-  "Networking",
-  "Fundraiser",
-  "Seasonal/Holiday Special",
-  "Nightlife",
-  "Sports/Watch Party",
-  "Community Info Session",
-  "Art",
-  "Other",
-];
+const CATEGORIES = EVENT_CATEGORIES;
+const CATEGORY_GROUPS = getEventCategoryGroups({
+  includeAll: true,
+  allLabel: "All categories",
+});
 
 // Date filter options (relative ranges)
 const DATE_FILTERS = [
@@ -185,6 +175,16 @@ export default function HubScreen() {
   }, [isNearMeEnabled, nearMeLoading]);
 
   const eventsToShow = events;
+
+  const handleCreateBuddyPostFromSearch = useCallback(() => {
+    navigation.navigate("CreateBuddyPost", {
+      eventBuddy: buildBuddyPostFromEventSearch({
+        category: selectedCategory,
+        town: selectedTown,
+        userTown: user?.town,
+      }),
+    });
+  }, [navigation, selectedCategory, selectedTown, user?.town]);
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
@@ -358,6 +358,7 @@ export default function HubScreen() {
               error={error}
               towns={TOWNS}
               categories={CATEGORIES}
+              categoryGroups={CATEGORY_GROUPS}
               dateFilters={DATE_FILTERS}
               onSelectTown={setSelectedTown}
               onSelectCategory={setSelectedCategory}
@@ -369,9 +370,23 @@ export default function HubScreen() {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              {emptyMessage}
-            </Text>
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                {emptyMessage}
+              </Text>
+              <Text style={[styles.emptyPrompt, { color: theme.text }]}>
+                Want to organize this type of plan?
+              </Text>
+              <Pressable
+                style={[
+                  styles.emptyAction,
+                  { backgroundColor: theme.accent },
+                ]}
+                onPress={handleCreateBuddyPostFromSearch}
+              >
+                <Text style={styles.emptyActionText}>Create Buddy Post</Text>
+              </Pressable>
+            </View>
           }
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}
@@ -415,6 +430,27 @@ const styles = StyleSheet.create({
     marginTop: 24,
     textAlign: "center",
     fontSize: 14,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  emptyPrompt: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  emptyAction: {
+    marginTop: 12,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  emptyActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
   },
   footerSpacer: {
     height: 16,

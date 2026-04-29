@@ -44,9 +44,11 @@ function normalizeSkillLevel(value) {
   const skillLevel = {};
   const hiking = normalizeEnum(value.hiking, ACTIVITY_SKILL_LEVELS);
   const skiing = normalizeEnum(value.skiing, ACTIVITY_SKILL_LEVELS);
+  const discGolf = normalizeEnum(value.discGolf, ACTIVITY_SKILL_LEVELS);
 
   if (hiking) skillLevel.hiking = hiking;
   if (skiing) skillLevel.skiing = skiing;
+  if (discGolf) skillLevel.discGolf = discGolf;
 
   return Object.keys(skillLevel).length ? skillLevel : undefined;
 }
@@ -71,11 +73,21 @@ function normalizeSocialAccounts(value) {
         handle,
         url,
         providerUserId: normalizeOptionalString(account.providerUserId),
+        profileImageUrl: normalizeOptionalString(account.profileImageUrl),
         verified: false,
         connectedAt: account.connectedAt || new Date(),
       };
     })
     .filter(Boolean);
+}
+
+function isAdminEmail(email) {
+  const adminEmails = String(process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return Boolean(email) && adminEmails.includes(String(email).toLowerCase());
 }
 
 export function buildSafeUser(user) {
@@ -85,11 +97,18 @@ export function buildSafeUser(user) {
     email: user.email,
     name: user.name,
     role: user.role || "local",
+    isAdmin: isAdminEmail(user.email),
+    businessVerificationStatus: user.businessVerificationStatus || "none",
+    businessVerificationRequestedAt: user.businessVerificationRequestedAt,
+    businessVerifiedAt: user.businessVerifiedAt,
+    hasSeenSafetyTips: Boolean(user.hasSeenSafetyTips),
     createdAt: user.createdAt,
     avatarKey: user.avatarKey,
+    profileImageUrl: user.profileImageUrl,
     town: user.town,
     userType: user.userType || "local",
     languages: user.languages || [],
+    originallyFrom: user.originallyFrom,
     interests: user.interests || [],
     skillLevel: user.skillLevel || {},
     bio: user.bio,
@@ -97,13 +116,22 @@ export function buildSafeUser(user) {
     instagram: user.instagram,
     website: user.website,
     socialAccounts: user.socialAccounts || [],
+    blockedUsers: (user.blockedUsers || []).map((id) => id.toString()),
   };
 }
 
 export function buildProfileUpdates(body = {}) {
   const updates = {};
 
-  const stringFields = ["name", "bio", "lookingFor", "instagram", "website"];
+  const stringFields = [
+    "name",
+    "bio",
+    "lookingFor",
+    "instagram",
+    "website",
+    "originallyFrom",
+    "profileImageUrl",
+  ];
   stringFields.forEach((field) => {
     if (typeof body[field] === "string") {
       updates[field] = body[field].trim();

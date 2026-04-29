@@ -10,6 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import RateAppPrompt from "./components/RateAppPrompt";
 import RootNavigator from "./navigation/RootNavigator";
 
 // Separate component so we can use the theme hook
@@ -24,6 +25,7 @@ function AppNavigation() {
         backgroundColor={theme.background}
       />
       <NavigationContainer theme={navTheme}>
+        <RateAppPrompt />
         <RootNavigator />
       </NavigationContainer>
     </>

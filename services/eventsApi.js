@@ -328,9 +328,11 @@ export async function updateEvent(eventId, eventData, token) {
 //    GET /api/events/:eventId
 //    Returns: single event object
 
-export async function fetchEventById(eventId) {
+export async function fetchEventById(eventId, token) {
   try {
-    const res = await fetchWithTimeout(`${BASE_URL}/api/events/${eventId}`);
+    const res = await fetchWithTimeout(`${BASE_URL}/api/events/${eventId}`, {
+      headers: buildHeaders(token),
+    });
     const data = await readJsonSafely(res);
 
     if (!res.ok) {
@@ -354,6 +356,39 @@ export async function fetchEventById(eventId) {
     throw toUserFriendlyError(
       normalizedError,
       "We couldn't load this event right now. Please try again."
+    );
+  }
+}
+
+export async function toggleEventAttendance(eventId, token) {
+  try {
+    const res = await fetchWithTimeout(
+      `${BASE_URL}/api/events/${eventId}/attendance`,
+      {
+        method: "POST",
+        headers: buildHeaders(token),
+      }
+    );
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.message ||
+          data.error ||
+          `Failed to update attendance (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeEventsError(
+      error,
+      "Attendance request timed out. Check the backend and try again."
+    );
+    console.warn("toggleEventAttendance issue:", normalizedError.message);
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't update whether you're going. Please try again."
     );
   }
 }

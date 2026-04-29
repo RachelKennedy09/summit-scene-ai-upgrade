@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
@@ -34,6 +35,13 @@ const USER_TYPE_OPTIONS = [
   { value: "visitor", label: "Visitor" },
 ];
 const INTEREST_OPTIONS = [
+  "Find local events",
+  "Discover things to do",
+  "Meet people through activities",
+  "Join group plans",
+  "Share local updates",
+  "Support local businesses",
+  "Just exploring",
   "Hiking",
   "Skiing",
   "Snowboarding",
@@ -45,6 +53,7 @@ const INTEREST_OPTIONS = [
   "Nightlife",
   "Coffee",
   "Book club",
+  "Disc golf",
   "Art",
   "Walking",
   "Bingo",
@@ -103,7 +112,7 @@ function getSocialValue(accounts, provider) {
   return account?.handle || account?.url || "";
 }
 
-function buildSocialAccounts(values) {
+function buildSocialAccounts(values, profileImageUrl = "") {
   return SOCIAL_PROVIDERS.map(({ provider }) => {
     const value = values[provider]?.trim();
     if (!value) return null;
@@ -113,6 +122,10 @@ function buildSocialAccounts(values) {
       provider,
       handle: isHandle ? value : undefined,
       url: isHandle ? undefined : value,
+      profileImageUrl:
+        profileImageUrl && ["facebook", "instagram"].includes(provider)
+          ? profileImageUrl
+          : undefined,
       verified: false,
     };
   }).filter(Boolean);
@@ -144,12 +157,13 @@ export default function EditProfileScreen({ navigation }) {
   const titleText = isBusiness ? "Event posting profile" : "Edit profile";
   const helperText = isBusiness
     ? "This is how your profile appears when you make an event."
-    : "This info shows on your Account screen and on Community posts.";
+    : "This helps Summit Scene personalize events, plans, groups, and updates around you.";
 
   // Pre-fill fields from current user
   const [name, setName] = useState(user.name || "");
   const [town, setTown] = useState(user.town || "");
   const [userType, setUserType] = useState(user.userType || "local");
+  const [originallyFrom, setOriginallyFrom] = useState(user.originallyFrom || "");
   const [languagesText, setLanguagesText] = useState(
     Array.isArray(user.languages) ? user.languages.join(", ") : ""
   );
@@ -162,11 +176,17 @@ export default function EditProfileScreen({ navigation }) {
   const [skiingSkill, setSkiingSkill] = useState(
     user.skillLevel?.skiing || ""
   );
+  const [discGolfSkill, setDiscGolfSkill] = useState(
+    user.skillLevel?.discGolf || ""
+  );
   const [bio, setBio] = useState(user.bio || "");
   const [lookingFor, setLookingFor] = useState(user.lookingFor || "");
   const [instagram, setInstagram] = useState(user.instagram || "");
   const [website, setWebsite] = useState(user.website || "");
   const [avatarKey, setAvatarKey] = useState(user?.avatarKey || null);
+  const [profileImageUrl, setProfileImageUrl] = useState(
+    user?.profileImageUrl || ""
+  );
   const [socialValues, setSocialValues] = useState(() => {
     const accounts = Array.isArray(user.socialAccounts)
       ? user.socialAccounts
@@ -190,6 +210,7 @@ export default function EditProfileScreen({ navigation }) {
         town,
         bio,
         userType: isBusiness ? undefined : userType,
+        originallyFrom: isBusiness ? undefined : originallyFrom,
         languages: isBusiness ? undefined : languages,
         interests: isBusiness ? undefined : interests,
         skillLevel: isBusiness
@@ -197,11 +218,13 @@ export default function EditProfileScreen({ navigation }) {
           : {
               ...(hikingSkill ? { hiking: hikingSkill } : {}),
               ...(skiingSkill ? { skiing: skiingSkill } : {}),
+              ...(discGolfSkill ? { discGolf: discGolfSkill } : {}),
             },
         lookingFor: isBusiness ? lookingFor : "",
         instagram: socialValues.instagram || instagram,
         avatarKey,
-        socialAccounts: buildSocialAccounts(socialValues),
+        profileImageUrl,
+        socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
       };
 
       if (isBusiness) {
@@ -295,7 +318,9 @@ export default function EditProfileScreen({ navigation }) {
             </>
           ) : (
             <>
-              <Text style={[styles.label, { color: theme.text }]}>Town</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Where are you based?
+              </Text>
               <ChipGroup
                 options={TOWN_OPTIONS}
                 value={town}
@@ -303,7 +328,9 @@ export default function EditProfileScreen({ navigation }) {
                 theme={theme}
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>I am a</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                How should people know you?
+              </Text>
               <ChipGroup
                 options={USER_TYPE_OPTIONS}
                 value={userType}
@@ -312,7 +339,25 @@ export default function EditProfileScreen({ navigation }) {
               />
 
               <Text style={[styles.label, { color: theme.text }]}>
-                Languages spoken
+                Originally from (optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="Toronto, Australia, Japan..."
+                placeholderTextColor={theme.textMuted}
+                value={originallyFrom}
+                onChangeText={setOriginallyFrom}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Languages spoken (optional)
               </Text>
               <TextInput
                 style={[
@@ -330,7 +375,7 @@ export default function EditProfileScreen({ navigation }) {
               />
 
               <Text style={[styles.label, { color: theme.text }]}>
-                Interests
+                What would you like to see here? (optional)
               </Text>
               <ChipGroup
                 options={INTEREST_OPTIONS}
@@ -339,6 +384,12 @@ export default function EditProfileScreen({ navigation }) {
                 theme={theme}
               />
 
+              <Text style={[styles.label, { color: theme.text }]}>
+                Optional activity levels
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Skip anything that does not apply.
+              </Text>
               <Text style={[styles.label, { color: theme.text }]}>
                 Hiking level
               </Text>
@@ -356,6 +407,16 @@ export default function EditProfileScreen({ navigation }) {
                 options={SKILL_OPTIONS}
                 value={skiingSkill}
                 onChange={setSkiingSkill}
+                theme={theme}
+              />
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Disc golf level
+              </Text>
+              <ChipGroup
+                options={SKILL_OPTIONS}
+                value={discGolfSkill}
+                onChange={setDiscGolfSkill}
                 theme={theme}
               />
             </>
@@ -388,7 +449,9 @@ export default function EditProfileScreen({ navigation }) {
           ) : null}
 
           {/* Bio */}
-          <Text style={[styles.label, { color: theme.text }]}>Short bio</Text>
+          <Text style={[styles.label, { color: theme.text }]}>
+            Short bio {isBusiness ? "" : "(optional)"}
+          </Text>
           <TextInput
             style={[
               styles.input,
@@ -406,7 +469,7 @@ export default function EditProfileScreen({ navigation }) {
             placeholder={
               isBusiness
                 ? "Tell people about your business, vibe, and what you host."
-                : "Tell locals who you are and what you love..."
+                : "A little about you, your season, or what you like doing around town..."
             }
             placeholderTextColor={theme.textMuted}
           />
@@ -422,7 +485,7 @@ export default function EditProfileScreen({ navigation }) {
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
             Add links people can use to recognize you. These show as unverified
-            until connected through the social platform.
+            until connected through the social platform. Optional.
           </Text>
 
           {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
@@ -447,6 +510,55 @@ export default function EditProfileScreen({ navigation }) {
               />
             </View>
           ))}
+
+          <Text style={[styles.label, { color: theme.text }]}>
+            Facebook or Instagram profile photo URL (optional)
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            For launch, paste a public profile image URL if you want your real
+            social photo to appear as your Summit Scene profile picture. Full
+            platform verification can connect here later.
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            value={profileImageUrl}
+            onChangeText={setProfileImageUrl}
+            placeholder="https://..."
+            placeholderTextColor={theme.textMuted}
+            autoCapitalize="none"
+          />
+
+          {profileImageUrl ? (
+            <View style={styles.socialPhotoRow}>
+              <Image
+                source={{ uri: profileImageUrl }}
+                style={styles.socialPhotoPreview}
+              />
+              <View style={styles.socialPhotoCopy}>
+                <Text style={[styles.socialPhotoTitle, { color: theme.text }]}>
+                  Social photo ready
+                </Text>
+                <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                  Clear your preset avatar below to use this photo publicly.
+                </Text>
+                <Pressable
+                  style={[styles.smallOutlineButton, { borderColor: theme.accent }]}
+                  onPress={() => setAvatarKey(null)}
+                >
+                  <Text style={[styles.smallOutlineText, { color: theme.accent }]}>
+                    Use social photo
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
 
           {isBusiness && (
             <>
@@ -486,6 +598,14 @@ export default function EditProfileScreen({ navigation }) {
           </Text>
 
           <AvatarPicker value={avatarKey} onChange={setAvatarKey} />
+          <Pressable
+            style={[styles.clearAvatarButton, { borderColor: theme.border }]}
+            onPress={() => setAvatarKey(null)}
+          >
+            <Text style={[styles.clearAvatarText, { color: theme.textMuted }]}>
+              Clear preset avatar
+            </Text>
+          </Pressable>
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
@@ -550,6 +670,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
+  },
+  socialPhotoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
+  socialPhotoPreview: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#ddd",
+  },
+  socialPhotoCopy: {
+    flex: 1,
+  },
+  socialPhotoTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  smallOutlineButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  smallOutlineText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  clearAvatarButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: -4,
+  },
+  clearAvatarText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   multiline: {
     minHeight: 70,

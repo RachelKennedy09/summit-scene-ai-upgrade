@@ -19,9 +19,10 @@ import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 
 // Map avatarKey -> local image source for replies
-function getAvatarSource(avatarKey) {
-  if (!avatarKey) return null;
-  return AVATARS[avatarKey] || null;
+function getAvatarSource(avatarKey, profileImageUrl) {
+  if (avatarKey && AVATARS[avatarKey]) return AVATARS[avatarKey];
+  if (profileImageUrl) return { uri: profileImageUrl };
+  return null;
 }
 
 export default function CommunityRepliesSection({
@@ -34,6 +35,7 @@ export default function CommunityRepliesSection({
   onChangeReplyText,
   onSubmitReply,
   onOpenProfile,
+  onReport,
 }) {
   const trimmed = replyText?.trim?.() ?? "";
   const disabled = !trimmed || submittingReply;
@@ -58,7 +60,12 @@ export default function CommunityRepliesSection({
 
             const replyAvatarKey =
               replyUserObj?.avatarKey || reply.avatarKey || null;
-            const replyAvatarSource = getAvatarSource(replyAvatarKey);
+            const replyProfileImageUrl =
+              replyUserObj?.profileImageUrl || reply.profileImageUrl || "";
+            const replyAvatarSource = getAvatarSource(
+              replyAvatarKey,
+              replyProfileImageUrl
+            );
             const replyTown = replyUserObj?.town || "";
             const replyRole = replyUserObj?.role || "local";
 
@@ -71,14 +78,18 @@ export default function CommunityRepliesSection({
                   if (replyUserObj && onOpenProfile) {
                     onOpenProfile({
                       name: replyName,
+                      _id: replyUserObj._id || replyUserObj.id || "",
+                      id: replyUserObj._id || replyUserObj.id || "",
                       role: replyRole,
                       town: replyTown,
                       userType: replyUserObj.userType || "",
+                      originallyFrom: replyUserObj.originallyFrom || "",
                       interests: replyUserObj.interests || [],
                       languages: replyUserObj.languages || [],
                       skillLevel: replyUserObj.skillLevel || {},
                       socialAccounts: replyUserObj.socialAccounts || [],
                       avatarKey: replyAvatarKey,
+                      profileImageUrl: replyProfileImageUrl,
                       lookingFor: replyUserObj.lookingFor || "",
                       instagram: replyUserObj.instagram || "",
                       bio: replyUserObj.bio || "",
@@ -136,6 +147,16 @@ export default function CommunityRepliesSection({
                   >
                     {reply.body}
                   </Text>
+                  <Pressable
+                    style={styles.reportReplyButton}
+                    onPress={() => onReport?.(reply)}
+                  >
+                    <Text
+                      style={[styles.reportReplyText, { color: theme.textMuted }]}
+                    >
+                      Report reply
+                    </Text>
+                  </Pressable>
                 </View>
               </Pressable>
             );
@@ -250,6 +271,15 @@ const styles = StyleSheet.create({
   replyBodyText: {
     fontSize: 13,
     color: colors.textMuted,
+  },
+  reportReplyButton: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingVertical: 2,
+  },
+  reportReplyText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
 
   replyActionsRow: {

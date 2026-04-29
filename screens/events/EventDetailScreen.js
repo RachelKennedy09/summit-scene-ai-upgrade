@@ -5,7 +5,7 @@
 // - Gives the event owner edit/delete actions (EventOwnerSection)
 // - Includes "Open in Maps" deep link for the event location
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -16,20 +16,50 @@ import {
   Alert,
   Linking,
   Platform,
+  ActivityIndicator,
+  Share,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { useAuth } from "../../context/AuthContext";
-import { deleteEvent } from "../../services/eventsApi";
+import {
+  deleteEvent,
+  fetchEventById,
+  toggleEventAttendance as toggleEventAttendanceApi,
+} from "../../services/eventsApi";
+import {
+  createBuddyPostReply,
+  deleteBuddyPostReply,
+  fetchBuddyPosts,
+  toggleBuddyPostInterest,
+  updateBuddyPostReply,
+} from "../../services/buddyPostsApi";
+import { submitReport } from "../../services/reportsApi";
+import {
+  fetchEventPreference,
+  updateEventPreference,
+} from "../../services/eventPreferencesApi";
 import { useTheme } from "../../context/ThemeContext";
 import { getDetailScheduleLabels } from "../../utils/eventSchedule";
+import { openReportReasonPicker } from "../../utils/reporting";
 
 import EventHostSection from "../../components/events/EventHostSection";
 import EventOwnerSection from "../../components/events/EventOwnerSection";
+import BuddyPostCard from "../../components/cards/BuddyPostCard";
+import MemberProfileModal from "../../components/account/MemberProfileModal";
+import { AVATARS } from "../../assets/avatars/avatarConfig";
+
+const REMINDER_OPTIONS = [
+  { label: "Off", value: "none" },
+  { label: "1 hour", value: "1h" },
+  { label: "1 day", value: "1d" },
+  { label: "1 month", value: "1mo" },
+];
 
 // Helper: derive business host info from event.createdBy (or fallback to event.user)
-// Block is only showed when the host is a business account.
+  // Block is only showed when the host is a business account.
 function getEventHost(event) {
   if (!event) return null;
 
@@ -46,21 +76,26 @@ function getEventHost(event) {
   const name = userObj.name || "Event host";
   const town = userObj.town || event.town || "Rockies local";
   const avatarKey = userObj.avatarKey || null;
+  const profileImageUrl = userObj.profileImageUrl || "";
   const website = userObj.website || "";
   const instagram = userObj.instagram || "";
   const socialAccounts = userObj.socialAccounts || [];
   const bio = userObj.bio || "";
   const businessType = userObj.lookingFor || "";
+  const businessVerificationStatus =
+    userObj.businessVerificationStatus || "none";
 
   return {
     name,
     town,
     avatarKey,
+    profileImageUrl,
     website,
     instagram,
     socialAccounts,
     bio,
     businessType,
+    businessVerificationStatus,
     role: userObj.role,
   };
 }
@@ -81,31 +116,67 @@ function isEventOwner(event, user) {
   return eventOwnerId.toString() === userId.toString();
 }
 
+function getUserId(value) {
+  if (!value) return "";
+  return typeof value === "string" ? value : value._id || value.id || "";
+}
+
+function getAttendeeProfile(value) {
+  if (!value || typeof value !== "object") return null;
+
+  return {
+    _id: value._id || value.id || "",
+    id: value._id || value.id || "",
+    name: value.name || "Summit Scene member",
+    role: value.role || "local",
+    avatarKey: value.avatarKey,
+    profileImageUrl: value.profileImageUrl || "",
+    town: value.town,
+    userType: value.userType,
+    originallyFrom: value.originallyFrom || "",
+    interests: value.interests || [],
+    languages: value.languages || [],
+    skillLevel: value.skillLevel || {},
+    socialAccounts: value.socialAccounts || [],
+    bio: value.bio || "",
+    instagram: value.instagram || "",
+    website: value.website || "",
+    businessVerificationStatus: value.businessVerificationStatus || "none",
+  };
+}
+
 export default function EventDetailScreen({ route }) {
   const navigation = useNavigation();
-  const { user, token } = useAuth();
+  const { user, token, blockUser } = useAuth();
   const { theme } = useTheme();
 
-  const { event } = route.params || {};
+  const { event: initialEvent } = route.params || {};
+  const [event, setEvent] = useState(initialEvent || null);
   const [heroImageFailed, setHeroImageFailed] = useState(false);
-
-  // Defensive fallback if the screen is opened without an event
-  if (!event) {
-    return (
-      <SafeAreaView
-        style={[styles.safeArea, { backgroundColor: theme.background }]}
-      >
-        <View style={styles.center}>
-          <Text style={[styles.errorText, { color: theme.text }]}>
-            Event details not available.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const [buddyPosts, setBuddyPosts] = useState([]);
+  const [loadingBuddyPosts, setLoadingBuddyPosts] = useState(false);
+  const [buddyPostsError, setBuddyPostsError] = useState("");
+  const [profileUser, setProfileUser] = useState(null);
+  const [updatingAttendance, setUpdatingAttendance] = useState(false);
+  const [attendeesModalOpen, setAttendeesModalOpen] = useState(false);
+  const [eventPreference, setEventPreference] = useState(null);
+  const [updatingPreference, setUpdatingPreference] = useState(false);
 
   const host = getEventHost(event);
   const isOwner = isEventOwner(event, user);
+  const eventId = event?._id || event?.id || route.params?.eventId;
+  const currentUserId = user?._id || user?.id || "";
+  const attendees = Array.isArray(event?.attendees) ? event.attendees : [];
+  const attendeeProfiles = attendees.map(getAttendeeProfile).filter(Boolean);
+  const isGoing = attendees.some((attendee) => {
+    const attendeeId = getUserId(attendee);
+    return attendeeId?.toString() === currentUserId?.toString();
+  });
+  const attendeesCount = attendeeProfiles.length;
+  const isSaved = Boolean(eventPreference?.saved);
+  const activeReminderTime = eventPreference?.reminderTime || "1h";
+  const savedReminderEnabled = Boolean(eventPreference?.savedReminderEnabled);
+  const goingReminderEnabled = Boolean(eventPreference?.goingReminderEnabled);
 
   const handleEdit = () => {
     // navigate to shared EditEvent form, passing the current event
@@ -141,14 +212,298 @@ export default function EventDetailScreen({ route }) {
     ]);
   };
 
-  const title = event.title || "Untitled event";
-  const category = event.category || "Event";
-  const town = event.town || "";
-  const locationName = event.locationName || event.location || "";
-  const address = event.address || "";
-  const description = event.description || "No detailed description added yet.";
+  const title = event?.title || "Untitled event";
+  const category = event?.category || "Event";
+  const town = event?.town || "";
+  const locationName = event?.locationName || event?.location || "";
+  const address = event?.address || "";
+  const description = event?.description || "No detailed description added yet.";
 
-  const { dateLabel, timeLabel } = getDetailScheduleLabels(event);
+  const { dateLabel, timeLabel } = getDetailScheduleLabels(event || {});
+
+  const loadEventBuddyPosts = useCallback(async () => {
+    if (!eventId || !token) return;
+
+    try {
+      setLoadingBuddyPosts(true);
+      setBuddyPostsError("");
+      const posts = await fetchBuddyPosts({ eventId, status: "open" }, token);
+      setBuddyPosts(posts);
+    } catch (error) {
+      setBuddyPostsError(error.message || "Could not load event buddy posts.");
+    } finally {
+      setLoadingBuddyPosts(false);
+    }
+  }, [eventId, token]);
+
+  const loadEventDetails = useCallback(async () => {
+    if (!eventId) return;
+
+    try {
+      const freshEvent = await fetchEventById(eventId, token);
+      setEvent(freshEvent);
+    } catch (error) {
+      console.warn("Event detail refresh issue:", error.message);
+    }
+  }, [eventId, token]);
+
+  const loadEventPreference = useCallback(async () => {
+    if (!eventId || !token) {
+      setEventPreference(null);
+      return;
+    }
+
+    try {
+      const preference = await fetchEventPreference(eventId, token);
+      setEventPreference(preference);
+    } catch (error) {
+      console.warn("Event preference load issue:", error.message);
+    }
+  }, [eventId, token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEventDetails();
+      loadEventBuddyPosts();
+      loadEventPreference();
+    }, [loadEventDetails, loadEventBuddyPosts, loadEventPreference])
+  );
+
+  const handleFindEventBuddies = () => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in before creating a buddy post.");
+      return;
+    }
+
+    navigation.navigate("CreateBuddyPost", {
+      eventBuddy: {
+        type: "event",
+        category,
+        communityType: "local-plan",
+        activityText: `Anyone going to ${title}?`,
+        date: event?.date,
+        time: event?.time,
+        town: event?.town,
+        eventId,
+        eventTitle: title,
+      },
+    });
+  };
+
+  const handleToggleEventAttendance = async () => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to mark that you're going.");
+      return;
+    }
+
+    if (!eventId || updatingAttendance) return;
+
+    try {
+      setUpdatingAttendance(true);
+      const result = await toggleEventAttendanceApi(eventId, token);
+      if (result.event) {
+        setEvent(result.event);
+      }
+    } catch (error) {
+      Alert.alert("Could not update", error.message || "Please try again.");
+    } finally {
+      setUpdatingAttendance(false);
+    }
+  };
+
+  const handleToggleSavedEvent = async () => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to save events.");
+      return;
+    }
+
+    if (!eventId || updatingPreference) return;
+
+    try {
+      setUpdatingPreference(true);
+      const preference = await updateEventPreference(
+        eventId,
+        { saved: !isSaved },
+        token
+      );
+      setEventPreference(preference);
+    } catch (error) {
+      Alert.alert("Could not update saved event", error.message || "Please try again.");
+    } finally {
+      setUpdatingPreference(false);
+    }
+  };
+
+  const handleReminderChange = async (source, reminderTime) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to set reminders.");
+      return;
+    }
+
+    if (!eventId || updatingPreference) return;
+
+    const enabled = reminderTime !== "none";
+    const updates = {
+      reminderTime: enabled ? reminderTime : activeReminderTime,
+      ...(source === "saved"
+        ? { savedReminderEnabled: enabled, saved: true }
+        : { goingReminderEnabled: enabled }),
+    };
+
+    try {
+      setUpdatingPreference(true);
+      const preference = await updateEventPreference(eventId, updates, token);
+      setEventPreference(preference);
+    } catch (error) {
+      Alert.alert("Could not update reminder", error.message || "Please try again.");
+    } finally {
+      setUpdatingPreference(false);
+    }
+  };
+
+  const handleToggleInterested = async (post) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to show interest.");
+      return;
+    }
+
+    try {
+      await toggleBuddyPostInterest(post._id || post.id, token);
+      await loadEventBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update interest", error.message || "Please try again.");
+    }
+  };
+
+  const handleSubmitBuddyReply = async (post, text) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to reply.");
+      return;
+    }
+
+    try {
+      await createBuddyPostReply(post._id || post.id, text, token);
+      await loadEventBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  };
+
+  const handleUpdateBuddyReply = async (post, reply, text) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to edit your reply.");
+      return;
+    }
+
+    try {
+      await updateBuddyPostReply(
+        post._id || post.id,
+        reply._id || reply.id,
+        text,
+        token
+      );
+      await loadEventBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update reply", error.message || "Please try again.");
+    }
+  };
+
+  const handleDeleteBuddyReply = (post, reply) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to delete your reply.");
+      return;
+    }
+
+    Alert.alert("Delete reply?", "This will remove your reply from the post.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteBuddyPostReply(
+              post._id || post.id,
+              reply._id || reply.id,
+              token
+            );
+            await loadEventBuddyPosts();
+          } catch (error) {
+            Alert.alert("Could not delete reply", error.message || "Please try again.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleReport = (target) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to submit a report.");
+      return;
+    }
+
+    openReportReasonPicker({
+      onSelect: async (reason) => {
+        try {
+          await submitReport({ ...target, reason }, token);
+          Alert.alert("Report submitted", "Thanks. We will review it.");
+        } catch (error) {
+          Alert.alert("Could not submit report", error.message || "Please try again.");
+        }
+      },
+    });
+  };
+
+  const handleBlockProfile = (targetUser) => {
+    const targetUserId = targetUser?._id || targetUser?.id || "";
+    if (!targetUserId) return;
+
+    Alert.alert(
+      "Block this user?",
+      "You will stop seeing their posts and replies. They will not be notified.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await blockUser(targetUserId);
+              setProfileUser(null);
+              await loadEventBuddyPosts();
+              Alert.alert("User blocked", "Their posts and replies are now hidden.");
+            } catch (error) {
+              Alert.alert("Could not block user", error.message || "Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleInviteFriends = async () => {
+    const details = [
+      title,
+      dateLabel ? `Date: ${dateLabel}` : "",
+      timeLabel ? `Time: ${timeLabel}` : "",
+      locationName ? `Location: ${locationName}` : "",
+      address ? `Address: ${address}` : "",
+      town ? `Town: ${town}` : "",
+      "",
+      "Found on Summit Scene.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      await Share.share({
+        title: `Invite to ${title}`,
+        message: `Want to go to this event?\n\n${details}`,
+      });
+    } catch (error) {
+      console.warn("Share event issue:", error?.message);
+      Alert.alert("Could not share", "Please try inviting friends again.");
+    }
+  };
 
   // Open native maps app (Apple Maps / Android geo / web) using location/town/title as a query
   const handleOpenMaps = () => {
@@ -175,6 +530,22 @@ export default function EventDetailScreen({ route }) {
       console.warn("Open maps issue:", err?.message || "Failed to open maps.")
     );
   };
+
+  // Defensive fallback if the screen is opened without an event.
+  // Keep this below hooks so React hook order stays consistent.
+  if (!event) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+      >
+        <View style={styles.center}>
+          <Text style={[styles.errorText, { color: theme.text }]}>
+            Event details not available.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -300,6 +671,64 @@ export default function EventDetailScreen({ route }) {
               </View>
             ) : null}
 
+            <View style={styles.inviteRow}>
+              <Pressable
+                style={[
+                  styles.inviteButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={handleInviteFriends}
+              >
+                <Text style={[styles.inviteButtonText, { color: theme.text }]}>
+                  Share Event
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.inviteButton,
+                  {
+                    backgroundColor: isSaved
+                      ? theme.accentSoft || theme.card
+                      : theme.card,
+                    borderColor: isSaved ? theme.accent : theme.border,
+                  },
+                ]}
+                onPress={handleToggleSavedEvent}
+                disabled={updatingPreference}
+              >
+                <Text
+                  style={[
+                    styles.inviteButtonText,
+                    { color: isSaved ? theme.accent : theme.text },
+                  ]}
+                >
+                  {updatingPreference ? "Updating..." : isSaved ? "Saved" : "Save Event"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.inviteButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() =>
+                  handleReport({
+                    targetType: "event",
+                    targetId: eventId,
+                  })
+                }
+              >
+                <Text style={[styles.inviteButtonText, { color: theme.textMuted }]}>
+                  Report Event
+                </Text>
+              </Pressable>
+            </View>
+
             {/* Description */}
             <View style={styles.section}>
               <Text style={[styles.sectionHeading, { color: theme.text }]}>
@@ -308,6 +737,302 @@ export default function EventDetailScreen({ route }) {
               <Text style={[styles.description, { color: theme.textMuted }]}>
                 {description}
               </Text>
+            </View>
+
+            <View
+              style={[
+                styles.buddySection,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <View style={styles.attendanceRow}>
+                <Pressable
+                  style={[
+                    styles.goingButton,
+                    {
+                      backgroundColor: isGoing
+                        ? theme.accentSoft || theme.card
+                        : theme.card,
+                      borderColor: isGoing ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={handleToggleEventAttendance}
+                  disabled={updatingAttendance}
+                >
+                  <Text
+                    style={[
+                      styles.goingButtonText,
+                      { color: isGoing ? theme.accent : theme.text },
+                    ]}
+                  >
+                    {updatingAttendance
+                      ? "Updating..."
+                      : isGoing
+                        ? "I'm Going"
+                        : "I'm going"}
+                  </Text>
+                </Pressable>
+                <Text style={[styles.attendanceText, { color: theme.textMuted }]}>
+                  {attendeesCount} going
+                </Text>
+              </View>
+
+              {attendeeProfiles.length ? (
+                <View style={styles.attendeesBlock}>
+                  <Text style={[styles.buddyListTitle, { color: theme.text }]}>
+                    People going
+                  </Text>
+                  <View style={styles.attendeeList}>
+                    {attendeeProfiles.slice(0, 8).map((attendee) => {
+                      const avatarSource =
+                        attendee.avatarKey && AVATARS[attendee.avatarKey]
+                          ? AVATARS[attendee.avatarKey]
+                          : attendee.profileImageUrl
+                            ? { uri: attendee.profileImageUrl }
+                            : null;
+                      const initial =
+                        attendee.name?.charAt(0).toUpperCase() || "?";
+
+                      return (
+                        <Pressable
+                          key={attendee._id || attendee.id}
+                          style={[
+                            styles.attendeePill,
+                            {
+                              backgroundColor: theme.card,
+                              borderColor: theme.border,
+                            },
+                          ]}
+                          onPress={() => setProfileUser(attendee)}
+                        >
+                          <View
+                            style={[
+                              styles.attendeeAvatar,
+                              {
+                                backgroundColor:
+                                  theme.pill || "rgba(0,0,0,0.06)",
+                              },
+                            ]}
+                          >
+                            {avatarSource ? (
+                              <Image
+                                source={avatarSource}
+                                style={styles.attendeeAvatarImage}
+                              />
+                            ) : (
+                              <Text
+                                style={[
+                                  styles.attendeeInitial,
+                                  { color: theme.text },
+                                ]}
+                              >
+                                {initial}
+                              </Text>
+                            )}
+                          </View>
+                          <Text
+                            style={[
+                              styles.attendeeName,
+                              { color: theme.text },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {attendee.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {attendeeProfiles.length > 8 ? (
+                    <Pressable
+                      style={styles.viewAllAttendeesButton}
+                      onPress={() => setAttendeesModalOpen(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.viewAllAttendeesText,
+                          { color: theme.accent },
+                        ]}
+                      >
+                        +{attendeeProfiles.length - 8} more going · View all
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {isSaved || isGoing ? (
+                <View
+                  style={[
+                    styles.reminderPanel,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.reminderTitle, { color: theme.text }]}>
+                    Reminders
+                  </Text>
+                  {isSaved ? (
+                    <>
+                      <Text style={[styles.reminderLabel, { color: theme.textMuted }]}>
+                        Saved event reminder
+                      </Text>
+                      <View style={styles.reminderOptions}>
+                        {REMINDER_OPTIONS.map((option) => {
+                          const active =
+                            option.value === "none"
+                              ? !savedReminderEnabled
+                              : savedReminderEnabled &&
+                                activeReminderTime === option.value;
+                          return (
+                            <Pressable
+                              key={`saved-${option.value}`}
+                              style={[
+                                styles.reminderPill,
+                                {
+                                  backgroundColor: active
+                                    ? theme.accentSoft || theme.card
+                                    : theme.background,
+                                  borderColor: active ? theme.accent : theme.border,
+                                },
+                              ]}
+                              onPress={() =>
+                                handleReminderChange("saved", option.value)
+                              }
+                              disabled={updatingPreference}
+                            >
+                              <Text
+                                style={[
+                                  styles.reminderPillText,
+                                  { color: active ? theme.accent : theme.textMuted },
+                                ]}
+                              >
+                                {option.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
+                  ) : null}
+
+                  {isGoing ? (
+                    <>
+                      <Text style={[styles.reminderLabel, { color: theme.textMuted }]}>
+                        Going reminder
+                      </Text>
+                      <View style={styles.reminderOptions}>
+                        {REMINDER_OPTIONS.map((option) => {
+                          const active =
+                            option.value === "none"
+                              ? !goingReminderEnabled
+                              : goingReminderEnabled &&
+                                activeReminderTime === option.value;
+                          return (
+                            <Pressable
+                              key={`going-${option.value}`}
+                              style={[
+                                styles.reminderPill,
+                                {
+                                  backgroundColor: active
+                                    ? theme.accentSoft || theme.card
+                                    : theme.background,
+                                  borderColor: active ? theme.accent : theme.border,
+                                },
+                              ]}
+                              onPress={() =>
+                                handleReminderChange("going", option.value)
+                              }
+                              disabled={updatingPreference}
+                            >
+                              <Text
+                                style={[
+                                  styles.reminderPillText,
+                                  { color: active ? theme.accent : theme.textMuted },
+                                ]}
+                              >
+                                {option.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <View style={styles.buddySectionHeader}>
+                <View style={styles.buddySectionCopy}>
+                  <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                    Going to this event?
+                  </Text>
+                  <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
+                    Mark that you're going, then create a buddy post if you want
+                    someone to go with.
+                  </Text>
+                </View>
+                <Pressable
+                  style={[styles.buddyButton, { backgroundColor: theme.accent }]}
+                  onPress={handleFindEventBuddies}
+                >
+                  <Text
+                    style={[
+                      styles.buddyButtonText,
+                      { color: theme.onAccent || theme.textOnAccent },
+                    ]}
+                  >
+                    Find Event Buddies
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text style={[styles.buddyListTitle, { color: theme.text }]}>
+                Event buddy posts
+              </Text>
+
+              {loadingBuddyPosts ? (
+                <View style={styles.buddyLoadingRow}>
+                  <ActivityIndicator color={theme.accent} />
+                  <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
+                    Loading buddy posts...
+                  </Text>
+                </View>
+              ) : null}
+
+              {buddyPostsError ? (
+                <Text style={[styles.buddyError, { color: theme.error || "#B35340" }]}>
+                  {buddyPostsError}
+                </Text>
+              ) : null}
+
+              {!loadingBuddyPosts && !buddyPostsError && buddyPosts.length === 0 ? (
+                <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
+                  No one has posted for this event yet. Start the plan.
+                </Text>
+              ) : null}
+
+              {!buddyPostsError && buddyPosts.length ? (
+                <View style={styles.buddyList}>
+                  {buddyPosts.map((post) => (
+                    <BuddyPostCard
+                      key={post._id || post.id}
+                      post={post}
+                      theme={theme}
+                      currentUserId={currentUserId}
+                      showLinkedEvent={false}
+                      onOpenProfile={setProfileUser}
+                      onToggleInterested={handleToggleInterested}
+                      onSubmitReply={handleSubmitBuddyReply}
+                      onUpdateReply={handleUpdateBuddyReply}
+                      onDeleteReply={handleDeleteBuddyReply}
+                      onReport={handleReport}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             {/* Hosted by (business) block + modal */}
@@ -320,6 +1045,136 @@ export default function EventDetailScreen({ route }) {
           </View>
         </View>
       </ScrollView>
+      <MemberProfileModal
+        visible={!!profileUser}
+        user={profileUser}
+        theme={theme}
+        onClose={() => setProfileUser(null)}
+        onReport={handleReport}
+        onBlock={handleBlockProfile}
+      />
+      <Modal
+        visible={attendeesModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAttendeesModalOpen(false)}
+      >
+        <View style={styles.attendeesModalOverlay}>
+          <View
+            style={[
+              styles.attendeesModalCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.attendeesModalHeader}>
+              <View>
+                <Text style={[styles.attendeesModalTitle, { color: theme.text }]}>
+                  Going to this event
+                </Text>
+                <Text
+                  style={[
+                    styles.attendeesModalSubtitle,
+                    { color: theme.textMuted },
+                  ]}
+                >
+                  {attendeeProfiles.length} people marked going
+                </Text>
+              </View>
+              <Pressable onPress={() => setAttendeesModalOpen(false)}>
+                <Text style={[styles.attendeesCloseText, { color: theme.accent }]}>
+                  Close
+                </Text>
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {attendeeProfiles.map((attendee) => {
+                const avatarSource =
+                  attendee.avatarKey && AVATARS[attendee.avatarKey]
+                    ? AVATARS[attendee.avatarKey]
+                    : attendee.profileImageUrl
+                      ? { uri: attendee.profileImageUrl }
+                      : null;
+                const initial = attendee.name?.charAt(0).toUpperCase() || "?";
+                const meta = [attendee.town, attendee.userType]
+                  .filter(Boolean)
+                  .join(" · ");
+
+                return (
+                  <View
+                    key={attendee._id || attendee.id}
+                    style={[
+                      styles.attendeeListRow,
+                      { borderColor: theme.border },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.attendeeListAvatar,
+                        { backgroundColor: theme.pill || "rgba(0,0,0,0.06)" },
+                      ]}
+                    >
+                      {avatarSource ? (
+                        <Image
+                          source={avatarSource}
+                          style={styles.attendeeListAvatarImage}
+                        />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.attendeeInitial,
+                            { color: theme.text },
+                          ]}
+                        >
+                          {initial}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.attendeeListCopy}>
+                      <Text
+                        style={[styles.attendeeListName, { color: theme.text }]}
+                        numberOfLines={1}
+                      >
+                        {attendee.name}
+                      </Text>
+                      {meta ? (
+                        <Text
+                          style={[
+                            styles.attendeeListMeta,
+                            { color: theme.textMuted },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {meta}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Pressable
+                      style={[
+                        styles.attendeeProfileButton,
+                        { borderColor: theme.accent },
+                      ]}
+                      onPress={() => {
+                        setAttendeesModalOpen(false);
+                        setProfileUser(attendee);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.attendeeProfileButtonText,
+                          { color: theme.accent },
+                        ]}
+                      >
+                        View Profile
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -434,6 +1289,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  inviteRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 16,
+  },
+  inviteButton: {
+    flexGrow: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  inviteButtonText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   section: {
     marginBottom: 16,
   },
@@ -446,6 +1319,225 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  buddySection: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  attendanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  goingButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  goingButtonText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  attendanceText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  attendeesBlock: {
+    marginBottom: 14,
+  },
+  reminderPanel: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  reminderTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
+  reminderLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 6,
+    marginBottom: 7,
+  },
+  reminderOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  reminderPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  reminderPillText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  attendeeList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  attendeePill: {
+    maxWidth: "48%",
+    minWidth: 132,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+  },
+  attendeeAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 7,
+    overflow: "hidden",
+  },
+  attendeeAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  attendeeInitial: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  attendeeName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  viewAllAttendeesButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+  },
+  viewAllAttendeesText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  attendeesModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  attendeesModalCard: {
+    maxHeight: "82%",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  attendeesModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+  },
+  attendeesModalTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  attendeesModalSubtitle: {
+    fontSize: 13,
+    marginTop: 3,
+  },
+  attendeesCloseText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  attendeeListRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  attendeeListAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  attendeeListAvatarImage: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  attendeeListCopy: {
+    flex: 1,
+  },
+  attendeeListName: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  attendeeListMeta: {
+    fontSize: 12,
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  attendeeProfileButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  attendeeProfileButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  buddySectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
+  },
+  buddySectionCopy: {
+    flex: 1,
+  },
+  buddyIntro: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  buddyButton: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  buddyButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  buddyListTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  buddyLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  buddyError: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  buddyList: {
+    gap: 10,
   },
   center: {
     flex: 1,

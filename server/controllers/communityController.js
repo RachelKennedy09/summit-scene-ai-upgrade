@@ -35,11 +35,11 @@ export async function getCommunityPosts(req, res) {
     const posts = await CommunityPost.find(filter)
       .populate(
         "user",
-        "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
       )
       .populate(
         "replies.user",
-        "name role avatarKey town userType languages interests skillLevel socialAccounts lookingFor instagram bio website"
+        "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram bio website createdAt"
       )
       .sort({ createdAt: -1 });
 
@@ -257,13 +257,13 @@ export async function addCommunityReply(req, res) {
     // Populate replies.user with avatarKey and profile info
     await post.populate(
       "replies.user",
-      "name role avatarKey town userType languages interests skillLevel socialAccounts lookingFor instagram bio website"
+      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram bio website createdAt"
     );
 
     // Also include avatarKey etc on the main post user
     const populated = await post.populate(
       "user",
-      "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
+      "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
     );
 
     return res.status(201).json({
@@ -322,4 +322,6 @@ export async function toggleLike(req, res) {
     return res.status(500).json({ message: "Failed to update like." });
   }
 }
+
+
 

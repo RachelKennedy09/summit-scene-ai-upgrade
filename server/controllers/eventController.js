@@ -15,6 +15,7 @@
 //  - DELETE /api/events/:id
 
 import Event from "../models/Event.js";
+import EventPreference from "../models/EventPreference.js";
 import User from "../models/User.js";
 import { geocodeEventAddress } from "../services/geocoding.js";
 import { getNextOccurrenceDateString } from "../../utils/eventSchedule.js";
@@ -34,6 +35,43 @@ const VALID_WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
+const USER_POPULATE_FIELDS =
+  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt";
+
+function getUserId(value) {
+  if (!value) return "";
+  return typeof value === "string"
+    ? value
+    : value._id?.toString() || value.id?.toString() || "";
+}
+
+async function getBlockContext(viewerId) {
+  if (!viewerId) {
+    return {
+      blockedIds: new Set(),
+      blockedByIds: new Set(),
+    };
+  }
+
+  const [viewer, usersBlockingViewer] = await Promise.all([
+    User.findById(viewerId).select("blockedUsers"),
+    User.find({ blockedUsers: viewerId }).select("_id"),
+  ]);
+
+  return {
+    blockedIds: new Set((viewer?.blockedUsers || []).map((id) => id.toString())),
+    blockedByIds: new Set(
+      usersBlockingViewer.map((user) => user._id.toString())
+    ),
+  };
+}
+
+function filterBlockedUserList(users = [], blockContext) {
+  return users.filter((user) => {
+    const id = getUserId(user);
+    return !blockContext.blockedIds.has(id) && !blockContext.blockedByIds.has(id);
+  });
+}
 
 function normalizeOptionalString(value) {
   if (typeof value !== "string") return value;
@@ -263,7 +301,7 @@ export async function getAllEvents(req, res) {
       .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
-        "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
       );
 
     const filteredEvents =
@@ -347,10 +385,16 @@ export async function createEvent(req, res) {
       });
     }
 
-    if (hostUser.role !== "business") {
+    if (
+      hostUser.role !== "business" ||
+      hostUser.businessVerificationStatus !== "verified"
+    ) {
       return res
         .status(403)
-        .json({ message: "Only business accounts can post events." });
+        .json({
+          message:
+            "A verified business or organizer profile is required for official event posting.",
+        });
     }
 
     const rawBody = req.body || {};
@@ -498,20 +542,86 @@ export async function getEventById(req, res) {
     console.log("🔥 getEventById hit with id =", req.params.id);
     const { id } = req.params;
 
-    const event = await Event.findById(id).populate(
-      "createdBy",
-      "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
-    );
+    const event = await Event.findById(id)
+      .populate("createdBy", USER_POPULATE_FIELDS)
+      .populate("attendees", USER_POPULATE_FIELDS);
 
     if (!event) {
       return res.status(404).json({ message: "Event not found." });
     }
 
-    return res.json(event);
+    const eventObject = event.toObject();
+    const blockContext = await getBlockContext(req.user?.userId);
+    eventObject.attendees = filterBlockedUserList(
+      eventObject.attendees || [],
+      blockContext
+    );
+
+    return res.json(eventObject);
   } catch (error) {
     console.error("Error in GET /api/events/:id:", error);
     return res.status(500).json({
       message: "Error fetching event.",
+      error: error.message,
+    });
+  }
+}
+
+// -------------------------------------------
+// POST /api/events/:id/attendance
+//   Toggle the current user's "I'm going" state for an event.
+// -------------------------------------------
+export async function toggleEventAttendance(req, res) {
+  try {
+    const userId = req.user?.userId;
+    const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const event = await Event.findById(id);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found." });
+    }
+
+    const alreadyGoing = (event.attendees || []).some(
+      (attendeeId) => attendeeId.toString() === userId.toString()
+    );
+
+    if (alreadyGoing) {
+      event.attendees = event.attendees.filter(
+        (attendeeId) => attendeeId.toString() !== userId.toString()
+      );
+      await EventPreference.findOneAndUpdate(
+        { userId, eventId: event._id },
+        { $set: { goingReminderEnabled: false } }
+      );
+    } else {
+      event.attendees.push(userId);
+    }
+
+    await event.save();
+
+    const populated = await Event.findById(event._id)
+      .populate("createdBy", USER_POPULATE_FIELDS)
+      .populate("attendees", USER_POPULATE_FIELDS);
+    const populatedObject = populated.toObject();
+    const blockContext = await getBlockContext(userId);
+    populatedObject.attendees = filterBlockedUserList(
+      populatedObject.attendees || [],
+      blockContext
+    );
+
+    return res.json({
+      event: populatedObject,
+      isGoing: !alreadyGoing,
+      attendeesCount: populatedObject.attendees?.length || 0,
+    });
+  } catch (error) {
+    console.error("Error in POST /api/events/:id/attendance:", error);
+    return res.status(500).json({
+      message: "Failed to update event attendance.",
       error: error.message,
     });
   }
@@ -756,7 +866,7 @@ export async function getMyEvents(req, res) {
       .sort({ date: 1 })
       .populate(
         "createdBy",
-        "name email role avatarKey town userType languages interests skillLevel socialAccounts bio lookingFor instagram website"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
       );
 
     return res.json(events);
@@ -768,4 +878,6 @@ export async function getMyEvents(req, res) {
     });
   }
 }
+
+
 

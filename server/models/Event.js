@@ -83,14 +83,18 @@ const eventSchema = new mongoose.Schema(
       type: String,
       trim: true,
       enum: [
-        "Market",
         "Wellness",
-        "Music",
+        "Live Music",
+        "Karaoke",
         "Workshop",
         "Family",
         "Retail",
         "Outdoors",
-        "Food & Drink",
+        "Happy Hour",
+        "Specials",
+        "Food Trucks",
+        "Markets",
+        "Vendors",
         "Networking",
         "Fundraiser",
         "Seasonal/Holiday Special",
@@ -98,6 +102,9 @@ const eventSchema = new mongoose.Schema(
         "Sports/Watch Party",
         "Community Info Session",
         "Art",
+        "Book Club",
+        "Ski Hill Events",
+        "Disc Golf",
         "Other",
       ],
       default: "Other",
@@ -192,6 +199,13 @@ const eventSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    attendees: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     // Automatically add createdAt / updatedAt timestamps
@@ -202,6 +216,18 @@ const eventSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+eventSchema.pre("validate", function normalizeLegacyCategories(next) {
+  if (this.category === "Food & Drink") {
+    this.category = "Happy Hour";
+  }
+
+  if (this.category === "Market") {
+    this.category = "Markets";
+  }
+
+  next();
+});
 
 // -------------------------------------------
 // VIRTUALS

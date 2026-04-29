@@ -1,407 +1,809 @@
 // screens/community/CommunityScreen.js
-// Community hub with 3 boards: Highway, Ride Share, and Event Buddy.
-// Shows posts, likes, replies, and member profile modal.
+// Social community hub centered on finding activity buddies and local connection.
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
-  Alert,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-
-import {
-  fetchCommunityPosts,
-  deleteCommunityPost,
-  createCommunityReply,
-  toggleCommunityLike,
-} from "../../services/communityApi";
-
-import MemberProfileModal from "../../components/account/MemberProfileModal";
-
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AppLogoHeader from "../../components/AppLogoHeader";
-import { useAuth } from "../../context/AuthContext";
-import { colors } from "../../theme/colors";
-import { useTheme } from "../../context/ThemeContext";
-import CommunityPostCard from "../../components/cards/CommunityPostCard";
-import PageHeader from "../../components/common/PageHeader";
 
-// Board types are defined here once and reused
-// so both frontend and backend stay in sync via these values.
-const POST_TYPES = [
-  { label: "Highway Conditions", value: "highwayconditions" },
-  { label: "Ride Share", value: "rideshare" },
-  { label: "Event Buddy", value: "eventbuddy" },
+import AppLogoHeader from "../../components/AppLogoHeader";
+import MemberProfileModal from "../../components/account/MemberProfileModal";
+import BuddyPostCard from "../../components/cards/BuddyPostCard";
+import AppButton from "../../components/common/AppButton";
+import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
+import PageHeader from "../../components/common/PageHeader";
+import DatePickerModal from "../../components/events/DatePickerModal";
+import { getEventCategoryGroups } from "../../constants/eventCategories";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  createBuddyPostReply,
+  deleteBuddyPostReply,
+  fetchBuddyPosts,
+  toggleBuddyPostInterest,
+  updateBuddyPostReply,
+} from "../../services/buddyPostsApi";
+import { submitReport } from "../../services/reportsApi";
+import { colors } from "../../theme/colors";
+import { openReportReasonPicker } from "../../utils/reporting";
+
+const CATEGORY_GROUPS = getEventCategoryGroups({
+  includeAll: true,
+  allLabel: "All categories",
+});
+const COMMUNITY_SECTIONS = [
+  {
+    label: "All",
+    value: "",
+    title: "All Community",
+    subtitle: "Browse local plans, newcomer intros, groups, and useful updates together.",
+    cta: "Create Post",
+    emptyTitle: "No community posts yet",
+    emptyText:
+      "Start with a local plan, intro, group, or practical community update.",
+  },
+  {
+    label: "Local Plans",
+    value: "local-plan",
+    title: "Local Plans",
+    subtitle: "Anyone going to this event? Coffee before open mic? Sunday walk?",
+    cta: "Create Local Plan",
+    emptyTitle: "Start the local plan",
+    emptyText:
+      "Share a walk, ski day, coffee before a show, trivia table, or event plan.",
+  },
+  {
+    label: "New in Town",
+    value: "new-in-town",
+    title: "New in Town",
+    subtitle: "Seasonal workers, visitors, newcomers, and locals open to meeting people.",
+    cta: "Introduce Yourself",
+    emptyTitle: "Welcome someone in",
+    emptyText:
+      "Post where you are based, what you like doing, and who you would like to meet.",
+  },
+  {
+    label: "Groups",
+    value: "group",
+    title: "Groups",
+    subtitle: "Repeatable interest groups like book club, hiking, trivia, and art nights.",
+    cta: "Start a Group",
+    emptyTitle: "Start the first group",
+    emptyText:
+      "Create a recurring book club, hiking crew, trivia team, art night, or walking group.",
+  },
+  {
+    label: "Updates",
+    value: "update",
+    title: "Community Updates",
+    subtitle: "Useful local notices, volunteer callouts, safety notes, and town updates.",
+    cta: "Share Update",
+    emptyTitle: "No updates yet",
+    emptyText:
+      "Keep updates practical: volunteer needs, local notices, safety notes, or helpful heads-up posts.",
+  },
 ];
+const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
+
+function formatDateForApi(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(date) {
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function FilterPill({ label, active, onPress, theme }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.filterPill,
+        {
+          backgroundColor: active ? theme.accentSoft || colors.accentSoft : theme.card,
+          borderColor: active ? theme.accent : theme.border,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.filterText,
+          {
+            color: active ? theme.text : theme.textMuted,
+            fontWeight: active ? "800" : "600",
+          },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function getId(value) {
+  if (!value) return "";
+  return typeof value === "string" ? value : value._id || value.id || "";
+}
 
 export default function CommunityScreen({ navigation }) {
-  // Which board is currently active (default Event Buddy)
-  const [selectedType, setSelectedType] = useState("eventbuddy");
-
-  // Posts from API (all types, filtered client-side)
-  const [posts, setPosts] = useState([]);
-
-  // Error and loading states
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Reply states (only one reply composer open at a time)
-  const [replyForPostId, setReplyForPostId] = useState(null);
-  const [replyText, setReplyText] = useState("");
-  const [submittingReply, setSubmittingReply] = useState(false);
-
-  // Profile modal
-  const [profileUser, setProfileUser] = useState(null);
-
-  // Logged in user object + JWT for protected requests
-  const { user, token } = useAuth();
-
-  // Current theme object (light / dark / feminine / masculine / rainbow)
+  const { token, user, blockUser } = useAuth();
   const { theme } = useTheme();
 
-  // useMemo prevents re-filtering on every render
-  // when only unrelated state changes (e.g. typing a reply).
-  const filteredPosts = useMemo(
-    () => posts.filter((post) => post.type === selectedType),
-    [posts, selectedType]
+  const [posts, setPosts] = useState([]);
+  const [communityType, setCommunityType] = useState("");
+  const [category, setCategory] = useState("All");
+  const [town, setTown] = useState("All");
+  const [language, setLanguage] = useState("");
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [profileUser, setProfileUser] = useState(null);
+
+  const activeTownFilter = town === "All" ? "" : town;
+  const activeCategoryFilter = category === "All" ? "" : category;
+
+  const filters = useMemo(
+    () => ({
+      category: activeCategoryFilter,
+      communityType,
+      town: activeTownFilter,
+      language: language.trim(),
+      date: selectedDate ? formatDateForApi(selectedDate) : "",
+      status: "open",
+    }),
+    [activeCategoryFilter, communityType, activeTownFilter, language, selectedDate]
   );
 
-  // Load posts for the currently selected board
-  const fetchPosts = useCallback(async () => {
+  const loadBuddyPosts = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const data = await fetchCommunityPosts(selectedType, token);
+      setError("");
+      const data = await fetchBuddyPosts(filters, token);
       setPosts(data);
-    } catch (error) {
-      setError(error.message || "Something went wrong.");
+    } catch (loadError) {
+      setError(loadError.message || "Could not load buddy posts.");
     } finally {
       setLoading(false);
     }
-  }, [selectedType, token]);
+  }, [filters, token]);
 
-  // useFocusEffect ensures posts are refreshed
-  // whenever the user comes back to the Community tab.
   useFocusEffect(
     useCallback(() => {
-      fetchPosts();
-    }, [fetchPosts])
+      loadBuddyPosts();
+    }, [loadBuddyPosts])
   );
 
-  // Delete post handler
-  const handleDeletePost = (postId) => {
-    Alert.alert("Delete post?", "This action cannot be undone.", [
+  const categorySelectLabel = category === "All" ? "All categories" : category;
+  const activeSection =
+    COMMUNITY_SECTIONS.find((section) => section.value === communityType) ||
+    COMMUNITY_SECTIONS[0];
+  const activeFilterLabel =
+    category === "All"
+      ? communityType
+        ? activeSection.title.toLowerCase()
+        : "community"
+      : category;
+  const currentUserId = user?._id || user?.id || "";
+  const createPostParams = {
+    eventBuddy: communityType ? { communityType } : undefined,
+  };
+
+  async function handleToggleInterested(post) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to show interest.");
+      return;
+    }
+
+    try {
+      await toggleBuddyPostInterest(post._id || post.id, token);
+      await loadBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update interest", error.message || "Please try again.");
+    }
+  }
+
+  async function handleSubmitReply(post, text) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to reply.");
+      return;
+    }
+
+    try {
+      await createBuddyPostReply(post._id || post.id, text, token);
+      await loadBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  }
+
+  async function handleUpdateReply(post, reply, text) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to edit your reply.");
+      return;
+    }
+
+    try {
+      await updateBuddyPostReply(
+        post._id || post.id,
+        reply._id || reply.id,
+        text,
+        token
+      );
+      await loadBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update reply", error.message || "Please try again.");
+    }
+  }
+
+  function handleDeleteReply(post, reply) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to delete your reply.");
+      return;
+    }
+
+    Alert.alert("Delete reply?", "This will remove your reply from the post.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteCommunityPost(postId, token);
-            fetchPosts();
+            await deleteBuddyPostReply(
+              post._id || post.id,
+              reply._id || reply.id,
+              token
+            );
+            await loadBuddyPosts();
           } catch (error) {
-            Alert.alert("Error", error.message || "Failed to delete post.");
+            Alert.alert("Could not delete reply", error.message || "Please try again.");
           }
         },
       },
     ]);
-  };
-
-  // Reply submit handler
-  async function handleReplySubmit(postId) {
-    if (!replyText.trim()) {
-      Alert.alert("Reply required", "Please write something before sending.");
-      return;
-    }
-
-    if (!token) {
-      Alert.alert("Login required", "Please log in to reply to posts.");
-      return;
-    }
-
-    try {
-      setSubmittingReply(true);
-
-      await createCommunityReply(postId, replyText, token);
-
-      setReplyText("");
-      setReplyForPostId(null);
-      fetchPosts();
-    } catch (error) {
-      Alert.alert("Error", error.message || "Failed to send reply.");
-    } finally {
-      setSubmittingReply(false);
-    }
   }
 
-  // Like toggle handler
-  async function handleToggleLike(postId) {
+  function handleReport(target) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to like posts.");
+      Alert.alert("Login required", "Please log in to submit a report.");
       return;
     }
 
-    try {
-      await toggleCommunityLike(postId, token);
-      fetchPosts();
-    } catch (error) {
-      Alert.alert("Error", error.message || "Failed to update like.");
-    }
+    openReportReasonPicker({
+      onSelect: async (reason) => {
+        try {
+          await submitReport({ ...target, reason }, token);
+          Alert.alert("Report submitted", "Thanks. We will review it.");
+        } catch (error) {
+          Alert.alert("Could not submit report", error.message || "Please try again.");
+        }
+      },
+    });
+  }
+
+  function handleBlockProfile(targetUser) {
+    const targetUserId = targetUser?._id || targetUser?.id || "";
+    if (!targetUserId) return;
+
+    Alert.alert(
+      "Block this user?",
+      "You will stop seeing their posts and replies. They will not be notified.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await blockUser(targetUserId);
+              setProfileUser(null);
+              await loadBuddyPosts();
+              Alert.alert("User blocked", "Their posts and replies are now hidden.");
+            } catch (error) {
+              Alert.alert("Could not block user", error.message || "Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function handleOpenLinkedEvent(event) {
+    const eventId = getId(event);
+    if (!eventId) return;
+
+    navigation.navigate("EventDetail", {
+      event,
+      eventId,
+    });
   }
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-       <AppLogoHeader />
-      <PageHeader
-        title="Community"
-        subtitle="A space for locals to share road conditions, rides, and event buddies."
-        rightAccessory={
-          <Pressable
-            style={[styles.newPostButton, { backgroundColor: theme.accent }]}
-            onPress={() => navigation.navigate("CommunityPost")}
-          >
-            <Text style={styles.newPostButtonText}>New Post</Text>
-          </Pressable>
-        }
-      />
-
-      {/* Board selector pills */}
-      <View style={styles.typeRow}>
-        {POST_TYPES.map((type) => {
-          const isActive = type.value === selectedType;
-          return (
-            <Pressable
-              key={type.value}
-              onPress={() => setSelectedType(type.value)}
-              style={[
-                styles.typePill,
-                {
-                  backgroundColor: theme.pill || theme.background,
-                  borderColor: theme.border,
-                },
-                isActive && {
-                  backgroundColor: theme.card,
-                  borderColor: theme.accent,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.typePillText,
-                  { color: theme.textMuted },
-                  isActive && {
-                    color: theme.textMain,
-                    fontWeight: "600",
-                  },
-                ]}
-              >
-                {type.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Result summary */}
-      <Text style={[styles.summaryText, { color: theme.textMuted }]}>
-        {loading
-          ? "Loading posts..."
-          : filteredPosts.length === 0
-          ? "No posts here yet. Be the first to share something."
-          : `Showing ${filteredPosts.length} post${
-              filteredPosts.length > 1 ? "s" : ""
-            } in this board.`}
-      </Text>
-
-      {/* Posts list */}
+      <AppLogoHeader />
       <ScrollView
-        contentContainerStyle={styles.sectionsContainer}
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {loading && (
+        <PageHeader
+          title="Find People"
+          subtitle="Meet people for events, hikes, groups, and local plans."
+        />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sectionTabs}
+        >
+          {COMMUNITY_SECTIONS.map((section) => (
+            <FilterPill
+              key={section.value}
+              label={section.label}
+              active={communityType === section.value}
+              onPress={() => setCommunityType(section.value)}
+              theme={theme}
+            />
+          ))}
+        </ScrollView>
+
+        <View
+          style={[
+            styles.ctaPanel,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.ctaTitle, { color: theme.text }]}>
+            {communityType ? activeSection.title : "Find someone to go with"}
+          </Text>
+          <Text style={[styles.ctaText, { color: theme.textMuted }]}>
+            {communityType
+              ? activeSection.subtitle
+              : "Browse local plans, newcomer intros, groups, and useful updates."}
+          </Text>
+          <AppButton
+            title={activeSection.cta}
+            onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+            variant="primary"
+            size="md"
+            style={styles.ctaButton}
+          />
+        </View>
+
+        <View
+          style={[
+            styles.safetyTip,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.safetyTipText, { color: theme.textMuted }]}>
+            Safety tip: meet new people thoughtfully. Choose public places,
+            check profiles, and use report or block if needed.
+          </Text>
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>
+          Filter by category
+        </Text>
+        <Pressable
+          style={[
+            styles.categorySelect,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={() => setCategoryPickerVisible(true)}
+        >
+          <Text style={[styles.categorySelectText, { color: theme.text }]}>
+            {categorySelectLabel}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>
+          Town
+        </Text>
+        <View style={styles.townFilters}>
+          {TOWN_FILTERS.map((option) => (
+            <FilterPill
+              key={option}
+              label={option}
+              active={town === option}
+              onPress={() => setTown(option)}
+              theme={theme}
+            />
+          ))}
+        </View>
+
+        <View
+          style={[
+            styles.advancedFilters,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionLabel, { color: theme.text }]}>
+            More filters
+          </Text>
+
+          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+            Language
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder="English, French, Spanish..."
+            placeholderTextColor={theme.textMuted}
+            value={language}
+            onChangeText={setLanguage}
+            autoCapitalize="words"
+          />
+
+          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+            Date
+          </Text>
+          <View style={styles.dateFilterRow}>
+            <Pressable
+              style={[
+                styles.dateButton,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={() => setDatePickerVisible(true)}
+            >
+              <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                {selectedDate ? formatDisplayDate(selectedDate) : "Any date"}
+              </Text>
+            </Pressable>
+            {selectedDate || language.trim() ? (
+              <Pressable
+                style={styles.clearFiltersButton}
+                onPress={() => {
+                  setSelectedDate(null);
+                  setLanguage("");
+                }}
+              >
+                <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
+                  Clear
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text style={[styles.summaryText, { color: theme.textMuted }]}>
+            {loading
+              ? "Loading community posts..."
+              : posts.length === 0
+              ? `No open ${activeFilterLabel.toLowerCase()} posts yet.`
+              : `${posts.length} open ${activeFilterLabel.toLowerCase()} post${
+                  posts.length === 1 ? "" : "s"
+                }`}
+          </Text>
+          <Pressable onPress={loadBuddyPosts}>
+            <Text style={[styles.refreshText, { color: theme.accent }]}>
+              Refresh
+            </Text>
+          </Pressable>
+        </View>
+
+        {loading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={theme.accent} />
-            <Text style={[styles.loadingText, { color: theme.textMuted }]}>
-              Loading posts...
+            <ActivityIndicator color={theme.accent} />
+              <Text style={[styles.loadingText, { color: theme.textMuted }]}>
+              Loading community posts...
             </Text>
           </View>
-        )}
+        ) : null}
 
-        {error && (
+        {error ? (
           <View
             style={[
               styles.emptyState,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
             ]}
           >
-            <Text style={[styles.emptyTitle, { color: theme.textMain }]}>
-              Error Loading Posts
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              Could not load community
             </Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>
               {error}
             </Text>
-            <Pressable
-              onPress={fetchPosts}
-              style={[
-                styles.typePill,
-                {
-                  padding: 10,
-                  marginTop: 10,
-                  backgroundColor: theme.accent,
-                  borderColor: theme.accent,
-                },
-              ]}
-            >
-              <Text style={{ color: colors.textLight }}>Try Again</Text>
-            </Pressable>
+            <AppButton
+              title="Try Again"
+              onPress={loadBuddyPosts}
+              variant="outline"
+              size="sm"
+              style={styles.emptyButton}
+            />
           </View>
-        )}
+        ) : null}
 
-        {/* Main posts list */}
-        {!loading &&
-          !error &&
-          filteredPosts.map((post) => {
-            const postId = post._id ?? post.id;
-            const isReplyOpen = replyForPostId === postId;
-
-            return (
-              <CommunityPostCard
-                key={postId}
-                post={post}
-                user={user}
-                theme={theme}
-                isReplyOpen={isReplyOpen}
-                replyText={replyText}
-                submittingReply={submittingReply}
-                onToggleReply={() => {
-                  if (isReplyOpen) {
-                    setReplyForPostId(null);
-                    setReplyText("");
-                  } else {
-                    setReplyForPostId(postId);
-                    setReplyText("");
-                  }
-                }}
-                onChangeReplyText={setReplyText}
-                onSubmitReply={() => handleReplySubmit(postId)}
-                onDelete={() => handleDeletePost(postId)}
-                onEdit={() =>
-                  navigation.navigate("EditCommunityPost", { post })
-                }
-                onToggleLike={() => handleToggleLike(postId)}
-                onOpenProfile={(profileData) => setProfileUser(profileData)}
-              />
-            );
-          })}
-
-        {/* Empty state per board */}
-        {!loading && !error && filteredPosts.length === 0 && (
+        {!loading && !error && posts.length === 0 ? (
           <View
             style={[
               styles.emptyState,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
             ]}
           >
-            <Text style={[styles.emptyTitle, { color: theme.textMain }]}>
-              No posts yet
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {activeSection.emptyTitle}
             </Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              Be the first to share something in this board.
+              {activeSection.emptyText}
             </Text>
+            <AppButton
+              title={activeSection.cta}
+              onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+              variant="primary"
+              size="sm"
+              style={styles.emptyButton}
+            />
           </View>
-        )}
+        ) : null}
+
+        {!error && posts.length ? (
+          <View style={styles.feed}>
+            {posts.map((post) => (
+              <BuddyPostCard
+                key={post._id || post.id}
+                post={post}
+                theme={theme}
+                currentUserId={currentUserId}
+                onOpenProfile={setProfileUser}
+                onOpenEvent={handleOpenLinkedEvent}
+                onToggleInterested={handleToggleInterested}
+                onSubmitReply={handleSubmitReply}
+                onUpdateReply={handleUpdateReply}
+                onDeleteReply={handleDeleteReply}
+                onReport={handleReport}
+              />
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
 
-      {/* Member profile modal (shared with Community + replies) */}
       <MemberProfileModal
         visible={!!profileUser}
         user={profileUser}
         theme={theme}
         onClose={() => setProfileUser(null)}
+        onReport={handleReport}
+        onBlock={handleBlockProfile}
+      />
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        initialDate={selectedDate || new Date()}
+        title="Filter by date"
+        onCancel={() => setDatePickerVisible(false)}
+        onConfirm={(date) => {
+          setSelectedDate(date);
+          setDatePickerVisible(false);
+        }}
+      />
+
+      <GroupedCategoryModal
+        visible={categoryPickerVisible}
+        title="Filter by category"
+        groups={CATEGORY_GROUPS}
+        selectedValue={category}
+        onSelect={(nextCategory) => {
+          setCategory(nextCategory);
+          setCategoryPickerVisible(false);
+        }}
+        onClose={() => setCategoryPickerVisible(false)}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.primary,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingBottom: 36,
   },
-  newPostButton: {
-    marginLeft: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: colors.accent,
-  },
-  newPostButtonText: {
-    color: colors.textLight,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  typeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
-  typePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+  ctaPanel: {
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.primary,
-  },
-  typePillText: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  summaryText: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: 8,
-  },
-  sectionsContainer: {
-    paddingBottom: 32,
-    gap: 16,
-  },
-  emptyState: {
-    marginTop: 24,
-    padding: 16,
     borderRadius: 12,
-    backgroundColor: colors.secondary,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 18,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.textLight,
+  ctaTitle: {
+    fontSize: 18,
+    fontWeight: "800",
     marginBottom: 4,
   },
-  emptyText: {
+  ctaText: {
     fontSize: 14,
-    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  ctaButton: {
+    borderRadius: 8,
+  },
+  safetyTip: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  safetyTipText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  sectionTabs: {
+    gap: 8,
+    paddingRight: 16,
+    paddingBottom: 14,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  categorySelect: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 14,
+  },
+  categorySelectText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  townFilters: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  advancedFilters: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  inlineLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  dateFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dateButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dateButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  clearFiltersButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  clearFiltersText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  filterPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  filterText: {
+    fontSize: 13,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  summaryText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    marginRight: 12,
+  },
+  refreshText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 16,
+    paddingVertical: 16,
   },
   loadingText: {
-    color: colors.textLight,
     fontSize: 13,
+  },
+  emptyState: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  emptyButton: {
+    marginTop: 14,
+    borderRadius: 8,
+  },
+  feed: {
+    gap: 12,
   },
 });

@@ -18,6 +18,17 @@ function titleCase(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatMemberSince(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function getSocialUrl(account) {
   const value = account.url || account.handle || "";
   if (!value) return "";
@@ -74,27 +85,39 @@ function Section({ label, children, theme }) {
   );
 }
 
-export default function MemberProfileModal({ visible, user, theme, onClose }) {
+export default function MemberProfileModal({
+  visible,
+  user,
+  theme,
+  onClose,
+  onReport,
+  onBlock,
+}) {
   if (!visible || !user) return null;
 
   const avatarSource =
     user.avatarKey && AVATARS[user.avatarKey]
       ? AVATARS[user.avatarKey]
-      : user.avatarUrl
-      ? { uri: user.avatarUrl }
+      : user.profileImageUrl || user.avatarUrl
+      ? { uri: user.profileImageUrl || user.avatarUrl }
       : null;
 
   const displayName = user.name || "SummitScene member";
+  const userId = user._id || user.id || "";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "M";
   const town = user.town || "";
   const userType = user.userType ? titleCase(user.userType) : "";
+  const memberSince = formatMemberSince(user.createdAt);
+  const originallyFrom = user.originallyFrom || "";
   const interests = Array.isArray(user.interests) ? user.interests : [];
   const languages = Array.isArray(user.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user.socialAccounts)
     ? user.socialAccounts
     : [];
   const skillLevel = user.skillLevel || {};
-  const hasSkills = Boolean(skillLevel.hiking || skillLevel.skiing);
+  const hasSkills = Boolean(
+    skillLevel.hiking || skillLevel.skiing || skillLevel.discGolf
+  );
 
   return (
     <Modal
@@ -174,7 +197,11 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
                     { color: theme.textMuted || colors.textMuted },
                   ]}
                 >
-                  {user.role === "business" ? "Business host" : "Community member"}
+                  {user.role === "business"
+                    ? user.businessVerificationStatus === "verified"
+                      ? "Verified business host"
+                      : "Business review pending"
+                    : "Community member"}
                 </Text>
               </View>
             </View>
@@ -182,6 +209,12 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
             <View style={styles.chipRow}>
               {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
               {userType ? <Chip label={userType} theme={theme} /> : null}
+              {memberSince ? (
+                <Chip label={`Member since ${memberSince}`} theme={theme} />
+              ) : null}
+              {originallyFrom ? (
+                <Chip label={`Originally from ${originallyFrom}`} theme={theme} />
+              ) : null}
               {user.lookingFor && user.role === "business" ? (
                 <Chip label={user.lookingFor} theme={theme} />
               ) : null}
@@ -222,6 +255,12 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
                   {skillLevel.skiing ? (
                     <Chip
                       label={`Ski/Snowboard: ${titleCase(skillLevel.skiing)}`}
+                      theme={theme}
+                    />
+                  ) : null}
+                  {skillLevel.discGolf ? (
+                    <Chip
+                      label={`Disc golf: ${titleCase(skillLevel.discGolf)}`}
                       theme={theme}
                     />
                   ) : null}
@@ -280,6 +319,48 @@ export default function MemberProfileModal({ visible, user, theme, onClose }) {
                   );
                 })}
               </Section>
+            ) : null}
+
+            {userId ? (
+              <View style={styles.safetyActions}>
+                <Pressable
+                  style={[
+                    styles.reportProfileButton,
+                    { borderColor: theme.border },
+                  ]}
+                  onPress={() =>
+                    onReport?.({
+                      targetType: "user",
+                      targetId: userId,
+                    })
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.reportProfileText,
+                      { color: theme.textMuted || colors.textMuted },
+                    ]}
+                  >
+                    Report Profile
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.reportProfileButton,
+                    { borderColor: theme.border },
+                  ]}
+                  onPress={() => onBlock?.(user)}
+                >
+                  <Text
+                    style={[
+                      styles.reportProfileText,
+                      { color: theme.textMuted || colors.textMuted },
+                    ]}
+                  >
+                    Block User
+                  </Text>
+                </Pressable>
+              </View>
             ) : null}
           </ScrollView>
         </View>
@@ -383,5 +464,23 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     marginTop: 2,
+  },
+  reportProfileButton: {
+    marginBottom: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    alignSelf: "flex-start",
+  },
+  reportProfileText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  safetyActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 18,
   },
 });

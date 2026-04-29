@@ -1,7 +1,5 @@
 // components/SelectModal.js
-// Generic "picker" modal used anywhere we need:
-//   - A simple list of string options
-//   - Single selection
+// Generic single-selection picker modal. Supports flat options or grouped sections.
 
 import React from "react";
 import {
@@ -17,7 +15,8 @@ import { useTheme } from "../../context/ThemeContext";
 export default function SelectModal({
   visible,
   title,
-  options,
+  options = [],
+  optionGroups,
   selectedValue,
   onSelect,
   onClose,
@@ -30,6 +29,7 @@ export default function SelectModal({
   const accent = theme.accent || "#2f7cff";
   const accentSoft = theme.accentSoft || "rgba(47, 124, 255, 0.15)";
   const cardBg = theme.card || "#fff";
+  const groups = optionGroups || [{ title: "", options }];
 
   return (
     <Modal
@@ -47,35 +47,44 @@ export default function SelectModal({
             contentContainerStyle={styles.optionsContent}
             showsVerticalScrollIndicator
           >
-            {options.map((opt) => {
-              const isSelected = opt === selectedValue;
-
-              return (
-                <Pressable
-                  key={opt}
-                  style={[
-                    styles.optionRow,
-                    isSelected && { backgroundColor: accentSoft },
-                  ]}
-                  onPress={() => onSelect(opt)}
-                >
-                  <Text
-                    style={[
-                      styles.optionText,
-                      {
-                        color: textMain,
-                        fontWeight: isSelected ? "700" : "400",
-                      },
-                    ]}
-                  >
-                    {opt}
+            {groups.map((group) => (
+              <View key={group.title || "options"} style={styles.optionGroup}>
+                {group.title ? (
+                  <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
+                    {group.title}
                   </Text>
-                  {isSelected ? (
-                    <Text style={[styles.check, { color: accent }]}>✓</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
+                ) : null}
+                {group.options.map((opt) => {
+                  const isSelected = opt === selectedValue;
+
+                  return (
+                    <Pressable
+                      key={opt}
+                      style={[
+                        styles.optionRow,
+                        isSelected && { backgroundColor: accentSoft },
+                      ]}
+                      onPress={() => onSelect(opt)}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          {
+                            color: textMain,
+                            fontWeight: isSelected ? "700" : "400",
+                          },
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                      {isSelected ? (
+                        <Text style={[styles.check, { color: accent }]}>*</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </ScrollView>
 
           <Pressable style={styles.cancelButton} onPress={onClose}>
@@ -111,6 +120,15 @@ const styles = StyleSheet.create({
   },
   optionsContent: {
     paddingBottom: 4,
+  },
+  optionGroup: {
+    marginBottom: 8,
+  },
+  groupTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
   },
   optionRow: {
     flexDirection: "row",

@@ -8,7 +8,7 @@
 // USED BY:
 //  - /api/events (business-only create/update/delete)
 //  - /api/community (all actions require login)
-//  - /api/users (profile updates, upgrade-to-business)
+//  - /api/users (profile updates and account safety tools)
 //  - /api/auth/me (session restore)
 
 import jwt from "jsonwebtoken";

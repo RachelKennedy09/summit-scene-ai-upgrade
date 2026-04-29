@@ -18,8 +18,20 @@ function BusinessFields({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionLabel, { color: theme.text }]}>
-        Tell visitors and locals about your business
+        Tell Summit Scene about your business
       </Text>
+      <Text style={[styles.helperText, { color: theme.textMuted }]}>
+        Business profiles are reviewed before they can post official events.
+        Use an official website, business Instagram, or public page that clearly
+        matches your business.
+      </Text>
+      <View style={[styles.noticeBox, { borderColor: theme.border }]}>
+        <Text style={[styles.noticeText, { color: theme.textMuted }]}>
+          If your proof link is unclear, email Summit Scene or DM from the
+          official business account so we can verify you are authorized to
+          create this profile.
+        </Text>
+      </View>
 
       {/* BUSINESS LOCATION */}
       <Text style={[styles.label, { color: theme.text }]}>
@@ -63,7 +75,9 @@ function BusinessFields({
       />
 
       {/* WEBSITE */}
-      <Text style={[styles.label, { color: theme.text }]}>Website</Text>
+      <Text style={[styles.label, { color: theme.text }]}>
+        Website or official page
+      </Text>
       <TextInput
         style={[
           styles.input,
@@ -81,7 +95,7 @@ function BusinessFields({
 
       {/* SOCIAL LINKS (OPTIONAL) */}
       <Text style={[styles.label, { color: theme.text }]}>
-        Instagram (optional)
+        Instagram or public social account
       </Text>
       <TextInput
         style={[
@@ -115,6 +129,22 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 6,
     fontSize: 14,
+  },
+  helperText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  noticeBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  noticeText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   input: {
     borderRadius: 8,

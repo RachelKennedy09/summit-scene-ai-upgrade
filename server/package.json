@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "mocha --exit --timeout 10000 \"test/**/*.test.js\""
+    "test": "mocha --exit --timeout 10000 \"test/**/*.test.js\"",
+    "seed:community": "node scripts/seedCommunityTestPosts.js",
+    "seed:events": "node scripts/seedBusinessEvents.js",
+    "seed:event-attendees": "node scripts/seedEventAttendeesDemo.js"
   },
   "keywords": [],
   "author": "",

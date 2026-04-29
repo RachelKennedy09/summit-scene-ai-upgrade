@@ -8,10 +8,11 @@ import { useTheme } from "../../context/ThemeContext";
 
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 
-// Helper: map avatarKey -> local avatar image (see avatarConfig.js)
-function getAvatarSource(avatarKey) {
-  if (!avatarKey) return null;
-  return AVATARS[avatarKey] || null;
+// Helper: map avatarKey -> local avatar image, then fall back to social photo.
+function getAvatarSource(host) {
+  if (host?.avatarKey && AVATARS[host.avatarKey]) return AVATARS[host.avatarKey];
+  if (host?.profileImageUrl) return { uri: host.profileImageUrl };
+  return null;
 }
 
 export default function EventHostSection({ host }) {
@@ -21,10 +22,11 @@ export default function EventHostSection({ host }) {
   if (!host) return null;
 
   // For this screen, host.avatarKey comes from getEventHost(event) in EventDetailScreen
-  const avatarSource = host.avatarKey ? getAvatarSource(host.avatarKey) : null;
+  const avatarSource = getAvatarSource(host);
   const hasConnectedInstagram = host.socialAccounts?.some(
     (account) => account.provider === "instagram"
   );
+  const isVerifiedHost = host.businessVerificationStatus === "verified";
 
   return (
     <>
@@ -65,6 +67,9 @@ export default function EventHostSection({ host }) {
                 {host.businessType}
               </Text>
             ) : null}
+            <Text style={[styles.hostMeta, { color: theme.textMuted }]}>
+              {isVerifiedHost ? "Verified business host" : "Business host"}
+            </Text>
           </View>
         </View>
 

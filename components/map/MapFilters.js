@@ -13,6 +13,7 @@ import {
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
 import PageHeader from "../common/PageHeader";
+import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
 function FilterModal({
   visible,
@@ -107,6 +108,7 @@ export default function MapFilters({
   error,
   towns,
   categories,
+  categoryGroups,
   dateFilters,
   onSelectTown,
   onSelectCategory,
@@ -244,7 +246,7 @@ export default function MapFilters({
       />
 
       <FilterModal
-        visible={isCategoryModalVisible}
+        visible={!categoryGroups && isCategoryModalVisible}
         title="Choose a category"
         options={categories.map((category) =>
           category === "All" ? "All categories" : category
@@ -259,6 +261,19 @@ export default function MapFilters({
         onClose={() => setIsCategoryModalVisible(false)}
         theme={theme}
       />
+
+      {categoryGroups ? (
+        <GroupedCategoryModal
+          visible={isCategoryModalVisible}
+          groups={categoryGroups}
+          selectedValue={selectedCategory}
+          onSelect={(category) => {
+            onSelectCategory(category);
+            setIsCategoryModalVisible(false);
+          }}
+          onClose={() => setIsCategoryModalVisible(false)}
+        />
+      ) : null}
 
       <FilterModal
         visible={isDateModalVisible}

@@ -39,30 +39,20 @@ import {
   getRecurrenceLabel,
 } from "../../utils/eventSchedule";
 import { getEventDistanceKm } from "../../utils/proximity";
+import {
+  EVENT_CATEGORIES,
+  getEventCategoryGroups,
+} from "../../constants/eventCategories";
+import { buildBuddyPostFromEventSearch } from "../../utils/buddyPostPrefill";
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
 
-// List of categories for selector modal
-const CATEGORIES = [
-  "All",
-  "Market",
-  "Wellness",
-  "Music",
-  "Workshop",
-  "Family",
-  "Retail",
-  "Outdoors",
-  "Food & Drink",
-  "Networking",
-  "Fundraiser",
-  "Seasonal/Holiday Special",
-  "Nightlife",
-  "Sports/Watch Party",
-  "Community Info Session",
-  "Art",
-  "Other",
-];
+const CATEGORIES = EVENT_CATEGORIES;
+const CATEGORY_GROUPS = getEventCategoryGroups({
+  includeAll: true,
+  allLabel: "All categories",
+});
 
 // Date filter options (relative ranges)
 const DATE_FILTERS = [
@@ -154,7 +144,9 @@ export default function MapScreen() {
   const mapRef = useRef(null);
   const { user } = useAuth();
   const { theme } = useTheme();
-  const isBusiness = user?.role === "business";
+  const isBusiness =
+    user?.role === "business" &&
+    user?.businessVerificationStatus === "verified";
   const currentUserId = user?._id || user?.id || "";
 
   // Filter state (shared wtih Hub): town, category, date range
@@ -203,9 +195,12 @@ export default function MapScreen() {
       setNearMeLoading(true);
       setNearMeMessage("");
       const location = await requestCurrentLocation();
+      setSelectedTown("All");
       setNearMeLocation(location);
       setIsNearMeEnabled(true);
-      setNearMeMessage(`Showing events within ${NEAR_ME_RADIUS_KM} km of you.`);
+      setNearMeMessage(
+        `Showing events within ${NEAR_ME_RADIUS_KM} km of you. Town filter cleared.`
+      );
     } catch (error) {
       setNearMeLocation(null);
       setIsNearMeEnabled(false);
@@ -214,6 +209,21 @@ export default function MapScreen() {
       setNearMeLoading(false);
     }
   }, [isNearMeEnabled, nearMeLoading]);
+
+  const handleSelectTown = useCallback(
+    (town) => {
+      setSelectedTown(town);
+
+      if (town !== "All" && isNearMeEnabled) {
+        setIsNearMeEnabled(false);
+        setNearMeLocation(null);
+        setNearMeMessage("Near Me turned off because a town filter is selected.");
+      } else if (town !== "All") {
+        setNearMeMessage("");
+      }
+    },
+    [isNearMeEnabled]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -465,6 +475,16 @@ export default function MapScreen() {
     });
   }
 
+  const handleCreateBuddyPostFromSearch = useCallback(() => {
+    navigation.navigate("CreateBuddyPost", {
+      eventBuddy: buildBuddyPostFromEventSearch({
+        category: selectedCategory,
+        town: selectedTown,
+        userTown: user?.town,
+      }),
+    });
+  }, [navigation, selectedCategory, selectedTown, user?.town]);
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
@@ -480,8 +500,9 @@ export default function MapScreen() {
           error={error}
           towns={TOWNS}
           categories={CATEGORIES}
+          categoryGroups={CATEGORY_GROUPS}
           dateFilters={DATE_FILTERS}
-          onSelectTown={setSelectedTown}
+          onSelectTown={handleSelectTown}
           onSelectCategory={setSelectedCategory}
           onSelectDateFilter={setSelectedDateFilter}
           isNearMeEnabled={isNearMeEnabled}
@@ -660,9 +681,23 @@ export default function MapScreen() {
         </View>
 
         {!loading && eventsForMap.length === 0 && !error && (
-          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-            No events match this town + date range. Try another filter combo.
-          </Text>
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+              No events match this town + date range. Try another filter combo.
+            </Text>
+            <Text style={[styles.emptyPrompt, { color: theme.text }]}>
+              Want to organize this type of plan?
+            </Text>
+            <Pressable
+              style={[
+                styles.emptyAction,
+                { backgroundColor: theme.accent },
+              ]}
+              onPress={handleCreateBuddyPostFromSearch}
+            >
+              <Text style={styles.emptyActionText}>Create Buddy Post</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -773,5 +808,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: "center",
     fontSize: 13,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingBottom: 4,
+  },
+  emptyPrompt: {
+    marginTop: 8,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  emptyAction: {
+    marginTop: 10,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  emptyActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

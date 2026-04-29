@@ -32,34 +32,18 @@ import SelectModal from "../../components/common/SelectModal";
 import AppButton from "../../components/common/AppButton";
 import AppLogoHeader from "../../components/AppLogoHeader";
 import PageHeader from "../../components/common/PageHeader";
+import {
+  EVENT_FORM_CATEGORIES,
+  getEventCategoryGroups,
+} from "../../constants/eventCategories";
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
 const AI_REQUEST_TIMEOUT_MS = 15000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
-const CATEGORIES = [
-  "All",
-  "Market",
-  "Wellness",
-  "Music",
-  "Workshop",
-  "Family",
-  "Retail",
-  "Outdoors",
-  "Food & Drink",
-  "Networking",
-  "Fundraiser",
-  "Seasonal/Holiday Special",
-  "Nightlife",
-  "Sports/Watch Party",
-  "Community Info Session",
-  "Art",
-  "Other",
-];
-
-// "All" is not used in the create form dropdown
-const FORM_CATEGORIES = CATEGORIES.filter((cat) => cat !== "All");
+const FORM_CATEGORIES = EVENT_FORM_CATEGORIES;
+const FORM_CATEGORY_GROUPS = getEventCategoryGroups();
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
   { value: "recurring", label: "Recurring event" },
@@ -521,8 +505,9 @@ export default function PostEventScreen() {
       // 403 — not a business
       if (status === 403) {
         Alert.alert(
-          "Not allowed",
-          data?.message || "You must be a business account to post events."
+          "Business profile required",
+          data?.message ||
+            "Official event listings are for business or organizer profiles. Community members can create local plans and buddy posts from Find People."
         );
         return;
       }
@@ -598,8 +583,8 @@ export default function PostEventScreen() {
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         <PageHeader
-          title="Post a New Event"
-          subtitle='Fields marked "Required" must be completed before posting.'
+          title="Post Official Event"
+          subtitle='For hosted events from businesses, venues, and organizers. Fields marked "Required" must be completed before posting.'
         />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -1299,6 +1284,7 @@ export default function PostEventScreen() {
         visible={showCategoryModal}
         title="Select Category"
         options={FORM_CATEGORIES}
+        optionGroups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
         onSelect={(value) => {
           setCategory(value);

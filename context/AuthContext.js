@@ -102,12 +102,24 @@ export function AuthProvider({ children }) {
     return {
       ...rawUser,
       avatarKey: rawUser?.avatarKey ?? null,
+      profileImageUrl: rawUser?.profileImageUrl ?? "",
+      businessVerificationStatus:
+        rawUser?.businessVerificationStatus ?? "none",
+      businessVerificationRequestedAt:
+        rawUser?.businessVerificationRequestedAt ?? null,
+      businessVerifiedAt: rawUser?.businessVerifiedAt ?? null,
+      isAdmin: Boolean(rawUser?.isAdmin),
+      hasSeenSafetyTips: Boolean(rawUser?.hasSeenSafetyTips),
       userType: rawUser?.userType ?? "local",
       languages: Array.isArray(rawUser?.languages) ? rawUser.languages : [],
+      originallyFrom: rawUser?.originallyFrom ?? "",
       interests: Array.isArray(rawUser?.interests) ? rawUser.interests : [],
       skillLevel: rawUser?.skillLevel ?? {},
       socialAccounts: Array.isArray(rawUser?.socialAccounts)
         ? rawUser.socialAccounts
+        : [],
+      blockedUsers: Array.isArray(rawUser?.blockedUsers)
+        ? rawUser.blockedUsers
         : [],
     };
   }
@@ -279,6 +291,7 @@ export function AuthProvider({ children }) {
     town,
     userType,
     languages,
+    originallyFrom,
     interests,
     skillLevel,
     socialAccounts,
@@ -287,6 +300,7 @@ export function AuthProvider({ children }) {
     instagram,
     website,
     avatarKey,
+    profileImageUrl,
   }) {
     try {
       setIsAuthLoading(true);
@@ -306,6 +320,7 @@ export function AuthProvider({ children }) {
             town: town || undefined,
             userType: userType || undefined,
             languages: Array.isArray(languages) ? languages : undefined,
+            originallyFrom: originallyFrom || undefined,
             interests: Array.isArray(interests) ? interests : undefined,
             skillLevel: skillLevel || undefined,
             socialAccounts: Array.isArray(socialAccounts)
@@ -316,6 +331,7 @@ export function AuthProvider({ children }) {
             instagram: instagram || undefined,
             website: website || undefined,
             avatarKey: avatarKey || undefined,
+            profileImageUrl: profileImageUrl || undefined,
           }),
         },
         AUTH_REQUEST_TIMEOUT_MS
@@ -334,6 +350,7 @@ export function AuthProvider({ children }) {
         {
           ...rawUser,
           avatarKey: rawUser.avatarKey ?? avatarKey ?? null,
+          profileImageUrl: rawUser.profileImageUrl ?? profileImageUrl ?? "",
         },
         "Registration successful. Opening app."
       );
@@ -361,17 +378,16 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // UPGRADE: local -> business
-  async function upgradeToBusiness() {
+  async function revertToLocalProfile() {
     if (!token) {
-      throw new Error("You must be logged in to upgrade your account.");
+      throw new Error("You must be logged in to switch profile type.");
     }
 
     try {
       setIsAuthLoading(true);
 
       const response = await fetch(
-        `${API_BASE_URL}/api/users/upgrade-to-business`,
+        `${API_BASE_URL}/api/users/revert-to-local`,
         {
           method: "PATCH",
           headers: {
@@ -384,20 +400,176 @@ export function AuthProvider({ children }) {
       const data = await readJsonSafely(response);
 
       if (!response.ok) {
-        const message = data?.message || "Upgrade failed.";
+        const message = data?.message || "Profile switch failed.";
         throw new Error(message);
       }
 
       if (data.user) {
-        setUser(data.user);
+        setUser(buildUser(data.user));
       }
 
       return data.user;
     } catch (error) {
-      console.error("Error in upgradeToBusiness:", error);
+      console.error("Error in revertToLocalProfile:", error);
       throw toUserFriendlyError(
         error,
-        "We couldn't upgrade your account right now. Please try again."
+        "We couldn't switch your account back right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function blockUser(targetUserId) {
+    if (!token) {
+      throw new Error("You must be logged in to block a user.");
+    }
+
+    if (!targetUserId) {
+      throw new Error("User was not found.");
+    }
+
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${targetUserId}/block`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not block user.");
+      }
+
+      if (data.user) {
+        setUser(buildUser(data.user));
+      }
+
+      return data.user;
+    } catch (error) {
+      console.error("Error in blockUser:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't block that user right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function unblockUser(targetUserId) {
+    if (!token) {
+      throw new Error("You must be logged in to unblock a user.");
+    }
+
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${targetUserId}/block`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not unblock user.");
+      }
+
+      if (data.user) {
+        setUser(buildUser(data.user));
+      }
+
+      return data.user;
+    } catch (error) {
+      console.error("Error in unblockUser:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't unblock that user right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function fetchBlockedUsers() {
+    if (!token) {
+      throw new Error("You must be logged in to view blocked users.");
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/me/blocked-users`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not load blocked users.");
+      }
+
+      return Array.isArray(data.blockedUsers) ? data.blockedUsers : [];
+    } catch (error) {
+      console.error("Error in fetchBlockedUsers:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't load blocked users right now. Please try again."
+      );
+    }
+  }
+
+  async function markSafetyTipsSeen() {
+    if (!token) {
+      throw new Error("You must be logged in to continue.");
+    }
+
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/me/safety-tips-seen`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not save safety tips state.");
+      }
+
+      if (data.user) {
+        setUser(buildUser(data.user));
+      }
+
+      return data.user;
+    } catch (error) {
+      console.error("Error in markSafetyTipsSeen:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't save this right now. Please try again."
       );
     } finally {
       setIsAuthLoading(false);
@@ -434,7 +606,7 @@ export function AuthProvider({ children }) {
       }
 
       if (data.user) {
-        setUser(data.user);
+        setUser(buildUser(data.user));
       }
 
       return data.user;
@@ -472,7 +644,11 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    upgradeToBusiness,
+    revertToLocalProfile,
+    blockUser,
+    unblockUser,
+    fetchBlockedUsers,
+    markSafetyTipsSeen,
     updateProfile,
   };
 

@@ -28,30 +28,14 @@ import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal.js";
 import AppButton from "../../components/common/AppButton.js";
 import PageHeader from "../../components/common/PageHeader";
+import {
+  EVENT_FORM_CATEGORIES,
+  getEventCategoryGroups,
+} from "../../constants/eventCategories";
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
-const CATEGORIES = [
-  "All",
-  "Market",
-  "Wellness",
-  "Music",
-  "Workshop",
-  "Family",
-  "Retail",
-  "Outdoors",
-  "Food & Drink",
-  "Networking",
-  "Fundraiser",
-  "Seasonal/Holiday Special",
-  "Nightlife",
-  "Sports/Watch Party",
-  "Community Info Session",
-  "Art",
-  "Other",
-];
-
-// All will not be in the categories dropdown menu
-const FORM_CATEGORIES = CATEGORIES.filter((cat) => cat !== "All");
+const FORM_CATEGORIES = EVENT_FORM_CATEGORIES;
+const FORM_CATEGORY_GROUPS = getEventCategoryGroups();
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
   { value: "recurring", label: "Recurring event" },
@@ -1101,6 +1085,7 @@ export default function EditEventScreen({ route, navigation }) {
         visible={showCategoryModal}
         title="Select Category"
         options={FORM_CATEGORIES}
+        optionGroups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
         onSelect={(value) => {
           setCategory(value);

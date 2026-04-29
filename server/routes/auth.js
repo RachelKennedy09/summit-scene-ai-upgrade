@@ -99,9 +99,30 @@ router.post("/register", async (req, res) => {
     }
     // If something weird is sent, we fall back to "local"
 
+    if (finalRole === "business") {
+      const hasBusinessType =
+        typeof req.body?.lookingFor === "string" &&
+        req.body.lookingFor.trim().length > 0;
+      const hasProofLink =
+        (typeof req.body?.website === "string" &&
+          req.body.website.trim().length > 0) ||
+        (typeof req.body?.instagram === "string" &&
+          req.body.instagram.trim().length > 0);
+
+      if (!hasBusinessType || !hasProofLink) {
+        return res.status(400).json({
+          message:
+            "Business profile requests require a business type and either a website or Instagram.",
+        });
+      }
+    }
+
     // Hash password using bcrypt
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const businessVerificationStatus =
+      finalRole === "business" ? "pending" : "none";
 
     // Create user document in MongoDB
     const user = await User.create({
@@ -109,6 +130,9 @@ router.post("/register", async (req, res) => {
       passwordHash,
       name,
       role: finalRole,
+      businessVerificationStatus,
+      businessVerificationRequestedAt:
+        finalRole === "business" ? new Date() : undefined,
       ...buildProfileUpdates(req.body),
     });
 

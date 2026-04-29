@@ -27,11 +27,20 @@ import EditEventScreen from "../screens/events/EditEventScreen";
 
 import CommunityPostScreen from "../screens/community/CommunityPostScreen";
 import EditCommunityPostScreen from "../screens/community/EditCommunityPostScreen";
+import CreateBuddyPostScreen from "../screens/community/CreateBuddyPostScreen";
 
 import EditProfileScreen from "../screens/account/EditProfileScreen";
+import BlockedUsersScreen from "../screens/account/BlockedUsersScreen";
+import BusinessHelpScreen from "../screens/account/BusinessHelpScreen";
+import BusinessVerificationScreen from "../screens/account/BusinessVerificationScreen";
+import ModerationQueueScreen from "../screens/account/ModerationQueueScreen";
+import ReportBugScreen from "../screens/account/ReportBugScreen";
+import SavedEventsScreen from "../screens/account/SavedEventsScreen";
+import UserHelpScreen from "../screens/account/UserHelpScreen";
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
+import SafetyTipsScreen from "../screens/auth/SafetyTipsScreen";
 
 const Stack = createNativeStackNavigator();
 const BOOTSTRAP_FALLBACK_DELAY_MS = 12000;
@@ -59,7 +68,9 @@ function AuthLoadingScreen({
     <View style={styles.loadingContainer}>
       <Image source={logo} style={styles.loadingLogo} resizeMode="contain" />
       <ActivityIndicator size="large" color={colors.accent} />
-      <Text style={styles.loadingText}>Loading Summit Scene...</Text>
+      <Text style={styles.loadingText}>
+        Finding what's happening nearby...
+      </Text>
       <Text style={styles.debugText}>{debugMessage}</Text>
       {showFallbackActions ? (
         <View style={styles.actions}>
@@ -124,44 +135,92 @@ export default function RootNavigator() {
     >
       {user ? (
         // ---------- LOGGED IN STACK ----------
-        <>
+        user.hasSeenSafetyTips ? (
+          <>
+            <Stack.Screen
+              name="tabs"
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+
+            {/* Events flow */}
+            <Stack.Screen
+              name="EditEvent"
+              component={EditEventScreen}
+              options={{ title: "Edit Event" }}
+            />
+            <Stack.Screen
+              name="EventDetail"
+              component={EventDetailScreen}
+              options={{ title: "Event Details" }}
+            />
+
+            {/* Community flow */}
+            <Stack.Screen
+              name="CommunityPost"
+              component={CommunityPostScreen}
+              options={{ title: "New Community Post" }}
+            />
+            <Stack.Screen
+              name="EditCommunityPost"
+              component={EditCommunityPostScreen}
+              options={{ title: "Edit Post" }}
+            />
+            <Stack.Screen
+              name="CreateBuddyPost"
+              component={CreateBuddyPostScreen}
+              options={{ title: "Create Buddy Post" }}
+            />
+
+            {/* Account flow */}
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{ title: "Edit Profile" }}
+            />
+            <Stack.Screen
+              name="BlockedUsers"
+              component={BlockedUsersScreen}
+              options={{ title: "Blocked Users" }}
+            />
+            <Stack.Screen
+              name="SavedEvents"
+              component={SavedEventsScreen}
+              options={{ title: "Saved Events" }}
+            />
+            <Stack.Screen
+              name="UserHelp"
+              component={UserHelpScreen}
+              options={{ title: "Help & FAQ" }}
+            />
+            <Stack.Screen
+              name="BusinessHelp"
+              component={BusinessHelpScreen}
+              options={{ title: "Business Help" }}
+            />
+            <Stack.Screen
+              name="ReportBug"
+              component={ReportBugScreen}
+              options={{ title: "Report a Bug" }}
+            />
+            <Stack.Screen
+              name="ModerationQueue"
+              component={ModerationQueueScreen}
+              options={{ title: "Moderation Queue" }}
+            />
+            <Stack.Screen
+              name="BusinessVerification"
+              component={BusinessVerificationScreen}
+              options={{ title: "Business Verification" }}
+            />
+          </>
+        ) : (
           <Stack.Screen
-            name="tabs"
-            component={TabNavigator}
+            name="SafetyTips"
+            component={SafetyTipsScreen}
             options={{ headerShown: false }}
           />
-
-          {/* Events flow */}
-          <Stack.Screen
-            name="EditEvent"
-            component={EditEventScreen}
-            options={{ title: "Edit Event" }}
-          />
-          <Stack.Screen
-            name="EventDetail"
-            component={EventDetailScreen}
-            options={{ title: "Event Details" }}
-          />
-
-          {/* Community flow */}
-          <Stack.Screen
-            name="CommunityPost"
-            component={CommunityPostScreen}
-            options={{ title: "New Community Post" }}
-          />
-          <Stack.Screen
-            name="EditCommunityPost"
-            component={EditCommunityPostScreen}
-            options={{ title: "Edit Post" }}
-          />
-
-          {/* Account flow */}
-          <Stack.Screen
-            name="EditProfile"
-            component={EditProfileScreen}
-            options={{ title: "Edit Profile" }}
-          />
-        </>
+        )
       ) : (
         // ---------- LOGGED OUT STACK ----------
         <>
