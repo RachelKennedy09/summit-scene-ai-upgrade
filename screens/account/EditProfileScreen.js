@@ -160,6 +160,100 @@ export default function EditProfileScreen({ navigation }) {
   const { theme } = useTheme();
 
   // Safeguard – if somehow no user
+  const isBusiness = user?.role === "business";
+
+  // Role-based heading + helper text
+  const titleText = isBusiness ? "Event posting profile" : "Edit profile";
+  const helperText = isBusiness
+    ? "This is how your profile appears when you make an event."
+    : "This helps Summit Scene personalize events, plans, groups, and updates around you.";
+
+  // Pre-fill fields from current user
+  const [name, setName] = useState(user?.name || "");
+  const [town, setTown] = useState(user?.town || "");
+  const [userType, setUserType] = useState(user?.userType || "local");
+  const [originallyFrom, setOriginallyFrom] = useState(user?.originallyFrom || "");
+  const [languagesText, setLanguagesText] = useState(
+    Array.isArray(user?.languages) ? user.languages.join(", ") : ""
+  );
+  const [interests, setInterests] = useState(
+    Array.isArray(user?.interests) ? user.interests : []
+  );
+  const [hikingSkill, setHikingSkill] = useState(
+    user?.skillLevel?.hiking || ""
+  );
+  const [skiingSkill, setSkiingSkill] = useState(
+    user?.skillLevel?.skiing || ""
+  );
+  const [discGolfSkill, setDiscGolfSkill] = useState(
+    user?.skillLevel?.discGolf || ""
+  );
+  const [bio, setBio] = useState(user?.bio || "");
+  const [lookingFor, setLookingFor] = useState(user?.lookingFor || "");
+  const [instagram, setInstagram] = useState(user?.instagram || "");
+  const [website, setWebsite] = useState(user?.website || "");
+  const [avatarKey, setAvatarKey] = useState(user?.avatarKey || null);
+  const [profileImageUrl, setProfileImageUrl] = useState(
+    user?.profileImageUrl || ""
+  );
+  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
+  const facebookTimeoutRef = useRef(null);
+  const facebookCallbackHandledRef = useRef(false);
+  const [socialValues, setSocialValues] = useState(() => {
+    const accounts = Array.isArray(user?.socialAccounts)
+      ? user.socialAccounts
+      : [];
+
+    return SOCIAL_PROVIDERS.reduce((current, { provider }) => {
+      current[provider] = getSocialValue(accounts, provider);
+      return current;
+    }, {});
+  });
+
+  useEffect(() => {
+    return () => {
+      if (facebookTimeoutRef.current) {
+        clearTimeout(facebookTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !isConnectingFacebook) {
+        return;
+      }
+
+      setTimeout(() => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        facebookCallbackHandledRef.current = true;
+        if (facebookTimeoutRef.current) {
+          clearTimeout(facebookTimeoutRef.current);
+          facebookTimeoutRef.current = null;
+        }
+        setIsConnectingFacebook(false);
+        Alert.alert(
+          "Facebook not connected",
+          "Facebook did not finish connecting. You can try again, or continue without Facebook for now."
+        );
+      }, 1200);
+    });
+
+    return () => subscription.remove();
+  }, [isConnectingFacebook]);
+
+  function finishFacebookConnection() {
+    facebookCallbackHandledRef.current = true;
+    if (facebookTimeoutRef.current) {
+      clearTimeout(facebookTimeoutRef.current);
+      facebookTimeoutRef.current = null;
+    }
+    setIsConnectingFacebook(false);
+  }
+
   if (!user) {
     return (
       <SafeAreaView
@@ -174,56 +268,6 @@ export default function EditProfileScreen({ navigation }) {
       </SafeAreaView>
     );
   }
-
-  const isBusiness = user.role === "business";
-
-  // Role-based heading + helper text
-  const titleText = isBusiness ? "Event posting profile" : "Edit profile";
-  const helperText = isBusiness
-    ? "This is how your profile appears when you make an event."
-    : "This helps Summit Scene personalize events, plans, groups, and updates around you.";
-
-  // Pre-fill fields from current user
-  const [name, setName] = useState(user.name || "");
-  const [town, setTown] = useState(user.town || "");
-  const [userType, setUserType] = useState(user.userType || "local");
-  const [originallyFrom, setOriginallyFrom] = useState(user.originallyFrom || "");
-  const [languagesText, setLanguagesText] = useState(
-    Array.isArray(user.languages) ? user.languages.join(", ") : ""
-  );
-  const [interests, setInterests] = useState(
-    Array.isArray(user.interests) ? user.interests : []
-  );
-  const [hikingSkill, setHikingSkill] = useState(
-    user.skillLevel?.hiking || ""
-  );
-  const [skiingSkill, setSkiingSkill] = useState(
-    user.skillLevel?.skiing || ""
-  );
-  const [discGolfSkill, setDiscGolfSkill] = useState(
-    user.skillLevel?.discGolf || ""
-  );
-  const [bio, setBio] = useState(user.bio || "");
-  const [lookingFor, setLookingFor] = useState(user.lookingFor || "");
-  const [instagram, setInstagram] = useState(user.instagram || "");
-  const [website, setWebsite] = useState(user.website || "");
-  const [avatarKey, setAvatarKey] = useState(user?.avatarKey || null);
-  const [profileImageUrl, setProfileImageUrl] = useState(
-    user?.profileImageUrl || ""
-  );
-  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
-  const facebookTimeoutRef = useRef(null);
-  const facebookCallbackHandledRef = useRef(false);
-  const [socialValues, setSocialValues] = useState(() => {
-    const accounts = Array.isArray(user.socialAccounts)
-      ? user.socialAccounts
-      : [];
-
-    return SOCIAL_PROVIDERS.reduce((current, { provider }) => {
-      current[provider] = getSocialValue(accounts, provider);
-      return current;
-    }, {});
-  });
 
   async function handleSave() {
     try {
@@ -910,46 +954,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-  useEffect(() => {
-    return () => {
-      if (facebookTimeoutRef.current) {
-        clearTimeout(facebookTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active" || !isConnectingFacebook) {
-        return;
-      }
-
-      setTimeout(() => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        facebookCallbackHandledRef.current = true;
-        if (facebookTimeoutRef.current) {
-          clearTimeout(facebookTimeoutRef.current);
-          facebookTimeoutRef.current = null;
-        }
-        setIsConnectingFacebook(false);
-        Alert.alert(
-          "Facebook not connected",
-          "Facebook did not finish connecting. You can try again, or continue without Facebook for now."
-        );
-      }, 1200);
-    });
-
-    return () => subscription.remove();
-  }, [isConnectingFacebook]);
-
-  function finishFacebookConnection() {
-    facebookCallbackHandledRef.current = true;
-    if (facebookTimeoutRef.current) {
-      clearTimeout(facebookTimeoutRef.current);
-      facebookTimeoutRef.current = null;
-    }
-    setIsConnectingFacebook(false);
-  }
