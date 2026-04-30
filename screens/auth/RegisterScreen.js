@@ -4,7 +4,7 @@
 // I collect core auth fields (email/password)
 // plus optional profile fields that power the Community + Event host UI.
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
+  Linking,
+  AppState,
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +32,13 @@ import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
 const SOCIAL_PROVIDERS = ["instagram", "tiktok", "facebook", "linkedin", "website"];
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  "https://summit-scene-backend.onrender.com";
+const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
+const FACEBOOK_REDIRECT_URI =
+  process.env.EXPO_PUBLIC_FACEBOOK_REDIRECT_URI ||
+  `${API_BASE_URL}/api/social/facebook/mobile-callback`;
 
 function buildSocialAccounts(values, profileImageUrl = "") {
   return SOCIAL_PROVIDERS.map((provider) => {
@@ -50,8 +59,23 @@ function buildSocialAccounts(values, profileImageUrl = "") {
   }).filter(Boolean);
 }
 
+function getUrlParam(url, paramName) {
+  const pattern = new RegExp(`[?&#]${paramName}=([^&#]+)`);
+  const match = String(url || "").match(pattern);
+  return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
+}
+
+function buildFacebookAuthUrl() {
+  const url = new URL("https://www.facebook.com/v19.0/dialog/oauth");
+  url.searchParams.set("client_id", FACEBOOK_APP_ID);
+  url.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "public_profile");
+  return url.toString();
+}
+
 function RegisterScreen() {
-  const { register, isAuthLoading } = useAuth();
+  const { register, previewFacebookSignup, isAuthLoading } = useAuth();
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -87,6 +111,55 @@ function RegisterScreen() {
   const [instagram, setInstagram] = useState("");
   const [website, setWebsite] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [facebookConnectToken, setFacebookConnectToken] = useState("");
+  const [facebookProfileName, setFacebookProfileName] = useState("");
+  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
+  const facebookTimeoutRef = useRef(null);
+  const facebookCallbackHandledRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (facebookTimeoutRef.current) {
+        clearTimeout(facebookTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !isConnectingFacebook) {
+        return;
+      }
+
+      setTimeout(() => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        facebookCallbackHandledRef.current = true;
+        if (facebookTimeoutRef.current) {
+          clearTimeout(facebookTimeoutRef.current);
+          facebookTimeoutRef.current = null;
+        }
+        setIsConnectingFacebook(false);
+        Alert.alert(
+          "Facebook not connected",
+          "Facebook did not finish connecting. You can try again, or create your account without Facebook for now."
+        );
+      }, 1200);
+    });
+
+    return () => subscription.remove();
+  }, [isConnectingFacebook]);
+
+  function finishFacebookConnection() {
+    facebookCallbackHandledRef.current = true;
+    if (facebookTimeoutRef.current) {
+      clearTimeout(facebookTimeoutRef.current);
+      facebookTimeoutRef.current = null;
+    }
+    setIsConnectingFacebook(false);
+  }
 
   async function handleRegister() {
     if (!name || !email || !password) {
@@ -145,6 +218,7 @@ function RegisterScreen() {
         website,
         avatarKey,
         profileImageUrl,
+        facebookConnectToken,
       });
       // After successful registration, the AuthContext logs the user in
       // and the RootNavigator switches screens based on auth state.
@@ -174,6 +248,104 @@ function RegisterScreen() {
       ...current,
       [provider]: value,
     }));
+  }
+
+  async function handleConnectFacebook() {
+    if (!FACEBOOK_APP_ID) {
+      Alert.alert(
+        "Facebook not configured",
+        "Add EXPO_PUBLIC_FACEBOOK_APP_ID to the app environment before connecting Facebook."
+      );
+      return;
+    }
+
+    let subscription;
+
+    try {
+      setIsConnectingFacebook(true);
+      facebookCallbackHandledRef.current = false;
+      if (facebookTimeoutRef.current) {
+        clearTimeout(facebookTimeoutRef.current);
+      }
+      facebookTimeoutRef.current = setTimeout(() => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        finishFacebookConnection();
+        subscription?.remove?.();
+        Alert.alert(
+          "Facebook timed out",
+          "Facebook did not finish connecting. Please try again."
+        );
+      }, 90000);
+
+      subscription = Linking.addEventListener("url", async ({ url }) => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        const code = getUrlParam(url, "code");
+        const errorMessage =
+          getUrlParam(url, "error_message") || getUrlParam(url, "error");
+
+        subscription?.remove?.();
+
+        if (errorMessage) {
+          finishFacebookConnection();
+          Alert.alert("Facebook not connected", errorMessage);
+          return;
+        }
+
+        if (!code) {
+          finishFacebookConnection();
+          Alert.alert(
+            "Facebook not connected",
+            "Facebook did not return the authorization code."
+          );
+          return;
+        }
+
+        try {
+          const data = await previewFacebookSignup(
+            code,
+            FACEBOOK_REDIRECT_URI
+          );
+          const facebookProfile = data.facebookProfile || {};
+
+          setFacebookConnectToken(data.facebookConnectToken || "");
+          setFacebookProfileName(facebookProfile.name || "");
+          setName((current) => current || facebookProfile.name || "");
+          setProfileImageUrl(facebookProfile.profileImageUrl || "");
+          setAvatarKey(null);
+          setSocialValues((current) => ({
+            ...current,
+            facebook: facebookProfile.name || "Facebook connected",
+          }));
+
+          Alert.alert(
+            "Facebook connected",
+            "Your name and profile photo are ready for signup."
+          );
+        } catch (error) {
+          Alert.alert(
+            "Facebook failed",
+            error.message || "Could not connect Facebook."
+          );
+        } finally {
+          finishFacebookConnection();
+        }
+      });
+
+      await Linking.openURL(buildFacebookAuthUrl());
+    } catch (error) {
+      subscription?.remove?.();
+      finishFacebookConnection();
+      Alert.alert(
+        "Facebook failed",
+        error.message || "Could not open Facebook."
+      );
+    }
   }
 
   return (
@@ -380,9 +552,51 @@ function RegisterScreen() {
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
                 Optional for launch: paste a public Facebook or Instagram
-                profile photo URL if you want your real photo to appear on your
-                Summit Scene profile.
+                profile photo URL, or connect Facebook after signup from Edit
+                profile.
               </Text>
+              <View
+                style={[
+                  styles.connectPanel,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <View style={styles.connectPanelCopy}>
+                  <Text
+                    style={[styles.connectPanelTitle, { color: theme.text }]}
+                  >
+                    Facebook
+                  </Text>
+                  <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                    Connect now to verify Facebook and use its profile photo.
+                  </Text>
+                  {facebookProfileName ? (
+                    <Text
+                      style={[styles.connectedText, { color: theme.accent }]}
+                    >
+                      Connected as {facebookProfileName}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  style={[
+                    styles.connectButton,
+                    {
+                      borderColor: theme.accent,
+                      opacity:
+                        isConnectingFacebook || isAuthLoading ? 0.65 : 1,
+                    },
+                  ]}
+                  disabled={isConnectingFacebook || isAuthLoading}
+                  onPress={handleConnectFacebook}
+                >
+                  <Text
+                    style={[styles.connectButtonText, { color: theme.accent }]}
+                  >
+                    {isConnectingFacebook ? "Connecting..." : "Connect"}
+                  </Text>
+                </Pressable>
+              </View>
               <TextInput
                 style={[
                   styles.input,
@@ -525,6 +739,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 8,
+  },
+  connectPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  connectPanelCopy: {
+    flex: 1,
+  },
+  connectPanelTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  connectButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  connectButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  connectedText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   useSocialPhotoButton: {
     alignSelf: "flex-start",

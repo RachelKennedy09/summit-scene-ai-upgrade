@@ -46,6 +46,31 @@ function createToken(user) {
   );
 }
 
+function getVerifiedFacebookSignup(body = {}) {
+  if (!body.facebookConnectToken) {
+    return null;
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET is not set in environment variables");
+  }
+
+  const payload = jwt.verify(body.facebookConnectToken, secret);
+  if (payload?.provider !== "facebook" || !payload.providerUserId) {
+    return null;
+  }
+
+  return {
+    provider: "facebook",
+    handle: payload.name,
+    providerUserId: payload.providerUserId,
+    verified: true,
+    connectedAt: new Date(),
+    profileImageUrl: payload.profileImageUrl || "",
+  };
+}
+
 /* -------------------------------------------
    POST /api/auth/register
    BODY:
@@ -124,6 +149,21 @@ router.post("/register", async (req, res) => {
     const businessVerificationStatus =
       finalRole === "business" ? "pending" : "none";
 
+    const profileUpdates = buildProfileUpdates(req.body);
+    const verifiedFacebook = getVerifiedFacebookSignup(req.body);
+
+    if (verifiedFacebook) {
+      profileUpdates.profileImageUrl =
+        verifiedFacebook.profileImageUrl || profileUpdates.profileImageUrl;
+      profileUpdates.avatarKey = null;
+      profileUpdates.socialAccounts = [
+        ...(profileUpdates.socialAccounts || []).filter(
+          (account) => account.provider !== "facebook"
+        ),
+        verifiedFacebook,
+      ];
+    }
+
     // Create user document in MongoDB
     const user = await User.create({
       email: normalizedEmail,
@@ -133,7 +173,7 @@ router.post("/register", async (req, res) => {
       businessVerificationStatus,
       businessVerificationRequestedAt:
         finalRole === "business" ? new Date() : undefined,
-      ...buildProfileUpdates(req.body),
+      ...profileUpdates,
     });
 
     // Create JWT token for the new user

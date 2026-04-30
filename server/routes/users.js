@@ -252,6 +252,38 @@ router.patch("/me", authMiddleware, async (req, res) => {
         .json({ message: "No valid fields provided to update." });
     }
 
+    if (updates.socialAccounts) {
+      const currentUser = await User.findById(userId).select("socialAccounts");
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found." });
+      }
+
+      const verifiedAccountsByProvider = new Map(
+        (currentUser.socialAccounts || [])
+          .filter((account) => account.verified)
+          .map((account) => [account.provider, account])
+      );
+
+      updates.socialAccounts = updates.socialAccounts.map((account) => {
+        const verifiedAccount = verifiedAccountsByProvider.get(
+          account.provider
+        );
+
+        if (!verifiedAccount) {
+          return account;
+        }
+
+        return {
+          ...account,
+          providerUserId: verifiedAccount.providerUserId,
+          verified: true,
+          connectedAt: verifiedAccount.connectedAt,
+          profileImageUrl:
+            verifiedAccount.profileImageUrl || account.profileImageUrl,
+        };
+      });
+    }
+
     const user = await User.findByIdAndUpdate(userId, updates, {
       new: true,
       runValidators: true,

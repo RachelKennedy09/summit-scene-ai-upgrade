@@ -1,7 +1,7 @@
 // screens/account/EditProfileScreen.js
 // Lets logged-in users edit their profile fields (not email/password yet)
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Platform,
   Pressable,
   Image,
+  Linking,
+  AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
@@ -28,6 +30,13 @@ const SOCIAL_PROVIDERS = [
   { provider: "linkedin", label: "LinkedIn", placeholder: "Profile link" },
   { provider: "website", label: "Website", placeholder: "https://..." },
 ];
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  "https://summit-scene-backend.onrender.com";
+const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
+const FACEBOOK_REDIRECT_URI =
+  process.env.EXPO_PUBLIC_FACEBOOK_REDIRECT_URI ||
+  `${API_BASE_URL}/api/social/facebook/mobile-callback`;
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
@@ -131,8 +140,23 @@ function buildSocialAccounts(values, profileImageUrl = "") {
   }).filter(Boolean);
 }
 
+function getUrlParam(url, paramName) {
+  const pattern = new RegExp(`[?&#]${paramName}=([^&#]+)`);
+  const match = String(url || "").match(pattern);
+  return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
+}
+
+function buildFacebookAuthUrl() {
+  const url = new URL("https://www.facebook.com/v19.0/dialog/oauth");
+  url.searchParams.set("client_id", FACEBOOK_APP_ID);
+  url.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "public_profile");
+  return url.toString();
+}
+
 export default function EditProfileScreen({ navigation }) {
-  const { user, updateProfile, isAuthLoading } = useAuth();
+  const { user, updateProfile, connectFacebook, isAuthLoading } = useAuth();
   const { theme } = useTheme();
 
   // Safeguard – if somehow no user
@@ -187,6 +211,9 @@ export default function EditProfileScreen({ navigation }) {
   const [profileImageUrl, setProfileImageUrl] = useState(
     user?.profileImageUrl || ""
   );
+  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
+  const facebookTimeoutRef = useRef(null);
+  const facebookCallbackHandledRef = useRef(false);
   const [socialValues, setSocialValues] = useState(() => {
     const accounts = Array.isArray(user.socialAccounts)
       ? user.socialAccounts
@@ -253,6 +280,104 @@ export default function EditProfileScreen({ navigation }) {
       ...current,
       [provider]: value,
     }));
+  }
+
+  async function handleConnectFacebook() {
+    if (!FACEBOOK_APP_ID) {
+      Alert.alert(
+        "Facebook not configured",
+        "Add EXPO_PUBLIC_FACEBOOK_APP_ID to the app environment before connecting Facebook."
+      );
+      return;
+    }
+
+    let subscription;
+
+    try {
+      setIsConnectingFacebook(true);
+      facebookCallbackHandledRef.current = false;
+      if (facebookTimeoutRef.current) {
+        clearTimeout(facebookTimeoutRef.current);
+      }
+      facebookTimeoutRef.current = setTimeout(() => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        finishFacebookConnection();
+        subscription?.remove?.();
+        Alert.alert(
+          "Facebook timed out",
+          "Facebook did not finish connecting. Please try again."
+        );
+      }, 90000);
+
+      subscription = Linking.addEventListener("url", async ({ url }) => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        const code = getUrlParam(url, "code");
+        const errorMessage =
+          getUrlParam(url, "error_message") || getUrlParam(url, "error");
+
+        subscription?.remove?.();
+
+        if (errorMessage) {
+          finishFacebookConnection();
+          Alert.alert("Facebook not connected", errorMessage);
+          return;
+        }
+
+        if (!code) {
+          finishFacebookConnection();
+          Alert.alert(
+            "Facebook not connected",
+            "Facebook did not return the authorization code."
+          );
+          return;
+        }
+
+        try {
+          const updatedUser = await connectFacebook(code, FACEBOOK_REDIRECT_URI);
+          const facebookAccount = updatedUser?.socialAccounts?.find(
+            (account) => account.provider === "facebook"
+          );
+
+          setProfileImageUrl(updatedUser?.profileImageUrl || "");
+          setAvatarKey(updatedUser?.avatarKey || null);
+          setSocialValues((current) => ({
+            ...current,
+            facebook:
+              facebookAccount?.handle ||
+              facebookAccount?.url ||
+              current.facebook ||
+              "Facebook connected",
+          }));
+
+          Alert.alert(
+            "Facebook connected",
+            "Your Facebook profile photo is now ready to use on Summit Scene."
+          );
+        } catch (error) {
+          Alert.alert(
+            "Facebook failed",
+            error.message || "Could not connect Facebook."
+          );
+        } finally {
+          finishFacebookConnection();
+        }
+      });
+
+      await Linking.openURL(buildFacebookAuthUrl());
+    } catch (error) {
+      subscription?.remove?.();
+      finishFacebookConnection();
+      Alert.alert(
+        "Facebook failed",
+        error.message || "Could not open Facebook."
+      );
+    }
   }
 
   function handleToggleInterest(interest) {
@@ -488,6 +613,38 @@ export default function EditProfileScreen({ navigation }) {
             until connected through the social platform. Optional.
           </Text>
 
+          <View
+            style={[
+              styles.connectPanel,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.connectPanelCopy}>
+              <Text style={[styles.connectPanelTitle, { color: theme.text }]}>
+                Facebook
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Connect Facebook to verify the account and use its profile
+                photo.
+              </Text>
+            </View>
+            <Pressable
+              style={[
+                styles.connectButton,
+                {
+                  borderColor: theme.accent,
+                  opacity: isConnectingFacebook || isAuthLoading ? 0.65 : 1,
+                },
+              ]}
+              disabled={isConnectingFacebook || isAuthLoading}
+              onPress={handleConnectFacebook}
+            >
+              <Text style={[styles.connectButtonText, { color: theme.accent }]}>
+                {isConnectingFacebook ? "Connecting..." : "Connect"}
+              </Text>
+            </Pressable>
+          </View>
+
           {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
             <View key={provider}>
               <Text style={[styles.label, { color: theme.text }]}>
@@ -515,9 +672,8 @@ export default function EditProfileScreen({ navigation }) {
             Facebook or Instagram profile photo URL (optional)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            For launch, paste a public profile image URL if you want your real
-            social photo to appear as your Summit Scene profile picture. Full
-            platform verification can connect here later.
+            Facebook can fill this in automatically. You can still paste a
+            public profile image URL as a fallback.
           </Text>
           <TextInput
             style={[
@@ -686,6 +842,33 @@ const styles = StyleSheet.create({
   socialPhotoCopy: {
     flex: 1,
   },
+  connectPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  connectPanelCopy: {
+    flex: 1,
+  },
+  connectPanelTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  connectButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  connectButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   socialPhotoTitle: {
     fontSize: 13,
     fontWeight: "800",
@@ -727,3 +910,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+  useEffect(() => {
+    return () => {
+      if (facebookTimeoutRef.current) {
+        clearTimeout(facebookTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !isConnectingFacebook) {
+        return;
+      }
+
+      setTimeout(() => {
+        if (facebookCallbackHandledRef.current) {
+          return;
+        }
+
+        facebookCallbackHandledRef.current = true;
+        if (facebookTimeoutRef.current) {
+          clearTimeout(facebookTimeoutRef.current);
+          facebookTimeoutRef.current = null;
+        }
+        setIsConnectingFacebook(false);
+        Alert.alert(
+          "Facebook not connected",
+          "Facebook did not finish connecting. You can try again, or continue without Facebook for now."
+        );
+      }, 1200);
+    });
+
+    return () => subscription.remove();
+  }, [isConnectingFacebook]);
+
+  function finishFacebookConnection() {
+    facebookCallbackHandledRef.current = true;
+    if (facebookTimeoutRef.current) {
+      clearTimeout(facebookTimeoutRef.current);
+      facebookTimeoutRef.current = null;
+    }
+    setIsConnectingFacebook(false);
+  }

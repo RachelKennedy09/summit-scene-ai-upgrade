@@ -4,6 +4,7 @@
     "slug": "summit-scene",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "summitscene",
     "icon": "./assets/logo-app-full-color-square.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,

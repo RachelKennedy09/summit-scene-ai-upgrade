@@ -301,6 +301,7 @@ export function AuthProvider({ children }) {
     website,
     avatarKey,
     profileImageUrl,
+    facebookConnectToken,
   }) {
     try {
       setIsAuthLoading(true);
@@ -332,6 +333,7 @@ export function AuthProvider({ children }) {
             website: website || undefined,
             avatarKey: avatarKey || undefined,
             profileImageUrl: profileImageUrl || undefined,
+            facebookConnectToken: facebookConnectToken || undefined,
           }),
         },
         AUTH_REQUEST_TIMEOUT_MS
@@ -576,6 +578,83 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function connectFacebook(code, redirectUri) {
+    if (!token) {
+      throw new Error("You must be logged in to connect Facebook.");
+    }
+
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/social/facebook/connect`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ code, redirectUri }),
+        },
+        AUTH_REQUEST_TIMEOUT_MS
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not connect Facebook.");
+      }
+
+      if (data.user) {
+        setUser(buildUser(data.user));
+      }
+
+      return data.user;
+    } catch (error) {
+      console.error("Error in connectFacebook:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't connect Facebook right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function previewFacebookSignup(code, redirectUri) {
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/social/facebook/signup-preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code, redirectUri }),
+        },
+        AUTH_REQUEST_TIMEOUT_MS
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not connect Facebook.");
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error in previewFacebookSignup:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't connect Facebook right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
   // UPDATE PROFILE: edit name / avatar / town / bio / etc. (not email/password yet)
   async function updateProfile(updates) {
     if (!token) {
@@ -649,6 +728,8 @@ export function AuthProvider({ children }) {
     unblockUser,
     fetchBlockedUsers,
     markSafetyTipsSeen,
+    connectFacebook,
+    previewFacebookSignup,
     updateProfile,
   };
 

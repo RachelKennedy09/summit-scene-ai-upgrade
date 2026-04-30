@@ -17,6 +17,7 @@ import communityRoutes from "./routes/community.js";
 import buddyPostRoutes from "./routes/buddyPosts.js";
 import eventPreferenceRoutes from "./routes/eventPreferences.js";
 import reportRoutes from "./routes/reports.js";
+import socialAuthRoutes from "./routes/socialAuth.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import placesRoutes from "./routes/placesRoutes.js";
 
@@ -72,6 +73,9 @@ app.use("/api/event-preferences", eventPreferenceRoutes);
 
 // Report routes: safety reports for posts, replies, events, and users
 app.use("/api/reports", reportRoutes);
+
+// Social account connection routes: Facebook first, more providers later
+app.use("/api/social", socialAuthRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);
