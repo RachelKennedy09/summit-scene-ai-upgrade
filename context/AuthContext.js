@@ -700,6 +700,45 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function deleteAccount() {
+    if (!token) {
+      throw new Error("You must be logged in to delete your account.");
+    }
+
+    try {
+      setIsAuthLoading(true);
+
+      const response = await fetchWithTimeout(
+        `${API_BASE_URL}/api/users/me`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        AUTH_REQUEST_TIMEOUT_MS
+      );
+
+      const data = await readJsonSafely(response);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete account.");
+      }
+
+      await setLoggedOutState("Account deleted. Clearing session.");
+      return data;
+    } catch (error) {
+      console.error("Error in deleteAccount:", error);
+      throw toUserFriendlyError(
+        error,
+        "We couldn't delete your account right now. Please try again."
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
   // LOGOUT: clear token + user + storage
   async function logout() {
     try {
@@ -731,6 +770,7 @@ export function AuthProvider({ children }) {
     connectFacebook,
     previewFacebookSignup,
     updateProfile,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

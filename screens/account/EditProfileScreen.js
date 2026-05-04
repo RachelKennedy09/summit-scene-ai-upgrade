@@ -37,6 +37,8 @@ const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
 const FACEBOOK_REDIRECT_URI =
   process.env.EXPO_PUBLIC_FACEBOOK_REDIRECT_URI ||
   `${API_BASE_URL}/api/social/facebook/mobile-callback`;
+const FACEBOOK_OPTIONAL_MESSAGE =
+  "Facebook connection needs the installed Summit Scene app to return automatically. You can keep using manual social links now and connect Facebook later.";
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
@@ -236,8 +238,8 @@ export default function EditProfileScreen({ navigation }) {
         }
         setIsConnectingFacebook(false);
         Alert.alert(
-          "Facebook not connected",
-          "Facebook did not finish connecting. You can try again, or continue without Facebook for now."
+          "Continue without Facebook",
+          FACEBOOK_OPTIONAL_MESSAGE
         );
       }, 1200);
     });
@@ -351,8 +353,8 @@ export default function EditProfileScreen({ navigation }) {
         finishFacebookConnection();
         subscription?.remove?.();
         Alert.alert(
-          "Facebook timed out",
-          "Facebook did not finish connecting. Please try again."
+          "Continue without Facebook",
+          FACEBOOK_OPTIONAL_MESSAGE
         );
       }, 90000);
 
@@ -369,15 +371,18 @@ export default function EditProfileScreen({ navigation }) {
 
         if (errorMessage) {
           finishFacebookConnection();
-          Alert.alert("Facebook not connected", errorMessage);
+          Alert.alert(
+            "Facebook not connected",
+            `${errorMessage}\n\nYou can still use manual social links and connect Facebook later.`
+          );
           return;
         }
 
         if (!code) {
           finishFacebookConnection();
           Alert.alert(
-            "Facebook not connected",
-            "Facebook did not return the authorization code."
+            "Continue without Facebook",
+            FACEBOOK_OPTIONAL_MESSAGE
           );
           return;
         }
@@ -406,7 +411,7 @@ export default function EditProfileScreen({ navigation }) {
         } catch (error) {
           Alert.alert(
             "Facebook failed",
-            error.message || "Could not connect Facebook."
+            `${error.message || "Could not connect Facebook."}\n\nYou can still use manual social links and connect Facebook later.`
           );
         } finally {
           finishFacebookConnection();
@@ -419,7 +424,7 @@ export default function EditProfileScreen({ navigation }) {
       finishFacebookConnection();
       Alert.alert(
         "Facebook failed",
-        error.message || "Could not open Facebook."
+        `${error.message || "Could not open Facebook."}\n\nYou can still use manual social links and connect Facebook later.`
       );
     }
   }
@@ -668,8 +673,8 @@ export default function EditProfileScreen({ navigation }) {
                 Facebook
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Connect Facebook to verify the account and use its profile
-                photo.
+                Optional: verify Facebook and use its profile photo when the
+                installed app build is available.
               </Text>
             </View>
             <Pressable
@@ -716,8 +721,8 @@ export default function EditProfileScreen({ navigation }) {
             Facebook or Instagram profile photo URL (optional)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Facebook can fill this in automatically. You can still paste a
-            public profile image URL as a fallback.
+            Paste a public profile image URL for now. Facebook can fill this in
+            automatically later from the installed app build.
           </Text>
           <TextInput
             style={[
@@ -797,7 +802,11 @@ export default function EditProfileScreen({ navigation }) {
             hosting card.
           </Text>
 
-          <AvatarPicker value={avatarKey} onChange={setAvatarKey} />
+          <AvatarPicker
+            value={avatarKey}
+            onChange={setAvatarKey}
+            variant={isBusiness ? "business" : "personal"}
+          />
           <Pressable
             style={[styles.clearAvatarButton, { borderColor: theme.border }]}
             onPress={() => setAvatarKey(null)}

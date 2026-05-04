@@ -39,6 +39,27 @@ export const EVENT_FORM_CATEGORIES = EVENT_CATEGORY_GROUPS.flatMap(
 
 export const EVENT_CATEGORIES = ["All", ...EVENT_FORM_CATEGORIES];
 
+export const COMMUNITY_NOTICE_CATEGORIES = [
+  "Garage Sale",
+  "Gear Sale / Swap",
+  "Free Stuff",
+  "Lost & Found",
+  "Community Notice",
+  "Volunteer Help",
+];
+
+export const COMMUNITY_CATEGORY_GROUPS = [
+  ...EVENT_CATEGORY_GROUPS,
+  {
+    title: "Local Notices",
+    options: COMMUNITY_NOTICE_CATEGORIES,
+  },
+];
+
+export const COMMUNITY_FORM_CATEGORIES = COMMUNITY_CATEGORY_GROUPS.flatMap(
+  (group) => group.options
+);
+
 export function getEventCategoryGroups({
   includeAll = false,
   allLabel = "All",
@@ -51,5 +72,20 @@ export function getEventCategoryGroups({
       options: [allLabel],
     },
     ...EVENT_CATEGORY_GROUPS,
+  ];
+}
+
+export function getCommunityCategoryGroups({
+  includeAll = false,
+  allLabel = "All",
+} = {}) {
+  if (!includeAll) return COMMUNITY_CATEGORY_GROUPS;
+
+  return [
+    {
+      title: "All",
+      options: [allLabel],
+    },
+    ...COMMUNITY_CATEGORY_GROUPS,
   ];
 }

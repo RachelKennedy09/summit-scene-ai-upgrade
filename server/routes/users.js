@@ -10,7 +10,35 @@ import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import isAdmin from "../middleware/isAdmin.js";
 import User from "../models/User.js";
+import BuddyPost from "../models/BuddyPost.js";
+import CommunityPost from "../models/CommunityPost.js";
+import Event from "../models/Event.js";
+import EventPreference from "../models/EventPreference.js";
+import Report from "../models/Report.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
+
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizePublicName(value = "") {
+  return String(value).trim().replace(/\s+/g, " ");
+}
+
+async function findUserByPublicName(name, excludeUserId = null) {
+  const normalizedName = normalizePublicName(name);
+  if (!normalizedName) return null;
+
+  const query = {
+    name: new RegExp(`^${escapeRegExp(normalizedName)}$`, "i"),
+  };
+
+  if (excludeUserId) {
+    query._id = { $ne: excludeUserId };
+  }
+
+  return User.findOne(query).select("_id name");
+}
 
 const router = express.Router();
 
@@ -227,6 +255,79 @@ router.get("/me/blocked-users", authMiddleware, async (req, res) => {
 });
 
 /* -------------------------------------------
+   DELETE /api/users/me
+   AUTH: required
+   - Permanently delete the logged-in account.
+   - Removes user-owned posts/events and clears user references from shared data.
+------------------------------------------- */
+router.delete("/me", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select("_id");
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const ownedEvents = await Event.find({ createdBy: userId }).select("_id");
+    const ownedEventIds = ownedEvents.map((event) => event._id);
+
+    await Promise.all([
+      EventPreference.deleteMany({
+        $or: [{ userId }, { eventId: { $in: ownedEventIds } }],
+      }),
+      Event.deleteMany({ createdBy: userId }),
+      Event.updateMany(
+        { attendees: userId },
+        { $pull: { attendees: userId } }
+      ),
+      CommunityPost.deleteMany({ user: userId }),
+      CommunityPost.updateMany(
+        {},
+        {
+          $pull: {
+            replies: { user: userId },
+            likes: userId,
+          },
+        }
+      ),
+      BuddyPost.deleteMany({ createdBy: userId }),
+      BuddyPost.updateMany(
+        {},
+        {
+          $pull: {
+            interestedUsers: userId,
+            replies: { createdBy: userId },
+          },
+        }
+      ),
+      User.updateMany(
+        { blockedUsers: userId },
+        { $pull: { blockedUsers: userId } }
+      ),
+      Report.deleteMany({
+        $or: [
+          { reporter: userId },
+          { reviewedBy: userId },
+          { targetType: "user", targetId: userId },
+          { targetType: "event", targetId: { $in: ownedEventIds } },
+          { parentType: "event", parentId: { $in: ownedEventIds } },
+        ],
+      }),
+    ]);
+
+    await User.deleteOne({ _id: userId });
+
+    return res.json({ message: "Account deleted." });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while deleting account." });
+  }
+});
+
+/* -------------------------------------------
    PATCH /api/users/me
    AUTH: required (must be logged in)
    - Update the logged-in user's profile fields:
@@ -244,6 +345,17 @@ router.patch("/me", authMiddleware, async (req, res) => {
     const userId = req.user.userId;
 
     const updates = buildProfileUpdates(req.body);
+
+    if (updates.name) {
+      const existingName = await findUserByPublicName(updates.name, userId);
+      if (existingName) {
+        return res.status(409).json({
+          message:
+            "That public name is already taken. Please choose a different name.",
+        });
+      }
+      updates.name = normalizePublicName(updates.name);
+    }
 
     // Guard: if no valid fields were provided, don't hit the DB
     if (Object.keys(updates).length === 0) {

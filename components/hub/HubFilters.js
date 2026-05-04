@@ -26,6 +26,9 @@ export default function HubFilters({
   isNearMeLoading,
   nearMeMessage,
   onToggleNearMe,
+  onRetry,
+  hasActiveFilters = false,
+  onClearFilters,
 }) {
   const { theme } = useTheme();
 
@@ -57,23 +60,48 @@ export default function HubFilters({
       <View style={styles.headerContainer}>
         {/* Error message (if the parent passes one down) */}
         {error ? (
-          <Text
-            style={[styles.errorText, { color: theme.error || colors.error }]}
+          <View
+            style={[
+              styles.inlineError,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
           >
-            {error}
-          </Text>
+            <Text
+              style={[styles.errorText, { color: theme.error || colors.error }]}
+            >
+              {error}
+            </Text>
+            {onRetry ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.inlineRetry,
+                  { borderColor: theme.accent },
+                  pressed && styles.pressed,
+                ]}
+                onPress={onRetry}
+              >
+                <Text style={[styles.inlineRetryText, { color: theme.accent }]}>
+                  Try again
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
 
         {/* Pills row: Town, Category, Date */}
         <View style={styles.pillRow}>
           {/* Town Pill */}
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.pill,
               {
                 backgroundColor: theme.pill || theme.card,
                 borderColor: theme.border,
               },
+              pressed && styles.pressed,
             ]}
             onPress={() => setIsTownModalVisible(true)}
           >
@@ -87,12 +115,13 @@ export default function HubFilters({
 
           {/* Category Pill */}
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.pill,
               {
                 backgroundColor: theme.pill || theme.card,
                 borderColor: theme.border,
               },
+              pressed && styles.pressed,
             ]}
             onPress={() => setIsCategoryModalVisible(true)}
           >
@@ -108,12 +137,13 @@ export default function HubFilters({
 
           {/* Date Pill */}
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.pill,
               {
                 backgroundColor: theme.pill || theme.card,
                 borderColor: theme.border,
               },
+              pressed && styles.pressed,
             ]}
             onPress={() => setIsDateModalVisible(true)}
           >
@@ -126,9 +156,9 @@ export default function HubFilters({
           </Pressable>
         </View>
 
-        <View style={styles.nearMeRow}>
+        <View style={styles.quickActionRow}>
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.nearMeChip,
               {
                 backgroundColor: isNearMeEnabled
@@ -136,6 +166,7 @@ export default function HubFilters({
                   : theme.pill || theme.card,
                 borderColor: isNearMeEnabled ? theme.accent : theme.border,
               },
+              pressed && styles.pressed,
             ]}
             onPress={onToggleNearMe}
           >
@@ -152,12 +183,29 @@ export default function HubFilters({
                   : "Near me"}
             </Text>
           </Pressable>
-          {nearMeMessage ? (
-            <Text style={[styles.nearMeMessage, { color: theme.textMuted }]}>
-              {nearMeMessage}
-            </Text>
+          {hasActiveFilters && onClearFilters ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.clearFiltersButton,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.accent,
+                },
+                pressed && styles.pressed,
+              ]}
+              onPress={onClearFilters}
+            >
+              <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
+                Clear filters
+              </Text>
+            </Pressable>
           ) : null}
         </View>
+        {nearMeMessage ? (
+          <Text style={[styles.nearMeMessage, { color: theme.textMuted }]}>
+            {nearMeMessage}
+          </Text>
+        ) : null}
 
         {/* Thin line + result summary text */}
         <View
@@ -195,7 +243,7 @@ export default function HubFilters({
               return (
                 <Pressable
                   key={town}
-                  style={[
+                  style={({ pressed }) => [
                     styles.townOption,
                     {
                       backgroundColor: theme.pill || theme.card,
@@ -205,6 +253,7 @@ export default function HubFilters({
                       backgroundColor: theme.accentSoft || theme.accent,
                       borderColor: theme.accent,
                     },
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => handleTownPress(town)}
                 >
@@ -229,7 +278,10 @@ export default function HubFilters({
             })}
 
             <Pressable
-              style={styles.modalCloseButton}
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.pressed,
+              ]}
               onPress={() => setIsTownModalVisible(false)}
             >
               <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
@@ -282,7 +334,7 @@ export default function HubFilters({
               return (
                 <Pressable
                   key={category}
-                  style={[
+                  style={({ pressed }) => [
                     styles.townOption,
                     {
                       backgroundColor: theme.pill || theme.card,
@@ -292,6 +344,7 @@ export default function HubFilters({
                       backgroundColor: theme.accentSoft || theme.accent,
                       borderColor: theme.accent,
                     },
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => handleCategoryPress(category)}
                 >
@@ -317,7 +370,10 @@ export default function HubFilters({
             </ScrollView>
 
             <Pressable
-              style={styles.modalCloseButton}
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.pressed,
+              ]}
               onPress={() => setIsCategoryModalVisible(false)}
             >
               <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
@@ -354,7 +410,7 @@ export default function HubFilters({
               return (
                 <Pressable
                   key={filter}
-                  style={[
+                  style={({ pressed }) => [
                     styles.townOption,
                     {
                       backgroundColor: theme.pill || theme.card,
@@ -364,6 +420,7 @@ export default function HubFilters({
                       backgroundColor: theme.accentSoft || theme.accent,
                       borderColor: theme.accent,
                     },
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => handleDateFilterPress(filter)}
                 >
@@ -388,7 +445,10 @@ export default function HubFilters({
             })}
 
             <Pressable
-              style={styles.modalCloseButton}
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.pressed,
+              ]}
               onPress={() => setIsDateModalVisible(false)}
             >
               <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
@@ -406,15 +466,37 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 20,
   },
+  inlineError: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    gap: 8,
+  },
   errorText: {
-    marginBottom: 8,
     fontSize: 13,
+    lineHeight: 18,
+  },
+  inlineRetry: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  inlineRetryText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   pillRow: {
     gap: 12,
     marginBottom: 12,
   },
-  nearMeRow: {
+  quickActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 8,
   },
   nearMeChip: {
@@ -428,9 +510,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  clearFiltersButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
   nearMeMessage: {
     fontSize: 13,
-    marginTop: 8,
+    marginBottom: 8,
     lineHeight: 18,
   },
   pill: {
@@ -505,6 +597,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     paddingVertical: 6,
     paddingHorizontal: 12,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   modalCloseText: {
     fontSize: 14,

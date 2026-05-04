@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 
 import BuddyPost from "../models/BuddyPost.js";
 import CommunityPost from "../models/CommunityPost.js";
+import Event from "../models/Event.js";
 import User from "../models/User.js";
 
 const PASSWORD = "TestPassword123!";
@@ -119,6 +120,7 @@ const postSeeds = [
   },
   {
     user: "Noah Brooks",
+    eventTitle: "Karaoke Night at the Taproom",
     type: "event",
     category: "Karaoke",
     communityType: "local-plan",
@@ -132,6 +134,7 @@ const postSeeds = [
   },
   {
     user: "Lucia Romero",
+    eventTitle: "First Chair Social",
     type: "skiing",
     category: "Ski Hill Events",
     communityType: "local-plan",
@@ -238,6 +241,7 @@ const postSeeds = [
   },
   {
     user: "Noah Brooks",
+    eventTitle: "Friday Live Music: Local Acoustic Night",
     type: "event",
     category: "Live Music",
     communityType: "local-plan",
@@ -295,6 +299,45 @@ const postSeeds = [
     createdAt: hoursAgo(18),
   },
   {
+    user: "Avery Morgan",
+    type: "notice",
+    category: "Garage Sale",
+    communityType: "notice",
+    activityText:
+      "Garage sale near downtown Canmore this Saturday.\nKitchen items, a small desk, winter layers, and a few beginner hiking pieces.",
+    date: dateString(4),
+    time: "9:00 AM",
+    town: "Canmore",
+    groupSizePreference: "any",
+    createdAt: hoursAgo(3),
+  },
+  {
+    user: "Samir Patel",
+    type: "notice",
+    category: "Gear Sale / Swap",
+    communityType: "notice",
+    activityText:
+      "Gear swap table after work.\nBringing extra gloves, microspikes, and a daypack. Open to trades or low-cost buys.",
+    date: dateString(2),
+    time: "6:00 PM",
+    town: "Banff",
+    groupSizePreference: "any",
+    createdAt: hoursAgo(9),
+  },
+  {
+    user: "Lucia Romero",
+    type: "notice",
+    category: "Lost & Found",
+    communityType: "notice",
+    activityText:
+      "Found a black toque near the Lake Louise staff bus stop.\nReply with the logo on the front and I can get it back to you.",
+    date: dateString(0),
+    time: "4:30 PM",
+    town: "Lake Louise",
+    groupSizePreference: "any",
+    createdAt: hoursAgo(1),
+  },
+  {
     user: "Maya Chen",
     type: "bingo",
     category: "Nightlife",
@@ -336,6 +379,10 @@ async function upsertSeedUsers() {
 
 async function seedPosts(usersByName) {
   const createdPosts = [];
+  const eventsByTitle = new Map(
+    (await Event.find({ title: { $in: postSeeds.map((post) => post.eventTitle).filter(Boolean) } }))
+      .map((event) => [event.title, event])
+  );
 
   for (const postData of postSeeds) {
     const user = usersByName.get(postData.user);
@@ -343,9 +390,11 @@ async function seedPosts(usersByName) {
       throw new Error(`Missing seed user: ${postData.user}`);
     }
 
-    const { user: _userName, ...postFields } = postData;
+    const { user: _userName, eventTitle, ...postFields } = postData;
+    const linkedEvent = eventTitle ? eventsByTitle.get(eventTitle) : null;
     const post = await BuddyPost.create({
       ...postFields,
+      ...(linkedEvent ? { eventId: linkedEvent._id } : {}),
       scheduleType: postFields.scheduleType || "single",
       createdBy: user._id,
       interestedUsers: [],

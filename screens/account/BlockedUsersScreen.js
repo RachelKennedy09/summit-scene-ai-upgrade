@@ -78,15 +78,44 @@ export default function BlockedUsersScreen() {
         ) : null}
 
         {error ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {error}
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              Could not load blocked users
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              {error}
+            </Text>
+            <Pressable
+              style={[styles.outlineButton, { borderColor: theme.accent, marginTop: 10 }]}
+              onPress={loadBlockedUsers}
+            >
+              <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+                Try again
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {!loading && !error && !blockedUsers.length ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            You have not blocked anyone.
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              No blocked users
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              If you block someone from a profile or post, they will appear here
+              so you can manage it later.
+            </Text>
+          </View>
         ) : null}
 
         {blockedUsers.map((blockedUser) => {

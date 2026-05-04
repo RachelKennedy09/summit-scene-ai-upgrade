@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 
 import Event from "../models/Event.js";
+import EventPreference from "../models/EventPreference.js";
 import User from "../models/User.js";
 
 const PASSWORD = "TestPassword123!";
@@ -572,12 +573,16 @@ async function main() {
 
   await mongoose.connect(process.env.MONGODB_URI);
 
-  const deletedEvents = await Event.deleteMany({});
+  const [deletedEvents, deletedPreferences] = await Promise.all([
+    Event.deleteMany({}),
+    EventPreference.deleteMany({}),
+  ]);
   const usersByName = await upsertBusinessUsers();
   const events = await seedEvents(usersByName);
 
   console.log("Business event seed complete.");
   console.log(`Deleted Event documents: ${deletedEvents.deletedCount}`);
+  console.log(`Deleted EventPreference documents: ${deletedPreferences.deletedCount}`);
   console.log(`Verified business users ready: ${usersByName.size}`);
   console.log(`Events created: ${events.length}`);
 }

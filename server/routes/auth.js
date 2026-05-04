@@ -46,6 +46,29 @@ function createToken(user) {
   );
 }
 
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizePublicName(value = "") {
+  return String(value).trim().replace(/\s+/g, " ");
+}
+
+async function findUserByPublicName(name, excludeUserId = null) {
+  const normalizedName = normalizePublicName(name);
+  if (!normalizedName) return null;
+
+  const query = {
+    name: new RegExp(`^${escapeRegExp(normalizedName)}$`, "i"),
+  };
+
+  if (excludeUserId) {
+    query._id = { $ne: excludeUserId };
+  }
+
+  return User.findOne(query).select("_id name");
+}
+
 function getVerifiedFacebookSignup(body = {}) {
   if (!body.facebookConnectToken) {
     return null;
@@ -108,11 +131,20 @@ router.post("/register", async (req, res) => {
 
     // Normalize email to avoid case sensitivity issues
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = normalizePublicName(name);
 
     // Check if email already exists
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(409).json({ message: "Email is already registered." });
+    }
+
+    const existingName = await findUserByPublicName(normalizedName);
+    if (existingName) {
+      return res.status(409).json({
+        message:
+          "That public name is already taken. Please choose a different name.",
+      });
     }
 
     // Decide finalRole safely (only allow known values)
@@ -168,7 +200,7 @@ router.post("/register", async (req, res) => {
     const user = await User.create({
       email: normalizedEmail,
       passwordHash,
-      name,
+      name: normalizedName,
       role: finalRole,
       businessVerificationStatus,
       businessVerificationRequestedAt:
@@ -186,6 +218,10 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Error in POST /api/auth/register:", error);
+    if (error?.code === 11000 && error?.keyPattern?.email) {
+      return res.status(409).json({ message: "Email is already registered." });
+    }
+
     res.status(500).json({ message: "Server error during registration." });
   }
 });

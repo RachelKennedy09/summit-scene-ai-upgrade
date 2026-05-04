@@ -31,6 +31,10 @@ import { getListScheduleLabel, isEventUpcoming } from "../../utils/eventSchedule
 export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
+  const canUseBusinessTools =
+    user?.isAdmin ||
+    (user?.role === "business" &&
+      user?.businessVerificationStatus === "verified");
   const isBusiness =
     user?.role === "business" &&
     user?.businessVerificationStatus === "verified";
@@ -61,7 +65,7 @@ export default function MyEventsScreen({ navigation, route }) {
         throw new Error("You are not logged in. Please log in again.");
       }
 
-      if (!isBusiness) {
+      if (!canUseBusinessTools) {
         throw new Error(
           "My Events is for official hosted events from business or organizer profiles."
         );
@@ -77,19 +81,19 @@ export default function MyEventsScreen({ navigation, route }) {
     } finally {
       setIsLoading(false);
     }
-  }, [token, isBusiness]);
+  }, [token, canUseBusinessTools]);
 
   // Reload whenever this screen comes into focus so newly posted/edited events appear immediately.
   useFocusEffect(
     useCallback(() => {
-      if (token && isBusiness) {
+      if (token && canUseBusinessTools) {
         fetchMyEvents();
       } else {
         setEvents([]);
         setError(null);
         setIsLoading(false);
       }
-    }, [token, isBusiness, fetchMyEvents])
+    }, [token, canUseBusinessTools, fetchMyEvents])
   );
 
   // Pull-to-refresh handler wraps fetchMyEvents and toggles a refreshing spinner.
@@ -244,6 +248,7 @@ export default function MyEventsScreen({ navigation, route }) {
   if (isLoading) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <AppLogoHeader />
@@ -260,6 +265,7 @@ export default function MyEventsScreen({ navigation, route }) {
   if (error) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <AppLogoHeader />
@@ -272,7 +278,7 @@ export default function MyEventsScreen({ navigation, route }) {
           >
             {error}
           </Text>
-          {isBusiness && (
+          {canUseBusinessTools && (
             <AppButton
               title="Try again"
               onPress={fetchMyEvents}
@@ -289,6 +295,7 @@ export default function MyEventsScreen({ navigation, route }) {
   if (!events.length) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <AppLogoHeader />
@@ -300,7 +307,7 @@ export default function MyEventsScreen({ navigation, route }) {
             Official events you create with your business profile will show up
             here.
           </Text>
-          {isBusiness && (
+          {canUseBusinessTools && (
             <AppButton
               title="Create your first event"
               onPress={() => navigation.navigate("Post")}
@@ -372,6 +379,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
@@ -448,7 +456,7 @@ export default function MyEventsScreen({ navigation, route }) {
                 </View>
               ) : null}
 
-              {isBusiness && (
+              {canUseBusinessTools && (
                 <AppButton
                   title="Post a new event"
                   onPress={() => navigation.navigate("Post")}

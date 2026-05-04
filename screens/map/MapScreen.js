@@ -18,12 +18,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  ScrollView,
+  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker, Callout } from "react-native-maps";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import AppLogoHeader from "../../components/AppLogoHeader";
+import EventMap from "../../components/map/EventMap";
 
 import {
   fetchEvents as fetchEventsFromApi,
@@ -141,12 +144,16 @@ function getEventMarkerCoords(event, townCounts) {
 
 export default function MapScreen() {
   const navigation = useNavigation();
+  const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const mapRef = useRef(null);
   const { user } = useAuth();
   const { theme } = useTheme();
   const isBusiness =
+    user?.isAdmin ||
     user?.role === "business" &&
-    user?.businessVerificationStatus === "verified";
+      user?.businessVerificationStatus === "verified";
   const currentUserId = user?._id || user?.id || "";
 
   // Filter state (shared wtih Hub): town, category, date range
@@ -158,6 +165,7 @@ export default function MapScreen() {
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
   const [nearMeMessage, setNearMeMessage] = useState("");
+  const [mapActionMessage, setMapActionMessage] = useState("");
 
   // Data + status state
   const [events, setEvents] = useState([]);
@@ -224,6 +232,18 @@ export default function MapScreen() {
     },
     [isNearMeEnabled]
   );
+
+  const handleClearFilters = useCallback(() => {
+    setSelectedTown("All");
+    setSelectedCategory("All");
+    setSelectedDateFilter("All");
+    setShowOnlyMyEvents(false);
+    setIsNearMeEnabled(false);
+    setNearMeLocation(null);
+    setNearMeMessage("");
+    setSelectedMarkerId(null);
+    setMapActionMessage("Filters cleared. Showing all events.");
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -485,12 +505,40 @@ export default function MapScreen() {
     });
   }, [navigation, selectedCategory, selectedTown, user?.town]);
 
+  const handleCreateBusinessEvent = useCallback(() => {
+    navigation.navigate("Post");
+  }, [navigation]);
+
+  const isBusinessMyEventsEmpty =
+    isBusiness && showOnlyMyEvents && eventsForMap.length === 0;
+  const hasActiveFilters =
+    selectedTown !== "All" ||
+    selectedCategory !== "All" ||
+    selectedDateFilter !== "All" ||
+    isNearMeEnabled ||
+    showOnlyMyEvents;
+  const mapHeight = Math.max(
+    260,
+    Math.min(420, windowHeight - tabBarHeight - insets.bottom - 330)
+  );
+
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
-      <View style={styles.container}>
+      <ScrollView
+        style={[
+          styles.container,
+          { paddingBottom: Math.max(24, insets.bottom + 12) },
+        ]}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(96, tabBarHeight + insets.bottom + 24) },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Filters header and summary (reused logic from Hub in a shared MapFilters component) */}
         <MapFilters
           selectedTown={selectedTown}
@@ -509,32 +557,13 @@ export default function MapScreen() {
           isNearMeLoading={nearMeLoading}
           nearMeMessage={nearMeMessage}
           onToggleNearMe={handleToggleNearMe}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={handleClearFilters}
         />
         {isBusiness ? (
           <View style={styles.businessToggleRow}>
             <Pressable
-              style={[
-                styles.toggleChip,
-                {
-                  backgroundColor: !showOnlyMyEvents
-                    ? theme.accentSoft || theme.card
-                    : theme.card,
-                  borderColor: !showOnlyMyEvents ? theme.accent : theme.border,
-                },
-              ]}
-              onPress={() => setShowOnlyMyEvents(false)}
-            >
-              <Text
-                style={{
-                  color: !showOnlyMyEvents ? theme.accent : theme.text,
-                  fontWeight: !showOnlyMyEvents ? "700" : "500",
-                }}
-              >
-                All events
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.toggleChip,
                 {
                   backgroundColor: showOnlyMyEvents
@@ -542,8 +571,19 @@ export default function MapScreen() {
                     : theme.card,
                   borderColor: showOnlyMyEvents ? theme.accent : theme.border,
                 },
+                pressed && styles.pressed,
               ]}
-              onPress={() => setShowOnlyMyEvents(true)}
+              onPress={() =>
+                setShowOnlyMyEvents((current) => {
+                  const nextValue = !current;
+                  setMapActionMessage(
+                    nextValue
+                      ? "Showing only your posted events."
+                      : "Showing all events."
+                  );
+                  return nextValue;
+                })
+              }
             >
               <Text
                 style={{
@@ -551,155 +591,113 @@ export default function MapScreen() {
                   fontWeight: showOnlyMyEvents ? "700" : "500",
                 }}
               >
-                My events
+                My events only
               </Text>
             </Pressable>
           </View>
         ) : null}
+        {mapActionMessage ? (
+          <Text style={[styles.actionMessage, { color: theme.textMuted }]}>
+            {mapActionMessage}
+          </Text>
+        ) : null}
 
         {/* Map area */}
-        <View
-          style={[
-            styles.mapContainer,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-        {loading ? (
-          <View style={styles.mapLoading}>
-            <ActivityIndicator size="large" color={theme.accent} />
-            <Text style={[styles.loadingText, { color: theme.textMuted }]}>
-              Loading map events...
-            </Text>
-          </View>
-        ) : error ? (
-          <View style={styles.mapLoading}>
-            <Text style={[styles.errorText, { color: theme.error || "#ff4d4f" }]}>
-              {error}
-            </Text>
-            <Pressable
-              style={[styles.retryButton, { borderColor: theme.accent }]}
-              onPress={loadEvents}
-            >
-              <Text style={[styles.retryText, { color: theme.accent }]}>
-                Try again
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={INITIAL_REGION}
-            moveOnMarkerPress={false}
-            showsUserLocation={isNearMeEnabled}
+        <View style={styles.mapStage}>
+          <View
+            style={[
+              styles.mapContainer,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                height: mapHeight,
+              },
+            ]}
           >
-            {markersForMap.map((marker) => {
-              const isSelected = marker.id === selectedMarkerId;
-
-              return (
-                <Marker
-                  key={marker.id}
-                  coordinate={marker.coordinate}
-                  tracksViewChanges={false}
-                  onSelect={() => setSelectedMarkerId(marker.id)}
+            {loading ? (
+              <View style={styles.mapLoading}>
+                <ActivityIndicator size="large" color={theme.accent} />
+                <Text style={[styles.loadingText, { color: theme.textMuted }]}>
+                  Loading map events...
+                </Text>
+              </View>
+            ) : error ? (
+              <View style={styles.mapLoading}>
+                <Text
+                  style={[styles.errorText, { color: theme.error || "#ff4d4f" }]}
                 >
-                  <View
-                    style={[
-                      styles.markerPin,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.accent
-                          : theme.background,
-                        borderColor: theme.accent,
-                      },
+                  {error}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.retryButton,
+                    { borderColor: theme.accent },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={loadEvents}
+                >
+                  <Text style={[styles.retryText, { color: theme.accent }]}>
+                    Try again
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <EventMap
+                ref={mapRef}
+                theme={theme}
+                markers={markersForMap}
+                selectedMarkerId={selectedMarkerId}
+                onSelectMarker={setSelectedMarkerId}
+                onPressMarker={handleMarkerPress}
+                isNearMeEnabled={isNearMeEnabled}
+              />
+            )}
+
+            {!loading && eventsForMap.length === 0 && !error && (
+              <View
+                style={[
+                  styles.emptyState,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                  {isBusinessMyEventsEmpty
+                    ? "No posted events found"
+                    : "No events found"}
+                </Text>
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                  {isBusinessMyEventsEmpty
+                    ? "Your business events do not match these filters. You can post a new official event."
+                    : "No events match this town + date range. Try another filter combo."}
+                </Text>
+                <View style={styles.emptyActions}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.emptyAction,
+                      { backgroundColor: theme.accent },
+                      pressed && styles.pressed,
                     ]}
+                    onPress={
+                      isBusinessMyEventsEmpty
+                        ? handleCreateBusinessEvent
+                        : handleCreateBuddyPostFromSearch
+                    }
                   >
-                    <View
-                      style={[
-                        styles.markerInner,
-                        {
-                          backgroundColor: isSelected
-                            ? theme.background
-                            : theme.accent,
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  <Callout tooltip={false} onPress={() => handleMarkerPress(marker.event)}>
-                    <View
-                      style={[
-                        styles.calloutCard,
-                        {
-                          backgroundColor: theme.card,
-                          borderColor: theme.border,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.calloutTitle, { color: theme.text }]}
-                        numberOfLines={2}
-                      >
-                        {marker.event.title}
-                      </Text>
-                      {marker.scheduleLabel ? (
-                        <Text
-                          style={[styles.calloutMeta, { color: theme.textMuted }]}
-                          numberOfLines={2}
-                        >
-                          {marker.scheduleLabel}
-                        </Text>
-                      ) : null}
-                      {marker.locationLabel ? (
-                        <Text
-                          style={[styles.calloutMeta, { color: theme.textMuted }]}
-                          numberOfLines={2}
-                        >
-                          {marker.locationLabel}
-                        </Text>
-                      ) : null}
-                      {!marker.usesExactCoords ? (
-                        <Text
-                          style={[styles.calloutHint, { color: theme.textMuted }]}
-                        >
-                          Approximate town pin
-                        </Text>
-                      ) : null}
-                      <Text style={[styles.calloutAction, { color: theme.accent }]}>
-                        View details
-                      </Text>
-                    </View>
-                  </Callout>
-                </Marker>
-              );
-            })}
-          </MapView>
-        )}
-        </View>
-
-        {!loading && eventsForMap.length === 0 && !error && (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              No events match this town + date range. Try another filter combo.
-            </Text>
-            <Text style={[styles.emptyPrompt, { color: theme.text }]}>
-              Want to organize this type of plan?
-            </Text>
-            <Pressable
-              style={[
-                styles.emptyAction,
-                { backgroundColor: theme.accent },
-              ]}
-              onPress={handleCreateBuddyPostFromSearch}
-            >
-              <Text style={styles.emptyActionText}>Create Buddy Post</Text>
-            </Pressable>
+                    <Text style={styles.emptyActionText}>
+                      {isBusinessMyEventsEmpty
+                        ? "Post Event"
+                        : "Create Buddy Post"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -712,6 +710,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 0,
+  },
+  contentContainer: {
+    flexGrow: 1,
   },
 
   // ---- Map ----
@@ -727,8 +728,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  actionMessage: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: -6,
+    marginBottom: 10,
+  },
+  mapStage: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   mapContainer: {
-    flex: 1,
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
@@ -805,23 +815,35 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   emptyText: {
-    marginTop: 10,
+    marginTop: 6,
     textAlign: "center",
     fontSize: 13,
+    lineHeight: 18,
   },
   emptyState: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 12,
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingBottom: 4,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  emptyPrompt: {
-    marginTop: 8,
+  emptyTitle: {
     textAlign: "center",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  emptyActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 10,
   },
   emptyAction: {
-    marginTop: 10,
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 10,
@@ -830,5 +852,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "800",
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
 });

@@ -5,7 +5,7 @@
 // - Theme picker
 // - Logout
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Alert,
   ScrollView,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
@@ -24,8 +25,10 @@ import AppLogoHeader from "../../components/AppLogoHeader";
 import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import { fetchBusinessRequests } from "../../services/adminApi";
+import { fetchReports } from "../../services/reportsApi";
 
-function AccountNavRow({ title, subtitle, onPress, theme }) {
+function AccountNavRow({ title, subtitle, onPress, theme, badge, actionLabel = "Open" }) {
   return (
     <Pressable
       style={[
@@ -42,7 +45,23 @@ function AccountNavRow({ title, subtitle, onPress, theme }) {
           </Text>
         ) : null}
       </View>
-      <Text style={[styles.navRowAction, { color: theme.accent }]}>Open</Text>
+      <View style={styles.navRowRight}>
+        {badge ? (
+          <View
+            style={[
+              styles.navBadge,
+              { backgroundColor: theme.accentSoft || theme.background },
+            ]}
+          >
+            <Text style={[styles.navBadgeText, { color: theme.accent }]}>
+              {badge}
+            </Text>
+          </View>
+        ) : null}
+        <Text style={[styles.navRowAction, { color: theme.accent }]}>
+          {actionLabel}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -50,7 +69,9 @@ function AccountNavRow({ title, subtitle, onPress, theme }) {
 function AccountScreen() {
   const {
     user,
+    token,
     logout,
+    deleteAccount,
     isAuthLoading,
     revertToLocalProfile,
   } = useAuth();
@@ -69,6 +90,41 @@ function AccountScreen() {
     isBusiness && businessVerificationStatus === "rejected";
 
   const [isReverting, setIsReverting] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [adminCounts, setAdminCounts] = useState({
+    openReports: 0,
+    pendingBusinesses: 0,
+  });
+  const [adminCountsLoading, setAdminCountsLoading] = useState(false);
+  const [adminCountsError, setAdminCountsError] = useState("");
+
+  const loadAdminCounts = useCallback(async () => {
+    if (!user?.isAdmin || !token) return;
+
+    try {
+      setAdminCountsLoading(true);
+      setAdminCountsError("");
+      const [openReports, pendingBusinesses] = await Promise.all([
+        fetchReports(token, "open"),
+        fetchBusinessRequests(token, "pending"),
+      ]);
+
+      setAdminCounts({
+        openReports: openReports.length,
+        pendingBusinesses: pendingBusinesses.length,
+      });
+    } catch (error) {
+      setAdminCountsError(
+        error.message || "Could not load admin tool counts."
+      );
+    } finally {
+      setAdminCountsLoading(false);
+    }
+  }, [token, user?.isAdmin]);
+
+  useEffect(() => {
+    loadAdminCounts();
+  }, [loadAdminCounts]);
 
   function handleEmailSummitScene() {
     Linking.openURL(
@@ -85,6 +141,7 @@ function AccountScreen() {
   if (!user) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.container}>
@@ -136,6 +193,33 @@ function AccountScreen() {
     );
   }
 
+  async function handleDeleteAccount() {
+    Alert.alert(
+      "Delete account?",
+      "This permanently deletes your Summit Scene account. Your posts, replies, saved events, and hosted events will be removed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeletingAccount(true);
+              await deleteAccount();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete account",
+                error.message || "Please try again."
+              );
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   // Format joined date nicely
   let joinedText = "Unknown";
   if (user.createdAt) {
@@ -153,6 +237,7 @@ function AccountScreen() {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
@@ -219,20 +304,102 @@ function AccountScreen() {
         )}
 
         {user.isAdmin ? (
-          <>
+          <View
+            style={[
+              styles.adminPanel,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.adminHeaderRow}>
+              <View style={styles.adminHeaderCopy}>
+                <Text style={[styles.adminTitle, { color: theme.text }]}>
+                  Admin tools
+                </Text>
+                <Text style={[styles.adminSubtitle, { color: theme.textMuted }]}>
+                  Review safety reports, business approvals, and official event tools.
+                </Text>
+              </View>
+              <Pressable onPress={loadAdminCounts} disabled={adminCountsLoading}>
+                {adminCountsLoading ? (
+                  <ActivityIndicator size="small" color={theme.accent} />
+                ) : (
+                  <Text style={[styles.refreshLink, { color: theme.accent }]}>
+                    Refresh
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+
+            <View style={styles.adminStatsRow}>
+              <View
+                style={[
+                  styles.adminStatCard,
+                  { backgroundColor: theme.background, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.adminStatNumber, { color: theme.text }]}>
+                  {adminCounts.openReports}
+                </Text>
+                <Text style={[styles.adminStatLabel, { color: theme.textMuted }]}>
+                  Open reports
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.adminStatCard,
+                  { backgroundColor: theme.background, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.adminStatNumber, { color: theme.text }]}>
+                  {adminCounts.pendingBusinesses}
+                </Text>
+                <Text style={[styles.adminStatLabel, { color: theme.textMuted }]}>
+                  Business requests
+                </Text>
+              </View>
+            </View>
+
+            {adminCountsError ? (
+              <Text style={[styles.adminError, { color: theme.textMuted }]}>
+                {adminCountsError}
+              </Text>
+            ) : null}
+
             <AccountNavRow
               title="Moderation queue"
               subtitle="Review reports and mark them reviewed or dismissed."
               onPress={() => navigation.navigate("ModerationQueue")}
               theme={theme}
+              badge={
+                adminCounts.openReports
+                  ? `${adminCounts.openReports} open`
+                  : "Clear"
+              }
             />
             <AccountNavRow
               title="Business verification requests"
               subtitle="Approve or reject pending business profiles."
               onPress={() => navigation.navigate("BusinessVerification")}
               theme={theme}
+              badge={
+                adminCounts.pendingBusinesses
+                  ? `${adminCounts.pendingBusinesses} pending`
+                  : "Clear"
+              }
             />
-          </>
+            <AccountNavRow
+              title="Official event tools"
+              subtitle="Post events and manage Summit Scene business listings."
+              onPress={() => navigation.navigate("MyEvents")}
+              theme={theme}
+            />
+            <AccountNavRow
+              title="Admin help"
+              subtitle="Use business help as the admin checklist for verification and event support."
+              onPress={() => navigation.navigate("BusinessHelp")}
+              theme={theme}
+            />
+          </View>
         ) : null}
 
 
@@ -300,6 +467,13 @@ function AccountScreen() {
           theme={theme}
         />
 
+        <AccountNavRow
+          title="Privacy & Terms"
+          subtitle="Review privacy, account deletion, community rules, and event permit responsibilities."
+          onPress={() => navigation.navigate("Legal")}
+          theme={theme}
+        />
+
         {/* LOG OUT */}
         <AppButton
           title={isAuthLoading ? "Logging out..." : "Log Out"}
@@ -314,6 +488,36 @@ function AccountScreen() {
           Logging out will clear your session on this device.{"\n"}
           You can log back in anytime to keep using Summit Scene.
         </Text>
+
+        <Pressable
+          style={[
+            styles.deleteAccountButton,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.danger || "#B42318",
+            },
+            (isAuthLoading || isDeletingAccount) && styles.buttonDisabled,
+          ]}
+          onPress={handleDeleteAccount}
+          disabled={isAuthLoading || isDeletingAccount}
+        >
+          <Text
+            style={[
+              styles.deleteAccountButtonText,
+              { color: theme.danger || "#B42318" },
+            ]}
+          >
+            {isDeletingAccount ? "Deleting account..." : "Delete Account"}
+          </Text>
+          <Text
+            style={[
+              styles.deleteAccountButtonSubtext,
+              { color: theme.textMuted },
+            ]}
+          >
+            Permanently remove this profile and clear your session.
+          </Text>
+        </Pressable>
       </ScrollView>
 
     </SafeAreaView>
@@ -372,9 +576,27 @@ const styles = StyleSheet.create({
   },
   helperText: {
     marginTop: 14,
+    marginBottom: 14,
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  deleteAccountButton: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  deleteAccountButtonText: {
+    fontWeight: "800",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  deleteAccountButtonSubtext: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   statusCard: {
     borderWidth: 1,
@@ -403,6 +625,19 @@ const styles = StyleSheet.create({
   navRowCopy: {
     flex: 1,
   },
+  navRowRight: {
+    alignItems: "flex-end",
+    gap: 5,
+  },
+  navBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  navBadgeText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
   navRowTitle: {
     fontSize: 14,
     fontWeight: "800",
@@ -415,6 +650,55 @@ const styles = StyleSheet.create({
   navRowAction: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  adminPanel: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  adminHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  adminHeaderCopy: {
+    flex: 1,
+  },
+  adminTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  adminSubtitle: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  adminStatsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  adminStatCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+  },
+  adminStatNumber: {
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  adminStatLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  adminError: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
   },
   verificationHint: {
     fontSize: 12,

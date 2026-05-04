@@ -1,0 +1,17 @@
+export const LANGUAGE_OPTIONS = [
+  "Any language",
+  "English",
+  "French",
+  "Spanish",
+  "German",
+  "Japanese",
+  "Korean",
+  "Mandarin",
+  "Portuguese",
+  "Hindi",
+  "Punjabi",
+  "Vietnamese",
+  "Tagalog",
+  "Arabic",
+  "Other",
+];

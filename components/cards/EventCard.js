@@ -113,8 +113,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.992 }],
+    opacity: 0.84,
+    transform: [{ scale: 0.98 }, { translateY: 1 }],
   },
   card: {
     borderRadius: 18,

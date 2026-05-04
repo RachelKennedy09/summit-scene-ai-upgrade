@@ -15,6 +15,61 @@
 //  - POST   /api/community/:id/likes
 
 import CommunityPost from "../models/CommunityPost.js";
+import User from "../models/User.js";
+
+function getUserId(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  if (value.id) return value.id.toString();
+  return value.toString?.() || "";
+}
+
+async function buildBlockContext(viewerId) {
+  if (!viewerId) {
+    return {
+      blockedIds: new Set(),
+      blockedByIds: new Set(),
+    };
+  }
+
+  const [viewer, blockedByUsers] = await Promise.all([
+    User.findById(viewerId).select("blockedUsers"),
+    User.find({ blockedUsers: viewerId }).select("_id"),
+  ]);
+
+  return {
+    blockedIds: new Set(
+      (viewer?.blockedUsers || []).map((id) => id.toString())
+    ),
+    blockedByIds: new Set(
+      blockedByUsers.map((blockedByUser) => blockedByUser._id.toString())
+    ),
+  };
+}
+
+function isBlockedUser(userId, blockContext) {
+  const id = getUserId(userId);
+  return Boolean(
+    id &&
+      (blockContext.blockedIds.has(id) || blockContext.blockedByIds.has(id))
+  );
+}
+
+function filterBlockedCommunityPosts(posts, blockContext) {
+  return posts
+    .filter((post) => !isBlockedUser(post.user, blockContext))
+    .map((post) => {
+      const postObject = post.toObject ? post.toObject() : post;
+      postObject.replies = (postObject.replies || []).filter(
+        (reply) => !isBlockedUser(reply.user, blockContext)
+      );
+      postObject.likes = (postObject.likes || []).filter(
+        (like) => !isBlockedUser(like, blockContext)
+      );
+      return postObject;
+    });
+}
 
 // -------------------------------------------
 // GET /api/community?type=highwayconditions&town=Banff
@@ -43,7 +98,8 @@ export async function getCommunityPosts(req, res) {
       )
       .sort({ createdAt: -1 });
 
-    return res.json(posts);
+    const blockContext = await buildBlockContext(req.user?.userId);
+    return res.json(filterBlockedCommunityPosts(posts, blockContext));
   } catch (error) {
     console.error("Error in GET /api/community:", error);
     return res.status(500).json({
@@ -242,6 +298,13 @@ export async function addCommunityReply(req, res) {
     const post = await CommunityPost.findById(postId);
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
+    }
+
+    const blockContext = await buildBlockContext(userId);
+    if (isBlockedUser(post.user, blockContext)) {
+      return res
+        .status(403)
+        .json({ message: "You cannot reply to this post." });
     }
 
     const replyName = req.user?.name || req.user?.email || "SummitScene member";

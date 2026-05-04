@@ -21,7 +21,6 @@
         }
       ]
     ],
-    
     "ios": {
       "supportsTablet": true
     },
@@ -30,10 +29,20 @@
         "foregroundImage": "./assets/logo-app-full-color-square.png",
         "backgroundColor": "#F5F3EE"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/logo-app-full-color-square.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "368f8454-2a6a-4fef-9951-50b943c38981"
+      }
+    },
+    "owner": "rachellaurenxx"
   }
 }

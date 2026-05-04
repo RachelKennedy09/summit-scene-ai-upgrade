@@ -569,6 +569,7 @@ export default function PostEventScreen() {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
@@ -587,12 +588,21 @@ export default function PostEventScreen() {
           subtitle='For hosted events from businesses, venues, and organizers. Fields marked "Required" must be completed before posting.'
         />
 
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Basics
-        </Text>
-        <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
-          Start with the core details people need to find your event.
-        </Text>
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
+            Step 1
+          </Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Event Basics
+          </Text>
+          <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
+            Add the details people use first when deciding what to click.
+          </Text>
 
           {/* Title */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -625,7 +635,7 @@ export default function PostEventScreen() {
             style={[
               styles.selectButton,
               {
-                backgroundColor: theme.card,
+                backgroundColor: theme.background,
                 borderColor: theme.border,
                 borderWidth: 1,
               },
@@ -648,7 +658,7 @@ export default function PostEventScreen() {
             style={[
               styles.selectButton,
               {
-                backgroundColor: theme.card,
+                backgroundColor: theme.background,
                 borderColor: theme.border,
                 borderWidth: 1,
               },
@@ -659,6 +669,23 @@ export default function PostEventScreen() {
               {category || "Choose a category"}
             </Text>
           </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
+            Step 2
+          </Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Schedule
+          </Text>
+          <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
+            Choose whether this is one-time, all day, or recurring.
+          </Text>
 
           <Text style={[styles.label, { color: theme.textMuted }]}>
             Schedule type (Required)
@@ -674,7 +701,7 @@ export default function PostEventScreen() {
                     {
                       backgroundColor: selected
                         ? theme.accentSoft || theme.card
-                        : theme.card,
+                        : theme.background,
                       borderColor: selected ? theme.accent : theme.border,
                     },
                   ]}
@@ -692,13 +719,6 @@ export default function PostEventScreen() {
               );
             })}
           </View>
-
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Schedule
-          </Text>
-          <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
-            Choose whether this is one-time, all day, or recurring.
-          </Text>
 
           {/* Date */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -740,7 +760,7 @@ export default function PostEventScreen() {
                     {
                       backgroundColor: selected
                         ? theme.accentSoft || theme.card
-                        : theme.card,
+                        : theme.background,
                       borderColor: selected ? theme.accent : theme.border,
                     },
                   ]}
@@ -1010,7 +1030,17 @@ export default function PostEventScreen() {
               This event will display as all day. Time slots are hidden.
             </Text>
           )}
+        </View>
 
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
+            Step 3
+          </Text>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             Location
           </Text>
@@ -1126,12 +1156,22 @@ export default function PostEventScreen() {
               Selected address will use an exact map pin.
             </Text>
           ) : null}
+        </View>
 
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
+            Step 4
+          </Text>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Optional Details
+            Details
           </Text>
           <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
-            Add a description and photo if you want the listing to feel more complete.
+            Add a description and photo if you want the listing to feel complete.
           </Text>
 
           {/* Description */}
@@ -1253,7 +1293,32 @@ export default function PostEventScreen() {
               Use a direct image link. If it fails to load, the event will show without a hero image.
             </Text>
           )}
+        </View>
 
+        <View
+          style={[
+            styles.previewSummaryCard,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
+            Preview
+          </Text>
+          <Text style={[styles.previewSummaryTitle, { color: theme.text }]}>
+            {title.trim() || "Your event title"}
+          </Text>
+          <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
+            {[town || "Town", category || "Category"].join(" • ")}
+          </Text>
+          <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
+            {date || "Date"}{isAllDay ? " • All day" : time ? ` • ${time}` : ""}
+          </Text>
+          {locationName.trim() || address.trim() ? (
+            <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
+              {locationName.trim() || address.trim()}
+            </Text>
+          ) : null}
+        </View>
 
           {/* Submit button */}
           <AppButton
@@ -1412,10 +1477,23 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     flexGrow: 1,
   },
+  formSection: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    marginTop: 16,
+    fontWeight: "800",
+    marginTop: 0,
     marginBottom: 4,
   },
   sectionDescription: {
@@ -1569,7 +1647,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 2,
     marginBottom: 40,
   },
   secondaryButton: {
@@ -1582,5 +1660,21 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontWeight: "700",
     fontSize: 15,
+  },
+  previewSummaryCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+  },
+  previewSummaryTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  previewSummaryMeta: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 2,
   },
 });

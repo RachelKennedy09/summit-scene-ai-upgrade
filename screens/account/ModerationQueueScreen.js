@@ -93,15 +93,44 @@ export default function ModerationQueueScreen() {
         ) : null}
 
         {error ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {error}
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              Could not load reports
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              {error}
+            </Text>
+            <Pressable
+              style={[styles.outlineButton, { borderColor: theme.accent, marginTop: 10 }]}
+              onPress={loadReports}
+            >
+              <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+                Try again
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {!loading && !error && !reports.length ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            No open reports.
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              No open reports
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              New reports from posts, replies, events, and profiles will appear
+              here for review.
+            </Text>
+          </View>
         ) : null}
 
         {reports.map((report) => {

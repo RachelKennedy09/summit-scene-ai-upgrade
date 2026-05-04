@@ -25,6 +25,18 @@ export const AVATARS = {
   w6_brown_longblack: require("./avatar_w6_brown_longblack.png"),
   w7_fair_orangehair: require("./avatar_w7_fair_orangehair.png"),
   w8_dark_shortcurly: require("./avatar_w8_dark_shortcurly.png"),
+
+  // ----------------------- BUSINESS / ORGANIZER ------------------------------
+  business_food_drink: require("./business_food_drink.png"),
+  business_music_nightlife: require("./business_music_nightlife.png"),
+  business_outdoor_adventure: require("./business_outdoor_adventure.png"),
+  business_wellness: require("./business_wellness.png"),
+  business_market_shop: require("./business_market_shop.png"),
+  business_art_culture: require("./business_art_culture.png"),
+  business_ski_snow: require("./business_ski_snow.png"),
+  business_stay_lodging: require("./business_stay_lodging.png"),
+  business_community: require("./business_community.png"),
+  business_general: require("./business_general.png"),
 };
 
 // Smaller sources for the register/edit-profile picker so the grid can render
@@ -47,9 +59,65 @@ export const AVATAR_PICKER_SOURCES = {
   w6_brown_longblack: require("./thumbs/avatar_w6_brown_longblack.png"),
   w7_fair_orangehair: require("./thumbs/avatar_w7_fair_orangehair.png"),
   w8_dark_shortcurly: require("./thumbs/avatar_w8_dark_shortcurly.png"),
+  business_food_drink: require("./thumbs/business_food_drink.png"),
+  business_music_nightlife: require("./thumbs/business_music_nightlife.png"),
+  business_outdoor_adventure: require("./thumbs/business_outdoor_adventure.png"),
+  business_wellness: require("./thumbs/business_wellness.png"),
+  business_market_shop: require("./thumbs/business_market_shop.png"),
+  business_art_culture: require("./thumbs/business_art_culture.png"),
+  business_ski_snow: require("./thumbs/business_ski_snow.png"),
+  business_stay_lodging: require("./thumbs/business_stay_lodging.png"),
+  business_community: require("./thumbs/business_community.png"),
+  business_general: require("./thumbs/business_general.png"),
 };
 
 // For UI pickers: creates an array like
 // ["m1_tan_blackhair", "m2_dark_blackhair", ..., "w8_dark_shortcurly"]
 
-export const AVATAR_KEYS = Object.keys(AVATARS);
+export const PERSONAL_AVATAR_KEYS = [
+  "m1_tan_blackhair",
+  "m2_dark_blackhair",
+  "m3_light_brownhair",
+  "m4_brown_blondehair",
+  "m5_light_redhair",
+  "m6_medium_browncurly",
+  "m7_dark_browncurly",
+  "m8_light_blackhair",
+  "m9_tan_redlong",
+  "w1_light_orangehair",
+  "w2_tan_longbrown",
+  "w3_dark_blackpony",
+  "w4_medium_longauburn",
+  "w5_light_blondehair",
+  "w6_brown_longblack",
+  "w7_fair_orangehair",
+  "w8_dark_shortcurly",
+];
+
+export const BUSINESS_AVATAR_KEYS = [
+  "business_food_drink",
+  "business_music_nightlife",
+  "business_outdoor_adventure",
+  "business_wellness",
+  "business_market_shop",
+  "business_art_culture",
+  "business_ski_snow",
+  "business_stay_lodging",
+  "business_community",
+  "business_general",
+];
+
+export const BUSINESS_AVATAR_LABELS = {
+  business_food_drink: "Food & drink",
+  business_music_nightlife: "Music",
+  business_outdoor_adventure: "Outdoor",
+  business_wellness: "Wellness",
+  business_market_shop: "Markets",
+  business_art_culture: "Arts",
+  business_ski_snow: "Ski hill",
+  business_stay_lodging: "Lodging",
+  business_community: "Community",
+  business_general: "General",
+};
+
+export const AVATAR_KEYS = PERSONAL_AVATAR_KEYS;

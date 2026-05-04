@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import MemberProfileModal from "../../components/account/MemberProfileModal";
@@ -11,13 +19,53 @@ import {
   updateBusinessRequest,
 } from "../../services/adminApi";
 
+const STATUS_OPTIONS = [
+  { label: "Pending", value: "pending" },
+  { label: "Approved", value: "verified" },
+  { label: "Rejected", value: "rejected" },
+];
+
+function getUserId(user) {
+  return user?._id || user?.id;
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getVerifiedSocials(user) {
+  return (user?.socialAccounts || []).filter(
+    (account) => account?.provider && (account?.handle || account?.url)
+  );
+}
+
 export default function BusinessVerificationScreen() {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const [businessRequests, setBusinessRequests] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusCounts, setStatusCounts] = useState({
+    pending: 0,
+    verified: 0,
+    rejected: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [profileUser, setProfileUser] = useState(null);
+
+  const activeStatusLabel = useMemo(
+    () =>
+      STATUS_OPTIONS.find((option) => option.value === statusFilter)?.label ||
+      "Pending",
+    [statusFilter]
+  );
 
   async function loadBusinessRequests() {
     if (!user?.isAdmin || !token) return;
@@ -25,8 +73,18 @@ export default function BusinessVerificationScreen() {
     try {
       setLoading(true);
       setError("");
-      const requests = await fetchBusinessRequests(token, "pending");
+      const [requests, pending, verified, rejected] = await Promise.all([
+        fetchBusinessRequests(token, statusFilter),
+        fetchBusinessRequests(token, "pending"),
+        fetchBusinessRequests(token, "verified"),
+        fetchBusinessRequests(token, "rejected"),
+      ]);
       setBusinessRequests(requests);
+      setStatusCounts({
+        pending: pending.length,
+        verified: verified.length,
+        rejected: rejected.length,
+      });
     } catch (loadError) {
       setError(loadError.message || "Could not load business requests.");
     } finally {
@@ -36,18 +94,41 @@ export default function BusinessVerificationScreen() {
 
   useEffect(() => {
     loadBusinessRequests();
-  }, [user?._id, user?.id, user?.isAdmin, token]);
+  }, [user?._id, user?.id, user?.isAdmin, token, statusFilter]);
+
+  function handleEmailBusiness(businessUser) {
+    const email = businessUser?.email;
+    if (!email) {
+      Alert.alert("No email", "This business profile does not have an email.");
+      return;
+    }
+
+    const subject = encodeURIComponent("Summit Scene business verification");
+    const body = encodeURIComponent(
+      `Hi ${businessUser.name || "there"},\n\nThanks for creating a Summit Scene business profile. To verify the account, please reply with a quick note confirming you represent this business.\n\nYou can also send a business website, Instagram/Facebook page, or any public proof that connects you to the business.\n\nThanks,\nSummit Scene`
+    );
+    Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`).catch(() => {
+      Alert.alert("Could not open email", `Please email ${email} manually.`);
+    });
+  }
 
   function handleBusinessReview(businessUser, status) {
-    const businessUserId = businessUser?._id || businessUser?.id;
+    const businessUserId = getUserId(businessUser);
     if (!businessUserId) return;
 
-    const actionLabel = status === "verified" ? "Approve" : "Reject";
+    const actionLabel =
+      status === "verified"
+        ? "Approve"
+        : status === "pending"
+        ? "Move to pending"
+        : "Reject";
     Alert.alert(
       `${actionLabel} business profile?`,
       `${businessUser.name || businessUser.email} will ${
         status === "verified"
           ? "be able to post official events."
+          : status === "pending"
+          ? "go back into the review queue."
           : "stay blocked from official event posting."
       }`,
       [
@@ -68,6 +149,77 @@ export default function BusinessVerificationScreen() {
           },
         },
       ]
+    );
+  }
+
+  function renderReviewActions(businessUser) {
+    const status = businessUser.businessVerificationStatus || statusFilter;
+
+    if (status === "verified") {
+      return (
+        <>
+          <Pressable
+            style={[styles.outlineButton, { borderColor: theme.border }]}
+            onPress={() => handleBusinessReview(businessUser, "pending")}
+          >
+            <Text style={[styles.outlineButtonText, { color: theme.textMuted }]}>
+              Move to Pending
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.outlineButton, { borderColor: theme.border }]}
+            onPress={() => handleBusinessReview(businessUser, "rejected")}
+          >
+            <Text style={[styles.outlineButtonText, { color: theme.textMuted }]}>
+              Reject
+            </Text>
+          </Pressable>
+        </>
+      );
+    }
+
+    if (status === "rejected") {
+      return (
+        <>
+          <Pressable
+            style={[styles.outlineButton, { borderColor: theme.accent }]}
+            onPress={() => handleBusinessReview(businessUser, "verified")}
+          >
+            <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+              Approve
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.outlineButton, { borderColor: theme.border }]}
+            onPress={() => handleBusinessReview(businessUser, "pending")}
+          >
+            <Text style={[styles.outlineButtonText, { color: theme.textMuted }]}>
+              Move to Pending
+            </Text>
+          </Pressable>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Pressable
+          style={[styles.outlineButton, { borderColor: theme.accent }]}
+          onPress={() => handleBusinessReview(businessUser, "verified")}
+        >
+          <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+            Approve
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.outlineButton, { borderColor: theme.border }]}
+          onPress={() => handleBusinessReview(businessUser, "rejected")}
+        >
+          <Text style={[styles.outlineButtonText, { color: theme.textMuted }]}>
+            Reject
+          </Text>
+        </Pressable>
+      </>
     );
   }
 
@@ -96,6 +248,36 @@ export default function BusinessVerificationScreen() {
           email/DM clearly proves they represent the business.
         </Text>
 
+        <View style={styles.statusTabs}>
+          {STATUS_OPTIONS.map((option) => {
+            const isActive = option.value === statusFilter;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setStatusFilter(option.value)}
+                style={[
+                  styles.statusTab,
+                  {
+                    backgroundColor: isActive
+                      ? theme.accentSoft || theme.card
+                      : theme.card,
+                    borderColor: isActive ? theme.accent : theme.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusTabText,
+                    { color: isActive ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {option.label} ({statusCounts[option.value] || 0})
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Pressable onPress={loadBusinessRequests} style={styles.refreshButton}>
           <Text style={[styles.refreshText, { color: theme.accent }]}>Refresh</Text>
         </Pressable>
@@ -107,27 +289,63 @@ export default function BusinessVerificationScreen() {
         ) : null}
 
         {error ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {error}
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              Could not load requests
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              {error}
+            </Text>
+            <Pressable
+              style={[styles.outlineButton, { borderColor: theme.accent, marginTop: 10 }]}
+              onPress={loadBusinessRequests}
+            >
+              <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+                Try again
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {!loading && !error && !businessRequests.length ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            No pending business requests.
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.name, { color: theme.text }]}>
+              No {activeStatusLabel.toLowerCase()} business requests
+            </Text>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              {statusFilter === "pending"
+                ? "New business and organizer accounts will appear here after signup until you approve or reject them."
+                : "Switch tabs above to review a different verification status."}
+            </Text>
+          </View>
         ) : null}
 
         {businessRequests.map((businessUser) => {
-          const businessUserId = businessUser._id || businessUser.id;
+          const businessUserId = getUserId(businessUser);
+          const requestedAt = formatDate(
+            businessUser.businessVerificationRequestedAt ||
+              businessUser.createdAt
+          );
+          const verifiedAt = formatDate(businessUser.businessVerifiedAt);
+          const socials = getVerifiedSocials(businessUser);
           const proof = [
-            businessUser.lookingFor,
             businessUser.website,
             businessUser.instagram,
+            ...socials.map((account) => account.url || account.handle),
           ]
             .filter(Boolean)
             .join(" | ");
-          const meta = [businessUser.email, businessUser.town]
+          const meta = [businessUser.email, businessUser.town, businessUser.role]
             .filter(Boolean)
             .join(" | ");
 
@@ -142,16 +360,63 @@ export default function BusinessVerificationScreen() {
               <Text style={[styles.name, { color: theme.text }]}>
                 {businessUser.name || "Business profile"}
               </Text>
+              <View style={styles.cardTopRow}>
+                <Text style={[styles.statusChip, { color: theme.textMuted }]}>
+                  {(businessUser.businessVerificationStatus || statusFilter).toUpperCase()}
+                </Text>
+                {requestedAt ? (
+                  <Text style={[styles.meta, { color: theme.textMuted }]}>
+                    Requested {requestedAt}
+                  </Text>
+                ) : null}
+              </View>
               {meta ? (
                 <Text style={[styles.meta, { color: theme.textMuted }]}>
                   {meta}
                 </Text>
               ) : null}
-              {proof ? (
-                <Text style={[styles.details, { color: theme.text }]}>
-                  {proof}
+              {verifiedAt ? (
+                <Text style={[styles.meta, { color: theme.textMuted }]}>
+                  Approved {verifiedAt}
                 </Text>
               ) : null}
+              {businessUser.bio ? (
+                <Text style={[styles.details, { color: theme.text }]}>
+                  {businessUser.bio}
+                </Text>
+              ) : null}
+              {proof ? (
+                <View
+                  style={[
+                    styles.proofBox,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.proofLabel, { color: theme.textMuted }]}>
+                    Proof to check
+                  </Text>
+                  <Text style={[styles.details, { color: theme.text }]}>
+                    {proof}
+                  </Text>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.proofBox,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.proofLabel, { color: theme.textMuted }]}>
+                    Proof to check
+                  </Text>
+                  <Text style={[styles.details, { color: theme.textMuted }]}>
+                    No website or social link added yet. Use Email Business to ask for proof.
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.checklist, { color: theme.textMuted }]}>
+                Check: business name matches proof, email/social looks real, and this is not a duplicate account.
+              </Text>
               <View style={styles.actions}>
                 <Pressable
                   style={[styles.outlineButton, { borderColor: theme.accent }]}
@@ -163,20 +428,13 @@ export default function BusinessVerificationScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.outlineButton, { borderColor: theme.accent }]}
-                  onPress={() => handleBusinessReview(businessUser, "verified")}
+                  onPress={() => handleEmailBusiness(businessUser)}
                 >
                   <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
-                    Approve
+                    Email Business
                   </Text>
                 </Pressable>
-                <Pressable
-                  style={[styles.outlineButton, { borderColor: theme.border }]}
-                  onPress={() => handleBusinessReview(businessUser, "rejected")}
-                >
-                  <Text style={[styles.outlineButtonText, { color: theme.textMuted }]}>
-                    Reject
-                  </Text>
-                </Pressable>
+                {renderReviewActions(businessUser)}
               </View>
             </View>
           );
@@ -206,6 +464,22 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 14,
   },
+  statusTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
+  },
+  statusTab: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  statusTabText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   refreshButton: {
     alignSelf: "flex-start",
     marginBottom: 14,
@@ -229,6 +503,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  cardTopRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  statusChip: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0,
+  },
   meta: {
     fontSize: 12,
     marginTop: 3,
@@ -237,6 +523,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8,
+  },
+  proofBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+  },
+  proofLabel: {
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  checklist: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 10,
   },
   actions: {
     flexDirection: "row",

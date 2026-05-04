@@ -24,8 +24,8 @@ import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import TimePickerModal from "../../components/events/TimePickerModal";
 import {
-  EVENT_FORM_CATEGORIES,
-  getEventCategoryGroups,
+  COMMUNITY_FORM_CATEGORIES,
+  getCommunityCategoryGroups,
 } from "../../constants/eventCategories";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -45,12 +45,13 @@ const BUDDY_TYPES = [
   { label: "Bingo", value: "bingo" },
   { label: "Trivia", value: "trivia" },
   { label: "Shopping", value: "shopping" },
+  { label: "Notice", value: "notice" },
   { label: "General", value: "general" },
   { label: "Other", value: "other" },
 ];
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
-const CATEGORY_GROUPS = getEventCategoryGroups();
+const CATEGORY_GROUPS = getCommunityCategoryGroups();
 const COMMUNITY_TYPES = [
   {
     label: "Local Plan",
@@ -66,6 +67,11 @@ const COMMUNITY_TYPES = [
     label: "Group",
     value: "group",
     helper: "Repeatable interest groups like book club, hiking, trivia, or art nights.",
+  },
+  {
+    label: "Local Notice",
+    value: "notice",
+    helper: "Garage sales, gear swaps, lost and found, free stuff, or practical town notices.",
   },
   {
     label: "Community Update",
@@ -156,9 +162,26 @@ const COMMUNITY_FORM_COPY = {
     defaultCategory: "",
     defaultType: "general",
   },
+  notice: {
+    title: "Share Local Notice",
+    subtitle: "Post a useful notice like a garage sale, gear swap, lost and found, or free stuff.",
+    categoryLabel: "Notice type",
+    categoryRequired: true,
+    detailsLabel: "Notice",
+    detailsPlaceholder: "What are you sharing? Add the location area, timing, and what people should know.",
+    townLabel: "Applies to",
+    dateLabel: "Date",
+    timeLabel: "Time",
+    showDateTime: true,
+    showSchedule: false,
+    showGroupSize: false,
+    submitLabel: "Share Notice",
+    defaultCategory: "",
+    defaultType: "notice",
+  },
   update: {
     title: "Share Community Update",
-    subtitle: "Post a useful local notice, volunteer callout, safety note, or practical heads-up.",
+    subtitle: "Post a volunteer callout, safety note, or practical heads-up.",
     categoryLabel: "Topic",
     categoryRequired: false,
     detailsLabel: "Update",
@@ -260,12 +283,15 @@ function normalizeCategory(value) {
     Market: "Markets",
     "Sports Watch Party": "Sports/Watch Party",
     "Seasonal Holiday Special": "Seasonal/Holiday Special",
+    "Gear Sale": "Gear Sale / Swap",
+    "Gear Swap": "Gear Sale / Swap",
+    "Lost and Found": "Lost & Found",
   };
 
   if (aliases[trimmed]) return aliases[trimmed];
 
   return (
-    EVENT_FORM_CATEGORIES.find(
+    COMMUNITY_FORM_CATEGORIES.find(
       (category) => category.toLowerCase() === trimmed.toLowerCase()
     ) || ""
   );
@@ -351,6 +377,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     (category ? getBuddyTypeForEventCategory(category) : type) ||
     formCopy.defaultType;
   const hasLinkedEvent = Boolean(getEventId(linkedEvent));
+  const canLinkEvent = communityType === "local-plan";
   const canShowSchedule = formCopy.showSchedule && !hasLinkedEvent;
   const showSkillLevel =
     formCopy.showGroupSize &&
@@ -388,6 +415,10 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   }
 
   useEffect(() => {
+    if (!canLinkEvent && linkedEvent) {
+      setLinkedEvent(null);
+    }
+
     if (!category && formCopy.defaultCategory) {
       setType(formCopy.defaultType);
     }
@@ -406,8 +437,10 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     formCopy.defaultCategory,
     formCopy.defaultType,
     formCopy.showGroupSize,
+    canLinkEvent,
     canShowSchedule,
     groupSizePreference,
+    linkedEvent,
     scheduleType,
   ]);
 
@@ -625,95 +658,99 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             </Text>
           </View>
 
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Link an event
-          </Text>
-          <View
-            style={[
-              styles.linkedEventBox,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            {linkedEvent ? (
-              <>
-                <Text style={[styles.linkedEventTitle, { color: theme.text }]}>
-                  {linkedEvent.title || "Linked event"}
-                </Text>
-                <Text style={[styles.linkedEventMeta, { color: theme.textMuted }]}>
-                  {[linkedEvent.town, linkedEvent.category, linkedEvent.date]
-                    .filter(Boolean)
-                    .join(" | ")}
-                </Text>
-                <Text style={[styles.linkedEventHint, { color: theme.textMuted }]}>
-                  This buddy post follows the linked event, so recurring schedule
-                  options are hidden.
-                </Text>
-                <View style={styles.linkedEventActions}>
-                  <Pressable
-                    style={[
-                      styles.smallOutlineButton,
-                      { borderColor: theme.accent },
-                    ]}
-                    onPress={() => setEventPickerOpen(true)}
-                  >
-                    <Text
-                      style={[
-                        styles.smallOutlineButtonText,
-                        { color: theme.accent },
-                      ]}
-                    >
-                      Change Event
+          {canLinkEvent ? (
+            <>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Link an event
+              </Text>
+              <View
+                style={[
+                  styles.linkedEventBox,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                {linkedEvent ? (
+                  <>
+                    <Text style={[styles.linkedEventTitle, { color: theme.text }]}>
+                      {linkedEvent.title || "Linked event"}
                     </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.smallOutlineButton,
-                      { borderColor: theme.border },
-                    ]}
-                    onPress={() => setLinkedEvent(null)}
-                  >
-                    <Text
-                      style={[
-                        styles.smallOutlineButtonText,
-                        { color: theme.textMuted },
-                      ]}
-                    >
-                      Remove
+                    <Text style={[styles.linkedEventMeta, { color: theme.textMuted }]}>
+                      {[linkedEvent.town, linkedEvent.category, linkedEvent.date]
+                        .filter(Boolean)
+                        .join(" | ")}
                     </Text>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.linkedEventTitle, { color: theme.text }]}>
-                  Optional
-                </Text>
-                <Text style={[styles.linkedEventMeta, { color: theme.textMuted }]}>
-                  Tag an event if this post is about meeting up before, during,
-                  or after something already listed.
-                </Text>
-                <Pressable
-                  style={[
-                    styles.smallOutlineButton,
-                    { borderColor: theme.accent },
-                  ]}
-                  onPress={() => setEventPickerOpen(true)}
-                >
-                  <Text
-                    style={[
-                      styles.smallOutlineButtonText,
-                      { color: theme.accent },
-                    ]}
-                  >
-                    Link an Event
-                  </Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+                    <Text style={[styles.linkedEventHint, { color: theme.textMuted }]}>
+                      This buddy post follows the linked event, so recurring schedule
+                      options are hidden.
+                    </Text>
+                    <View style={styles.linkedEventActions}>
+                      <Pressable
+                        style={[
+                          styles.smallOutlineButton,
+                          { borderColor: theme.accent },
+                        ]}
+                        onPress={() => setEventPickerOpen(true)}
+                      >
+                        <Text
+                          style={[
+                            styles.smallOutlineButtonText,
+                            { color: theme.accent },
+                          ]}
+                        >
+                          Change Event
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.smallOutlineButton,
+                          { borderColor: theme.border },
+                        ]}
+                        onPress={() => setLinkedEvent(null)}
+                      >
+                        <Text
+                          style={[
+                            styles.smallOutlineButtonText,
+                            { color: theme.textMuted },
+                          ]}
+                        >
+                          Remove
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.linkedEventTitle, { color: theme.text }]}>
+                      Optional
+                    </Text>
+                    <Text style={[styles.linkedEventMeta, { color: theme.textMuted }]}>
+                      Tag an event if this post is about meeting up before, during,
+                      or after something already listed.
+                    </Text>
+                    <Pressable
+                      style={[
+                        styles.smallOutlineButton,
+                        { borderColor: theme.accent },
+                      ]}
+                      onPress={() => setEventPickerOpen(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.smallOutlineButtonText,
+                          { color: theme.accent },
+                        ]}
+                      >
+                        Link an Event
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            </>
+          ) : null}
 
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             Activity

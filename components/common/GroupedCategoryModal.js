@@ -57,7 +57,7 @@ export default function GroupedCategoryModal({
                   return (
                     <Pressable
                       key={categoryLabel}
-                      style={[
+                      style={({ pressed }) => [
                         styles.optionRow,
                         {
                           backgroundColor: theme.pill || theme.card,
@@ -67,6 +67,7 @@ export default function GroupedCategoryModal({
                           backgroundColor: theme.accentSoft || theme.accent,
                           borderColor: theme.accent,
                         },
+                        pressed && styles.pressed,
                       ]}
                       onPress={() => onSelect(category)}
                     >
@@ -96,7 +97,13 @@ export default function GroupedCategoryModal({
             ))}
           </ScrollView>
 
-          <Pressable style={styles.modalCloseButton} onPress={onClose}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.modalCloseButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={onClose}
+          >
             <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
               Cancel
             </Text>
@@ -168,6 +175,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     paddingVertical: 6,
     paddingHorizontal: 12,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   modalCloseText: {
     fontSize: 14,

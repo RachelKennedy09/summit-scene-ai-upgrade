@@ -95,9 +95,27 @@ export default function SavedEventsScreen() {
         ) : null}
 
         {error ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {error}
-          </Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.cardTitle, { color: theme.text }]}>
+              Could not load saved events
+            </Text>
+            <Text style={[styles.cardMeta, { color: theme.textMuted }]}>
+              {error}
+            </Text>
+            <Pressable
+              style={[styles.outlineButton, { borderColor: theme.accent }]}
+              onPress={loadSavedEvents}
+            >
+              <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+                Try again
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {!loading && !error && !hasSavedEvents && !notifications.length ? (
@@ -114,6 +132,14 @@ export default function SavedEventsScreen() {
               Save events or turn on reminders from an event page to see them
               here.
             </Text>
+            <Pressable
+              style={[styles.outlineButton, { borderColor: theme.accent }]}
+              onPress={() => navigation.navigate("Hub")}
+            >
+              <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
+                Browse events
+              </Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -229,5 +255,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     marginTop: 10,
+  },
+  outlineButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 12,
+  },
+  outlineButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
 });

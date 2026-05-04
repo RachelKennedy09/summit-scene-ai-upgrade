@@ -5,6 +5,13 @@
 
 import User from "../models/User.js";
 
+function getAdminEmails() {
+  return String(process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export default async function isBusiness(req, res, next) {
   const user = req.user;
 
@@ -16,11 +23,21 @@ export default async function isBusiness(req, res, next) {
 
   try {
     const fullUser = await User.findById(user.userId).select(
-      "role businessVerificationStatus"
+      "email role businessVerificationStatus"
     );
 
     if (!fullUser) {
       return res.status(401).json({ message: "User not found." });
+    }
+
+    const adminEmails = getAdminEmails();
+    const tokenEmail = user.email?.toLowerCase();
+    const dbEmail = fullUser.email?.toLowerCase();
+    if (
+      (tokenEmail && adminEmails.includes(tokenEmail)) ||
+      (dbEmail && adminEmails.includes(dbEmail))
+    ) {
+      return next();
     }
 
     if (

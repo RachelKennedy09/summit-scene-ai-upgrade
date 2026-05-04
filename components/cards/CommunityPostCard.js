@@ -297,50 +297,60 @@ export default function CommunityPostCard({
         </View>
       )}
 
-      {/* View profile */}
+      {/* Profile and safety actions */}
       <View style={styles.profileRow}>
-        <Pressable
-          style={[styles.profileButton, { borderColor: theme.accent }]}
-          onPress={() =>
-            onOpenProfile &&
-            onOpenProfile({
-              name,
-              _id: post.user?._id || post.user?.id || post.user || "",
-              id: post.user?._id || post.user?.id || post.user || "",
-              role,
-              town,
-              userType,
-              originallyFrom,
-              interests,
-              languages,
-              skillLevel,
-              socialAccounts,
-              avatarKey,
-              profileImageUrl,
-              lookingFor,
-              instagram,
-              bio,
-              website,
-            })
-          }
-        >
-          <Text style={[styles.profileButtonText, { color: theme.accent }]}>
-            View profile
-          </Text>
-        </Pressable>
-        <Pressable
-          style={styles.reportButton}
-          onPress={() =>
-            onReport?.({
-              targetType: "communityPost",
-              targetId: post._id || post.id,
-            })
-          }
-        >
+        {!isOwner ? (
+          <>
+            <Pressable
+              style={[styles.profileButton, { borderColor: theme.accent }]}
+              onPress={() =>
+                onOpenProfile &&
+                onOpenProfile({
+                  name,
+                  _id: post.user?._id || post.user?.id || post.user || "",
+                  id: post.user?._id || post.user?.id || post.user || "",
+                  role,
+                  town,
+                  userType,
+                  originallyFrom,
+                  interests,
+                  languages,
+                  skillLevel,
+                  socialAccounts,
+                  avatarKey,
+                  profileImageUrl,
+                  lookingFor,
+                  instagram,
+                  bio,
+                  website,
+                  businessVerificationStatus,
+                  createdAt: post.user?.createdAt,
+                })
+              }
+            >
+              <Text style={[styles.profileButtonText, { color: theme.accent }]}>
+                View profile
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.reportButton}
+              onPress={() =>
+                onReport?.({
+                  targetType: "communityPost",
+                  targetId: post._id || post.id,
+                })
+              }
+            >
+              <Text style={[styles.reportButtonText, { color: theme.textMuted }]}>
+                Report
+              </Text>
+            </Pressable>
+          </>
+        ) : (
           <Text style={[styles.reportButtonText, { color: theme.textMuted }]}>
-            Report
+            Your post
           </Text>
-        </Pressable>
+        )}
       </View>
 
       {/* Divider before replies */}
@@ -357,6 +367,7 @@ export default function CommunityPostCard({
         onChangeReplyText={onChangeReplyText}
         onSubmitReply={onSubmitReply}
         onOpenProfile={onOpenProfile}
+        currentUserId={userId}
         onReport={(reply) =>
           onReport?.({
             targetType: "communityReply",

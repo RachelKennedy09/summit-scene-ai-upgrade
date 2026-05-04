@@ -5,9 +5,14 @@ import { expect } from "chai";
 import request from "supertest";
 import app from "../index.js";
 
-// Generate a unique email so we don't clash if tests run multiple times
-const testEmail = `testuser_${Date.now()}@example.com`;
-const businessEmail = `business_${Date.now()}@example.com`;
+// Generate unique values so we don't clash if tests run multiple times.
+const testRunId = Date.now();
+const testName = `Test User ${testRunId}`;
+const pendingBusinessName = `Pending Business ${testRunId}`;
+const blockerName = `Blocker User ${testRunId}`;
+const blockedName = `Blocked User ${testRunId}`;
+const testEmail = `testuser_${testRunId}@example.com`;
+const businessEmail = `business_${testRunId}@example.com`;
 const testPassword = "TestPassword123!";
 const originalAdminEmails = process.env.ADMIN_EMAILS || "";
 let authToken = null;
@@ -24,7 +29,7 @@ describe("SummitScene API", function () {
 
   it("should register a new user (local role) at /api/auth/register", async () => {
     const res = await request(app).post("/api/auth/register").send({
-      name: "Test User",
+      name: testName,
       email: testEmail,
       password: testPassword,
       role: "local",
@@ -55,6 +60,32 @@ describe("SummitScene API", function () {
       skiing: "beginner",
       discGolf: "casual",
     });
+  });
+
+  it("should reject duplicate public names at /api/auth/register", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: testName.toUpperCase(),
+      email: `duplicate_name_${testRunId}@example.com`,
+      password: testPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(res.status).to.equal(409);
+    expect(res.body.message).to.match(/public name is already taken/i);
+  });
+
+  it("should reject duplicate emails at /api/auth/register", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Duplicate Email ${testRunId}`,
+      email: testEmail.toUpperCase(),
+      password: testPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(res.status).to.equal(409);
+    expect(res.body.message).to.match(/email is already registered/i);
   });
 
   it("should log in the user and return a JWT at /api/auth/login", async () => {
@@ -169,6 +200,33 @@ describe("SummitScene API", function () {
     });
   });
 
+  it("should delete the logged-in account and invalidate future session restore", async () => {
+    const deleteEmail = `delete_me_${testRunId}@example.com`;
+    const registerRes = await request(app).post("/api/auth/register").send({
+      name: `Delete Me ${testRunId}`,
+      email: deleteEmail,
+      password: testPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(registerRes.status).to.be.oneOf([200, 201]);
+    expect(registerRes.body.token).to.be.a("string");
+
+    const deleteRes = await request(app)
+      .delete("/api/users/me")
+      .set("Authorization", `Bearer ${registerRes.body.token}`);
+
+    expect(deleteRes.status).to.equal(200);
+    expect(deleteRes.body.message).to.match(/account deleted/i);
+
+    const meRes = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${registerRes.body.token}`);
+
+    expect(meRes.status).to.equal(404);
+  });
+
   /* -----------------------------------------
    * EVENTS TESTS
    * --------------------------------------- */
@@ -197,7 +255,7 @@ describe("SummitScene API", function () {
     expect(goingRes.body.attendeesCount).to.be.at.least(1);
     expect(
       goingRes.body.event.attendees.some(
-        (attendee) => attendee.name === "Test User"
+        (attendee) => attendee.name === testName
       )
     ).to.equal(true);
 
@@ -262,14 +320,14 @@ describe("SummitScene API", function () {
     const blockedEmail = `blocked_${Date.now()}@example.com`;
 
     const blockerRegister = await request(app).post("/api/auth/register").send({
-      name: "Blocker User",
+      name: blockerName,
       email: blockerEmail,
       password: testPassword,
       role: "local",
       town: "Banff",
     });
     const blockedRegister = await request(app).post("/api/auth/register").send({
-      name: "Blocked User",
+      name: blockedName,
       email: blockedEmail,
       password: testPassword,
       role: "local",
@@ -299,11 +357,15 @@ describe("SummitScene API", function () {
     expect(
       blockedViewRes.body.attendees.some((attendee) => attendee._id === blockerId)
     ).to.equal(false);
+
+    await request(app)
+      .post(`/api/events/${eventId}/attendance`)
+      .set("Authorization", `Bearer ${blockerToken}`);
   });
 
   it("should put new business profiles into pending verification", async () => {
     const res = await request(app).post("/api/auth/register").send({
-      name: "Pending Business",
+      name: pendingBusinessName,
       email: businessEmail,
       password: testPassword,
       role: "business",
@@ -419,6 +481,31 @@ describe("SummitScene API", function () {
     expect(res.status).to.be.oneOf([401, 403]);
   });
 
+  it("should allow an admin local account to create an official event", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+
+    const res = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title: "Admin Test Event",
+        description: "Admins can test the business posting side.",
+        town: "Banff",
+        category: "Live Music",
+        date: "2026-12-30",
+        time: "18:00",
+        address: "100 Banff Avenue, Banff, AB",
+      });
+
+    expect(res.status).to.equal(201);
+    expect(res.body).to.include({
+      title: "Admin Test Event",
+      town: "Banff",
+    });
+
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+  });
+
   /* -----------------------------------------
    * COMMUNITY TESTS
    * --------------------------------------- */
@@ -483,7 +570,7 @@ describe("SummitScene API", function () {
       status: "open",
     });
     expect(createRes.body.createdBy).to.include({
-      name: "Test User",
+      name: testName,
       town: "Canmore",
       userType: "local",
       originallyFrom: "Calgary",
@@ -738,7 +825,7 @@ describe("SummitScene API", function () {
     expect(interestRes.status).to.equal(200);
     expect(interestRes.body.interestedUsers).to.be.an("array").with.length(1);
     expect(interestRes.body.interestedUsers[0]).to.include({
-      name: "Test User",
+      name: testName,
     });
 
     const replyRes = await request(app)
@@ -754,7 +841,7 @@ describe("SummitScene API", function () {
       text: "I am interested. What time are you thinking?",
     });
     expect(replyRes.body.replies[0].createdBy).to.include({
-      name: "Test User",
+      name: testName,
     });
 
     const updateReplyRes = await request(app)

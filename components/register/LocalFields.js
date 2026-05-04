@@ -4,11 +4,11 @@
 import React from "react";
 import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 
-const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
+const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
-  { value: "visitor", label: "Visitor" },
+  { value: "visitor", label: "Visiting" },
 ];
 const INTEREST_OPTIONS = [
   "Find local events",
@@ -113,30 +113,37 @@ function LocalFields({
   onChangeBio,
   theme,
 }) {
+  const townLabel =
+    userType === "visitor"
+      ? "Where are you staying or spending most of your trip?"
+      : userType === "seasonal"
+        ? "Where are you based this season?"
+        : "Where do you live?";
+
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionLabel, { color: theme.text }]}>
-        Help Summit Scene personalize events, plans, and groups around you.
+        Tell people enough to know who they are meeting.
       </Text>
 
-      {/* TOWN / PLACE OF RESIDENCE */}
       <Text style={[styles.label, { color: theme.text }]}>
-        Where are you based?
-      </Text>
-      <ChipGroup
-        options={TOWN_OPTIONS}
-        value={town}
-        onChange={onChangeTown}
-        theme={theme}
-      />
-
-      <Text style={[styles.label, { color: theme.text }]}>
-        How should people know you?
+        Are you local, seasonal, or visiting?
       </Text>
       <ChipGroup
         options={USER_TYPE_OPTIONS}
         value={userType}
         onChange={onChangeUserType}
+        theme={theme}
+      />
+
+      {/* TOWN / PLACE OF RESIDENCE */}
+      <Text style={[styles.label, { color: theme.text }]}>
+        {townLabel}
+      </Text>
+      <ChipGroup
+        options={TOWN_OPTIONS}
+        value={town}
+        onChange={onChangeTown}
         theme={theme}
       />
 

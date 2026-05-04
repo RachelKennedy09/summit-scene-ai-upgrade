@@ -18,6 +18,7 @@ export const BUDDY_POST_TYPES = [
   "bingo",
   "trivia",
   "shopping",
+  "notice",
   "general",
   "other",
 ];
@@ -45,6 +46,12 @@ export const BUDDY_POST_CATEGORIES = [
   "Book Club",
   "Ski Hill Events",
   "Disc Golf",
+  "Garage Sale",
+  "Gear Sale / Swap",
+  "Free Stuff",
+  "Lost & Found",
+  "Community Notice",
+  "Volunteer Help",
   "Other",
 ];
 
@@ -54,6 +61,7 @@ export const BUDDY_COMMUNITY_TYPES = [
   "local-plan",
   "new-in-town",
   "group",
+  "notice",
   "update",
 ];
 

@@ -82,6 +82,11 @@ export async function getEventPreferenceByEvent(req, res) {
       eventId: req.params.eventId,
     }).populate("eventId", EVENT_POPULATE_FIELDS);
 
+    if (preference?.eventId && !isEventUpcoming(preference.eventId)) {
+      await EventPreference.deleteOne({ _id: preference._id });
+      return res.json(null);
+    }
+
     return res.json(preference || null);
   } catch (error) {
     console.error("Error in GET /api/event-preferences/:eventId:", error);
@@ -99,9 +104,18 @@ export async function updateEventPreference(req, res) {
       return res.status(401).json({ message: "Not authorized." });
     }
 
-    const event = await Event.findById(req.params.eventId).select("_id");
+    const event = await Event.findById(req.params.eventId).select(
+      "_id title date time endTime scheduleType recurrence"
+    );
     if (!event) {
       return res.status(404).json({ message: "Event not found." });
+    }
+
+    if (!isEventUpcoming(event)) {
+      await EventPreference.deleteOne({ userId, eventId: event._id });
+      return res.status(400).json({
+        message: "This event has passed, so it cannot be saved or reminded.",
+      });
     }
 
     const update = {};

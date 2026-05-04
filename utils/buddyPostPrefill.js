@@ -14,6 +14,12 @@ const EVENT_CATEGORY_TO_BUDDY_TYPE = {
   Markets: "shopping",
   Vendors: "shopping",
   Retail: "shopping",
+  "Garage Sale": "notice",
+  "Gear Sale / Swap": "notice",
+  "Free Stuff": "notice",
+  "Lost & Found": "notice",
+  "Community Notice": "notice",
+  "Volunteer Help": "notice",
 };
 
 function normalizeTown(town, userTown) {

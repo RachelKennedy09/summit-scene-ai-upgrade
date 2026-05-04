@@ -177,6 +177,8 @@ function getCommunityTypeLabel(value) {
       return "New in Town";
     case "group":
       return "Group";
+    case "notice":
+      return "Local Notice";
     case "update":
       return "Community Update";
     case "local-plan":
@@ -398,7 +400,10 @@ export default function BuddyPostCard({
     >
       <View style={styles.topRow}>
         <Pressable
-          style={styles.authorRow}
+          style={({ pressed }) => [
+            styles.authorRow,
+            pressed && styles.pressed,
+          ]}
           onPress={() => onOpenProfile?.(author)}
         >
           <View
@@ -517,9 +522,10 @@ export default function BuddyPostCard({
           </View>
           {onOpenEvent ? (
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.linkedEventButton,
                 { borderColor: theme.accent },
+                pressed && styles.pressed,
               ]}
               onPress={() => onOpenEvent(linkedEvent)}
             >
@@ -539,7 +545,7 @@ export default function BuddyPostCard({
       <View style={styles.footerRow}>
         {!isCommunityUpdate ? (
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.interestButton,
               {
                 backgroundColor: isInterested
@@ -547,6 +553,7 @@ export default function BuddyPostCard({
                   : theme.card,
                 borderColor: isInterested ? theme.accent : theme.border,
               },
+              pressed && styles.pressed,
             ]}
             onPress={handleToggleInterested}
             disabled={updatingInterest}
@@ -562,7 +569,11 @@ export default function BuddyPostCard({
           </Pressable>
         ) : null}
         <Pressable
-          style={[styles.profileButton, { borderColor: theme.accent }]}
+          style={({ pressed }) => [
+            styles.profileButton,
+            { borderColor: theme.accent },
+            pressed && styles.pressed,
+          ]}
           onPress={() => onOpenProfile?.(author)}
         >
           <Text style={[styles.profileButtonText, { color: theme.accent }]}>
@@ -577,7 +588,7 @@ export default function BuddyPostCard({
       </View>
 
       <Pressable
-        style={styles.reportLink}
+        style={({ pressed }) => [styles.reportLink, pressed && styles.pressed]}
         onPress={() =>
           onReport?.({
             targetType: "buddyPost",
@@ -598,6 +609,10 @@ export default function BuddyPostCard({
             </Text>
             {interestedProfiles.length > 4 ? (
               <Pressable
+                style={({ pressed }) => [
+                  styles.textButtonHitArea,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => setShowAllInterested((current) => !current)}
               >
                 <Text style={[styles.interestedToggle, { color: theme.accent }]}>
@@ -619,12 +634,13 @@ export default function BuddyPostCard({
               return (
                 <Pressable
                   key={profile._id || profile.id}
-                  style={[
+                  style={({ pressed }) => [
                     styles.interestedPill,
                     {
                       backgroundColor: theme.pill || colors.surfaceMuted,
                       borderColor: theme.border,
                     },
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => onOpenProfile?.(profile)}
                 >
@@ -672,7 +688,13 @@ export default function BuddyPostCard({
         <Text style={[styles.replyHeader, { color: theme.text }]}>
           Replies {replies.length ? `(${replies.length})` : ""}
         </Text>
-        <Pressable onPress={() => setReplyOpen((current) => !current)}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.textButtonHitArea,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setReplyOpen((current) => !current)}
+        >
           <Text style={[styles.replyToggle, { color: theme.accent }]}>
             {replyOpen ? "Cancel" : "Reply"}
           </Text>
@@ -737,9 +759,10 @@ export default function BuddyPostCard({
                     isEditingReply ? (
                       <>
                         <Pressable
-                          style={[
+                          style={({ pressed }) => [
                             styles.replyMiniButton,
                             { borderColor: theme.accent },
+                            pressed && styles.pressed,
                           ]}
                           onPress={() => handleSaveReplyEdit(reply)}
                           disabled={!editingReplyText.trim() || submittingReplyEdit}
@@ -754,9 +777,10 @@ export default function BuddyPostCard({
                           </Text>
                         </Pressable>
                         <Pressable
-                          style={[
+                          style={({ pressed }) => [
                             styles.replyMiniButton,
                             { borderColor: theme.border },
+                            pressed && styles.pressed,
                           ]}
                           onPress={() => {
                             setEditingReplyId("");
@@ -771,9 +795,10 @@ export default function BuddyPostCard({
                     ) : (
                       <>
                         <Pressable
-                          style={[
+                          style={({ pressed }) => [
                             styles.replyMiniButton,
                             { borderColor: theme.accent },
+                            pressed && styles.pressed,
                           ]}
                           onPress={() => {
                             setEditingReplyId(replyId.toString());
@@ -790,9 +815,10 @@ export default function BuddyPostCard({
                           </Text>
                         </Pressable>
                         <Pressable
-                          style={[
+                          style={({ pressed }) => [
                             styles.replyMiniButton,
                             { borderColor: theme.border },
+                            pressed && styles.pressed,
                           ]}
                           onPress={() => onDeleteReply?.(post, reply)}
                         >
@@ -805,9 +831,10 @@ export default function BuddyPostCard({
                   ) : (
                     <>
                       <Pressable
-                        style={[
+                        style={({ pressed }) => [
                           styles.replyMiniButton,
                           { borderColor: theme.accent },
+                          pressed && styles.pressed,
                         ]}
                         onPress={() => onOpenProfile?.(replyProfile)}
                       >
@@ -821,9 +848,10 @@ export default function BuddyPostCard({
                         </Text>
                       </Pressable>
                       <Pressable
-                        style={[
+                        style={({ pressed }) => [
                           styles.replyMiniButton,
                           { borderColor: theme.border },
+                          pressed && styles.pressed,
                         ]}
                         onPress={() =>
                           onReport?.({
@@ -865,13 +893,14 @@ export default function BuddyPostCard({
             multiline
           />
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.replySubmit,
               {
                 backgroundColor: replyText.trim()
                   ? theme.accent
                   : theme.pill || colors.surfaceMuted,
               },
+              pressed && styles.pressed,
             ]}
             onPress={handleSubmitReply}
             disabled={!replyText.trim() || submittingReply}
@@ -1063,6 +1092,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 4,
   },
+  textButtonHitArea: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
   reportText: {
     fontSize: 12,
     fontWeight: "700",
@@ -1216,5 +1249,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontWeight: "800",
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
 });

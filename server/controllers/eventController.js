@@ -18,7 +18,10 @@ import Event from "../models/Event.js";
 import EventPreference from "../models/EventPreference.js";
 import User from "../models/User.js";
 import { geocodeEventAddress } from "../services/geocoding.js";
-import { getNextOccurrenceDateString } from "../../utils/eventSchedule.js";
+import {
+  getNextOccurrenceDateString,
+  isEventUpcoming,
+} from "../../utils/eventSchedule.js";
 import { getEventDistanceKm } from "../../utils/proximity.js";
 
 const VALID_RECURRENCE_FREQUENCIES = [
@@ -35,6 +38,15 @@ const VALID_WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
+
+function isAdminEmail(email) {
+  const adminEmails = String(process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return Boolean(email) && adminEmails.includes(String(email).toLowerCase());
+}
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt";
 
@@ -385,10 +397,13 @@ export async function createEvent(req, res) {
       });
     }
 
-    if (
-      hostUser.role !== "business" ||
-      hostUser.businessVerificationStatus !== "verified"
-    ) {
+    const canHostOfficialEvents =
+      isAdminEmail(req.user?.email) ||
+      isAdminEmail(hostUser.email) ||
+      (hostUser.role === "business" &&
+        hostUser.businessVerificationStatus === "verified");
+
+    if (!canHostOfficialEvents) {
       return res
         .status(403)
         .json({
@@ -588,6 +603,12 @@ export async function toggleEventAttendance(req, res) {
     const alreadyGoing = (event.attendees || []).some(
       (attendeeId) => attendeeId.toString() === userId.toString()
     );
+
+    if (!alreadyGoing && !isEventUpcoming(event)) {
+      return res.status(400).json({
+        message: "This event has passed, so new attendance is closed.",
+      });
+    }
 
     if (alreadyGoing) {
       event.attendees = event.attendees.filter(

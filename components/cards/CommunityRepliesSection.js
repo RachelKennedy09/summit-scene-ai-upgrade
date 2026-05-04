@@ -36,6 +36,7 @@ export default function CommunityRepliesSection({
   onSubmitReply,
   onOpenProfile,
   onReport,
+  currentUserId,
 }) {
   const trimmed = replyText?.trim?.() ?? "";
   const disabled = !trimmed || submittingReply;
@@ -68,35 +69,39 @@ export default function CommunityRepliesSection({
             );
             const replyTown = replyUserObj?.town || "";
             const replyRole = replyUserObj?.role || "local";
+            const replyUserId = replyUserObj?._id || replyUserObj?.id || "";
+            const isOwnReply =
+              Boolean(currentUserId) &&
+              replyUserId?.toString() === currentUserId?.toString();
+            const replyProfile = replyUserObj
+              ? {
+                  name: replyName,
+                  _id: replyUserId,
+                  id: replyUserId,
+                  role: replyRole,
+                  town: replyTown,
+                  userType: replyUserObj.userType || "",
+                  originallyFrom: replyUserObj.originallyFrom || "",
+                  interests: replyUserObj.interests || [],
+                  languages: replyUserObj.languages || [],
+                  skillLevel: replyUserObj.skillLevel || {},
+                  socialAccounts: replyUserObj.socialAccounts || [],
+                  avatarKey: replyAvatarKey,
+                  profileImageUrl: replyProfileImageUrl,
+                  lookingFor: replyUserObj.lookingFor || "",
+                  instagram: replyUserObj.instagram || "",
+                  bio: replyUserObj.bio || "",
+                  website: replyUserObj.website || "",
+                  createdAt: replyUserObj.createdAt,
+                  businessVerificationStatus:
+                    replyUserObj.businessVerificationStatus || "none",
+                }
+              : null;
 
             return (
-              <Pressable
+              <View
                 key={replyKey}
                 style={styles.replyRow}
-                onPress={() => {
-                  // Only open profile if we have a full user object
-                  if (replyUserObj && onOpenProfile) {
-                    onOpenProfile({
-                      name: replyName,
-                      _id: replyUserObj._id || replyUserObj.id || "",
-                      id: replyUserObj._id || replyUserObj.id || "",
-                      role: replyRole,
-                      town: replyTown,
-                      userType: replyUserObj.userType || "",
-                      originallyFrom: replyUserObj.originallyFrom || "",
-                      interests: replyUserObj.interests || [],
-                      languages: replyUserObj.languages || [],
-                      skillLevel: replyUserObj.skillLevel || {},
-                      socialAccounts: replyUserObj.socialAccounts || [],
-                      avatarKey: replyAvatarKey,
-                      profileImageUrl: replyProfileImageUrl,
-                      lookingFor: replyUserObj.lookingFor || "",
-                      instagram: replyUserObj.instagram || "",
-                      bio: replyUserObj.bio || "",
-                      website: replyUserObj.website || "",
-                    });
-                  }
-                }}
               >
                 <View
                   style={[
@@ -147,18 +152,52 @@ export default function CommunityRepliesSection({
                   >
                     {reply.body}
                   </Text>
-                  <Pressable
-                    style={styles.reportReplyButton}
-                    onPress={() => onReport?.(reply)}
-                  >
-                    <Text
-                      style={[styles.reportReplyText, { color: theme.textMuted }]}
-                    >
-                      Report reply
-                    </Text>
-                  </Pressable>
+                  <View style={styles.replySafetyRow}>
+                    {replyProfile && !isOwnReply ? (
+                      <Pressable
+                        style={[
+                          styles.replyMiniButton,
+                          { borderColor: theme.accent },
+                        ]}
+                        onPress={() => onOpenProfile?.(replyProfile)}
+                      >
+                        <Text
+                          style={[
+                            styles.replyMiniButtonText,
+                            { color: theme.accent },
+                          ]}
+                        >
+                          View Profile
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    {isOwnReply ? (
+                      <Text
+                        style={[
+                          styles.reportReplyText,
+                          { color: theme.textMuted },
+                        ]}
+                      >
+                        Your reply
+                      </Text>
+                    ) : (
+                      <Pressable
+                        style={styles.reportReplyButton}
+                        onPress={() => onReport?.(reply)}
+                      >
+                        <Text
+                          style={[
+                            styles.reportReplyText,
+                            { color: theme.textMuted },
+                          ]}
+                        >
+                          Report reply
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
-              </Pressable>
+              </View>
             );
           })}
         </View>
@@ -274,10 +313,26 @@ const styles = StyleSheet.create({
   },
   reportReplyButton: {
     alignSelf: "flex-start",
-    marginTop: 4,
     paddingVertical: 2,
   },
   reportReplyText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  replySafetyRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  replyMiniButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  replyMiniButtonText: {
     fontSize: 11,
     fontWeight: "700",
   },

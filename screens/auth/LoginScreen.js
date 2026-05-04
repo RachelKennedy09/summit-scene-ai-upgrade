@@ -79,8 +79,9 @@ function LoginScreen() {
             </View>
 
             <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-              Log in to explore events, meet locals, and see what’s happening
-              across Banff, Canmore, and Lake Louise.
+              Log in to discover local events, connect with the community, and
+              manage your Summit Scene profile across Banff, Canmore, and Lake
+              Louise.
             </Text>
 
             {/* EMAIL FIELD */}
@@ -172,6 +173,12 @@ function LoginScreen() {
                 Don't have an account? Sign up
               </Text>
             </Pressable>
+
+            <Pressable onPress={() => navigation.navigate("Legal")}>
+              <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
+                Privacy & Terms
+              </Text>
+            </Pressable>
           </View>
         </TouchableWithoutFeedback>
       </ScrollView>
@@ -213,6 +220,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: "center",
     fontSize: 14,
+  },
+  legalLinkText: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
   },
   errorText: {
     marginTop: -4,

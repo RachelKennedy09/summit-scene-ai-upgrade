@@ -92,6 +92,8 @@ export default function MemberProfileModal({
   onClose,
   onReport,
   onBlock,
+  currentUserId,
+  blockedUserIds = [],
 }) {
   if (!visible || !user) return null;
 
@@ -104,6 +106,12 @@ export default function MemberProfileModal({
 
   const displayName = user.name || "SummitScene member";
   const userId = user._id || user.id || "";
+  const isOwnProfile =
+    Boolean(currentUserId) && userId?.toString() === currentUserId?.toString();
+  const isBlocked = blockedUserIds.some(
+    (blockedId) => blockedId?.toString() === userId?.toString()
+  );
+  const canShowSafetyActions = Boolean(userId) && !isOwnProfile && (onReport || onBlock);
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "M";
   const town = user.town || "";
   const userType = user.userType ? titleCase(user.userType) : "";
@@ -321,45 +329,71 @@ export default function MemberProfileModal({
               </Section>
             ) : null}
 
-            {userId ? (
+            {canShowSafetyActions ? (
+              <View
+                style={[
+                  styles.safetyNote,
+                  {
+                    backgroundColor: theme.background || colors.primary,
+                    borderColor: theme.border || colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.safetyNoteText,
+                    { color: theme.textMuted || colors.textMuted },
+                  ]}
+                >
+                  Meet in public places and use report or block if something feels off.
+                </Text>
+              </View>
+            ) : null}
+
+            {canShowSafetyActions ? (
               <View style={styles.safetyActions}>
-                <Pressable
-                  style={[
-                    styles.reportProfileButton,
-                    { borderColor: theme.border },
-                  ]}
-                  onPress={() =>
-                    onReport?.({
-                      targetType: "user",
-                      targetId: userId,
-                    })
-                  }
-                >
-                  <Text
+                {onReport ? (
+                  <Pressable
                     style={[
-                      styles.reportProfileText,
-                      { color: theme.textMuted || colors.textMuted },
+                      styles.reportProfileButton,
+                      { borderColor: theme.border },
                     ]}
+                    onPress={() =>
+                      onReport({
+                        targetType: "user",
+                        targetId: userId,
+                      })
+                    }
                   >
-                    Report Profile
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.reportProfileButton,
-                    { borderColor: theme.border },
-                  ]}
-                  onPress={() => onBlock?.(user)}
-                >
-                  <Text
+                    <Text
+                      style={[
+                        styles.reportProfileText,
+                        { color: theme.textMuted || colors.textMuted },
+                      ]}
+                    >
+                      Report Profile
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {onBlock ? (
+                  <Pressable
                     style={[
-                      styles.reportProfileText,
-                      { color: theme.textMuted || colors.textMuted },
+                      styles.reportProfileButton,
+                      { borderColor: theme.border },
                     ]}
+                    onPress={() => onBlock(user)}
+                    disabled={isBlocked}
                   >
-                    Block User
-                  </Text>
-                </Pressable>
+                    <Text
+                      style={[
+                        styles.reportProfileText,
+                        { color: theme.textMuted || colors.textMuted },
+                      ]}
+                    >
+                      {isBlocked ? "Blocked" : "Block User"}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </ScrollView>
@@ -464,6 +498,16 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     marginTop: 2,
+  },
+  safetyNote: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 16,
+  },
+  safetyNoteText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   reportProfileButton: {
     marginBottom: 4,

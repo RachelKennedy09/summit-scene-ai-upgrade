@@ -60,9 +60,10 @@ export default function SelectModal({
                   return (
                     <Pressable
                       key={opt}
-                      style={[
+                      style={({ pressed }) => [
                         styles.optionRow,
                         isSelected && { backgroundColor: accentSoft },
+                        pressed && styles.pressed,
                       ]}
                       onPress={() => onSelect(opt)}
                     >
@@ -87,7 +88,13 @@ export default function SelectModal({
             ))}
           </ScrollView>
 
-          <Pressable style={styles.cancelButton} onPress={onClose}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={onClose}
+          >
             <Text style={[styles.cancelText, { color: accent }]}>Cancel</Text>
           </Pressable>
         </View>
@@ -150,6 +157,10 @@ const styles = StyleSheet.create({
   cancelButton: {
     marginTop: 12,
     alignSelf: "flex-end",
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   cancelText: {
     fontSize: 14,

@@ -74,6 +74,19 @@ export default function BusinessHelpScreen() {
           </HelpText>
         </HelpSection>
 
+        <HelpSection title="Permits and local rules" theme={theme}>
+          <HelpText theme={theme}>
+            You are responsible for checking whether your event needs permits,
+            licences, insurance, venue approval, food approval, liquor licensing,
+            road use approval, Parks Canada approval, or municipal approval.
+          </HelpText>
+          <HelpText theme={theme}>
+            Posting on Summit Scene does not mean an event is approved by Parks
+            Canada, the Town of Banff, the Town of Canmore, Alberta Health
+            Services, AGLC, or the venue.
+          </HelpText>
+        </HelpSection>
+
         <HelpSection title="What users can do with your event" theme={theme}>
           <HelpText theme={theme}>
             Users can mark I'm Going, save reminders, invite friends outside the

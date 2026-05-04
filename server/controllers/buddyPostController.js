@@ -10,10 +10,11 @@ import BuddyPost, {
 } from "../models/BuddyPost.js";
 import Event from "../models/Event.js";
 import User from "../models/User.js";
+import { isEventUpcoming } from "../../utils/eventSchedule.js";
 
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram website createdAt";
-const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "update"]);
+const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
 
 function buildListFilter(query = {}) {
   const filter = {};
@@ -239,9 +240,16 @@ export async function createBuddyPost(req, res) {
         return res.status(400).json({ message: "Invalid eventId." });
       }
 
-      const linkedEvent = await Event.findById(payload.eventId).select("_id");
+      const linkedEvent = await Event.findById(payload.eventId).select(
+        "_id title date time endTime scheduleType recurrence"
+      );
       if (!linkedEvent) {
         return res.status(404).json({ message: "Linked event was not found." });
+      }
+      if (!isEventUpcoming(linkedEvent)) {
+        return res.status(400).json({
+          message: "This event has passed, so event buddy posts are closed.",
+        });
       }
     }
 

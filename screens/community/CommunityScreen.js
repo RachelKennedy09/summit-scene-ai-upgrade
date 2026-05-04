@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -20,9 +19,11 @@ import MemberProfileModal from "../../components/account/MemberProfileModal";
 import BuddyPostCard from "../../components/cards/BuddyPostCard";
 import AppButton from "../../components/common/AppButton";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
+import SelectModal from "../../components/common/SelectModal";
 import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
-import { getEventCategoryGroups } from "../../constants/eventCategories";
+import { getCommunityCategoryGroups } from "../../constants/eventCategories";
+import { LANGUAGE_OPTIONS } from "../../constants/languages";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
@@ -36,7 +37,7 @@ import { submitReport } from "../../services/reportsApi";
 import { colors } from "../../theme/colors";
 import { openReportReasonPicker } from "../../utils/reporting";
 
-const CATEGORY_GROUPS = getEventCategoryGroups({
+const CATEGORY_GROUPS = getCommunityCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
 });
@@ -44,29 +45,29 @@ const COMMUNITY_SECTIONS = [
   {
     label: "All",
     value: "",
-    title: "All Community",
-    subtitle: "Browse local plans, newcomer intros, groups, and useful updates together.",
-    cta: "Create Post",
+    title: "Community Feed",
+    subtitle: "See everything people are sharing around town.",
+    cta: "Share Something",
     emptyTitle: "No community posts yet",
     emptyText:
-      "Start with a local plan, intro, group, or practical community update.",
+      "Start with a local plan, intro, group, local notice, or practical community update.",
   },
   {
-    label: "Local Plans",
+    label: "Plans",
     value: "local-plan",
-    title: "Local Plans",
-    subtitle: "Anyone going to this event? Coffee before open mic? Sunday walk?",
-    cta: "Create Local Plan",
+    title: "Find People for Plans",
+    subtitle: "Post when you want someone to join an event, walk, coffee, ski day, or casual plan.",
+    cta: "Post a Plan",
     emptyTitle: "Start the local plan",
     emptyText:
       "Share a walk, ski day, coffee before a show, trivia table, or event plan.",
   },
   {
-    label: "New in Town",
+    label: "New",
     value: "new-in-town",
     title: "New in Town",
-    subtitle: "Seasonal workers, visitors, newcomers, and locals open to meeting people.",
-    cta: "Introduce Yourself",
+    subtitle: "Introduce yourself if you are new, visiting, seasonal, or open to welcoming people.",
+    cta: "Post Intro",
     emptyTitle: "Welcome someone in",
     emptyText:
       "Post where you are based, what you like doing, and who you would like to meet.",
@@ -74,22 +75,32 @@ const COMMUNITY_SECTIONS = [
   {
     label: "Groups",
     value: "group",
-    title: "Groups",
-    subtitle: "Repeatable interest groups like book club, hiking, trivia, and art nights.",
+    title: "Groups & Clubs",
+    subtitle: "Start or join recurring groups like book club, hiking crews, trivia teams, or art nights.",
     cta: "Start a Group",
     emptyTitle: "Start the first group",
     emptyText:
       "Create a recurring book club, hiking crew, trivia team, art night, or walking group.",
   },
   {
+    label: "Notices",
+    value: "notice",
+    title: "Local Notices",
+    subtitle: "Share garage sales, gear swaps, free stuff, lost and found, or practical town notices.",
+    cta: "Share Notice",
+    emptyTitle: "No local notices yet",
+    emptyText:
+      "Share a garage sale, gear swap, lost and found item, free stuff, or practical local notice.",
+  },
+  {
     label: "Updates",
     value: "update",
     title: "Community Updates",
-    subtitle: "Useful local notices, volunteer callouts, safety notes, and town updates.",
+    subtitle: "Share useful heads-up posts like volunteer callouts, safety notes, or town updates.",
     cta: "Share Update",
     emptyTitle: "No updates yet",
     emptyText:
-      "Keep updates practical: volunteer needs, local notices, safety notes, or helpful heads-up posts.",
+      "Keep updates practical: volunteer needs, safety notes, or helpful heads-up posts.",
   },
 ];
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
@@ -113,12 +124,13 @@ function FilterPill({ label, active, onPress, theme }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.filterPill,
         {
           backgroundColor: active ? theme.accentSoft || colors.accentSoft : theme.card,
           borderColor: active ? theme.accent : theme.border,
         },
+        pressed && styles.pressed,
       ]}
     >
       <Text
@@ -153,6 +165,7 @@ export default function CommunityScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [profileUser, setProfileUser] = useState(null);
@@ -165,7 +178,7 @@ export default function CommunityScreen({ navigation }) {
       category: activeCategoryFilter,
       communityType,
       town: activeTownFilter,
-      language: language.trim(),
+      language,
       date: selectedDate ? formatDateForApi(selectedDate) : "",
       status: "open",
     }),
@@ -205,6 +218,12 @@ export default function CommunityScreen({ navigation }) {
   const createPostParams = {
     eventBuddy: communityType ? { communityType } : undefined,
   };
+  const pageIntroTitle = communityType
+    ? activeSection.title
+    : "What are you looking for?";
+  const pageIntroText = communityType
+    ? activeSection.subtitle
+    : "Use the section buttons above to narrow the feed: find people for plans, welcome newcomers, join groups, browse local notices, or read updates.";
 
   async function handleToggleInterested(post) {
     if (!token) {
@@ -337,6 +356,7 @@ export default function CommunityScreen({ navigation }) {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
@@ -346,10 +366,13 @@ export default function CommunityScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <PageHeader
-          title="Find People"
-          subtitle="Meet people for events, hikes, groups, and local plans."
+          title="Community"
+          subtitle="Find people, groups, local notices, and useful town updates."
         />
 
+        <Text style={[styles.sectionNavLabel, { color: theme.textMuted }]}>
+          Choose what you want to browse
+        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -376,12 +399,10 @@ export default function CommunityScreen({ navigation }) {
           ]}
         >
           <Text style={[styles.ctaTitle, { color: theme.text }]}>
-            {communityType ? activeSection.title : "Find someone to go with"}
+            {pageIntroTitle}
           </Text>
           <Text style={[styles.ctaText, { color: theme.textMuted }]}>
-            {communityType
-              ? activeSection.subtitle
-              : "Browse local plans, newcomer intros, groups, and useful updates."}
+            {pageIntroText}
           </Text>
           <AppButton
             title={activeSection.cta}
@@ -407,42 +428,9 @@ export default function CommunityScreen({ navigation }) {
           </Text>
         </View>
 
-        <Text style={[styles.sectionLabel, { color: theme.text }]}>
-          Filter by category
-        </Text>
-        <Pressable
-          style={[
-            styles.categorySelect,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-          onPress={() => setCategoryPickerVisible(true)}
-        >
-          <Text style={[styles.categorySelectText, { color: theme.text }]}>
-            {categorySelectLabel}
-          </Text>
-        </Pressable>
-
-        <Text style={[styles.sectionLabel, { color: theme.text }]}>
-          Town
-        </Text>
-        <View style={styles.townFilters}>
-          {TOWN_FILTERS.map((option) => (
-            <FilterPill
-              key={option}
-              label={option}
-              active={town === option}
-              onPress={() => setTown(option)}
-              theme={theme}
-            />
-          ))}
-        </View>
-
         <View
           style={[
-            styles.advancedFilters,
+            styles.filtersCard,
             {
               backgroundColor: theme.card,
               borderColor: theme.border,
@@ -450,39 +438,79 @@ export default function CommunityScreen({ navigation }) {
           ]}
         >
           <Text style={[styles.sectionLabel, { color: theme.text }]}>
-            More filters
+            Filters
           </Text>
+
+          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+            Category
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.categorySelect,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setCategoryPickerVisible(true)}
+          >
+            <Text style={[styles.categorySelectText, { color: theme.text }]}>
+              {categorySelectLabel}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+            Town
+          </Text>
+          <View style={styles.townFilters}>
+            {TOWN_FILTERS.map((option) => (
+              <FilterPill
+                key={option}
+                label={option}
+                active={town === option}
+                onPress={() => setTown(option)}
+                theme={theme}
+              />
+            ))}
+          </View>
 
           <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
             Language
           </Text>
-          <TextInput
-            style={[
-              styles.input,
+          <Pressable
+            style={({ pressed }) => [
+              styles.categorySelect,
               {
                 backgroundColor: theme.background,
                 borderColor: theme.border,
-                color: theme.text,
               },
+              pressed && styles.pressed,
             ]}
-            placeholder="English, French, Spanish..."
-            placeholderTextColor={theme.textMuted}
-            value={language}
-            onChangeText={setLanguage}
-            autoCapitalize="words"
-          />
+            onPress={() => setLanguagePickerVisible(true)}
+          >
+            <Text
+              style={[
+                styles.categorySelectText,
+                { color: language ? theme.text : theme.textMuted },
+              ]}
+            >
+              {language || "Any language"}
+            </Text>
+          </Pressable>
 
           <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
             Date
           </Text>
           <View style={styles.dateFilterRow}>
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.dateButton,
                 {
                   backgroundColor: theme.background,
                   borderColor: theme.border,
                 },
+                pressed && styles.pressed,
               ]}
               onPress={() => setDatePickerVisible(true)}
             >
@@ -490,9 +518,12 @@ export default function CommunityScreen({ navigation }) {
                 {selectedDate ? formatDisplayDate(selectedDate) : "Any date"}
               </Text>
             </Pressable>
-            {selectedDate || language.trim() ? (
+            {selectedDate || language ? (
               <Pressable
-                style={styles.clearFiltersButton}
+                style={({ pressed }) => [
+                  styles.clearFiltersButton,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => {
                   setSelectedDate(null);
                   setLanguage("");
@@ -516,7 +547,13 @@ export default function CommunityScreen({ navigation }) {
                   posts.length === 1 ? "" : "s"
                 }`}
           </Text>
-          <Pressable onPress={loadBuddyPosts}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.refreshButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={loadBuddyPosts}
+          >
             <Text style={[styles.refreshText, { color: theme.accent }]}>
               Refresh
             </Text>
@@ -612,6 +649,8 @@ export default function CommunityScreen({ navigation }) {
         onClose={() => setProfileUser(null)}
         onReport={handleReport}
         onBlock={handleBlockProfile}
+        currentUserId={currentUserId}
+        blockedUserIds={user?.blockedUsers || []}
       />
 
       <DatePickerModal
@@ -635,6 +674,18 @@ export default function CommunityScreen({ navigation }) {
           setCategoryPickerVisible(false);
         }}
         onClose={() => setCategoryPickerVisible(false)}
+      />
+
+      <SelectModal
+        visible={languagePickerVisible}
+        title="Filter by language"
+        options={LANGUAGE_OPTIONS}
+        selectedValue={language || "Any language"}
+        onSelect={(nextLanguage) => {
+          setLanguage(nextLanguage === "Any language" ? "" : nextLanguage);
+          setLanguagePickerVisible(false);
+        }}
+        onClose={() => setLanguagePickerVisible(false)}
       />
     </SafeAreaView>
   );
@@ -686,6 +737,12 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     paddingBottom: 14,
   },
+  sectionNavLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 8,
+    textTransform: "uppercase",
+  },
   sectionLabel: {
     fontSize: 15,
     fontWeight: "800",
@@ -696,7 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   categorySelectText: {
     fontSize: 15,
@@ -708,7 +765,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
-  advancedFilters: {
+  filtersCard: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
@@ -774,6 +831,14 @@ const styles = StyleSheet.create({
   refreshText: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  refreshButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   loadingRow: {
     flexDirection: "row",

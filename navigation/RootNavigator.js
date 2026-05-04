@@ -33,6 +33,7 @@ import EditProfileScreen from "../screens/account/EditProfileScreen";
 import BlockedUsersScreen from "../screens/account/BlockedUsersScreen";
 import BusinessHelpScreen from "../screens/account/BusinessHelpScreen";
 import BusinessVerificationScreen from "../screens/account/BusinessVerificationScreen";
+import LegalScreen from "../screens/account/LegalScreen";
 import ModerationQueueScreen from "../screens/account/ModerationQueueScreen";
 import ReportBugScreen from "../screens/account/ReportBugScreen";
 import SavedEventsScreen from "../screens/account/SavedEventsScreen";
@@ -199,6 +200,11 @@ export default function RootNavigator() {
               options={{ title: "Business Help" }}
             />
             <Stack.Screen
+              name="Legal"
+              component={LegalScreen}
+              options={{ title: "Privacy & Terms" }}
+            />
+            <Stack.Screen
               name="ReportBug"
               component={ReportBugScreen}
               options={{ title: "Report a Bug" }}
@@ -233,6 +239,11 @@ export default function RootNavigator() {
             name="Register"
             component={RegisterScreen}
             options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Legal"
+            component={LegalScreen}
+            options={{ title: "Privacy & Terms" }}
           />
         </>
       )}

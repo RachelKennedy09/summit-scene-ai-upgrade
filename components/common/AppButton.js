@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   pressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.995 }],
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   disabled: {
     opacity: 0.6,

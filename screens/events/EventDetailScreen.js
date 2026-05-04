@@ -42,7 +42,10 @@ import {
   updateEventPreference,
 } from "../../services/eventPreferencesApi";
 import { useTheme } from "../../context/ThemeContext";
-import { getDetailScheduleLabels } from "../../utils/eventSchedule";
+import {
+  getDetailScheduleLabels,
+  isEventUpcoming,
+} from "../../utils/eventSchedule";
 import { openReportReasonPicker } from "../../utils/reporting";
 
 import EventHostSection from "../../components/events/EventHostSection";
@@ -173,6 +176,9 @@ export default function EventDetailScreen({ route }) {
     return attendeeId?.toString() === currentUserId?.toString();
   });
   const attendeesCount = attendeeProfiles.length;
+  const attendeePreview = attendeeProfiles.slice(0, 6);
+  const hiddenAttendeeCount = Math.max(attendeeProfiles.length - attendeePreview.length, 0);
+  const eventIsUpcoming = event ? isEventUpcoming(event) : false;
   const isSaved = Boolean(eventPreference?.saved);
   const activeReminderTime = eventPreference?.reminderTime || "1h";
   const savedReminderEnabled = Boolean(eventPreference?.savedReminderEnabled);
@@ -222,7 +228,11 @@ export default function EventDetailScreen({ route }) {
   const { dateLabel, timeLabel } = getDetailScheduleLabels(event || {});
 
   const loadEventBuddyPosts = useCallback(async () => {
-    if (!eventId || !token) return;
+    if (!eventId || !token || !eventIsUpcoming) {
+      setBuddyPosts([]);
+      setBuddyPostsError("");
+      return;
+    }
 
     try {
       setLoadingBuddyPosts(true);
@@ -234,7 +244,7 @@ export default function EventDetailScreen({ route }) {
     } finally {
       setLoadingBuddyPosts(false);
     }
-  }, [eventId, token]);
+  }, [eventId, eventIsUpcoming, token]);
 
   const loadEventDetails = useCallback(async () => {
     if (!eventId) return;
@@ -270,6 +280,14 @@ export default function EventDetailScreen({ route }) {
   );
 
   const handleFindEventBuddies = () => {
+    if (!eventIsUpcoming) {
+      Alert.alert(
+        "Event has passed",
+        "Buddy posts are closed once an event has passed."
+      );
+      return;
+    }
+
     if (!token) {
       Alert.alert("Login required", "Please log in before creating a buddy post.");
       return;
@@ -291,6 +309,14 @@ export default function EventDetailScreen({ route }) {
   };
 
   const handleToggleEventAttendance = async () => {
+    if (!eventIsUpcoming) {
+      Alert.alert(
+        "Event has passed",
+        "Going is closed once an event has passed."
+      );
+      return;
+    }
+
     if (!token) {
       Alert.alert("Login required", "Please log in to mark that you're going.");
       return;
@@ -312,6 +338,14 @@ export default function EventDetailScreen({ route }) {
   };
 
   const handleToggleSavedEvent = async () => {
+    if (!eventIsUpcoming) {
+      Alert.alert(
+        "Event has passed",
+        "Past events cannot be saved or reminded."
+      );
+      return;
+    }
+
     if (!token) {
       Alert.alert("Login required", "Please log in to save events.");
       return;
@@ -335,6 +369,14 @@ export default function EventDetailScreen({ route }) {
   };
 
   const handleReminderChange = async (source, reminderTime) => {
+    if (!eventIsUpcoming) {
+      Alert.alert(
+        "Event has passed",
+        "Reminders are only available for upcoming events."
+      );
+      return;
+    }
+
     if (!token) {
       Alert.alert("Login required", "Please log in to set reminders.");
       return;
@@ -636,6 +678,125 @@ export default function EventDetailScreen({ route }) {
               </View>
             </View>
 
+            {!eventIsUpcoming ? (
+              <View
+                style={[
+                  styles.pastEventBanner,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.pastEventTitle, { color: theme.text }]}>
+                  This event has passed
+                </Text>
+                <Text style={[styles.pastEventText, { color: theme.textMuted }]}>
+                  Saved events, reminders, going status, and buddy posts are closed
+                  for past events.
+                </Text>
+              </View>
+            ) : null}
+
+            <View
+              style={[
+                styles.actionPanel,
+                { backgroundColor: theme.background, borderColor: theme.border },
+              ]}
+            >
+              {eventIsUpcoming ? (
+                <Pressable
+                  style={[
+                    styles.primaryActionButton,
+                    {
+                      backgroundColor: isGoing
+                        ? theme.accentSoft || theme.card
+                        : theme.accent,
+                      borderColor: theme.accent,
+                    },
+                  ]}
+                  onPress={handleToggleEventAttendance}
+                  disabled={updatingAttendance}
+                >
+                  <Text
+                    style={[
+                      styles.primaryActionText,
+                      {
+                        color: isGoing
+                          ? theme.accent
+                          : theme.onAccent || theme.textOnAccent,
+                      },
+                    ]}
+                  >
+                    {updatingAttendance
+                      ? "Updating..."
+                      : isGoing
+                        ? "Going"
+                        : "I'm Going"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <View
+                  style={[
+                    styles.primaryActionButton,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.primaryActionText, { color: theme.textMuted }]}>
+                    Past Event
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.secondaryActionRow}>
+                {eventIsUpcoming ? (
+                  <Pressable
+                    style={[
+                      styles.secondaryActionButton,
+                      {
+                        backgroundColor: isSaved
+                          ? theme.accentSoft || theme.card
+                          : theme.card,
+                        borderColor: isSaved ? theme.accent : theme.border,
+                      },
+                    ]}
+                    onPress={handleToggleSavedEvent}
+                    disabled={updatingPreference}
+                  >
+                    <Text
+                      style={[
+                        styles.secondaryActionText,
+                        { color: isSaved ? theme.accent : theme.text },
+                      ]}
+                    >
+                      {updatingPreference ? "Updating..." : isSaved ? "Saved" : "Save"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  style={[
+                    styles.secondaryActionButton,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                  onPress={handleInviteFriends}
+                >
+                  <Text style={[styles.secondaryActionText, { color: theme.text }]}>
+                    Share
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text style={[styles.actionPanelHint, { color: theme.textMuted }]}>
+                {!eventIsUpcoming
+                  ? attendeesCount
+                    ? `${attendeesCount} ${attendeesCount === 1 ? "person went" : "people went"}`
+                    : "Past event"
+                  : attendeesCount
+                  ? `${attendeesCount} ${attendeesCount === 1 ? "person is" : "people are"} going`
+                  : "Be the first to mark that you're going"}
+              </Text>
+            </View>
+
             {/* Location + map link */}
             {locationName || address ? (
               <View style={styles.locationBlock}>
@@ -671,64 +832,6 @@ export default function EventDetailScreen({ route }) {
               </View>
             ) : null}
 
-            <View style={styles.inviteRow}>
-              <Pressable
-                style={[
-                  styles.inviteButton,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                  },
-                ]}
-                onPress={handleInviteFriends}
-              >
-                <Text style={[styles.inviteButtonText, { color: theme.text }]}>
-                  Share Event
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.inviteButton,
-                  {
-                    backgroundColor: isSaved
-                      ? theme.accentSoft || theme.card
-                      : theme.card,
-                    borderColor: isSaved ? theme.accent : theme.border,
-                  },
-                ]}
-                onPress={handleToggleSavedEvent}
-                disabled={updatingPreference}
-              >
-                <Text
-                  style={[
-                    styles.inviteButtonText,
-                    { color: isSaved ? theme.accent : theme.text },
-                  ]}
-                >
-                  {updatingPreference ? "Updating..." : isSaved ? "Saved" : "Save Event"}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.inviteButton,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                  },
-                ]}
-                onPress={() =>
-                  handleReport({
-                    targetType: "event",
-                    targetId: eventId,
-                  })
-                }
-              >
-                <Text style={[styles.inviteButtonText, { color: theme.textMuted }]}>
-                  Report Event
-                </Text>
-              </Pressable>
-            </View>
-
             {/* Description */}
             <View style={styles.section}>
               <Text style={[styles.sectionHeading, { color: theme.text }]}>
@@ -748,45 +851,41 @@ export default function EventDetailScreen({ route }) {
                 },
               ]}
             >
-              <View style={styles.attendanceRow}>
-                <Pressable
-                  style={[
-                    styles.goingButton,
-                    {
-                      backgroundColor: isGoing
-                        ? theme.accentSoft || theme.card
-                        : theme.card,
-                      borderColor: isGoing ? theme.accent : theme.border,
-                    },
-                  ]}
-                  onPress={handleToggleEventAttendance}
-                  disabled={updatingAttendance}
-                >
-                  <Text
-                    style={[
-                      styles.goingButtonText,
-                      { color: isGoing ? theme.accent : theme.text },
-                    ]}
-                  >
-                    {updatingAttendance
-                      ? "Updating..."
-                      : isGoing
-                        ? "I'm Going"
-                        : "I'm going"}
+              <View style={styles.eventSocialHeader}>
+                <View style={styles.buddySectionCopy}>
+                  <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                    People and plans
                   </Text>
-                </Pressable>
-                <Text style={[styles.attendanceText, { color: theme.textMuted }]}>
-                  {attendeesCount} going
-                </Text>
+                  <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
+                    {eventIsUpcoming
+                      ? "See who is going, or make a buddy post for this event."
+                      : "This event is read-only now that it has passed."}
+                  </Text>
+                </View>
+                {eventIsUpcoming ? (
+                  <Pressable
+                    style={[styles.buddyButton, { backgroundColor: theme.accent }]}
+                    onPress={handleFindEventBuddies}
+                  >
+                    <Text
+                      style={[
+                        styles.buddyButtonText,
+                        { color: theme.onAccent || theme.textOnAccent },
+                      ]}
+                    >
+                      Find Buddies
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
 
               {attendeeProfiles.length ? (
                 <View style={styles.attendeesBlock}>
                   <Text style={[styles.buddyListTitle, { color: theme.text }]}>
-                    People going
+                    {eventIsUpcoming ? "People going" : "People who went"}
                   </Text>
                   <View style={styles.attendeeList}>
-                    {attendeeProfiles.slice(0, 8).map((attendee) => {
+                    {attendeePreview.map((attendee) => {
                       const avatarSource =
                         attendee.avatarKey && AVATARS[attendee.avatarKey]
                           ? AVATARS[attendee.avatarKey]
@@ -846,7 +945,7 @@ export default function EventDetailScreen({ route }) {
                       );
                     })}
                   </View>
-                  {attendeeProfiles.length > 8 ? (
+                  {hiddenAttendeeCount ? (
                     <Pressable
                       style={styles.viewAllAttendeesButton}
                       onPress={() => setAttendeesModalOpen(true)}
@@ -857,14 +956,27 @@ export default function EventDetailScreen({ route }) {
                           { color: theme.accent },
                         ]}
                       >
-                        +{attendeeProfiles.length - 8} more going · View all
+                        +{hiddenAttendeeCount} more going · View all
                       </Text>
                     </Pressable>
                   ) : null}
                 </View>
-              ) : null}
+              ) : (
+                <View
+                  style={[
+                    styles.emptyPeopleCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
+                    {eventIsUpcoming
+                      ? "No one has marked going yet."
+                      : "No attendees were saved for this event."}
+                  </Text>
+                </View>
+              )}
 
-              {isSaved || isGoing ? (
+              {eventIsUpcoming && (isSaved || isGoing) ? (
                 <View
                   style={[
                     styles.reminderPanel,
@@ -964,36 +1076,13 @@ export default function EventDetailScreen({ route }) {
                 </View>
               ) : null}
 
-              <View style={styles.buddySectionHeader}>
-                <View style={styles.buddySectionCopy}>
-                  <Text style={[styles.sectionHeading, { color: theme.text }]}>
-                    Going to this event?
-                  </Text>
-                  <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
-                    Mark that you're going, then create a buddy post if you want
-                    someone to go with.
-                  </Text>
-                </View>
-                <Pressable
-                  style={[styles.buddyButton, { backgroundColor: theme.accent }]}
-                  onPress={handleFindEventBuddies}
-                >
-                  <Text
-                    style={[
-                      styles.buddyButtonText,
-                      { color: theme.onAccent || theme.textOnAccent },
-                    ]}
-                  >
-                    Find Event Buddies
-                  </Text>
-                </Pressable>
-              </View>
+              {eventIsUpcoming ? (
+                <Text style={[styles.buddyListTitle, { color: theme.text }]}>
+                  People looking for event buddies
+                </Text>
+              ) : null}
 
-              <Text style={[styles.buddyListTitle, { color: theme.text }]}>
-                Event buddy posts
-              </Text>
-
-              {loadingBuddyPosts ? (
+              {eventIsUpcoming && loadingBuddyPosts ? (
                 <View style={styles.buddyLoadingRow}>
                   <ActivityIndicator color={theme.accent} />
                   <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
@@ -1002,19 +1091,58 @@ export default function EventDetailScreen({ route }) {
                 </View>
               ) : null}
 
-              {buddyPostsError ? (
-                <Text style={[styles.buddyError, { color: theme.error || "#B35340" }]}>
-                  {buddyPostsError}
-                </Text>
+              {eventIsUpcoming && buddyPostsError ? (
+                <View
+                  style={[
+                    styles.buddyErrorCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.buddyErrorTitle,
+                      { color: theme.text },
+                    ]}
+                  >
+                    Could not load buddy posts
+                  </Text>
+                  <Text
+                    style={[
+                      styles.buddyError,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    {buddyPostsError}
+                  </Text>
+                  <Pressable
+                    style={[
+                      styles.buddyRetryButton,
+                      { borderColor: theme.accent },
+                    ]}
+                    onPress={loadEventBuddyPosts}
+                  >
+                    <Text
+                      style={[
+                        styles.buddyRetryText,
+                        { color: theme.accent },
+                      ]}
+                    >
+                      Try again
+                    </Text>
+                  </Pressable>
+                </View>
               ) : null}
 
-              {!loadingBuddyPosts && !buddyPostsError && buddyPosts.length === 0 ? (
+              {eventIsUpcoming && !loadingBuddyPosts && !buddyPostsError && buddyPosts.length === 0 ? (
                 <Text style={[styles.buddyIntro, { color: theme.textMuted }]}>
                   No one has posted for this event yet. Start the plan.
                 </Text>
               ) : null}
 
-              {!buddyPostsError && buddyPosts.length ? (
+              {eventIsUpcoming && !buddyPostsError && buddyPosts.length ? (
                 <View style={styles.buddyList}>
                   {buddyPosts.map((post) => (
                     <BuddyPostCard
@@ -1038,6 +1166,24 @@ export default function EventDetailScreen({ route }) {
             {/* Hosted by (business) block + modal */}
             <EventHostSection host={host} />
 
+            <View style={styles.eventSafetyRow}>
+              <Text style={[styles.eventSafetyText, { color: theme.textMuted }]}>
+                Event details look off?
+              </Text>
+              <Pressable
+                onPress={() =>
+                  handleReport({
+                    targetType: "event",
+                    targetId: eventId,
+                  })
+                }
+              >
+                <Text style={[styles.eventSafetyLink, { color: theme.textMuted }]}>
+                  Report Event
+                </Text>
+              </Pressable>
+            </View>
+
             {/* Owner-only actions (edit/delete) */}
             {isOwner && (
               <EventOwnerSection onEdit={handleEdit} onDelete={handleDelete} />
@@ -1052,6 +1198,8 @@ export default function EventDetailScreen({ route }) {
         onClose={() => setProfileUser(null)}
         onReport={handleReport}
         onBlock={handleBlockProfile}
+        currentUserId={currentUserId}
+        blockedUserIds={user?.blockedUsers || []}
       />
       <Modal
         visible={attendeesModalOpen}
@@ -1289,23 +1437,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  inviteRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  actionPanel: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 16,
+    gap: 10,
   },
-  inviteButton: {
-    flexGrow: 1,
+  pastEventBanner: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  pastEventTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  pastEventText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  primaryActionButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  primaryActionText: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  secondaryActionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  secondaryActionButton: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 10,
     alignItems: "center",
   },
-  inviteButtonText: {
+  secondaryActionText: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  actionPanelHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
   },
   section: {
     marginBottom: 16,
@@ -1326,27 +1510,19 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
   },
-  attendanceRow: {
+  eventSocialHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  goingButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  goingButtonText: {
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  attendanceText: {
-    fontSize: 13,
-    fontWeight: "700",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
   },
   attendeesBlock: {
+    marginBottom: 14,
+  },
+  emptyPeopleCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
     marginBottom: 14,
   },
   reminderPanel: {
@@ -1500,6 +1676,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+  eventSafetyRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 14,
+  },
+  eventSafetyText: {
+    fontSize: 12,
+  },
+  eventSafetyLink: {
+    fontSize: 12,
+    fontWeight: "800",
+    textDecorationLine: "underline",
+  },
   buddySectionHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1532,9 +1723,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  buddyErrorCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  buddyErrorTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
   buddyError: {
     fontSize: 13,
     lineHeight: 19,
+  },
+  buddyRetryButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  buddyRetryText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   buddyList: {
     gap: 10,

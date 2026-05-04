@@ -186,6 +186,15 @@ export default function HubScreen() {
     });
   }, [navigation, selectedCategory, selectedTown, user?.town]);
 
+  const handleClearFilters = useCallback(() => {
+    setSelectedTown("All");
+    setSelectedCategory("All");
+    setSelectedDateFilter("All");
+    setIsNearMeEnabled(false);
+    setNearMeLocation(null);
+    setNearMeMessage("");
+  }, []);
+
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
     if (
@@ -252,10 +261,17 @@ export default function HubScreen() {
       : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
   }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled]);
 
+  const hasActiveFilters =
+    selectedTown !== "All" ||
+    selectedCategory !== "All" ||
+    selectedDateFilter !== "All" ||
+    isNearMeEnabled;
+
   // Inital loading state (before there are any events)
   if (loading && !refreshing && events.length === 0) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.center}>
@@ -272,6 +288,7 @@ export default function HubScreen() {
   if (error && events.length === 0) {
     return (
       <SafeAreaView
+        edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.center}>
@@ -280,7 +297,7 @@ export default function HubScreen() {
           </Text>
           <Pressable
             style={[styles.retryButton, { borderColor: theme.accent }]}
-            onPress={() => loadEvents(false)}
+            onPress={() => loadEvents({ nextPage: 1, mode: "initial" })}
           >
             <Text style={[styles.retryText, { color: theme.accent }]}>
               Try again
@@ -316,16 +333,11 @@ export default function HubScreen() {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
       <AppLogoHeader />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <PageHeader
-          title={`Hello ${displayName}!`}
-          subtitle={
-            "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you."
-          }
-        />
         <FlatList
           data={eventsToShow}
           keyExtractor={(item) =>
@@ -350,42 +362,55 @@ export default function HubScreen() {
           }
           // HubFilters renders the filter chips + greeting + result summary at the top of the list.
           ListHeaderComponent={
-            <HubFilters
-              selectedTown={selectedTown}
-              selectedCategory={selectedCategory}
-              selectedDateFilter={selectedDateFilter}
-              resultSummary={resultSummary}
-              error={error}
-              towns={TOWNS}
-              categories={CATEGORIES}
-              categoryGroups={CATEGORY_GROUPS}
-              dateFilters={DATE_FILTERS}
-              onSelectTown={setSelectedTown}
-              onSelectCategory={setSelectedCategory}
-              onSelectDateFilter={setSelectedDateFilter}
-              isNearMeEnabled={isNearMeEnabled}
-              isNearMeLoading={nearMeLoading}
-              nearMeMessage={nearMeMessage}
-              onToggleNearMe={handleToggleNearMe}
-            />
+            <>
+              <PageHeader
+                title={`Hello ${displayName}!`}
+                subtitle={
+                  "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you."
+                }
+              />
+              <HubFilters
+                selectedTown={selectedTown}
+                selectedCategory={selectedCategory}
+                selectedDateFilter={selectedDateFilter}
+                resultSummary={resultSummary}
+                error={error}
+                towns={TOWNS}
+                categories={CATEGORIES}
+                categoryGroups={CATEGORY_GROUPS}
+                dateFilters={DATE_FILTERS}
+                onSelectTown={setSelectedTown}
+                onSelectCategory={setSelectedCategory}
+                onSelectDateFilter={setSelectedDateFilter}
+                isNearMeEnabled={isNearMeEnabled}
+                isNearMeLoading={nearMeLoading}
+                nearMeMessage={nearMeMessage}
+                onToggleNearMe={handleToggleNearMe}
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={handleClearFilters}
+                onRetry={() => loadEvents({ nextPage: 1, mode: "initial" })}
+              />
+            </>
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                No events found
+              </Text>
               <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                 {emptyMessage}
               </Text>
-              <Text style={[styles.emptyPrompt, { color: theme.text }]}>
-                Want to organize this type of plan?
-              </Text>
-              <Pressable
-                style={[
-                  styles.emptyAction,
-                  { backgroundColor: theme.accent },
-                ]}
-                onPress={handleCreateBuddyPostFromSearch}
-              >
-                <Text style={styles.emptyActionText}>Create Buddy Post</Text>
-              </Pressable>
+              <View style={styles.emptyActions}>
+                <Pressable
+                  style={[
+                    styles.emptyAction,
+                    { backgroundColor: theme.accent },
+                  ]}
+                  onPress={handleCreateBuddyPostFromSearch}
+                >
+                  <Text style={styles.emptyActionText}>Create Buddy Post</Text>
+                </Pressable>
+              </View>
             </View>
           }
           ListFooterComponent={renderFooter}
@@ -427,22 +452,29 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   emptyText: {
-    marginTop: 24,
+    marginTop: 6,
     textAlign: "center",
     fontSize: 14,
+    lineHeight: 20,
   },
   emptyState: {
     alignItems: "center",
     paddingHorizontal: 12,
+    paddingTop: 24,
   },
-  emptyPrompt: {
-    marginTop: 12,
+  emptyTitle: {
     textAlign: "center",
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  emptyActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 14,
   },
   emptyAction: {
-    marginTop: 12,
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 11,

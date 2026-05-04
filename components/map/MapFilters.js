@@ -55,7 +55,7 @@ function FilterModal({
               return (
                 <Pressable
                   key={option}
-                  style={[
+                  style={({ pressed }) => [
                     styles.optionRow,
                     {
                       backgroundColor: theme.pill || theme.card,
@@ -65,6 +65,7 @@ function FilterModal({
                       backgroundColor: theme.accentSoft || theme.accent,
                       borderColor: theme.accent,
                     },
+                    pressed && styles.pressed,
                   ]}
                   onPress={() => onSelect(option)}
                 >
@@ -89,7 +90,13 @@ function FilterModal({
             })}
           </ScrollView>
 
-          <Pressable style={styles.modalCloseButton} onPress={onClose}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.modalCloseButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={onClose}
+          >
             <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
               Cancel
             </Text>
@@ -117,6 +124,8 @@ export default function MapFilters({
   isNearMeLoading,
   nearMeMessage,
   onToggleNearMe,
+  hasActiveFilters = false,
+  onClearFilters,
 }) {
   const { theme } = useTheme();
   const [isTownModalVisible, setIsTownModalVisible] = useState(false);
@@ -138,12 +147,13 @@ export default function MapFilters({
 
       <View style={styles.pillRow}>
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.pill,
             {
               backgroundColor: theme.pill || theme.card,
               borderColor: theme.border,
             },
+            pressed && styles.pressed,
           ]}
           onPress={() => setIsTownModalVisible(true)}
         >
@@ -156,12 +166,13 @@ export default function MapFilters({
         </Pressable>
 
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.pill,
             {
               backgroundColor: theme.pill || theme.card,
               borderColor: theme.border,
             },
+            pressed && styles.pressed,
           ]}
           onPress={() => setIsCategoryModalVisible(true)}
         >
@@ -176,12 +187,13 @@ export default function MapFilters({
         </Pressable>
 
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.pill,
             {
               backgroundColor: theme.pill || theme.card,
               borderColor: theme.border,
             },
+            pressed && styles.pressed,
           ]}
           onPress={() => setIsDateModalVisible(true)}
         >
@@ -194,9 +206,9 @@ export default function MapFilters({
         </Pressable>
       </View>
 
-      <View style={styles.nearMeRow}>
+      <View style={styles.quickActionRow}>
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.nearMeChip,
             {
               backgroundColor: isNearMeEnabled
@@ -204,6 +216,7 @@ export default function MapFilters({
                 : theme.pill || theme.card,
               borderColor: isNearMeEnabled ? theme.accent : theme.border,
             },
+            pressed && styles.pressed,
           ]}
           onPress={onToggleNearMe}
         >
@@ -220,12 +233,29 @@ export default function MapFilters({
                 : "Near me"}
           </Text>
         </Pressable>
-        {nearMeMessage ? (
-          <Text style={[styles.nearMeMessage, { color: theme.textMuted }]}>
-            {nearMeMessage}
-          </Text>
+        {hasActiveFilters && onClearFilters ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.clearFiltersButton,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.accent,
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={onClearFilters}
+          >
+            <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
+              Clear filters
+            </Text>
+          </Pressable>
         ) : null}
       </View>
+      {nearMeMessage ? (
+        <Text style={[styles.nearMeMessage, { color: theme.textMuted }]}>
+          {nearMeMessage}
+        </Text>
+      ) : null}
 
       <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
       <Text style={[styles.filterSummaryText, { color: theme.textMuted }]}>
@@ -317,7 +347,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
   },
-  nearMeRow: {
+  quickActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 8,
   },
   nearMeChip: {
@@ -331,9 +365,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  clearFiltersButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
   nearMeMessage: {
     fontSize: 13,
-    marginTop: 8,
+    marginBottom: 8,
     lineHeight: 18,
   },
   sectionDivider: {
@@ -399,6 +443,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     paddingVertical: 6,
     paddingHorizontal: 12,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   modalCloseText: {
     fontSize: 14,
