@@ -32,8 +32,10 @@ const app = express();
 // Enable CORS so the mobile app / web client can talk to this API
 app.use(cors());
 
-// Automatically parse JSON request bodies into req.body
-app.use(express.json());
+// Automatically parse JSON request bodies into req.body.
+// Profile photo uploads are compressed data URLs during testing, so the limit
+// needs to be higher than Express's small default.
+app.use(express.json({ limit: "3mb" }));
 
 
 

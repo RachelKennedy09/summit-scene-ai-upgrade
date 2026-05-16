@@ -183,7 +183,7 @@ function getCommunityTypeLabel(value) {
       return "Community Update";
     case "local-plan":
     default:
-      return "Local Plan";
+      return "Plan";
   }
 }
 

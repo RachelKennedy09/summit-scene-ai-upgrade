@@ -97,10 +97,6 @@ export default function ProfileCard({
   const socialAccounts = Array.isArray(user?.socialAccounts)
     ? user.socialAccounts
     : [];
-  const skillLevel = user?.skillLevel || {};
-  const hasSkills = Boolean(
-    skillLevel.hiking || skillLevel.skiing || skillLevel.discGolf
-  );
   const businessType = isBusiness ? user?.lookingFor : "";
   const businessStatus = user?.businessVerificationStatus || "none";
   const profileTypeLabel = roleLabel || (isBusiness
@@ -181,28 +177,6 @@ export default function ProfileCard({
             {interests.map((interest) => (
               <Chip key={interest} label={interest} theme={theme} />
             ))}
-          </View>
-        </Section>
-      ) : null}
-
-      {hasSkills ? (
-        <Section label="Activity level" theme={theme}>
-          <View style={styles.chipRow}>
-            {skillLevel.hiking ? (
-              <Chip label={`Hiking: ${titleCase(skillLevel.hiking)}`} theme={theme} />
-            ) : null}
-            {skillLevel.skiing ? (
-              <Chip
-                label={`Ski/Snowboard: ${titleCase(skillLevel.skiing)}`}
-                theme={theme}
-              />
-            ) : null}
-            {skillLevel.discGolf ? (
-              <Chip
-                label={`Disc golf: ${titleCase(skillLevel.discGolf)}`}
-                theme={theme}
-              />
-            ) : null}
           </View>
         </Section>
       ) : null}

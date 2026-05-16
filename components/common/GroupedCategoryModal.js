@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -9,6 +9,12 @@ import {
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
+function normalizeCategoryLabel(categoryLabel) {
+  return categoryLabel === "All categories" || categoryLabel === "All notice types"
+    ? "All"
+    : categoryLabel;
+}
+
 export default function GroupedCategoryModal({
   visible,
   title = "Choose a category",
@@ -18,6 +24,39 @@ export default function GroupedCategoryModal({
   onClose,
 }) {
   const { theme } = useTheme();
+
+  const selectedGroupTitle = useMemo(() => {
+    if (!selectedValue || !groups?.length) return "";
+
+    return (
+      groups.find((group) =>
+        group.options.some((categoryLabel) => {
+          const category = normalizeCategoryLabel(categoryLabel);
+          return category === selectedValue;
+        })
+      )?.title || ""
+    );
+  }, [groups, selectedValue]);
+
+  const initialExpandedTitle = useMemo(() => {
+    if (selectedGroupTitle) return selectedGroupTitle;
+    return groups?.[0]?.title || "";
+  }, [groups, selectedGroupTitle]);
+
+  const [expandedGroupTitle, setExpandedGroupTitle] =
+    useState(initialExpandedTitle);
+
+  useEffect(() => {
+    if (visible) {
+      setExpandedGroupTitle(initialExpandedTitle);
+    }
+  }, [initialExpandedTitle, visible]);
+
+  const toggleGroup = (groupTitle) => {
+    setExpandedGroupTitle((currentTitle) =>
+      currentTitle === groupTitle ? "" : groupTitle
+    );
+  };
 
   return (
     <Modal
@@ -46,53 +85,96 @@ export default function GroupedCategoryModal({
           >
             {groups.map((group) => (
               <View key={group.title} style={styles.optionGroup}>
-                <Text style={[styles.groupTitle, { color: theme.textMuted }]}>
-                  {group.title}
-                </Text>
-                {group.options.map((categoryLabel) => {
-                  const category =
-                    categoryLabel === "All categories" ? "All" : categoryLabel;
-                  const isSelected = category === selectedValue;
-
-                  return (
-                    <Pressable
-                      key={categoryLabel}
-                      style={({ pressed }) => [
-                        styles.optionRow,
-                        {
-                          backgroundColor: theme.pill || theme.card,
-                          borderColor: "transparent",
-                        },
-                        isSelected && {
-                          backgroundColor: theme.accentSoft || theme.accent,
-                          borderColor: theme.accent,
-                        },
-                        pressed && styles.pressed,
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.groupHeader,
+                    {
+                      backgroundColor: theme.pill || theme.card,
+                      borderColor:
+                        group.title === selectedGroupTitle
+                          ? theme.accent
+                          : theme.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => toggleGroup(group.title)}
+                >
+                  <View style={styles.groupHeaderTextWrap}>
+                    <Text
+                      style={[
+                        styles.groupTitle,
+                        { color: theme.textMain || theme.text },
                       ]}
-                      onPress={() => onSelect(category)}
                     >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          { color: theme.textMain || theme.text },
-                          isSelected && styles.optionTextSelected,
-                        ]}
-                      >
-                        {categoryLabel}
-                      </Text>
-                      {isSelected ? (
-                        <Text
-                          style={[
-                            styles.optionCheckMark,
-                            { color: theme.accent },
+                      {group.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.groupCount,
+                        {
+                          color:
+                            group.title === selectedGroupTitle
+                              ? theme.accent
+                              : theme.textMuted,
+                        },
+                      ]}
+                    >
+                      {group.options.length} option
+                      {group.options.length === 1 ? "" : "s"}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.groupToggle, { color: theme.textMuted }]}
+                  >
+                    {expandedGroupTitle === group.title ? "-" : "+"}
+                  </Text>
+                </Pressable>
+
+                {expandedGroupTitle === group.title
+                  ? group.options.map((categoryLabel) => {
+                      const category = normalizeCategoryLabel(categoryLabel);
+                      const isSelected = category === selectedValue;
+
+                      return (
+                        <Pressable
+                          key={categoryLabel}
+                          style={({ pressed }) => [
+                            styles.optionRow,
+                            {
+                              backgroundColor: theme.card,
+                              borderColor: "transparent",
+                            },
+                            isSelected && {
+                              backgroundColor: theme.accentSoft || theme.accent,
+                              borderColor: theme.accent,
+                            },
+                            pressed && styles.pressed,
                           ]}
+                          onPress={() => onSelect(category)}
                         >
-                          *
-                        </Text>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
+                          <Text
+                            style={[
+                              styles.optionText,
+                              { color: theme.textMain || theme.text },
+                              isSelected && styles.optionTextSelected,
+                            ]}
+                          >
+                            {categoryLabel}
+                          </Text>
+                          {isSelected ? (
+                            <Text
+                              style={[
+                                styles.optionCheckMark,
+                                { color: theme.accent },
+                              ]}
+                            >
+                              *
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })
+                  : null}
               </View>
             ))}
           </ScrollView>
@@ -143,20 +225,43 @@ const styles = StyleSheet.create({
   optionGroup: {
     marginBottom: 8,
   },
+  groupHeader: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  groupHeaderTextWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
   groupTitle: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "700",
-    marginBottom: 6,
-    textTransform: "uppercase",
+  },
+  groupCount: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  groupToggle: {
+    fontSize: 20,
+    fontWeight: "700",
+    width: 24,
+    textAlign: "center",
   },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 999,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     marginBottom: 8,
+    marginLeft: 8,
     borderWidth: 1,
   },
   optionText: {

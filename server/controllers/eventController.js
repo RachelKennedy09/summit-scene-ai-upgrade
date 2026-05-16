@@ -23,6 +23,9 @@ import {
   isEventUpcoming,
 } from "../../utils/eventSchedule.js";
 import { getEventDistanceKm } from "../../utils/proximity.js";
+import {
+  getEventCategoryFilterOptions,
+} from "../../constants/eventCategories.js";
 
 const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
@@ -305,8 +308,13 @@ export async function getAllEvents(req, res) {
       baseQuery.town = normalizedTown;
     }
 
-    if (normalizedCategory && normalizedCategory !== "All") {
-      baseQuery.category = normalizedCategory;
+    const categoryFilterOptions = getEventCategoryFilterOptions(normalizedCategory);
+
+    if (categoryFilterOptions) {
+      baseQuery.category =
+        categoryFilterOptions.length === 1
+          ? categoryFilterOptions[0]
+          : { $in: categoryFilterOptions };
     }
 
     const events = await Event.find(baseQuery)

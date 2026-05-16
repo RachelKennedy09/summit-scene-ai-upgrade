@@ -54,7 +54,7 @@ const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
 const COMMUNITY_TYPES = [
   {
-    label: "Local Plan",
+    label: "Make a Plan",
     value: "local-plan",
     helper: "A specific plan, event, walk, coffee, ski day, or meetup.",
   },
@@ -108,11 +108,22 @@ const WEEKDAYS = [
   "Saturday",
 ];
 const SKILL_TYPES = new Set(["hiking", "skiing", "snowboarding", "discgolf"]);
-const SKILL_CATEGORIES = new Set(["Outdoors", "Ski Hill Events", "Disc Golf"]);
+const SKILL_CATEGORIES = new Set([
+  "Hiking",
+  "Trail Running",
+  "Climbing",
+  "Bouldering",
+  "Skiing",
+  "Snowboarding",
+  "Cross-Country Skiing",
+  "Backcountry",
+  "Mountain Biking",
+  "Snowshoeing",
+]);
 
 const COMMUNITY_FORM_COPY = {
   "local-plan": {
-    title: "Create Local Plan",
+    title: "Make a Plan",
     subtitle: "Share a plan people can join, like coffee before open mic, a walk, or an event buddy post.",
     categoryLabel: "Category",
     categoryRequired: true,
@@ -124,7 +135,7 @@ const COMMUNITY_FORM_COPY = {
     showDateTime: true,
     showSchedule: true,
     showGroupSize: true,
-    submitLabel: "Share Local Plan",
+    submitLabel: "Share Plan",
     defaultCategory: "",
     defaultType: "event",
   },
@@ -193,7 +204,7 @@ const COMMUNITY_FORM_COPY = {
     showSchedule: false,
     showGroupSize: false,
     submitLabel: "Share Update",
-    defaultCategory: "Community Info Session",
+    defaultCategory: "Community Gatherings",
     defaultType: "general",
   },
 };

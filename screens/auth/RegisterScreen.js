@@ -19,14 +19,14 @@ import {
   AppState,
   Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 
-import AvatarPicker from "../../components/AvatarPicker";
 import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
-import { AVATARS } from "../../assets/avatars/avatarConfig";
+import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -41,37 +41,6 @@ const USER_TYPE_OPTIONS = [
   { value: "seasonal", label: "Seasonal" },
   { value: "visitor", label: "Visiting" },
 ];
-const INTEREST_OPTIONS = [
-  "Find local events",
-  "Discover things to do",
-  "Meet people through activities",
-  "Join group plans",
-  "Share local updates",
-  "Support local businesses",
-  "Just exploring",
-  "Hiking",
-  "Skiing",
-  "Snowboarding",
-  "Climbing",
-  "Live music",
-  "Markets",
-  "Wellness",
-  "Food & drink",
-  "Nightlife",
-  "Coffee",
-  "Book club",
-  "Disc golf",
-  "Art",
-  "Walking",
-  "Bingo",
-  "Trivia",
-  "Shopping",
-];
-const SKILL_OPTIONS = [
-  { value: "beginner", label: "Beginner" },
-  { value: "casual", label: "Casual" },
-  { value: "experienced", label: "Experienced" },
-];
 const LOCAL_STEPS = [
   "name",
   "login",
@@ -79,13 +48,12 @@ const LOCAL_STEPS = [
   "town",
   "origin",
   "interests",
-  "levels",
   "bio",
   "social",
   "review",
 ];
 const BUSINESS_STEPS = ["name", "login", "business", "photo", "review"];
-const OPTIONAL_STEPS = new Set(["origin", "interests", "levels", "bio", "social", "photo"]);
+const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]);
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -96,8 +64,14 @@ const FACEBOOK_REDIRECT_URI =
   `${API_BASE_URL}/api/social/facebook/mobile-callback`;
 const FACEBOOK_OPTIONAL_MESSAGE =
   "Facebook connection needs the installed Summit Scene app to return automatically. You can keep building your profile now and connect Facebook later.";
+const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
+const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 
 function buildSocialAccounts(values, profileImageUrl = "") {
+  const socialProfileImageUrl = profileImageUrl.startsWith("data:")
+    ? ""
+    : profileImageUrl;
+
   return SOCIAL_PROVIDERS.map(({ provider }) => {
     const value = values[provider]?.trim();
     if (!value) return null;
@@ -108,8 +82,8 @@ function buildSocialAccounts(values, profileImageUrl = "") {
       handle: isHandle ? value : undefined,
       url: isHandle ? undefined : value,
       profileImageUrl:
-        profileImageUrl && ["facebook", "instagram"].includes(provider)
-          ? profileImageUrl
+        socialProfileImageUrl && ["facebook", "instagram"].includes(provider)
+          ? socialProfileImageUrl
           : undefined,
       verified: false,
     };
@@ -172,6 +146,62 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
   );
 }
 
+function InterestGroupList({ groups, values, onToggle, theme }) {
+  const [openGroup, setOpenGroup] = useState(null);
+
+  return (
+    <View style={styles.interestGroups}>
+      {groups.map((group) => {
+        const isOpen = openGroup === group.title;
+        const selectedCount = group.options.filter((option) =>
+          values.includes(option)
+        ).length;
+
+        return (
+          <View
+            key={group.title}
+            style={[
+              styles.interestGroup,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Pressable
+              style={styles.interestGroupHeader}
+              onPress={() => setOpenGroup(isOpen ? null : group.title)}
+            >
+              <View style={styles.interestGroupCopy}>
+                <Text style={[styles.interestGroupTitle, { color: theme.text }]}>
+                  {group.title}
+                </Text>
+                <Text
+                  style={[styles.interestGroupMeta, { color: theme.textMuted }]}
+                >
+                  {selectedCount
+                    ? `${selectedCount} selected`
+                    : "Tap to choose"}
+                </Text>
+              </View>
+              <Text style={[styles.interestGroupChevron, { color: theme.accent }]}>
+                {isOpen ? "-" : "+"}
+              </Text>
+            </Pressable>
+            {isOpen ? (
+              <View style={styles.interestGroupOptions}>
+                <ChipGroup
+                  options={group.options}
+                  values={values}
+                  onToggle={onToggle}
+                  theme={theme}
+                />
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function titleCase(value) {
   return String(value || "")
     .replace(/[-_]/g, " ")
@@ -206,22 +236,13 @@ function SignupProfilePreview({
   originallyFrom,
   languagesText,
   interests,
-  hikingSkill,
-  skiingSkill,
-  discGolfSkill,
   bio,
   lookingFor,
-  avatarKey,
   profileImageUrl,
   socialValues,
 }) {
   const isBusiness = role === "business";
-  const avatarSource =
-    avatarKey && AVATARS[avatarKey]
-      ? AVATARS[avatarKey]
-      : profileImageUrl
-        ? { uri: profileImageUrl }
-        : null;
+  const avatarSource = profileImageUrl ? { uri: profileImageUrl } : null;
   const displayName = name || "Summit Scene member";
   const initial = displayName.charAt(0).toUpperCase() || "?";
   const languages = languagesText
@@ -231,7 +252,6 @@ function SignupProfilePreview({
   const socialAccounts = Object.entries(socialValues || {})
     .filter(([, value]) => value?.trim())
     .map(([provider, value]) => `${titleCase(provider)}: ${value.trim()}`);
-  const hasSkills = hikingSkill || skiingSkill || discGolfSkill;
 
   return (
     <View
@@ -317,31 +337,6 @@ function SignupProfilePreview({
         </View>
       ) : null}
 
-      {!isBusiness && hasSkills ? (
-        <View style={styles.previewSection}>
-          <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
-            Activity level
-          </Text>
-          <View style={styles.reviewChipRow}>
-            {hikingSkill ? (
-              <ReviewChip label={`Hiking: ${titleCase(hikingSkill)}`} theme={theme} />
-            ) : null}
-            {skiingSkill ? (
-              <ReviewChip
-                label={`Ski/Snowboard: ${titleCase(skiingSkill)}`}
-                theme={theme}
-              />
-            ) : null}
-            {discGolfSkill ? (
-              <ReviewChip
-                label={`Disc golf: ${titleCase(discGolfSkill)}`}
-                theme={theme}
-              />
-            ) : null}
-          </View>
-        </View>
-      ) : null}
-
       {!isBusiness && languages.length ? (
         <View style={styles.previewSection}>
           <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
@@ -378,7 +373,6 @@ function RegisterScreen() {
   const { theme } = useTheme();
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [avatarKey, setAvatarKey] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -389,9 +383,6 @@ function RegisterScreen() {
   const [originallyFrom, setOriginallyFrom] = useState("");
   const [languagesText, setLanguagesText] = useState("");
   const [interests, setInterests] = useState([]);
-  const [hikingSkill, setHikingSkill] = useState("");
-  const [skiingSkill, setSkiingSkill] = useState("");
-  const [discGolfSkill, setDiscGolfSkill] = useState("");
   const [socialValues, setSocialValues] = useState({
     instagram: "",
     tiktok: "",
@@ -465,11 +456,28 @@ function RegisterScreen() {
   }
 
   function handleToggleInterest(interest) {
-    setInterests((current) =>
-      current.includes(interest)
-        ? current.filter((item) => item !== interest)
-        : [...current, interest]
-    );
+    setInterests((current) => {
+      if (current.includes(interest)) {
+        return current.filter((item) => item !== interest);
+      }
+
+      const group = PROFILE_INTEREST_GROUPS.find((item) =>
+        item.options.includes(interest)
+      );
+      const selectedInGroup = group
+        ? current.filter((item) => group.options.includes(item)).length
+        : 0;
+
+      if (selectedInGroup >= MAX_PROFILE_INTERESTS_PER_GROUP) {
+        Alert.alert(
+          "Main interests limit",
+          `Choose up to ${MAX_PROFILE_INTERESTS_PER_GROUP} interests in each category so your profile stays easy to scan.`
+        );
+        return current;
+      }
+
+      return [...current, interest];
+    });
   }
 
   function handleSocialChange(provider, value) {
@@ -559,13 +567,6 @@ function RegisterScreen() {
         originallyFrom: isLocal ? originallyFrom : undefined,
         languages: isLocal ? languages : undefined,
         interests: isLocal ? interests : undefined,
-        skillLevel: isLocal
-          ? {
-              ...(hikingSkill ? { hiking: hikingSkill } : {}),
-              ...(skiingSkill ? { skiing: skiingSkill } : {}),
-              ...(discGolfSkill ? { discGolf: discGolfSkill } : {}),
-            }
-          : undefined,
         socialAccounts: isLocal
           ? buildSocialAccounts(socialValues, profileImageUrl)
           : undefined,
@@ -573,7 +574,7 @@ function RegisterScreen() {
         lookingFor: isBusiness ? lookingFor : undefined,
         instagram: isBusiness ? instagram : socialValues.instagram,
         website,
-        avatarKey,
+        avatarKey: null,
         profileImageUrl,
         facebookConnectToken,
       });
@@ -606,7 +607,6 @@ function RegisterScreen() {
 
   function switchRole(nextRole) {
     setRole(nextRole);
-    setAvatarKey(null);
     setStepIndex(0);
   }
 
@@ -673,8 +673,6 @@ function RegisterScreen() {
           setFacebookConnectToken(data.facebookConnectToken || "");
           setFacebookProfileName(facebookProfile.name || "");
           setName((current) => current || facebookProfile.name || "");
-          setProfileImageUrl(facebookProfile.profileImageUrl || "");
-          setAvatarKey(null);
           setSocialValues((current) => ({
             ...current,
             facebook: facebookProfile.name || "Facebook connected",
@@ -682,7 +680,7 @@ function RegisterScreen() {
 
           Alert.alert(
             "Facebook connected",
-            "Your name and profile photo are ready for signup."
+            "Your Facebook account is connected for signup."
           );
         } catch (error) {
           Alert.alert(
@@ -703,6 +701,60 @@ function RegisterScreen() {
         `${error.message || "Could not open Facebook."}\n\nYou can still create your account without Facebook.`
       );
     }
+  }
+
+  async function handleChooseProfilePhoto() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access to choose a profile photo from your camera roll."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.45,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.base64) {
+        Alert.alert(
+          "Photo not selected",
+          "We could not read that photo. Please try another image."
+        );
+        return;
+      }
+
+      if (asset.base64.length > PROFILE_PHOTO_MAX_BASE64_LENGTH) {
+        Alert.alert(
+          "Photo too large",
+          "Please choose a smaller photo or crop it tighter before saving."
+        );
+        return;
+      }
+
+      const mimeType = asset.mimeType || "image/jpeg";
+      setProfileImageUrl(`data:${mimeType};base64,${asset.base64}`);
+    } catch (error) {
+      Alert.alert(
+        "Could not choose photo",
+        error.message || "Please try again."
+      );
+    }
+  }
+
+  function handleClearProfilePhoto() {
+    setProfileImageUrl("");
   }
 
   function renderBusinessLink() {
@@ -913,51 +965,15 @@ function RegisterScreen() {
       return (
         <>
           <Text style={[styles.stepTitle, { color: theme.text }]}>
-            What would you like to find here?
+            Main interests
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Pick anything that sounds useful. You can change this later.
+            Pick up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category. These show on your profile, help people find like-minded locals, and start your Hub with a matching category. You can change these at any time.
           </Text>
-          <ChipGroup
-            options={INTEREST_OPTIONS}
+          <InterestGroupList
+            groups={PROFILE_INTEREST_GROUPS}
             values={interests}
             onToggle={handleToggleInterest}
-            theme={theme}
-          />
-        </>
-      );
-    }
-
-    if (currentStep === "levels") {
-      return (
-        <>
-          <Text style={[styles.stepTitle, { color: theme.text }]}>
-            Optional activity levels
-          </Text>
-          <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Skip anything that does not apply.
-          </Text>
-          <Text style={[styles.label, { color: theme.text }]}>Hiking</Text>
-          <ChipGroup
-            options={SKILL_OPTIONS}
-            value={hikingSkill}
-            onChange={setHikingSkill}
-            theme={theme}
-          />
-          <Text style={[styles.label, { color: theme.text }]}>
-            Skiing/Snowboarding
-          </Text>
-          <ChipGroup
-            options={SKILL_OPTIONS}
-            value={skiingSkill}
-            onChange={setSkiingSkill}
-            theme={theme}
-          />
-          <Text style={[styles.label, { color: theme.text }]}>Disc golf</Text>
-          <ChipGroup
-            options={SKILL_OPTIONS}
-            value={discGolfSkill}
-            onChange={setDiscGolfSkill}
             theme={theme}
           />
         </>
@@ -1064,41 +1080,48 @@ function RegisterScreen() {
             </Pressable>
           </View>
           <Text style={[styles.label, { color: theme.text }]}>
-            Profile photo URL
+            Profile photo
           </Text>
-          <TextInput
+          <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
+            Choose a photo from your phone. You can skip this and add one later
+            from Edit Profile.
+          </Text>
+          <Pressable
             style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
+              styles.photoPickerButton,
+              { backgroundColor: theme.card, borderColor: theme.accent },
             ]}
-            value={profileImageUrl}
-            onChangeText={setProfileImageUrl}
-            placeholder="https://..."
-            placeholderTextColor={theme.textMuted}
-            autoCapitalize="none"
-          />
+            onPress={handleChooseProfilePhoto}
+          >
+            <Text style={[styles.photoPickerText, { color: theme.accent }]}>
+              Choose from camera roll
+            </Text>
+          </Pressable>
           {profileImageUrl ? (
-            <Pressable
-              style={[styles.useSocialPhotoButton, { borderColor: theme.accent }]}
-              onPress={() => setAvatarKey(null)}
+            <View
+              style={[
+                styles.photoPreviewCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
             >
-              <Text style={[styles.useSocialPhotoText, { color: theme.accent }]}>
-                Use this social photo instead of an avatar
-              </Text>
-            </Pressable>
+              <Image source={{ uri: profileImageUrl }} style={styles.photoPreview} />
+              <View style={styles.photoPreviewCopy}>
+                <Text style={[styles.photoPreviewTitle, { color: theme.text }]}>
+                  Profile photo selected
+                </Text>
+                <Pressable
+                  style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                  onPress={handleClearProfilePhoto}
+                >
+                  <Text
+                    style={[styles.smallOutlineText, { color: theme.textMuted }]}
+                  >
+                    Remove
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           ) : null}
-          <Text style={[styles.label, { color: theme.text }]}>
-            Choose an avatar
-          </Text>
-          <AvatarPicker
-            value={avatarKey}
-            onChange={setAvatarKey}
-            variant={isBusiness ? "business" : "personal"}
-          />
         </>
       );
     }
@@ -1233,12 +1256,8 @@ function RegisterScreen() {
           originallyFrom={originallyFrom}
           languagesText={languagesText}
           interests={interests}
-          hikingSkill={hikingSkill}
-          skiingSkill={skiingSkill}
-          discGolfSkill={discGolfSkill}
           bio={bio}
           lookingFor={lookingFor}
-          avatarKey={avatarKey}
           profileImageUrl={profileImageUrl}
           socialValues={socialValues}
         />
@@ -1437,6 +1456,47 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 14,
   },
+  interestGroups: {
+    gap: 10,
+  },
+  interestGroup: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  interestGroupHeader: {
+    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  interestGroupCopy: {
+    flex: 1,
+  },
+  interestGroupTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  interestGroupMeta: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  interestGroupChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  interestGroupOptions: {
+    paddingHorizontal: 12,
+    paddingBottom: 2,
+  },
   chip: {
     borderWidth: 1,
     borderRadius: 999,
@@ -1499,16 +1559,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
-  useSocialPhotoButton: {
+  photoPickerButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 12,
+  },
+  photoPickerText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  photoPreviewCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  photoPreview: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#ddd",
+  },
+  photoPreviewCopy: {
+    flex: 1,
+  },
+  photoPreviewTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  smallOutlineButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: -2,
-    marginBottom: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
   },
-  useSocialPhotoText: {
+  smallOutlineText: {
     fontSize: 12,
     fontWeight: "800",
   },

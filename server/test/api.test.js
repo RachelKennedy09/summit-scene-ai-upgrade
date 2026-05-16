@@ -38,11 +38,6 @@ describe("SummitScene API", function () {
       originallyFrom: "Melbourne",
       languages: ["English", "Spanish"],
       interests: ["hiking", "live music"],
-      skillLevel: {
-        hiking: "casual",
-        skiing: "beginner",
-        discGolf: "casual",
-      },
     });
 
     expect(res.status).to.be.oneOf([200, 201]);
@@ -55,11 +50,6 @@ describe("SummitScene API", function () {
     });
     expect(res.body.user.languages).to.deep.equal(["English", "Spanish"]);
     expect(res.body.user.interests).to.deep.equal(["hiking", "live music"]);
-    expect(res.body.user.skillLevel).to.include({
-      hiking: "casual",
-      skiing: "beginner",
-      discGolf: "casual",
-    });
   });
 
   it("should reject duplicate public names at /api/auth/register", async () => {
@@ -111,11 +101,6 @@ describe("SummitScene API", function () {
         originallyFrom: "Calgary",
         languages: ["English", "French"],
         interests: ["skiing", "trail running", "coffee"],
-        skillLevel: {
-          hiking: "experienced",
-          skiing: "casual",
-          discGolf: "experienced",
-        },
         profileImageUrl: "https://example.com/social-profile.jpg",
         socialAccounts: [
           {
@@ -143,11 +128,6 @@ describe("SummitScene API", function () {
       "trail running",
       "coffee",
     ]);
-    expect(updateRes.body.user.skillLevel).to.include({
-      hiking: "experienced",
-      skiing: "casual",
-      discGolf: "experienced",
-    });
     const updatedInstagram = updateRes.body.user.socialAccounts.find(
       (account) => account.provider === "instagram"
     );
@@ -174,11 +154,6 @@ describe("SummitScene API", function () {
       "trail running",
       "coffee",
     ]);
-    expect(meRes.body.user.skillLevel).to.include({
-      hiking: "experienced",
-      skiing: "casual",
-      discGolf: "experienced",
-    });
     const retrievedInstagram = meRes.body.user.socialAccounts.find(
       (account) => account.provider === "instagram"
     );
@@ -393,7 +368,7 @@ describe("SummitScene API", function () {
         title: "Pending Business Event",
         description: "This should fail until verified.",
         town: "Banff",
-        category: "Live Music",
+        category: "Festivals",
         date: "2026-12-31",
         time: "18:00",
       });
@@ -440,7 +415,7 @@ describe("SummitScene API", function () {
         title: "Approved Business Event",
         description: "This should work after admin approval.",
         town: "Banff",
-        category: "Live Music",
+        category: "Festivals",
         date: "2026-12-31",
         time: "18:00",
         address: "100 Banff Avenue, Banff, AB",
@@ -506,6 +481,31 @@ describe("SummitScene API", function () {
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 
+  it("should filter events by a main category group", async () => {
+    const res = await request(app).get(
+      "/api/events?category=All%20Music%20%26%20Nightlife"
+    );
+
+    expect(res.status).to.equal(200);
+    expect(res.body).to.be.an("array");
+    expect(
+      res.body.every((event) =>
+        [
+          "Live Music",
+          "DJs",
+          "Open Mic",
+          "Karaoke",
+          "Dance Nights",
+          "Festivals",
+          "Concerts",
+          "Pub Nights",
+          "After Parties",
+          "Comedy",
+        ].includes(event.category)
+      )
+    ).to.equal(true);
+  });
+
   /* -----------------------------------------
    * COMMUNITY TESTS
    * --------------------------------------- */
@@ -546,7 +546,7 @@ describe("SummitScene API", function () {
       .set("Authorization", `Bearer ${authToken}`)
       .send({
         type: "hiking",
-        category: "Outdoors",
+        category: "Hiking",
         communityType: "local-plan",
         activityText: "Looking for someone to hike Tunnel Mountain after work.",
         date: "2026-05-15",
@@ -559,7 +559,7 @@ describe("SummitScene API", function () {
     expect(createRes.status).to.equal(201);
     expect(createRes.body).to.include({
       type: "hiking",
-      category: "Outdoors",
+      category: "Hiking",
       communityType: "local-plan",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
       date: "2026-05-15",
@@ -578,7 +578,7 @@ describe("SummitScene API", function () {
     expect(createRes.body.eventId).to.equal(undefined);
 
     const listRes = await request(app)
-      .get("/api/buddy-posts?category=Outdoors&town=Banff")
+      .get("/api/buddy-posts?category=Hiking&town=Banff")
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(listRes.status).to.equal(200);
@@ -588,7 +588,7 @@ describe("SummitScene API", function () {
     );
     expect(listedPost).to.include({
       type: "hiking",
-      category: "Outdoors",
+      category: "Hiking",
       communityType: "local-plan",
       town: "Banff",
       groupSizePreference: "small-group",
@@ -608,9 +608,9 @@ describe("SummitScene API", function () {
       .post("/api/buddy-posts")
       .set("Authorization", `Bearer ${authToken}`)
       .send({
-        type: "discgolf",
-        category: "Disc Golf",
-        activityText: "Looking for a disc golf partner after work.",
+        type: "hiking",
+        category: "Climbing",
+        activityText: "Looking for a climbing partner after work.",
         date: "2026-05-16",
         time: "18:00",
         town: "Canmore",
@@ -620,8 +620,8 @@ describe("SummitScene API", function () {
 
     expect(discGolfRes.status).to.equal(201);
     expect(discGolfRes.body).to.include({
-      type: "discgolf",
-      category: "Disc Golf",
+      type: "hiking",
+      category: "Climbing",
       skillLevel: "beginner",
       groupSizePreference: "any",
     });
@@ -630,8 +630,8 @@ describe("SummitScene API", function () {
       .post("/api/buddy-posts")
       .set("Authorization", `Bearer ${authToken}`)
       .send({
-        type: "bookclub",
-        category: "Book Club",
+        type: "general",
+        category: "Local Clubs",
         communityType: "group",
         activityText: "Starting a casual monthly book club.",
         date: "2026-05-20",
@@ -648,8 +648,8 @@ describe("SummitScene API", function () {
 
     expect(recurringRes.status).to.equal(201);
     expect(recurringRes.body).to.include({
-      type: "bookclub",
-      category: "Book Club",
+      type: "general",
+      category: "Local Clubs",
       communityType: "group",
       scheduleType: "recurring",
     });
@@ -667,7 +667,7 @@ describe("SummitScene API", function () {
     expect(detailRes.body).to.include({
       _id: createRes.body._id,
       type: "hiking",
-      category: "Outdoors",
+      category: "Hiking",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
     });
 
@@ -698,7 +698,7 @@ describe("SummitScene API", function () {
       .set("Authorization", `Bearer ${authToken}`)
       .send({
         type: "general",
-        category: "Other",
+        category: "Cultural Events",
         communityType: "new-in-town",
         activityText: "New in town and looking to meet people for easy walks.",
         date: "2026-05-23",
@@ -710,6 +710,7 @@ describe("SummitScene API", function () {
     expect(newInTownRes.body).to.include({
       type: "general",
       communityType: "new-in-town",
+      category: "Cultural Events",
     });
 
     const newInTownListRes = await request(app)
@@ -769,7 +770,7 @@ describe("SummitScene API", function () {
       .set("Authorization", `Bearer ${pendingBusinessToken}`)
       .send({
         type: "walking",
-        category: "Outdoors",
+        category: "Hiking",
         communityType: "local-plan",
         activityText: "Easy public walk by the river.",
         date: "2026-06-01",

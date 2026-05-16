@@ -9,6 +9,7 @@ import User from "../models/User.js";
 
 const PASSWORD = "TestPassword123!";
 const SEED_EMAIL_DOMAIN = "community-seed.summitscene.test";
+const SEED_EMAIL_PATTERN = new RegExp(`@${SEED_EMAIL_DOMAIN.replaceAll(".", "\\.")}$`);
 
 function addDays(days) {
   const date = new Date();
@@ -29,13 +30,14 @@ const seedUsers = [
   {
     name: "Maya Chen",
     email: `maya@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w2_tan_longbrown",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     userType: "seasonal",
     originallyFrom: "Taiwan",
     languages: ["English", "Mandarin"],
-    interests: ["Hiking", "Karaoke", "Coffee", "New in town"],
-    skillLevel: { hiking: "casual", skiing: "beginner", discGolf: "casual" },
+    interests: ["Hiking", "Karaoke", "Coffee", "New in Town"],
     bio: "New to Banff for the season and trying to say yes to more plans.",
     socialAccounts: [
       { provider: "instagram", handle: "@maya_in_banff", verified: false },
@@ -44,61 +46,66 @@ const seedUsers = [
   {
     name: "Samir Patel",
     email: `samir@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "m1_tan_blackhair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
     town: "Canmore",
     userType: "local",
     originallyFrom: "Calgary",
     languages: ["English", "Hindi"],
-    interests: ["Disc Golf", "Trivia", "Live Music"],
-    skillLevel: { hiking: "experienced", skiing: "casual", discGolf: "experienced" },
+    interests: ["Mountain Biking", "Comedy", "Live Music"],
     bio: "Usually up for low-key plans after work.",
   },
   {
     name: "Lucia Romero",
     email: `lucia@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w4_medium_longauburn",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
     town: "Lake Louise",
     userType: "seasonal",
     originallyFrom: "Chile",
     languages: ["Spanish", "English"],
-    interests: ["Skiing/Snowboarding", "Walking", "Book Club"],
-    skillLevel: { hiking: "beginner", skiing: "experienced" },
+    interests: ["Skiing", "Snowshoeing", "Local Clubs"],
     bio: "Here for the winter and always looking for mountain friends.",
   },
   {
     name: "Noah Brooks",
     email: `noah@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "m6_medium_browncurly",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     userType: "visitor",
     originallyFrom: "Auckland",
     languages: ["English"],
-    interests: ["Nightlife", "Happy Hour", "Live Music"],
-    skillLevel: { hiking: "casual", skiing: "casual" },
+    interests: ["Pub Nights", "Restaurant Specials", "Live Music"],
     bio: "Visiting for a few weeks and keen to join easy social plans.",
   },
   {
     name: "Avery Morgan",
     email: `avery@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w8_dark_shortcurly",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
     town: "Canmore",
     userType: "local",
     originallyFrom: "Edmonton",
     languages: ["English", "French"],
-    interests: ["Art", "Book Club", "Walking", "Bingo"],
-    skillLevel: { hiking: "beginner", skiing: "beginner", discGolf: "beginner" },
+    interests: ["Art Shows", "Local Clubs", "Photography Walks", "Craft Markets"],
     bio: "I like relaxed plans, creative nights, and welcoming new people.",
   },
   {
     name: "Theo Nguyen",
     email: `theo@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "m8_light_blackhair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     userType: "seasonal",
     originallyFrom: "Vietnam",
     languages: ["English", "Vietnamese"],
-    interests: ["Shopping", "Food Trucks", "Trivia"],
-    skillLevel: { hiking: "casual", skiing: "beginner" },
+    interests: ["Makers Markets", "Food Trucks", "Comedy"],
     bio: "Working in town and trying to find a steady group of friends.",
   },
 ];
@@ -107,7 +114,7 @@ const postSeeds = [
   {
     user: "Maya Chen",
     type: "hiking",
-    category: "Outdoors",
+    category: "Hiking",
     communityType: "local-plan",
     activityText:
       "Hiking Tunnel Mountain tomorrow morning.\nLooking for 1-2 people to join at a casual pace.",
@@ -136,7 +143,7 @@ const postSeeds = [
     user: "Lucia Romero",
     eventTitle: "First Chair Social",
     type: "skiing",
-    category: "Ski Hill Events",
+    category: "Skiing",
     communityType: "local-plan",
     activityText:
       "Lake Louise blue runs this Saturday.\nLooking for experienced but relaxed ski or snowboard buddies.",
@@ -150,7 +157,7 @@ const postSeeds = [
   {
     user: "Samir Patel",
     type: "discgolf",
-    category: "Disc Golf",
+    category: "Hiking",
     communityType: "local-plan",
     activityText:
       "Disc golf at the Canmore course after work.\nHappy to play with casual or experienced players.",
@@ -164,7 +171,7 @@ const postSeeds = [
   {
     user: "Avery Morgan",
     type: "walking",
-    category: "Wellness",
+    category: "Wellness Retreats",
     communityType: "local-plan",
     activityText:
       "Easy Sunday river walk in Canmore.\nBeginner-friendly and mostly just a chance to chat.",
@@ -191,7 +198,7 @@ const postSeeds = [
   {
     user: "Theo Nguyen",
     type: "general",
-    category: "Happy Hour",
+    category: "Restaurant Specials",
     communityType: "new-in-town",
     activityText:
       "Seasonal worker in Banff looking for after-work food plans.\nOpen to casual dinners, trivia, or coffee.",
@@ -204,7 +211,7 @@ const postSeeds = [
   {
     user: "Avery Morgan",
     type: "bookclub",
-    category: "Book Club",
+    category: "Local Clubs",
     communityType: "group",
     activityText:
       "Starting a monthly cozy book club in Canmore.\nFirst meetup will be low pressure, tea-friendly, and beginner-friendly.",
@@ -223,7 +230,7 @@ const postSeeds = [
   {
     user: "Samir Patel",
     type: "trivia",
-    category: "Sports/Watch Party",
+    category: "Pub Nights",
     communityType: "group",
     activityText:
       "Trivia team needs two more people.\nNo need to be a trivia genius, just show up and have fun.",
@@ -256,7 +263,7 @@ const postSeeds = [
   {
     user: "Avery Morgan",
     type: "art",
-    category: "Art",
+    category: "Art Shows",
     communityType: "group",
     activityText:
       "Casual sketch night for people who miss making art.\nBring a notebook, no experience needed.",
@@ -275,7 +282,7 @@ const postSeeds = [
   {
     user: "Lucia Romero",
     type: "general",
-    category: "Community Info Session",
+    category: "Community Gatherings",
     communityType: "update",
     activityText:
       "Heads up for Lake Louise newcomers.\nStaff housing info night is happening this week, good chance to ask practical questions.",
@@ -288,7 +295,7 @@ const postSeeds = [
   {
     user: "Theo Nguyen",
     type: "shopping",
-    category: "Retail",
+    category: "Makers Markets",
     communityType: "local-plan",
     activityText:
       "Thrift and gear shopping in Banff this weekend.\nLooking for one or two people who want to browse and grab coffee after.",
@@ -340,7 +347,7 @@ const postSeeds = [
   {
     user: "Maya Chen",
     type: "bingo",
-    category: "Nightlife",
+    category: "Pub Nights",
     communityType: "local-plan",
     activityText:
       "Bingo night after dinner.\nI have never been and would rather not show up solo.",
@@ -365,6 +372,7 @@ async function upsertSeedUsers() {
           passwordHash,
           role: "local",
           businessVerificationStatus: "none",
+          hasSeenSafetyTips: true,
           blockedUsers: [],
         },
       },
@@ -468,6 +476,7 @@ async function main() {
     BuddyPost.deleteMany({}),
     CommunityPost.deleteMany({}),
   ]);
+  const deletedSeedUsers = await User.deleteMany({ email: SEED_EMAIL_PATTERN });
 
   const usersByName = await upsertSeedUsers();
   const posts = await seedPosts(usersByName);
@@ -478,6 +487,7 @@ async function main() {
   console.log(
     `Deleted legacy CommunityPost documents: ${deletedCommunityPosts.deletedCount}`
   );
+  console.log(`Deleted old community seed users: ${deletedSeedUsers.deletedCount}`);
   console.log(`Seed users ready: ${usersByName.size}`);
   console.log(`Buddy posts created: ${posts.length}`);
 }

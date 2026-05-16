@@ -1,7 +1,7 @@
 // screens/community/CommunityScreen.js
 // Social community hub centered on finding activity buddies and local connection.
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,7 +22,10 @@ import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import SelectModal from "../../components/common/SelectModal";
 import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
-import { getCommunityCategoryGroups } from "../../constants/eventCategories";
+import {
+  COMMUNITY_NOTICE_CATEGORIES,
+  getCommunityCategoryGroups,
+} from "../../constants/eventCategories";
 import { LANGUAGE_OPTIONS } from "../../constants/languages";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -41,36 +44,36 @@ const CATEGORY_GROUPS = getCommunityCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
 });
+const NOTICE_CATEGORY_GROUPS = [
+  {
+    title: "Town Notices",
+    options: ["All notice types", ...COMMUNITY_NOTICE_CATEGORIES],
+  },
+];
 const COMMUNITY_SECTIONS = [
   {
-    label: "All",
-    value: "",
-    title: "Community Feed",
-    subtitle: "See everything people are sharing around town.",
-    cta: "Share Something",
-    emptyTitle: "No community posts yet",
-    emptyText:
-      "Start with a local plan, intro, group, local notice, or practical community update.",
-  },
-  {
-    label: "Plans",
+    label: "Make a Plan",
     value: "local-plan",
-    title: "Find People for Plans",
-    subtitle: "Post when you want someone to join an event, walk, coffee, ski day, or casual plan.",
+    title: "Make a Plan",
+    subtitle: "Find someone for a hike, coffee, ski day, event, walk, or casual meetup.",
     cta: "Post a Plan",
     emptyTitle: "Start the local plan",
     emptyText:
       "Share a walk, ski day, coffee before a show, trivia table, or event plan.",
+    supportsCategory: true,
+    supportsDate: true,
   },
   {
-    label: "New",
+    label: "New in Town",
     value: "new-in-town",
     title: "New in Town",
-    subtitle: "Introduce yourself if you are new, visiting, seasonal, or open to welcoming people.",
+    subtitle: "Meet newcomers, visitors, seasonal workers, and locals open to saying hello.",
     cta: "Post Intro",
     emptyTitle: "Welcome someone in",
     emptyText:
       "Post where you are based, what you like doing, and who you would like to meet.",
+    supportsCategory: false,
+    supportsDate: false,
   },
   {
     label: "Groups",
@@ -81,29 +84,33 @@ const COMMUNITY_SECTIONS = [
     emptyTitle: "Start the first group",
     emptyText:
       "Create a recurring book club, hiking crew, trivia team, art night, or walking group.",
+    supportsCategory: true,
+    supportsDate: true,
   },
   {
-    label: "Notices",
+    label: "Town Notices",
     value: "notice",
-    title: "Local Notices",
+    title: "Town Notices",
     subtitle: "Share garage sales, gear swaps, free stuff, lost and found, or practical town notices.",
     cta: "Share Notice",
-    emptyTitle: "No local notices yet",
+    emptyTitle: "No town notices yet",
     emptyText:
       "Share a garage sale, gear swap, lost and found item, free stuff, or practical local notice.",
-  },
-  {
-    label: "Updates",
-    value: "update",
-    title: "Community Updates",
-    subtitle: "Share useful heads-up posts like volunteer callouts, safety notes, or town updates.",
-    cta: "Share Update",
-    emptyTitle: "No updates yet",
-    emptyText:
-      "Keep updates practical: volunteer needs, safety notes, or helpful heads-up posts.",
+    categoryLabel: "Notice type",
+    categoryAllLabel: "All notice types",
+    categoryGroups: NOTICE_CATEGORY_GROUPS,
+    supportsCategory: true,
+    supportsDate: true,
   },
 ];
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
+
+function getSection(value) {
+  return (
+    COMMUNITY_SECTIONS.find((section) => section.value === value) ||
+    COMMUNITY_SECTIONS[0]
+  );
+}
 
 function formatDateForApi(date) {
   const year = date.getFullYear();
@@ -158,7 +165,7 @@ export default function CommunityScreen({ navigation }) {
   const { theme } = useTheme();
 
   const [posts, setPosts] = useState([]);
-  const [communityType, setCommunityType] = useState("");
+  const [communityType, setCommunityType] = useState(COMMUNITY_SECTIONS[0].value);
   const [category, setCategory] = useState("All");
   const [town, setTown] = useState("All");
   const [language, setLanguage] = useState("");
@@ -170,8 +177,18 @@ export default function CommunityScreen({ navigation }) {
   const [error, setError] = useState("");
   const [profileUser, setProfileUser] = useState(null);
 
+  const activeSection = getSection(communityType);
+  const categoryAllLabel = activeSection.categoryAllLabel || "All categories";
+  const sectionSupportsCategory = Boolean(activeSection.supportsCategory);
+  const sectionSupportsDate = Boolean(activeSection.supportsDate);
+  const categoryGroups = activeSection.categoryGroups || CATEGORY_GROUPS;
   const activeTownFilter = town === "All" ? "" : town;
-  const activeCategoryFilter = category === "All" ? "" : category;
+  const activeCategoryFilter =
+    sectionSupportsCategory && category !== "All" && category !== categoryAllLabel
+      ? category
+      : "";
+  const activeDateFilter =
+    sectionSupportsDate && selectedDate ? formatDateForApi(selectedDate) : "";
 
   const filters = useMemo(
     () => ({
@@ -179,11 +196,32 @@ export default function CommunityScreen({ navigation }) {
       communityType,
       town: activeTownFilter,
       language,
-      date: selectedDate ? formatDateForApi(selectedDate) : "",
+      date: activeDateFilter,
       status: "open",
     }),
-    [activeCategoryFilter, communityType, activeTownFilter, language, selectedDate]
+    [activeCategoryFilter, communityType, activeTownFilter, language, activeDateFilter]
   );
+
+  useEffect(() => {
+    const nextSection = getSection(communityType);
+
+    if (!nextSection.supportsDate && selectedDate) {
+      setSelectedDate(null);
+    }
+
+    if (!nextSection.supportsCategory && category !== "All") {
+      setCategory("All");
+      return;
+    }
+
+    if (
+      nextSection.value === "notice" &&
+      category !== "All" &&
+      !COMMUNITY_NOTICE_CATEGORIES.includes(category)
+    ) {
+      setCategory("All");
+    }
+  }, [category, communityType, selectedDate]);
 
   const loadBuddyPosts = useCallback(async () => {
     try {
@@ -204,26 +242,17 @@ export default function CommunityScreen({ navigation }) {
     }, [loadBuddyPosts])
   );
 
-  const categorySelectLabel = category === "All" ? "All categories" : category;
-  const activeSection =
-    COMMUNITY_SECTIONS.find((section) => section.value === communityType) ||
-    COMMUNITY_SECTIONS[0];
+  const categorySelectLabel = category === "All" ? categoryAllLabel : category;
   const activeFilterLabel =
     category === "All"
-      ? communityType
-        ? activeSection.title.toLowerCase()
-        : "community"
+      ? activeSection.title.toLowerCase()
       : category;
   const currentUserId = user?._id || user?.id || "";
   const createPostParams = {
     eventBuddy: communityType ? { communityType } : undefined,
   };
-  const pageIntroTitle = communityType
-    ? activeSection.title
-    : "What are you looking for?";
-  const pageIntroText = communityType
-    ? activeSection.subtitle
-    : "Use the section buttons above to narrow the feed: find people for plans, welcome newcomers, join groups, browse local notices, or read updates.";
+  const pageIntroTitle = activeSection.title;
+  const pageIntroText = activeSection.subtitle;
 
   async function handleToggleInterested(post) {
     if (!token) {
@@ -367,7 +396,7 @@ export default function CommunityScreen({ navigation }) {
       >
         <PageHeader
           title="Community"
-          subtitle="Find people, groups, local notices, and useful town updates."
+          subtitle="Choose one path: make a plan, meet people, join groups, or browse town notices."
         />
 
         <Text style={[styles.sectionNavLabel, { color: theme.textMuted }]}>
@@ -441,24 +470,28 @@ export default function CommunityScreen({ navigation }) {
             Filters
           </Text>
 
-          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-            Category
-          </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.categorySelect,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-              },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setCategoryPickerVisible(true)}
-          >
-            <Text style={[styles.categorySelectText, { color: theme.text }]}>
-              {categorySelectLabel}
-            </Text>
-          </Pressable>
+          {sectionSupportsCategory ? (
+            <>
+              <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+                {activeSection.categoryLabel || "Category"}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.categorySelect,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setCategoryPickerVisible(true)}
+              >
+                <Text style={[styles.categorySelectText, { color: theme.text }]}>
+                  {categorySelectLabel}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
 
           <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
             Town
@@ -499,42 +532,47 @@ export default function CommunityScreen({ navigation }) {
             </Text>
           </Pressable>
 
-          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-            Date
-          </Text>
-          <View style={styles.dateFilterRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.dateButton,
-                {
-                  backgroundColor: theme.background,
-                  borderColor: theme.border,
-                },
-                pressed && styles.pressed,
-              ]}
-              onPress={() => setDatePickerVisible(true)}
-            >
-              <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                {selectedDate ? formatDisplayDate(selectedDate) : "Any date"}
+          {sectionSupportsDate ? (
+            <>
+              <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
+                Date
               </Text>
-            </Pressable>
-            {selectedDate || language ? (
               <Pressable
                 style={({ pressed }) => [
-                  styles.clearFiltersButton,
+                  styles.dateButton,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
                   pressed && styles.pressed,
                 ]}
-                onPress={() => {
-                  setSelectedDate(null);
-                  setLanguage("");
-                }}
+                onPress={() => setDatePickerVisible(true)}
               >
-                <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
-                  Clear
+                <Text style={[styles.dateButtonText, { color: theme.text }]}>
+                  {selectedDate ? formatDisplayDate(selectedDate) : "Any date"}
                 </Text>
               </Pressable>
-            ) : null}
-          </View>
+            </>
+          ) : null}
+
+          {category !== "All" || town !== "All" || language || selectedDate ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.clearFiltersButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => {
+                setCategory("All");
+                setTown("All");
+                setSelectedDate(null);
+                setLanguage("");
+              }}
+            >
+              <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
+                Clear filters
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.summaryRow}>
@@ -666,11 +704,11 @@ export default function CommunityScreen({ navigation }) {
 
       <GroupedCategoryModal
         visible={categoryPickerVisible}
-        title="Filter by category"
-        groups={CATEGORY_GROUPS}
+        title={`Filter by ${activeSection.categoryLabel || "category"}`}
+        groups={categoryGroups}
         selectedValue={category}
         onSelect={(nextCategory) => {
-          setCategory(nextCategory);
+          setCategory(nextCategory === categoryAllLabel ? "All" : nextCategory);
           setCategoryPickerVisible(false);
         }}
         onClose={() => setCategoryPickerVisible(false)}
@@ -783,25 +821,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 12,
   },
-  dateFilterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
   dateButton: {
-    flex: 1,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    marginBottom: 12,
   },
   dateButtonText: {
     fontSize: 14,
     fontWeight: "700",
   },
   clearFiltersButton: {
+    alignSelf: "flex-start",
     paddingHorizontal: 4,
     paddingVertical: 8,
+    marginTop: -2,
   },
   clearFiltersText: {
     fontSize: 13,

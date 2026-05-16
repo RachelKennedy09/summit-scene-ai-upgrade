@@ -1,31 +1,138 @@
 export const EVENT_CATEGORY_GROUPS = [
   {
-    title: "Outdoors & Sports",
-    options: ["Outdoors", "Ski Hill Events", "Disc Golf", "Sports/Watch Party"],
+    title: "Outdoors & Adventure",
+    options: [
+      "Hiking",
+      "Trail Running",
+      "Climbing",
+      "Bouldering",
+      "Skiing",
+      "Snowboarding",
+      "Cross-Country Skiing",
+      "Backcountry",
+      "Mountain Biking",
+      "Paddleboarding",
+      "Kayaking",
+      "Canoeing",
+      "Camping",
+      "Fishing",
+      "Wildlife Tours",
+      "Photography Walks",
+      "Ice Skating",
+      "Snowshoeing",
+      "Outdoor Yoga",
+    ],
+  },
+  {
+    title: "Social & Community",
+    options: [
+      "Meetups",
+      "New in Town",
+      "Community Gatherings",
+      "Networking",
+      "Coffee Meetups",
+      "Cultural Events",
+      "Volunteer Events",
+      "Local Clubs",
+      "Student Events",
+      "Digital Nomad Meetups",
+    ],
+  },
+  {
+    title: "Food & Drink",
+    options: [
+      "Brunch",
+      "Coffee",
+      "Breweries",
+      "Wine Tastings",
+      "Cocktail Nights",
+      "Food Trucks",
+      "Farmers Markets",
+      "Pop-Up Dinners",
+      "Restaurant Specials",
+      "Cooking Classes",
+    ],
   },
   {
     title: "Music & Nightlife",
-    options: ["Live Music", "Karaoke", "Nightlife"],
+    options: [
+      "Live Music",
+      "DJs",
+      "Open Mic",
+      "Karaoke",
+      "Dance Nights",
+      "Festivals",
+      "Concerts",
+      "Pub Nights",
+      "After Parties",
+      "Comedy",
+    ],
   },
   {
-    title: "Arts & Learning",
-    options: ["Art", "Workshop", "Book Club"],
+    title: "Wellness",
+    options: [
+      "Yoga",
+      "Meditation",
+      "Breathwork",
+      "Sauna & Cold Plunges",
+      "Wellness Retreats",
+      "Sound Baths",
+      "Fitness Classes",
+      "Run Clubs",
+      "Gym Events",
+      "Mental Wellness",
+      "Recovery Sessions",
+    ],
   },
   {
-    title: "Wellness & Community",
-    options: ["Wellness", "Community Info Session", "Fundraiser", "Family"],
+    title: "Arts & Creativity",
+    options: [
+      "Art Shows",
+      "Pottery",
+      "Painting Nights",
+      "Photography",
+      "Writing Groups",
+      "Creative Workshops",
+      "Film Screenings",
+      "Craft Markets",
+      "Makers Markets",
+    ],
   },
   {
-    title: "Food, Drink & Markets",
-    options: ["Happy Hour", "Specials", "Food Trucks", "Markets", "Vendors"],
+    title: "Learning & Workshops",
+    options: [
+      "Business Workshops",
+      "Coding Meetups",
+      "AI & Tech",
+      "Finance",
+      "Career Events",
+      "Public Speaking",
+      "Skill Sharing",
+      "Language Exchange",
+    ],
   },
   {
-    title: "Retail & Local Business",
-    options: ["Retail", "Networking"],
+    title: "Seasonal & Tourism",
+    options: [
+      "Holiday Events",
+      "Canada Day",
+      "Christmas Markets",
+      "Summer Kickoff",
+      "Ski Season Launch",
+      "Stampede Events",
+      "Local Tours",
+      "Visitor Experiences",
+    ],
   },
   {
-    title: "Seasonal",
-    options: ["Seasonal/Holiday Special"],
+    title: "Family & Pets",
+    options: [
+      "Family Friendly",
+      "Kids Activities",
+      "Dog Friendly",
+      "Pet Meetups",
+      "Adoption Events",
+    ],
   },
   {
     title: "Other",
@@ -38,6 +145,15 @@ export const EVENT_FORM_CATEGORIES = EVENT_CATEGORY_GROUPS.flatMap(
 );
 
 export const EVENT_CATEGORIES = ["All", ...EVENT_FORM_CATEGORIES];
+export const EVENT_CATEGORY_GROUP_ALL_PREFIX = "All ";
+
+export const PROFILE_INTEREST_GROUPS = EVENT_CATEGORY_GROUPS.filter(
+  (group) => group.title !== "Other"
+);
+
+export const PROFILE_INTEREST_OPTIONS = PROFILE_INTEREST_GROUPS.flatMap(
+  (group) => group.options
+);
 
 export const COMMUNITY_NOTICE_CATEGORIES = [
   "Garage Sale",
@@ -63,16 +179,37 @@ export const COMMUNITY_FORM_CATEGORIES = COMMUNITY_CATEGORY_GROUPS.flatMap(
 export function getEventCategoryGroups({
   includeAll = false,
   allLabel = "All",
+  includeGroupAll = false,
 } = {}) {
-  if (!includeAll) return EVENT_CATEGORY_GROUPS;
+  const groups = includeGroupAll
+    ? EVENT_CATEGORY_GROUPS.map((group) => ({
+        ...group,
+        options: [
+          `${EVENT_CATEGORY_GROUP_ALL_PREFIX}${group.title}`,
+          ...group.options,
+        ],
+      }))
+    : EVENT_CATEGORY_GROUPS;
+
+  if (!includeAll) return groups;
 
   return [
     {
       title: "All",
       options: [allLabel],
     },
-    ...EVENT_CATEGORY_GROUPS,
+    ...groups,
   ];
+}
+
+export function getEventCategoryFilterOptions(category) {
+  if (!category || category === "All") return null;
+
+  const group = EVENT_CATEGORY_GROUPS.find(
+    (item) => `${EVENT_CATEGORY_GROUP_ALL_PREFIX}${item.title}` === category
+  );
+
+  return group ? group.options : [category];
 }
 
 export function getCommunityCategoryGroups({

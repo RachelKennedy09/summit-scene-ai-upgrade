@@ -17,6 +17,7 @@ import {
   Platform,
   Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
@@ -41,6 +42,7 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
 const AI_REQUEST_TIMEOUT_MS = 15000;
+const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 const FORM_CATEGORIES = EVENT_FORM_CATEGORIES;
 const FORM_CATEGORY_GROUPS = getEventCategoryGroups();
@@ -90,11 +92,6 @@ async function readJsonSafely(response) {
 
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function isValidImageUrl(value) {
-  if (!value) return true;
-  return /^https?:\/\/\S+$/i.test(value);
 }
 
 function normalizeGeneratedDescription(value) {
@@ -158,9 +155,8 @@ export default function PostEventScreen() {
   const [shouldShowAddressSuggestions, setShouldShowAddressSuggestions] =
     useState(false);
 
-  // Hero image URL (optional). Used on EventDetailScreen hero image.
+  // Hero image (optional). Used on EventDetailScreen hero image.
   const [imageUrl, setImageUrl] = useState("");
-  const [imagePreviewFailed, setImagePreviewFailed] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -441,14 +437,6 @@ export default function PostEventScreen() {
       return;
     }
 
-    if (!isValidImageUrl(trimmedImageUrl)) {
-      Alert.alert(
-        "Invalid image URL",
-        "Please enter a valid http or https image URL."
-      );
-      return;
-    }
-
     if (!token) {
       Alert.alert("Not logged in", "Please log in before posting an event.");
       return;
@@ -549,7 +537,6 @@ export default function PostEventScreen() {
             setAddressSuggestionsError("");
             setShouldShowAddressSuggestions(false);
             setImageUrl("");
-            setImagePreviewFailed(false);
 
             navigation.navigate("MyEvents", {
               postedEventId: data?._id,
@@ -566,6 +553,60 @@ export default function PostEventScreen() {
       setLoading(false);
     }
   };
+
+  async function handleChooseEventImage() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access to choose an event photo from your camera roll."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.base64) {
+        Alert.alert(
+          "Photo not selected",
+          "We could not read that photo. Please try another image."
+        );
+        return;
+      }
+
+      if (asset.base64.length > EVENT_IMAGE_MAX_BASE64_LENGTH) {
+        Alert.alert(
+          "Photo too large",
+          "Please choose a smaller photo or crop it tighter before saving."
+        );
+        return;
+      }
+
+      const mimeType = asset.mimeType || "image/jpeg";
+      setImageUrl(`data:${mimeType};base64,${asset.base64}`);
+    } catch (error) {
+      Alert.alert(
+        "Could not choose photo",
+        error.message || "Please try again."
+      );
+    }
+  }
+
+  function handleClearEventImage() {
+    setImageUrl("");
+  }
 
   return (
     <SafeAreaView
@@ -1234,30 +1275,21 @@ export default function PostEventScreen() {
             </Text>
           ) : null}
 
-          {/* Image URL */}
+          {/* Event photo */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
-            Image URL (Optional)
+            Event Photo (Optional)
           </Text>
-          <TextInput
+          <Pressable
             style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                color: theme.text,
-                borderColor: theme.border,
-                borderWidth: 1,
-              },
+              styles.photoPickerButton,
+              { backgroundColor: theme.card, borderColor: theme.accent },
             ]}
-            placeholder="https://example.com/your-image.jpg"
-            placeholderTextColor={theme.textMuted}
-            value={imageUrl}
-            onChangeText={(value) => {
-              setImageUrl(value);
-              setImagePreviewFailed(false);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            onPress={handleChooseEventImage}
+          >
+            <Text style={[styles.photoPickerText, { color: theme.accent }]}>
+              Choose from camera roll
+            </Text>
+          </Pressable>
           {imageUrl.trim() ? (
             <View
               style={[
@@ -1268,29 +1300,28 @@ export default function PostEventScreen() {
                 },
               ]}
             >
-              {imagePreviewFailed || !isValidImageUrl(imageUrl.trim()) ? (
-                <Text style={[styles.previewError, { color: theme.danger || "#ff4d4f" }]}>
-                  {!isValidImageUrl(imageUrl.trim())
-                    ? "Enter a valid http or https image URL."
-                    : "Image preview failed. Check the URL or use a different image."}
+              <Image
+                source={{ uri: imageUrl.trim() }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+              <View style={styles.photoPreviewFooter}>
+                <Text style={[styles.previewHint, { color: theme.textMuted }]}>
+                  Event photo selected
                 </Text>
-              ) : (
-                <>
-                  <Image
-                    source={{ uri: imageUrl.trim() }}
-                    style={styles.previewImage}
-                    resizeMode="cover"
-                    onError={() => setImagePreviewFailed(true)}
-                  />
-                  <Text style={[styles.previewHint, { color: theme.textMuted }]}>
-                    Image preview
+                <Pressable
+                  style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                  onPress={handleClearEventImage}
+                >
+                  <Text style={[styles.smallOutlineText, { color: theme.textMuted }]}>
+                    Remove
                   </Text>
-                </>
-              )}
+                </Pressable>
+              </View>
             </View>
           ) : (
             <Text style={[styles.helperText, { color: theme.textMuted }]}>
-              Use a direct image link. If it fails to load, the event will show without a hero image.
+              Choose a photo from your phone to show as the event hero image.
             </Text>
           )}
         </View>
@@ -1543,6 +1574,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 19,
   },
+  photoPickerButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 12,
+  },
+  photoPickerText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   errorHelperText: {
     fontSize: 13,
     marginTop: -4,
@@ -1586,9 +1630,21 @@ const styles = StyleSheet.create({
   previewHint: {
     fontSize: 13,
   },
-  previewError: {
-    fontSize: 13,
-    lineHeight: 19,
+  photoPreviewFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  smallOutlineButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  smallOutlineText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   extraSlotCard: {
     borderWidth: 1,

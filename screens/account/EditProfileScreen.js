@@ -16,12 +16,13 @@ import {
   Linking,
   AppState,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import AvatarPicker from "../../components/AvatarPicker";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -39,44 +40,14 @@ const FACEBOOK_REDIRECT_URI =
   `${API_BASE_URL}/api/social/facebook/mobile-callback`;
 const FACEBOOK_OPTIONAL_MESSAGE =
   "Facebook connection needs the installed Summit Scene app to return automatically. You can keep using manual social links now and connect Facebook later.";
+const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
+const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
   { value: "visitor", label: "Visitor" },
 ];
-const INTEREST_OPTIONS = [
-  "Find local events",
-  "Discover things to do",
-  "Meet people through activities",
-  "Join group plans",
-  "Share local updates",
-  "Support local businesses",
-  "Just exploring",
-  "Hiking",
-  "Skiing",
-  "Snowboarding",
-  "Climbing",
-  "Live music",
-  "Markets",
-  "Wellness",
-  "Food & drink",
-  "Nightlife",
-  "Coffee",
-  "Book club",
-  "Disc golf",
-  "Art",
-  "Walking",
-  "Bingo",
-  "Trivia",
-  "Shopping",
-];
-const SKILL_OPTIONS = [
-  { value: "beginner", label: "Beginner" },
-  { value: "casual", label: "Casual" },
-  { value: "experienced", label: "Experienced" },
-];
-
 function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
   return (
     <View style={styles.chipRow}>
@@ -118,12 +89,72 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
   );
 }
 
+function InterestGroupList({ groups, values, onToggle, theme }) {
+  const [openGroup, setOpenGroup] = useState(null);
+
+  return (
+    <View style={styles.interestGroups}>
+      {groups.map((group) => {
+        const isOpen = openGroup === group.title;
+        const selectedCount = group.options.filter((option) =>
+          values.includes(option)
+        ).length;
+
+        return (
+          <View
+            key={group.title}
+            style={[
+              styles.interestGroup,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Pressable
+              style={styles.interestGroupHeader}
+              onPress={() => setOpenGroup(isOpen ? null : group.title)}
+            >
+              <View style={styles.interestGroupCopy}>
+                <Text style={[styles.interestGroupTitle, { color: theme.text }]}>
+                  {group.title}
+                </Text>
+                <Text
+                  style={[styles.interestGroupMeta, { color: theme.textMuted }]}
+                >
+                  {selectedCount
+                    ? `${selectedCount} selected`
+                    : "Tap to choose"}
+                </Text>
+              </View>
+              <Text style={[styles.interestGroupChevron, { color: theme.accent }]}>
+                {isOpen ? "-" : "+"}
+              </Text>
+            </Pressable>
+            {isOpen ? (
+              <View style={styles.interestGroupOptions}>
+                <ChipGroup
+                  options={group.options}
+                  values={values}
+                  onToggle={onToggle}
+                  theme={theme}
+                />
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function getSocialValue(accounts, provider) {
   const account = accounts.find((item) => item.provider === provider);
   return account?.handle || account?.url || "";
 }
 
 function buildSocialAccounts(values, profileImageUrl = "") {
+  const socialProfileImageUrl = profileImageUrl.startsWith("data:")
+    ? ""
+    : profileImageUrl;
+
   return SOCIAL_PROVIDERS.map(({ provider }) => {
     const value = values[provider]?.trim();
     if (!value) return null;
@@ -134,8 +165,8 @@ function buildSocialAccounts(values, profileImageUrl = "") {
       handle: isHandle ? value : undefined,
       url: isHandle ? undefined : value,
       profileImageUrl:
-        profileImageUrl && ["facebook", "instagram"].includes(provider)
-          ? profileImageUrl
+        socialProfileImageUrl && ["facebook", "instagram"].includes(provider)
+          ? socialProfileImageUrl
           : undefined,
       verified: false,
     };
@@ -168,7 +199,7 @@ export default function EditProfileScreen({ navigation }) {
   const titleText = isBusiness ? "Event posting profile" : "Edit profile";
   const helperText = isBusiness
     ? "This is how your profile appears when you make an event."
-    : "This helps Summit Scene personalize events, plans, groups, and updates around you.";
+    : "Update the profile details people see when you post, reply, or join plans.";
 
   // Pre-fill fields from current user
   const [name, setName] = useState(user?.name || "");
@@ -181,20 +212,10 @@ export default function EditProfileScreen({ navigation }) {
   const [interests, setInterests] = useState(
     Array.isArray(user?.interests) ? user.interests : []
   );
-  const [hikingSkill, setHikingSkill] = useState(
-    user?.skillLevel?.hiking || ""
-  );
-  const [skiingSkill, setSkiingSkill] = useState(
-    user?.skillLevel?.skiing || ""
-  );
-  const [discGolfSkill, setDiscGolfSkill] = useState(
-    user?.skillLevel?.discGolf || ""
-  );
   const [bio, setBio] = useState(user?.bio || "");
   const [lookingFor, setLookingFor] = useState(user?.lookingFor || "");
   const [instagram, setInstagram] = useState(user?.instagram || "");
   const [website, setWebsite] = useState(user?.website || "");
-  const [avatarKey, setAvatarKey] = useState(user?.avatarKey || null);
   const [profileImageUrl, setProfileImageUrl] = useState(
     user?.profileImageUrl || ""
   );
@@ -286,16 +307,9 @@ export default function EditProfileScreen({ navigation }) {
         originallyFrom: isBusiness ? undefined : originallyFrom,
         languages: isBusiness ? undefined : languages,
         interests: isBusiness ? undefined : interests,
-        skillLevel: isBusiness
-          ? undefined
-          : {
-              ...(hikingSkill ? { hiking: hikingSkill } : {}),
-              ...(skiingSkill ? { skiing: skiingSkill } : {}),
-              ...(discGolfSkill ? { discGolf: discGolfSkill } : {}),
-            },
         lookingFor: isBusiness ? lookingFor : "",
         instagram: socialValues.instagram || instagram,
-        avatarKey,
+        avatarKey: null,
         profileImageUrl,
         socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
       };
@@ -326,6 +340,31 @@ export default function EditProfileScreen({ navigation }) {
       ...current,
       [provider]: value,
     }));
+  }
+
+  function handleToggleInterest(interest) {
+    setInterests((current) => {
+      if (current.includes(interest)) {
+        return current.filter((item) => item !== interest);
+      }
+
+      const group = PROFILE_INTEREST_GROUPS.find((item) =>
+        item.options.includes(interest)
+      );
+      const selectedInGroup = group
+        ? current.filter((item) => group.options.includes(item)).length
+        : 0;
+
+      if (selectedInGroup >= MAX_PROFILE_INTERESTS_PER_GROUP) {
+        Alert.alert(
+          "Main interests limit",
+          `Choose up to ${MAX_PROFILE_INTERESTS_PER_GROUP} interests in each category so your profile stays easy to scan.`
+        );
+        return current;
+      }
+
+      return [...current, interest];
+    });
   }
 
   async function handleConnectFacebook() {
@@ -393,8 +432,6 @@ export default function EditProfileScreen({ navigation }) {
             (account) => account.provider === "facebook"
           );
 
-          setProfileImageUrl(updatedUser?.profileImageUrl || "");
-          setAvatarKey(updatedUser?.avatarKey || null);
           setSocialValues((current) => ({
             ...current,
             facebook:
@@ -429,12 +466,58 @@ export default function EditProfileScreen({ navigation }) {
     }
   }
 
-  function handleToggleInterest(interest) {
-    setInterests((current) =>
-      current.includes(interest)
-        ? current.filter((item) => item !== interest)
-        : [...current, interest]
-    );
+  async function handleChooseProfilePhoto() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access to choose a profile photo from your camera roll."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.45,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.base64) {
+        Alert.alert(
+          "Photo not selected",
+          "We could not read that photo. Please try another image."
+        );
+        return;
+      }
+
+      if (asset.base64.length > PROFILE_PHOTO_MAX_BASE64_LENGTH) {
+        Alert.alert(
+          "Photo too large",
+          "Please choose a smaller photo or crop it tighter before saving."
+        );
+        return;
+      }
+
+      const mimeType = asset.mimeType || "image/jpeg";
+      setProfileImageUrl(`data:${mimeType};base64,${asset.base64}`);
+    } catch (error) {
+      Alert.alert(
+        "Could not choose photo",
+        error.message || "Please try again."
+      );
+    }
+  }
+
+  function handleClearProfilePhoto() {
+    setProfileImageUrl("");
   }
 
   return (
@@ -503,7 +586,7 @@ export default function EditProfileScreen({ navigation }) {
               />
 
               <Text style={[styles.label, { color: theme.text }]}>
-                How should people know you?
+                Profile type
               </Text>
               <ChipGroup
                 options={USER_TYPE_OPTIONS}
@@ -549,48 +632,17 @@ export default function EditProfileScreen({ navigation }) {
               />
 
               <Text style={[styles.label, { color: theme.text }]}>
-                What would you like to see here? (optional)
-              </Text>
-              <ChipGroup
-                options={INTEREST_OPTIONS}
-                values={interests}
-                onToggle={handleToggleInterest}
-                theme={theme}
-              />
-
-              <Text style={[styles.label, { color: theme.text }]}>
-                Optional activity levels
+                Main interests (optional)
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Skip anything that does not apply.
+                Pick up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category.
+                These show on your profile and help your Hub start with events
+                you care about. You can change these at any time.
               </Text>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Hiking level
-              </Text>
-              <ChipGroup
-                options={SKILL_OPTIONS}
-                value={hikingSkill}
-                onChange={setHikingSkill}
-                theme={theme}
-              />
-
-              <Text style={[styles.label, { color: theme.text }]}>
-                Skiing/Snowboarding level
-              </Text>
-              <ChipGroup
-                options={SKILL_OPTIONS}
-                value={skiingSkill}
-                onChange={setSkiingSkill}
-                theme={theme}
-              />
-
-              <Text style={[styles.label, { color: theme.text }]}>
-                Disc golf level
-              </Text>
-              <ChipGroup
-                options={SKILL_OPTIONS}
-                value={discGolfSkill}
-                onChange={setDiscGolfSkill}
+              <InterestGroupList
+                groups={PROFILE_INTEREST_GROUPS}
+                values={interests}
+                onToggle={handleToggleInterest}
                 theme={theme}
               />
             </>
@@ -624,7 +676,7 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* Bio */}
           <Text style={[styles.label, { color: theme.text }]}>
-            Short bio {isBusiness ? "" : "(optional)"}
+            {isBusiness ? "Business description" : "Short bio"} (optional)
           </Text>
           <TextInput
             style={[
@@ -643,7 +695,7 @@ export default function EditProfileScreen({ navigation }) {
             placeholder={
               isBusiness
                 ? "Tell people about your business, vibe, and what you host."
-                : "A little about you, your season, or what you like doing around town..."
+                : "A little about you or what you like doing around town..."
             }
             placeholderTextColor={theme.textMuted}
           />
@@ -658,8 +710,7 @@ export default function EditProfileScreen({ navigation }) {
             Connected socials
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Add links people can use to recognize you. These show as unverified
-            until connected through the social platform. Optional.
+            Optional links people can use to recognize you.
           </Text>
 
           <View
@@ -718,28 +769,23 @@ export default function EditProfileScreen({ navigation }) {
           ))}
 
           <Text style={[styles.label, { color: theme.text }]}>
-            Facebook or Instagram profile photo URL (optional)
+            Profile photo
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Paste a public profile image URL for now. Facebook can fill this in
-            automatically later from the installed app build.
+            Choose a photo from your camera roll. This will be shown on your
+            public profile, posts, replies, and event hosting card.
           </Text>
-          <TextInput
+          <Pressable
             style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
+              styles.photoPickerButton,
+              { backgroundColor: theme.card, borderColor: theme.accent },
             ]}
-            value={profileImageUrl}
-            onChangeText={setProfileImageUrl}
-            placeholder="https://..."
-            placeholderTextColor={theme.textMuted}
-            autoCapitalize="none"
-          />
-
+            onPress={handleChooseProfilePhoto}
+          >
+            <Text style={[styles.photoPickerText, { color: theme.accent }]}>
+              Choose from camera roll
+            </Text>
+          </Pressable>
           {profileImageUrl ? (
             <View style={styles.socialPhotoRow}>
               <Image
@@ -748,19 +794,29 @@ export default function EditProfileScreen({ navigation }) {
               />
               <View style={styles.socialPhotoCopy}>
                 <Text style={[styles.socialPhotoTitle, { color: theme.text }]}>
-                  Social photo ready
+                  Profile photo ready
                 </Text>
                 <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                  Clear your preset avatar below to use this photo publicly.
+                  This photo will be used publicly.
                 </Text>
-                <Pressable
-                  style={[styles.smallOutlineButton, { borderColor: theme.accent }]}
-                  onPress={() => setAvatarKey(null)}
-                >
-                  <Text style={[styles.smallOutlineText, { color: theme.accent }]}>
-                    Use social photo
-                  </Text>
-                </Pressable>
+                <View style={styles.photoActionRow}>
+                  <Pressable
+                    style={[
+                      styles.smallOutlineButton,
+                      { borderColor: theme.border },
+                    ]}
+                    onPress={handleClearProfilePhoto}
+                  >
+                    <Text
+                      style={[
+                        styles.smallOutlineText,
+                        { color: theme.textMuted },
+                      ]}
+                    >
+                      Remove
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           ) : null}
@@ -787,34 +843,6 @@ export default function EditProfileScreen({ navigation }) {
               />
             </>
           )}
-
-          {/* Avatar Picker */}
-          <Text
-            style={[
-              styles.label,
-              { marginTop: 16, fontWeight: "600", color: theme.text },
-            ]}
-          >
-            Avatar
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose the avatar that shows on your Community posts and event
-            hosting card.
-          </Text>
-
-          <AvatarPicker
-            value={avatarKey}
-            onChange={setAvatarKey}
-            variant={isBusiness ? "business" : "personal"}
-          />
-          <Pressable
-            style={[styles.clearAvatarButton, { borderColor: theme.border }]}
-            onPress={() => setAvatarKey(null)}
-          >
-            <Text style={[styles.clearAvatarText, { color: theme.textMuted }]}>
-              Clear preset avatar
-            </Text>
-          </Pressable>
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
@@ -864,6 +892,48 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  interestGroups: {
+    gap: 10,
+    marginBottom: 4,
+  },
+  interestGroup: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  interestGroupHeader: {
+    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  interestGroupCopy: {
+    flex: 1,
+  },
+  interestGroupTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  interestGroupMeta: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  interestGroupChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  interestGroupOptions: {
+    paddingHorizontal: 12,
+    paddingBottom: 2,
+  },
   chip: {
     borderWidth: 1,
     borderRadius: 999,
@@ -879,6 +949,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
+  },
+  photoPickerButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 12,
+  },
+  photoPickerText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   socialPhotoRow: {
     flexDirection: "row",
@@ -937,6 +1020,11 @@ const styles = StyleSheet.create({
   smallOutlineText: {
     fontSize: 12,
     fontWeight: "800",
+  },
+  photoActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   clearAvatarButton: {
     alignSelf: "flex-start",

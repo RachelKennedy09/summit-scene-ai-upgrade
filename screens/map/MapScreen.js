@@ -44,6 +44,7 @@ import {
 import { getEventDistanceKm } from "../../utils/proximity";
 import {
   EVENT_CATEGORIES,
+  getEventCategoryFilterOptions,
   getEventCategoryGroups,
 } from "../../constants/eventCategories";
 import { buildBuddyPostFromEventSearch } from "../../utils/buddyPostPrefill";
@@ -55,6 +56,7 @@ const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
+  includeGroupAll: true,
 });
 
 // Date filter options (relative ranges)
@@ -296,8 +298,11 @@ export default function MapScreen() {
 
       const townMatch = selectedTown === "All" || event.town === selectedTown;
 
+      const selectedCategoryOptions =
+        getEventCategoryFilterOptions(selectedCategory);
       const categoryMatch =
-        selectedCategory === "All" || event.category === selectedCategory;
+        !selectedCategoryOptions ||
+        selectedCategoryOptions.includes(event.category);
       const nearMeMatch =
         !isNearMeEnabled ||
         (() => {

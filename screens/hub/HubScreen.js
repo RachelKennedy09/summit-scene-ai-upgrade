@@ -45,6 +45,7 @@ const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
+  includeGroupAll: true,
 });
 
 // Date filter options (relative ranges)
@@ -58,6 +59,13 @@ const DATE_FILTERS = [
 const EVENTS_PAGE_SIZE = 20;
 const NEAR_ME_RADIUS_KM = 15;
 
+function getUserInterestCategories(user) {
+  const interests = Array.isArray(user?.interests) ? user.interests : [];
+  return interests.filter(
+    (interest) => interest !== "All" && CATEGORIES.includes(interest)
+  );
+}
+
 export default function HubScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -65,6 +73,10 @@ export default function HubScreen() {
 
   // Friendly greeting in the Hub header
   const displayName = user?.name || user?.email || "there";
+  const userInterestCategories = useMemo(
+    () => getUserInterestCategories(user),
+    [user?.interests]
+  );
 
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -174,7 +186,53 @@ export default function HubScreen() {
     }
   }, [isNearMeEnabled, nearMeLoading]);
 
-  const eventsToShow = events;
+  const isShowingInterestFirst =
+    selectedCategory === "All" && userInterestCategories.length > 0;
+
+  const eventsToShow = useMemo(() => {
+    if (!isShowingInterestFirst) {
+      return events;
+    }
+
+    const interestSet = new Set(userInterestCategories);
+    const interestEvents = [];
+    const otherEvents = [];
+
+    events.forEach((event) => {
+      if (interestSet.has(event.category)) {
+        interestEvents.push(event);
+      } else {
+        otherEvents.push(event);
+      }
+    });
+
+    if (!interestEvents.length) {
+      return events;
+    }
+
+    return [
+      {
+        _listType: "sectionHeader",
+        id: "your-interests",
+        title: "Your interests",
+        subtitle: `${interestEvents.length} matching event${
+          interestEvents.length === 1 ? "" : "s"
+        } in this list.`,
+      },
+      ...interestEvents,
+      ...(otherEvents.length
+        ? [
+            {
+              _listType: "sectionHeader",
+              id: "more-events",
+              title: "More events",
+              subtitle: "Everything else happening nearby.",
+            },
+            ...otherEvents,
+          ]
+        : []),
+    ];
+  }, [events, isShowingInterestFirst, userInterestCategories]);
 
   const handleCreateBuddyPostFromSearch = useCallback(() => {
     navigation.navigate("CreateBuddyPost", {
@@ -250,6 +308,10 @@ export default function HubScreen() {
         : "No events match your current filters.";
     }
 
+    if (isShowingInterestFirst) {
+      return `Showing ${count} events with your interests first. Choose a category to focus the list.`;
+    }
+
     if (count === 1) {
       return isNearMeEnabled
         ? `Showing 1 event near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
@@ -259,7 +321,12 @@ export default function HubScreen() {
     return isNearMeEnabled
       ? `Showing ${count} events near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
       : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled]);
+  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst]);
+
+  const hubSubtitle =
+    isShowingInterestFirst
+      ? "Your interests appear first while All categories is selected.\nChoose a category anytime to focus the list."
+      : "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||
@@ -309,14 +376,38 @@ export default function HubScreen() {
   }
 
   // Renders each event as a tappable card taht leads to EventDetail.
-  const renderEvent = ({ item }) => (
-    <EventCard
-      event={item}
-      onPress={() =>
-        navigation.navigate("EventDetail", { event: item, eventId: item._id })
-      }
-    />
-  );
+  const renderEvent = ({ item }) => {
+    if (item?._listType === "sectionHeader") {
+      return (
+        <View
+          style={[
+            styles.feedSectionHeader,
+            { borderColor: theme.border, backgroundColor: theme.background },
+          ]}
+        >
+          <Text style={[styles.feedSectionTitle, { color: theme.text }]}>
+            {item.title}
+          </Text>
+          {item.subtitle ? (
+            <Text
+              style={[styles.feedSectionSubtitle, { color: theme.textMuted }]}
+            >
+              {item.subtitle}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
+    return (
+      <EventCard
+        event={item}
+        onPress={() =>
+          navigation.navigate("EventDetail", { event: item, eventId: item._id })
+        }
+      />
+    );
+  };
 
   const renderFooter = () => {
     if (!loadingMore) return <View style={styles.footerSpacer} />;
@@ -341,7 +432,9 @@ export default function HubScreen() {
         <FlatList
           data={eventsToShow}
           keyExtractor={(item) =>
-            item._id?.toString() || `${item.title}-${item.date}-${item.time}`
+            item._listType
+              ? item.id
+              : item._id?.toString() || `${item.title}-${item.date}-${item.time}`
           }
           renderItem={renderEvent}
           contentContainerStyle={
@@ -365,9 +458,7 @@ export default function HubScreen() {
             <>
               <PageHeader
                 title={`Hello ${displayName}!`}
-                subtitle={
-                  "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you."
-                }
+                subtitle={hubSubtitle}
               />
               <HubFilters
                 selectedTown={selectedTown}
@@ -483,6 +574,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "800",
+  },
+  feedSectionHeader: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  feedSectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  feedSectionSubtitle: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
   },
   footerSpacer: {
     height: 16,

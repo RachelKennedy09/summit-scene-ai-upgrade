@@ -8,6 +8,7 @@ import User from "../models/User.js";
 
 const PASSWORD = "TestPassword123!";
 const SEED_EMAIL_DOMAIN = "business-seed.summitscene.test";
+const SEED_EMAIL_PATTERN = new RegExp(`@${SEED_EMAIL_DOMAIN.replaceAll(".", "\\.")}$`);
 
 function addDays(days) {
   const date = new Date();
@@ -28,9 +29,12 @@ const businessUsers = [
   {
     name: "Three Sisters Taproom",
     email: `taproom@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "m3_light_brownhair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=600&q=80",
     town: "Canmore",
     lookingFor: "Taproom, live music, trivia, and community nights",
+    interests: ["Live Music", "Karaoke", "Pub Nights", "Restaurant Specials"],
     bio: "A relaxed Canmore taproom hosting music, trivia, pop-ups, and watch parties.",
     website: "https://example.com/three-sisters-taproom",
     instagram: "@threesisterstaproom",
@@ -39,6 +43,8 @@ const businessUsers = [
         provider: "instagram",
         handle: "@threesisterstaproom",
         verified: true,
+        profileImageUrl:
+          "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=600&q=80",
       },
       {
         provider: "website",
@@ -50,9 +56,12 @@ const businessUsers = [
   {
     name: "Banff Maker Market",
     email: `market@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w5_light_blondehair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1511988617509-a57c8a288659?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     lookingFor: "Local market and artisan events",
+    interests: ["Farmers Markets", "Makers Markets", "Craft Markets", "Art Shows"],
     bio: "Small markets featuring Rockies makers, artists, food vendors, and community fundraisers.",
     website: "https://example.com/banff-maker-market",
     instagram: "@banffmakermarket",
@@ -60,9 +69,12 @@ const businessUsers = [
   {
     name: "Lake Louise Lodge Social",
     email: `lodge@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w6_brown_longblack",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=600&q=80",
     town: "Lake Louise",
     lookingFor: "Lodge events, ski hill socials, and visitor activities",
+    interests: ["Skiing", "Community Gatherings", "Networking", "New in Town"],
     bio: "Social programming for Lake Louise visitors, staff, and locals.",
     website: "https://example.com/lake-louise-lodge-social",
     instagram: "@lakelouisesocial",
@@ -70,9 +82,12 @@ const businessUsers = [
   {
     name: "Bow Valley Wellness Studio",
     email: `wellness@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w1_light_orangehair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1545389336-cf090694435e?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     lookingFor: "Yoga, wellness workshops, and beginner-friendly movement",
+    interests: ["Yoga", "Meditation", "Breathwork", "Fitness Classes"],
     bio: "Quiet wellness classes and workshops for locals, visitors, and seasonal workers.",
     website: "https://example.com/bow-valley-wellness",
     instagram: "@bowvalleywellness",
@@ -80,9 +95,12 @@ const businessUsers = [
   {
     name: "Canmore Arts Room",
     email: `arts@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "w7_fair_orangehair",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=600&q=80",
     town: "Canmore",
     lookingFor: "Art nights, workshops, and creative community events",
+    interests: ["Creative Workshops", "Painting Nights", "Art Shows", "Photography"],
     bio: "Creative evenings for anyone who wants to make something without pressure.",
     website: "https://example.com/canmore-arts-room",
     instagram: "@canmoreartsroom",
@@ -90,9 +108,12 @@ const businessUsers = [
   {
     name: "Summit Outdoor Club",
     email: `outdoors@${SEED_EMAIL_DOMAIN}`,
-    avatarKey: "m7_dark_browncurly",
+    avatarKey: null,
+    profileImageUrl:
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&q=80",
     town: "Banff",
     lookingFor: "Guided outdoor community events and beginner-friendly skills nights",
+    interests: ["Hiking", "Trail Running", "Snowshoeing", "Wildlife Tours"],
     bio: "Outdoor meetups, learning nights, and accessible mountain community events.",
     website: "https://example.com/summit-outdoor-club",
     instagram: "@summitoutdoorclub",
@@ -103,7 +124,7 @@ const eventSeeds = [
   {
     host: "Banff Maker Market",
     title: "Saturday Rockies Maker Market",
-    category: "Markets",
+    category: "Farmers Markets",
     town: "Banff",
     date: dateString(2),
     time: "10:00 AM",
@@ -120,7 +141,7 @@ const eventSeeds = [
   {
     host: "Bow Valley Wellness Studio",
     title: "Morning Mobility and Yoga",
-    category: "Wellness",
+    category: "Wellness Retreats",
     town: "Banff",
     date: dateString(1),
     time: "8:00 AM",
@@ -171,7 +192,7 @@ const eventSeeds = [
   {
     host: "Canmore Arts Room",
     title: "Intro to Watercolour Mountains",
-    category: "Workshop",
+    category: "Creative Workshops",
     town: "Canmore",
     date: dateString(6),
     time: "6:30 PM",
@@ -188,7 +209,7 @@ const eventSeeds = [
   {
     host: "Banff Maker Market",
     title: "Family Craft Morning",
-    category: "Family",
+    category: "Meetups",
     town: "Banff",
     date: dateString(8),
     time: "10:30 AM",
@@ -205,7 +226,7 @@ const eventSeeds = [
   {
     host: "Banff Maker Market",
     title: "Local Retail Pop-Up: Gear and Gifts",
-    category: "Retail",
+    category: "Makers Markets",
     town: "Banff",
     date: dateString(9),
     time: "12:00 PM",
@@ -222,7 +243,7 @@ const eventSeeds = [
   {
     host: "Summit Outdoor Club",
     title: "Beginner Trail Safety Night",
-    category: "Outdoors",
+    category: "Hiking",
     town: "Banff",
     date: dateString(4),
     time: "6:00 PM",
@@ -239,7 +260,7 @@ const eventSeeds = [
   {
     host: "Three Sisters Taproom",
     title: "Taco and Local Pint Night",
-    category: "Happy Hour",
+    category: "Restaurant Specials",
     town: "Canmore",
     date: dateString(1),
     time: "5:00 PM",
@@ -256,7 +277,7 @@ const eventSeeds = [
   {
     host: "Three Sisters Taproom",
     title: "Seasonal Burger Special",
-    category: "Specials",
+    category: "Restaurant Specials",
     town: "Canmore",
     date: dateString(8),
     time: "4:00 PM",
@@ -290,7 +311,7 @@ const eventSeeds = [
   {
     host: "Banff Maker Market",
     title: "Local Vendor Showcase",
-    category: "Vendors",
+    category: "Makers Markets",
     town: "Banff",
     date: dateString(15),
     time: "1:00 PM",
@@ -324,7 +345,7 @@ const eventSeeds = [
   {
     host: "Banff Maker Market",
     title: "Community Soup Fundraiser",
-    category: "Fundraiser",
+    category: "Volunteer Events",
     town: "Banff",
     date: dateString(10),
     time: "4:00 PM",
@@ -341,7 +362,7 @@ const eventSeeds = [
   {
     host: "Lake Louise Lodge Social",
     title: "Holiday Staff Social and Cookie Swap",
-    category: "Seasonal/Holiday Special",
+    category: "Festivals",
     town: "Lake Louise",
     date: dateString(12),
     time: "6:30 PM",
@@ -358,7 +379,7 @@ const eventSeeds = [
   {
     host: "Three Sisters Taproom",
     title: "Late Night Social",
-    category: "Nightlife",
+    category: "Pub Nights",
     town: "Canmore",
     date: dateString(2),
     time: "10:00 PM",
@@ -375,7 +396,7 @@ const eventSeeds = [
   {
     host: "Three Sisters Taproom",
     title: "Playoff Watch Party",
-    category: "Sports/Watch Party",
+    category: "Pub Nights",
     town: "Canmore",
     date: dateString(11),
     time: "6:00 PM",
@@ -392,7 +413,7 @@ const eventSeeds = [
   {
     host: "Lake Louise Lodge Social",
     title: "New to Lake Louise Info Session",
-    category: "Community Info Session",
+    category: "Community Gatherings",
     town: "Lake Louise",
     date: dateString(3),
     time: "5:30 PM",
@@ -409,7 +430,7 @@ const eventSeeds = [
   {
     host: "Canmore Arts Room",
     title: "Community Collage Night",
-    category: "Art",
+    category: "Art Shows",
     town: "Canmore",
     date: dateString(13),
     time: "6:30 PM",
@@ -425,8 +446,8 @@ const eventSeeds = [
   },
   {
     host: "Canmore Arts Room",
-    title: "Monthly Mountain Book Club",
-    category: "Book Club",
+    title: "Monthly Mountain Local Club",
+    category: "Local Clubs",
     town: "Canmore",
     date: dateString(14),
     time: "7:00 PM",
@@ -444,12 +465,12 @@ const eventSeeds = [
     imageUrl:
       "https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=1200&q=80",
     description:
-      "A monthly book club with approachable picks, discussion prompts, and a friendly setup for first-timers.",
+      "A monthly local club meetup with approachable discussion prompts and a friendly setup for first-timers.",
   },
   {
     host: "Lake Louise Lodge Social",
     title: "First Chair Social",
-    category: "Ski Hill Events",
+    category: "Skiing",
     town: "Lake Louise",
     date: dateString(4),
     time: "8:15 AM",
@@ -465,20 +486,20 @@ const eventSeeds = [
   },
   {
     host: "Summit Outdoor Club",
-    title: "Disc Golf Drop-In",
-    category: "Disc Golf",
+    title: "Beginner Hiking Drop-In",
+    category: "Hiking",
     town: "Canmore",
     date: dateString(6),
     time: "5:30 PM",
     endTime: "7:30 PM",
-    locationName: "Canmore Nordic Centre Disc Golf Area",
+    locationName: "Canmore Nordic Centre",
     address: "1988 Olympic Way, Canmore, AB",
     latitude: 51.0903,
     longitude: -115.3944,
     imageUrl:
       "https://images.unsplash.com/photo-1551969014-7d2c4cddf0b6?auto=format&fit=crop&w=1200&q=80",
     description:
-      "A beginner-friendly disc golf drop-in with casual groups and basic tips for anyone new to the course.",
+      "A beginner-friendly hiking drop-in with casual groups and basic tips for anyone new to the trails.",
   },
   {
     host: "Summit Outdoor Club",
@@ -515,7 +536,7 @@ async function upsertBusinessUsers() {
           businessVerifiedAt: hoursAgo(168),
           userType: "local",
           languages: ["English"],
-          interests: [],
+          interests: userData.interests || [],
           skillLevel: {},
           blockedUsers: [],
         },
@@ -577,12 +598,14 @@ async function main() {
     Event.deleteMany({}),
     EventPreference.deleteMany({}),
   ]);
+  const deletedSeedUsers = await User.deleteMany({ email: SEED_EMAIL_PATTERN });
   const usersByName = await upsertBusinessUsers();
   const events = await seedEvents(usersByName);
 
   console.log("Business event seed complete.");
   console.log(`Deleted Event documents: ${deletedEvents.deletedCount}`);
   console.log(`Deleted EventPreference documents: ${deletedPreferences.deletedCount}`);
+  console.log(`Deleted old business seed users: ${deletedSeedUsers.deletedCount}`);
   console.log(`Verified business users ready: ${usersByName.size}`);
   console.log(`Events created: ${events.length}`);
 }
