@@ -19,28 +19,35 @@ const EventMap = React.forwardRef(function EventMap(
         Browse the matching events below.
       </Text>
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        {markers.map((marker) => (
-          <Pressable
-            key={marker.id}
-            style={[styles.card, { borderColor: theme.border }]}
-            onPress={() => onPressMarker(marker.event)}
-          >
-            <Text style={[styles.eventTitle, { color: theme.text }]}>
-              {marker.event.title}
-            </Text>
-            {marker.scheduleLabel ? (
-              <Text style={[styles.meta, { color: theme.textMuted }]}>
-                {marker.scheduleLabel}
+        {markers.map((marker) => {
+          const eventCount = marker.markerCount || marker.events?.length || 1;
+          const hasMultipleEvents = eventCount > 1;
+
+          return (
+            <Pressable
+              key={marker.id}
+              style={[styles.card, { borderColor: theme.border }]}
+              onPress={() => onPressMarker(marker)}
+            >
+              <Text style={[styles.eventTitle, { color: theme.text }]}>
+                {hasMultipleEvents
+                  ? `${eventCount} events here`
+                  : marker.event.title}
               </Text>
-            ) : null}
-            <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {[marker.event.town, marker.locationLabel].filter(Boolean).join(" | ")}
-            </Text>
-            <Text style={[styles.action, { color: theme.accent }]}>
-              View details
-            </Text>
-          </Pressable>
-        ))}
+              {marker.scheduleLabel ? (
+                <Text style={[styles.meta, { color: theme.textMuted }]}>
+                  {marker.scheduleLabel}
+                </Text>
+              ) : null}
+              <Text style={[styles.meta, { color: theme.textMuted }]}>
+                {[marker.event.town, marker.locationLabel].filter(Boolean).join(" | ")}
+              </Text>
+              <Text style={[styles.action, { color: theme.accent }]}>
+                {hasMultipleEvents ? "Choose event" : "View details"}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );

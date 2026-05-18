@@ -398,6 +398,7 @@ function RegisterScreen() {
   const [facebookConnectToken, setFacebookConnectToken] = useState("");
   const [facebookProfileName, setFacebookProfileName] = useState("");
   const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
+  const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
   const facebookTimeoutRef = useRef(null);
   const facebookCallbackHandledRef = useRef(false);
 
@@ -549,6 +550,14 @@ function RegisterScreen() {
       }
     }
 
+    if (!hasAcceptedAgreements) {
+      Alert.alert(
+        "Agreement needed",
+        "Please confirm you meet the age requirement and agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before creating your account."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -608,6 +617,7 @@ function RegisterScreen() {
   function switchRole(nextRole) {
     setRole(nextRole);
     setStepIndex(0);
+    setHasAcceptedAgreements(false);
   }
 
   async function handleConnectFacebook() {
@@ -1261,6 +1271,66 @@ function RegisterScreen() {
           profileImageUrl={profileImageUrl}
           socialValues={socialValues}
         />
+        <View
+          style={[
+            styles.agreementCard,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Pressable
+            style={styles.agreementRow}
+            onPress={() => setHasAcceptedAgreements((current) => !current)}
+          >
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  borderColor: hasAcceptedAgreements
+                    ? theme.accent
+                    : theme.border,
+                  backgroundColor: hasAcceptedAgreements
+                    ? theme.accent
+                    : theme.background,
+                },
+              ]}
+            >
+              {hasAcceptedAgreements ? (
+                <Text
+                  style={[
+                    styles.checkboxMark,
+                    { color: theme.onAccent || theme.textOnAccent || "#FFFFFF" },
+                  ]}
+                >
+                  ✓
+                </Text>
+              ) : null}
+            </View>
+            <View style={styles.agreementCopy}>
+              <Text style={[styles.agreementTitle, { color: theme.text }]}>
+                I agree to Summit Scene's account terms
+              </Text>
+              <Text style={[styles.agreementText, { color: theme.textMuted }]}>
+                I confirm I am at least 18 years old, or the age of majority
+                where I live if higher. I agree to the Privacy Policy, Terms of
+                Use, Community Guidelines, and Safety reminders. I understand
+                that my public profile, posts, replies, and event activity may
+                be visible to other users.
+              </Text>
+              {isBusiness ? (
+                <Text style={[styles.agreementText, { color: theme.textMuted }]}>
+                  I also confirm I am authorized to create this business or
+                  organizer profile, and that I am responsible for event
+                  permits, licences, insurance, venue approvals, and local rules.
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate("Legal")}>
+            <Text style={[styles.agreementLink, { color: theme.accent }]}>
+              Read Privacy, Terms, and Community Guidelines
+            </Text>
+          </Pressable>
+        </View>
       </>
     );
   }
@@ -1301,15 +1371,6 @@ function RegisterScreen() {
 
               {renderStep()}
 
-              {isFinalStep ? (
-                <Pressable onPress={() => navigation.navigate("Legal")}>
-                  <Text style={[styles.termsNotice, { color: theme.textMuted }]}>
-                    By creating an account, you agree to Summit Scene's Privacy
-                    Policy, Terms of Use, and Community Guidelines.
-                  </Text>
-                </Pressable>
-              ) : null}
-
               <View style={styles.buttonRow}>
                 {stepIndex > 0 ? (
                   <AppButton
@@ -1338,6 +1399,11 @@ function RegisterScreen() {
                       : "Next"
                   }
                   onPress={goNext}
+                  disabled={
+                    isSubmitting ||
+                    isAuthLoading ||
+                    (isFinalStep && !hasAcceptedAgreements)
+                  }
                   loading={isFinalStep && (isSubmitting || isAuthLoading)}
                   size="lg"
                   style={[
@@ -1345,6 +1411,8 @@ function RegisterScreen() {
                     {
                       backgroundColor: theme.accent,
                       borderColor: theme.accent,
+                      opacity:
+                        isFinalStep && !hasAcceptedAgreements ? 0.56 : 1,
                     },
                   ]}
                   textStyle={{
@@ -1673,6 +1741,50 @@ const styles = StyleSheet.create({
   reviewChipText: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  agreementCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 14,
+  },
+  agreementRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  checkboxMark: {
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 18,
+  },
+  agreementCopy: {
+    flex: 1,
+  },
+  agreementTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 5,
+  },
+  agreementText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  agreementLink: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
   },
   buttonRow: {
     flexDirection: "row",

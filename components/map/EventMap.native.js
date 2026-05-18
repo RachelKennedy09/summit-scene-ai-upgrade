@@ -30,6 +30,8 @@ const EventMap = React.forwardRef(function EventMap(
     >
       {markers.map((marker) => {
         const isSelected = marker.id === selectedMarkerId;
+        const eventCount = marker.markerCount || marker.events?.length || 1;
+        const hasMultipleEvents = eventCount > 1;
 
         return (
           <Marker
@@ -49,19 +51,30 @@ const EventMap = React.forwardRef(function EventMap(
                 },
               ]}
             >
-              <View
-                style={[
-                  styles.markerInner,
-                  {
-                    backgroundColor: isSelected
-                      ? theme.background
-                      : theme.accent,
-                  },
-                ]}
-              />
+              {hasMultipleEvents ? (
+                <Text
+                  style={[
+                    styles.markerCount,
+                    { color: isSelected ? theme.background : theme.accent },
+                  ]}
+                >
+                  {eventCount}
+                </Text>
+              ) : (
+                <View
+                  style={[
+                    styles.markerInner,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.background
+                        : theme.accent,
+                    },
+                  ]}
+                />
+              )}
             </View>
 
-            <Callout tooltip={false} onPress={() => onPressMarker(marker.event)}>
+            <Callout tooltip={false} onPress={() => onPressMarker(marker)}>
               <View
                 style={[
                   styles.calloutCard,
@@ -75,8 +88,21 @@ const EventMap = React.forwardRef(function EventMap(
                   style={[styles.calloutTitle, { color: theme.text }]}
                   numberOfLines={2}
                 >
-                  {marker.event.title}
+                  {hasMultipleEvents
+                    ? `${eventCount} events here`
+                    : marker.event.title}
                 </Text>
+                {hasMultipleEvents
+                  ? marker.events?.slice(0, 2).map((event) => (
+                      <Text
+                        key={event._id || `${event.title}-${event.date}-${event.time}`}
+                        style={[styles.calloutMeta, { color: theme.textMuted }]}
+                        numberOfLines={1}
+                      >
+                        {event.title || "Event"}
+                      </Text>
+                    ))
+                  : null}
                 {marker.scheduleLabel ? (
                   <Text
                     style={[styles.calloutMeta, { color: theme.textMuted }]}
@@ -99,7 +125,7 @@ const EventMap = React.forwardRef(function EventMap(
                   </Text>
                 ) : null}
                 <Text style={[styles.calloutAction, { color: theme.accent }]}>
-                  View details
+                  {hasMultipleEvents ? "Choose event" : "View details"}
                 </Text>
               </View>
             </Callout>
@@ -133,6 +159,11 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  markerCount: {
+    fontSize: 12,
+    fontWeight: "900",
+    lineHeight: 14,
   },
   calloutCard: {
     width: 220,

@@ -17,6 +17,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   useWindowDimensions,
@@ -144,6 +145,120 @@ function getEventMarkerCoords(event, townCounts) {
   };
 }
 
+function getMarkerGroupKey(marker) {
+  const latitude = Number(marker.coordinate.latitude).toFixed(5);
+  const longitude = Number(marker.coordinate.longitude).toFixed(5);
+  return `${latitude},${longitude}`;
+}
+
+function EventChoiceModal({
+  visible,
+  marker,
+  theme,
+  onClose,
+  onSelectEvent,
+}) {
+  const events = marker?.events || [];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.eventPickerOverlay}>
+        <Pressable style={styles.eventPickerBackdrop} onPress={onClose} />
+        <View
+          style={[
+            styles.eventPickerSheet,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <View style={styles.eventPickerHeader}>
+            <View style={styles.eventPickerHeaderCopy}>
+              <Text style={[styles.eventPickerTitle, { color: theme.text }]}>
+                {events.length} events here
+              </Text>
+              {marker?.locationLabel ? (
+                <Text
+                  style={[styles.eventPickerSubtitle, { color: theme.textMuted }]}
+                  numberOfLines={2}
+                >
+                  {marker.locationLabel}
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.eventPickerClose,
+                { borderColor: theme.border },
+                pressed && styles.pressed,
+              ]}
+              onPress={onClose}
+            >
+              <Text style={[styles.eventPickerCloseText, { color: theme.text }]}>
+                Close
+              </Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.eventPickerList}
+            contentContainerStyle={styles.eventPickerListContent}
+          >
+            {events.map((event) => {
+              const timeLabel = formatEventTimeLabel(event);
+              const dateLabel = getNextOccurrenceDateString(event) || event.date;
+              const meta = [
+                event.town,
+                event.category,
+                dateLabel,
+                timeLabel && timeLabel !== "Time TBA" ? timeLabel : "",
+              ].filter(Boolean);
+
+              return (
+                <Pressable
+                  key={event._id || `${event.title}-${event.date}-${event.time}`}
+                  style={({ pressed }) => [
+                    styles.eventPickerCard,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => onSelectEvent(event)}
+                >
+                  <Text
+                    style={[styles.eventPickerEventTitle, { color: theme.text }]}
+                    numberOfLines={2}
+                  >
+                    {event.title || "Event"}
+                  </Text>
+                  {meta.length ? (
+                    <Text
+                      style={[
+                        styles.eventPickerEventMeta,
+                        { color: theme.textMuted },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {meta.join(" | ")}
+                    </Text>
+                  ) : null}
+                  <Text
+                    style={[styles.eventPickerAction, { color: theme.accent }]}
+                  >
+                    View details
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function MapScreen() {
   const navigation = useNavigation();
   const tabBarHeight = useBottomTabBarHeight();
@@ -174,6 +289,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
+  const [selectedEventGroup, setSelectedEventGroup] = useState(null);
 
   // Fetch events (same helper as Hub, with sorting, for consistency)
   const loadEvents = useCallback(async () => {
@@ -244,6 +360,7 @@ export default function MapScreen() {
     setNearMeLocation(null);
     setNearMeMessage("");
     setSelectedMarkerId(null);
+    setSelectedEventGroup(null);
     setMapActionMessage("Filters cleared. Showing all events.");
   }, []);
 
@@ -372,7 +489,7 @@ export default function MapScreen() {
             event._id?.toString() ?? `${event.title}-${event.date}-${event.time}`,
           event,
           coordinate,
-          scheduleLabel: scheduleBits.join(" • "),
+          scheduleLabel: scheduleBits.join(" | "),
           locationLabel: event.locationName || event.location || event.address || "",
           usesExactCoords:
             Number.isFinite(event?.latitude) && Number.isFinite(event?.longitude),
@@ -380,6 +497,33 @@ export default function MapScreen() {
       })
       .filter(Boolean);
   }, [eventsForMap]);
+
+  const groupedMarkersForMap = useMemo(() => {
+    const groups = new Map();
+
+    markersForMap.forEach((marker) => {
+      const key = getMarkerGroupKey(marker);
+      const existing = groups.get(key);
+
+      if (!existing) {
+        groups.set(key, {
+          ...marker,
+          id: key,
+          events: [marker.event],
+          markerCount: 1,
+        });
+        return;
+      }
+
+      existing.events.push(marker.event);
+      existing.markerCount = existing.events.length;
+      existing.event = existing.events[0];
+      existing.scheduleLabel = `${existing.events.length} events at this location`;
+      existing.locationLabel = existing.locationLabel || marker.locationLabel;
+    });
+
+    return Array.from(groups.values());
+  }, [markersForMap]);
 
   // Human-readable summary line under the filters (e.g. "Showing 3 events in Banff ...")
   const filterSummary = useMemo(() => {
@@ -430,7 +574,7 @@ export default function MapScreen() {
   useEffect(() => {
     if (!mapRef.current || loading || error) return;
 
-    if (isNearMeEnabled && nearMeLocation && markersForMap.length === 0) {
+    if (isNearMeEnabled && nearMeLocation && groupedMarkersForMap.length === 0) {
       mapRef.current.animateToRegion(
         {
           latitude: nearMeLocation.latitude,
@@ -443,9 +587,9 @@ export default function MapScreen() {
       return;
     }
 
-    if (isNearMeEnabled && nearMeLocation && markersForMap.length > 0) {
+    if (isNearMeEnabled && nearMeLocation && groupedMarkersForMap.length > 0) {
       mapRef.current.fitToCoordinates(
-        [nearMeLocation, ...markersForMap.map((marker) => marker.coordinate)],
+        [nearMeLocation, ...groupedMarkersForMap.map((marker) => marker.coordinate)],
         {
           edgePadding: { top: 90, right: 60, bottom: 90, left: 60 },
           animated: true,
@@ -454,7 +598,7 @@ export default function MapScreen() {
       return;
     }
 
-    if (markersForMap.length === 0) {
+    if (groupedMarkersForMap.length === 0) {
       const targetRegion =
         selectedTown !== "All" && TOWN_COORDS[selectedTown]
           ? {
@@ -469,8 +613,8 @@ export default function MapScreen() {
       return;
     }
 
-    if (markersForMap.length === 1) {
-      const { coordinate } = markersForMap[0];
+    if (groupedMarkersForMap.length === 1) {
+      const { coordinate } = groupedMarkersForMap[0];
       mapRef.current.animateToRegion(
         {
           latitude: coordinate.latitude,
@@ -484,20 +628,32 @@ export default function MapScreen() {
     }
 
     mapRef.current.fitToCoordinates(
-      markersForMap.map((marker) => marker.coordinate),
+      groupedMarkersForMap.map((marker) => marker.coordinate),
       {
         edgePadding: { top: 90, right: 60, bottom: 90, left: 60 },
         animated: true,
       }
     );
-  }, [selectedTown, markersForMap, loading, error, isNearMeEnabled, nearMeLocation]);
+  }, [selectedTown, groupedMarkersForMap, loading, error, isNearMeEnabled, nearMeLocation]);
 
   // Navigate to EventDetail when a marker is pressed.
-  function handleMarkerPress(event) {
+  function handleEventPress(event) {
     navigation.navigate("EventDetail", {
       event,
       eventId: event._id,
     });
+  }
+
+  function handleMarkerPress(marker) {
+    const groupedEvents = marker?.events || [];
+
+    if (groupedEvents.length > 1) {
+      setSelectedEventGroup(marker);
+      setSelectedMarkerId(marker.id);
+      return;
+    }
+
+    handleEventPress(groupedEvents[0] || marker.event || marker);
   }
 
   const handleCreateBuddyPostFromSearch = useCallback(() => {
@@ -650,7 +806,7 @@ export default function MapScreen() {
               <EventMap
                 ref={mapRef}
                 theme={theme}
-                markers={markersForMap}
+                markers={groupedMarkersForMap}
                 selectedMarkerId={selectedMarkerId}
                 onSelectMarker={setSelectedMarkerId}
                 onPressMarker={handleMarkerPress}
@@ -703,6 +859,17 @@ export default function MapScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <EventChoiceModal
+        visible={!!selectedEventGroup}
+        marker={selectedEventGroup}
+        theme={theme}
+        onClose={() => setSelectedEventGroup(null)}
+        onSelectEvent={(event) => {
+          setSelectedEventGroup(null);
+          handleEventPress(event);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -857,6 +1024,83 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "800",
+  },
+  eventPickerOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  eventPickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  eventPickerSheet: {
+    maxHeight: "76%",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  eventPickerHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  eventPickerHeaderCopy: {
+    flex: 1,
+  },
+  eventPickerTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  eventPickerSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  eventPickerClose: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  eventPickerCloseText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  eventPickerList: {
+    maxHeight: 420,
+  },
+  eventPickerListContent: {
+    gap: 10,
+    paddingBottom: 8,
+  },
+  eventPickerCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+  },
+  eventPickerEventTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  eventPickerEventMeta: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  eventPickerAction: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 10,
   },
   pressed: {
     opacity: 0.82,
