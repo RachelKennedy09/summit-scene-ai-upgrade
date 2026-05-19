@@ -436,6 +436,26 @@ p {
   font-weight: 850;
 }
 
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.social-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgba(31, 81, 57, 0.2);
+  border-radius: 999px;
+  color: var(--green);
+  background: rgba(255, 253, 248, 0.52);
+  font-weight: 850;
+}
+
 .site-footer {
   display: grid;
   grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr);
@@ -637,6 +657,14 @@ p {
     width: 100%;
     justify-content: center;
     margin: 14px 0 0;
+  }
+
+  .social-links {
+    width: 100%;
+  }
+
+  .social-links a {
+    width: 100%;
   }
 
   .phone-preview {
