@@ -101,6 +101,8 @@ export function AuthProvider({ children }) {
   function buildUser(rawUser) {
     return {
       ...rawUser,
+      emailVerified: Boolean(rawUser?.emailVerified),
+      pendingEmail: rawUser?.pendingEmail ?? "",
       avatarKey: rawUser?.avatarKey ?? null,
       profileImageUrl: rawUser?.profileImageUrl ?? "",
       businessVerificationStatus:
@@ -739,6 +741,185 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function resendVerificationEmail() {
+    if (!token) {
+      throw new Error("You must be logged in to verify your email.");
+    }
+
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/resend-verification`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not send verification email.");
+    }
+    if (data.user) {
+      setUser(buildUser(data.user));
+    }
+    return data;
+  }
+
+  async function verifyEmail(verificationToken) {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/verify-email`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: verificationToken }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not verify email.");
+    }
+    if (data.user) {
+      setUser(buildUser(data.user));
+    }
+    return data;
+  }
+
+  async function forgotPassword(email) {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/forgot-password`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not request password reset.");
+    }
+    return data;
+  }
+
+  async function checkEmailAvailability(email) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/email-availability?email=${encodeURIComponent(
+        normalizedEmail
+      )}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not check that email.");
+    }
+    return data;
+  }
+
+  async function resetPassword({ resetToken, password }) {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/reset-password`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not reset password.");
+    }
+    return data;
+  }
+
+  async function changePassword({ currentPassword, newPassword }) {
+    if (!token) {
+      throw new Error("You must be logged in to change your password.");
+    }
+
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/change-password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not change password.");
+    }
+    await setLoggedOutState("Password changed. Please log in again.");
+    return data;
+  }
+
+  async function requestEmailChange({ newEmail, currentPassword }) {
+    if (!token) {
+      throw new Error("You must be logged in to change your email.");
+    }
+
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/request-email-change`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newEmail, currentPassword }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not request email change.");
+    }
+    if (data.user) {
+      setUser(buildUser(data.user));
+    }
+    return data;
+  }
+
+  async function confirmEmailChange(emailChangeToken) {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/auth/confirm-email-change`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: emailChangeToken }),
+      },
+      AUTH_REQUEST_TIMEOUT_MS
+    );
+
+    const data = await readJsonSafely(response);
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not confirm email change.");
+    }
+    if (data.user) {
+      setUser(buildUser(data.user));
+    }
+    return data;
+  }
+
   // LOGOUT: clear token + user + storage
   async function logout() {
     try {
@@ -771,6 +952,14 @@ export function AuthProvider({ children }) {
     previewFacebookSignup,
     updateProfile,
     deleteAccount,
+    resendVerificationEmail,
+    verifyEmail,
+    forgotPassword,
+    checkEmailAvailability,
+    resetPassword,
+    changePassword,
+    requestEmailChange,
+    confirmEmailChange,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

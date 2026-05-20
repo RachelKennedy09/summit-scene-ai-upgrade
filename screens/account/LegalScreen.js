@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "May 4, 2026";
+const LAST_UPDATED = "May 20, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -84,7 +84,7 @@ export default function LegalScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:admin@summitscene.ca?subject=Summit%20Scene%20Privacy%20or%20Legal%20Question"
+      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Privacy%20or%20Legal%20Question"
     ).catch(() => {});
   }
 
@@ -113,7 +113,9 @@ export default function LegalScreen() {
           </LegalText>
           <LegalBullet theme={theme}>
             Account data: name or business name, email, password hash, role,
-            town, profile details, avatar, social links, and verification status.
+            town, profile details, avatar, selected languages, interests,
+            social links, email verification status, and business verification
+            status.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Public content: event posts, community posts, buddy posts, replies,
@@ -130,6 +132,11 @@ export default function LegalScreen() {
             actions are used to operate safety and moderation tools.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Account recovery data: email verification, password reset, and email
+            change confirmation tokens may be created for account security. These
+            tokens are temporary and are not intended to be reusable.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Service providers: data may be processed by hosting, database,
             address lookup, social login, and AI description generation
             providers when those features are used.
@@ -140,6 +147,46 @@ export default function LegalScreen() {
             retention is required for security, abuse prevention, or legal
             compliance.
           </LegalBullet>
+        </LegalSection>
+
+        <LegalSection title="Security Safeguards" theme={theme}>
+          <LegalText theme={theme}>
+            No app or online service can guarantee that hacking, unauthorized
+            access, data loss, or misuse will never happen. Summit Scene uses
+            reasonable safeguards to reduce risk and protect accounts.
+          </LegalText>
+          <LegalBullet theme={theme}>
+            Passwords are not stored as plain text. They are stored as password
+            hashes.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Login sessions use authentication tokens, and password changes
+            invalidate older sessions.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Database access and admin tools should be limited to people who need
+            access to operate, secure, support, or moderate Summit Scene.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Users should use a strong unique password, keep their email account
+            secure, and log out on shared devices.
+          </LegalBullet>
+        </LegalSection>
+
+        <LegalSection title="Developer and Admin Access" theme={theme}>
+          <LegalText theme={theme}>
+            Summit Scene is operated by a developer/admin team. Developer or
+            administrator access to user data is limited to running the app,
+            fixing bugs, investigating security issues, responding to support
+            requests, reviewing reports, enforcing community rules, verifying
+            business accounts, and complying with legal obligations.
+          </LegalText>
+          <LegalText theme={theme}>
+            Developers and administrators should not access, copy, disclose,
+            sell, or use personal information for unrelated personal reasons.
+            Passwords cannot be viewed because the app stores password hashes
+            rather than plain-text passwords.
+          </LegalText>
         </LegalSection>
 
         <LegalSection title="Consent & Communications" theme={theme}>
@@ -235,7 +282,7 @@ export default function LegalScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Contact admin@summitscene.ca
+            Contact summitscene@outlook.com
           </Text>
         </Pressable>
       </ScrollView>

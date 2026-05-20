@@ -67,6 +67,50 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerifiedAt: {
+      type: Date,
+    },
+
+    emailVerificationTokenHash: {
+      type: String,
+    },
+
+    emailVerificationExpiresAt: {
+      type: Date,
+    },
+
+    pendingEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
+    },
+
+    pendingEmailVerificationTokenHash: {
+      type: String,
+    },
+
+    pendingEmailVerificationExpiresAt: {
+      type: Date,
+    },
+
+    passwordResetTokenHash: {
+      type: String,
+    },
+
+    passwordResetExpiresAt: {
+      type: Date,
+    },
+
+    passwordChangedAt: {
+      type: Date,
+    },
+
     // Display name shown throughout the app
     name: {
       type: String,
@@ -246,6 +290,8 @@ userSchema.virtual("safeProfile").get(function () {
     id: this._id,
     name: this.name,
     email: this.email,
+    emailVerified: Boolean(this.emailVerified),
+    pendingEmail: this.pendingEmail,
     role: this.role,
     businessVerificationStatus: this.businessVerificationStatus || "none",
     hasSeenSafetyTips: Boolean(this.hasSeenSafetyTips),

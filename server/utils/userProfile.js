@@ -95,6 +95,8 @@ export function buildSafeUser(user) {
     id: user._id,
     _id: user._id,
     email: user.email,
+    emailVerified: Boolean(user.emailVerified),
+    pendingEmail: user.pendingEmail,
     name: user.name,
     role: user.role || "local",
     isAdmin: isAdminEmail(user.email),

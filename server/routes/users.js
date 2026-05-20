@@ -17,27 +17,8 @@ import EventPreference from "../models/EventPreference.js";
 import Report from "../models/Report.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 
-function escapeRegExp(value = "") {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
-}
-
-async function findUserByPublicName(name, excludeUserId = null) {
-  const normalizedName = normalizePublicName(name);
-  if (!normalizedName) return null;
-
-  const query = {
-    name: new RegExp(`^${escapeRegExp(normalizedName)}$`, "i"),
-  };
-
-  if (excludeUserId) {
-    query._id = { $ne: excludeUserId };
-  }
-
-  return User.findOne(query).select("_id name");
 }
 
 const router = express.Router();
@@ -347,13 +328,6 @@ router.patch("/me", authMiddleware, async (req, res) => {
     const updates = buildProfileUpdates(req.body);
 
     if (updates.name) {
-      const existingName = await findUserByPublicName(updates.name, userId);
-      if (existingName) {
-        return res.status(409).json({
-          message:
-            "That public name is already taken. Please choose a different name.",
-        });
-      }
       updates.name = normalizePublicName(updates.name);
     }
 

@@ -1,0 +1,3 @@
+/verify-email /verify-email.html 200
+/reset-password /reset-password.html 200
+/verify-email-change /verify-email-change.html 200

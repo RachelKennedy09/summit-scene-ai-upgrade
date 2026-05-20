@@ -27,6 +27,7 @@ import { useTheme } from "../../context/ThemeContext";
 import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
+import { ORIGIN_CITY_OPTIONS } from "../../constants/originCities";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -40,6 +41,29 @@ const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
   { value: "visitor", label: "Visiting" },
+];
+const LANGUAGE_OPTIONS = [
+  "English",
+  "French",
+  "Spanish",
+  "German",
+  "Italian",
+  "Portuguese",
+  "Dutch",
+  "Swedish",
+  "Norwegian",
+  "Danish",
+  "Polish",
+  "Ukrainian",
+  "Japanese",
+  "Korean",
+  "Mandarin",
+  "Cantonese",
+  "Hindi",
+  "Punjabi",
+  "Tagalog",
+  "Vietnamese",
+  "Arabic",
 ];
 const LOCAL_STEPS = [
   "name",
@@ -66,6 +90,29 @@ const FACEBOOK_OPTIONAL_MESSAGE =
   "Facebook connection needs the installed Summit Scene app to return automatically. You can keep building your profile now and connect Facebook later.";
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
+const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
+
+function normalizeSearchText(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
+function getOriginCitySuggestions(query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (normalizedQuery.length < 2) {
+    return [];
+  }
+
+  return ORIGIN_CITY_OPTIONS.filter((city) =>
+    city.toLowerCase().includes(normalizedQuery)
+  ).slice(0, ORIGIN_CITY_SUGGESTION_LIMIT);
+}
+
+function isKnownOriginCity(value) {
+  const normalizedValue = normalizeSearchText(value);
+  return ORIGIN_CITY_OPTIONS.some(
+    (city) => city.toLowerCase() === normalizedValue
+  );
+}
 
 function buildSocialAccounts(values, profileImageUrl = "") {
   const socialProfileImageUrl = profileImageUrl.startsWith("data:")
@@ -234,7 +281,7 @@ function SignupProfilePreview({
   town,
   userType,
   originallyFrom,
-  languagesText,
+  languages,
   interests,
   bio,
   lookingFor,
@@ -245,10 +292,6 @@ function SignupProfilePreview({
   const avatarSource = profileImageUrl ? { uri: profileImageUrl } : null;
   const displayName = name || "Summit Scene member";
   const initial = displayName.charAt(0).toUpperCase() || "?";
-  const languages = languagesText
-    .split(",")
-    .map((language) => language.trim())
-    .filter(Boolean);
   const socialAccounts = Object.entries(socialValues || {})
     .filter(([, value]) => value?.trim())
     .map(([provider, value]) => `${titleCase(provider)}: ${value.trim()}`);
@@ -368,7 +411,12 @@ function SignupProfilePreview({
 }
 
 function RegisterScreen() {
-  const { register, previewFacebookSignup, isAuthLoading } = useAuth();
+  const {
+    register,
+    previewFacebookSignup,
+    checkEmailAvailability,
+    isAuthLoading,
+  } = useAuth();
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -376,12 +424,20 @@ function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailAvailability, setEmailAvailability] = useState({
+    status: "idle",
+    message: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [role, setRole] = useState("local");
   const [town, setTown] = useState("");
   const [userType, setUserType] = useState("local");
   const [originallyFrom, setOriginallyFrom] = useState("");
-  const [languagesText, setLanguagesText] = useState("");
+  const [originCitySuggestions, setOriginCitySuggestions] = useState([]);
+  const [showOriginCitySuggestions, setShowOriginCitySuggestions] =
+    useState(false);
+  const [languages, setLanguages] = useState([]);
   const [interests, setInterests] = useState([]);
   const [socialValues, setSocialValues] = useState({
     instagram: "",
@@ -488,6 +544,28 @@ function RegisterScreen() {
     }));
   }
 
+  function handleOriginCityChange(value) {
+    setOriginallyFrom(value);
+    const suggestions = getOriginCitySuggestions(value);
+    setOriginCitySuggestions(suggestions);
+    setShowOriginCitySuggestions(suggestions.length > 0);
+  }
+
+  function handleSelectOriginCity(city) {
+    setOriginallyFrom(city);
+    setOriginCitySuggestions([]);
+    setShowOriginCitySuggestions(false);
+    Keyboard.dismiss();
+  }
+
+  function handleToggleLanguage(language) {
+    setLanguages((current) =>
+      current.includes(language)
+        ? current.filter((item) => item !== language)
+        : [...current, language]
+    );
+  }
+
   function townQuestion() {
     if (userType === "visitor") {
       return "Where are you staying or spending most of your trip?";
@@ -498,15 +576,82 @@ function RegisterScreen() {
     return "Where do you live?";
   }
 
-  function validateStep() {
+  async function validateEmailAvailability() {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setEmailAvailability({ status: "idle", message: "" });
+      return false;
+    }
+
+    setEmailAvailability({
+      status: "checking",
+      message: "Checking email...",
+    });
+
+    try {
+      const data = await checkEmailAvailability(normalizedEmail);
+
+      if (!data.available) {
+        const result = {
+          status: "taken",
+          message: "This email is already registered. Please log in instead.",
+        };
+        setEmailAvailability(result);
+        return result;
+      }
+
+      const result = {
+        status: "available",
+        message: "Email is available.",
+      };
+      setEmailAvailability(result);
+      return result;
+    } catch (error) {
+      const result = {
+        status: "error",
+        message: error.message || "Could not check email right now.",
+      };
+      setEmailAvailability(result);
+      return result;
+    }
+  }
+
+  async function validateStep() {
     if (currentStep === "name" && !name.trim()) {
       Alert.alert("Name needed", "Please enter your name.");
       return false;
     }
 
     if (currentStep === "login") {
-      if (!email.trim() || !password.trim()) {
-        Alert.alert("Login needed", "Please enter your email and password.");
+      if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+        Alert.alert(
+          "Login needed",
+          "Please enter your email, password, and confirmation password."
+        );
+        return false;
+      }
+
+      if (password.length < 8) {
+        Alert.alert("Password too short", "Password must be at least 8 characters.");
+        return false;
+      }
+
+      if (password !== confirmPassword) {
+        Alert.alert("Passwords do not match", "Please re-enter your password.");
+        return false;
+      }
+
+      const emailCheck = await validateEmailAvailability();
+      if (emailCheck.status !== "available") {
+        Alert.alert(
+          emailCheck.status === "taken"
+            ? "Email already registered"
+            : "Email check needed",
+          emailCheck.status === "taken"
+            ? "This email is already registered. Please log in instead."
+            : emailCheck.message || "Please use a different email or try again."
+        );
         return false;
       }
     }
@@ -514,6 +659,16 @@ function RegisterScreen() {
     if (currentStep === "town" && !town) {
       Alert.alert("Town needed", "Please choose the town that fits best.");
       return false;
+    }
+
+    if (currentStep === "origin" && originallyFrom.trim()) {
+      if (!isKnownOriginCity(originallyFrom)) {
+        Alert.alert(
+          "Choose a city",
+          "Please pick one of the city suggestions so profiles stay consistent, or clear this field and skip it."
+        );
+        return false;
+      }
     }
 
     if (currentStep === "business") {
@@ -531,11 +686,16 @@ function RegisterScreen() {
   }
 
   async function handleRegister() {
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert(
         "Missing info",
-        "Please enter your name, email, and password."
+        "Please enter your name, email, password, and confirmation password."
       );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Passwords do not match", "Please re-enter your password.");
       return;
     }
 
@@ -561,11 +721,6 @@ function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
-      const languages = languagesText
-        .split(",")
-        .map((language) => language.trim())
-        .filter(Boolean);
-
       await register({
         name,
         email,
@@ -597,8 +752,8 @@ function RegisterScreen() {
     }
   }
 
-  function goNext() {
-    if (!validateStep()) return;
+  async function goNext() {
+    if (!(await validateStep())) return;
     if (isFinalStep) {
       handleRegister();
       return;
@@ -858,12 +1013,31 @@ function RegisterScreen() {
               },
             ]}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              setEmailAvailability({ status: "idle", message: "" });
+            }}
+            onBlur={validateEmailAvailability}
             placeholder="you@example.com"
             placeholderTextColor={theme.textMuted}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+          {emailAvailability.message ? (
+            <Text
+              style={[
+                styles.validationText,
+                {
+                  color:
+                    emailAvailability.status === "available"
+                      ? theme.accent
+                      : "#D14343",
+                },
+              ]}
+            >
+              {emailAvailability.message}
+            </Text>
+          ) : null}
           <Text style={[styles.label, { color: theme.text }]}>Password</Text>
           <TextInput
             style={[
@@ -880,6 +1054,29 @@ function RegisterScreen() {
             placeholderTextColor={theme.textMuted}
             secureTextEntry
           />
+          <Text style={[styles.label, { color: theme.text }]}>
+            Confirm password
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Re-enter your password"
+            placeholderTextColor={theme.textMuted}
+            secureTextEntry
+          />
+          {confirmPassword && password !== confirmPassword ? (
+            <Text style={[styles.validationText, { color: "#D14343" }]}>
+              Passwords do not match.
+            </Text>
+          ) : null}
           {renderBusinessLink()}
         </>
       );
@@ -946,26 +1143,48 @@ function RegisterScreen() {
               },
             ]}
             value={originallyFrom}
-            onChangeText={setOriginallyFrom}
-            placeholder="Toronto, Australia, Japan..."
+            onChangeText={handleOriginCityChange}
+            onFocus={() => {
+              const suggestions = getOriginCitySuggestions(originallyFrom);
+              setOriginCitySuggestions(suggestions);
+              setShowOriginCitySuggestions(suggestions.length > 0);
+            }}
+            placeholder="Start typing a city..."
             placeholderTextColor={theme.textMuted}
           />
+          {showOriginCitySuggestions ? (
+            <View
+              style={[
+                styles.originSuggestionsCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              {originCitySuggestions.map((city) => (
+                <Pressable
+                  key={city}
+                  style={[
+                    styles.originSuggestionRow,
+                    { borderBottomColor: theme.border },
+                  ]}
+                  onPress={() => handleSelectOriginCity(city)}
+                >
+                  <Text
+                    style={[styles.originSuggestionText, { color: theme.text }]}
+                  >
+                    {city}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           <Text style={[styles.label, { color: theme.text }]}>
             Languages spoken
           </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={languagesText}
-            onChangeText={setLanguagesText}
-            placeholder="English, French, Spanish..."
-            placeholderTextColor={theme.textMuted}
+          <ChipGroup
+            options={LANGUAGE_OPTIONS}
+            values={languages}
+            onToggle={handleToggleLanguage}
+            theme={theme}
           />
         </>
       );
@@ -1264,7 +1483,7 @@ function RegisterScreen() {
           town={town}
           userType={userType}
           originallyFrom={originallyFrom}
-          languagesText={languagesText}
+          languages={languages}
           interests={interests}
           bio={bio}
           lookingFor={lookingFor}
@@ -1509,6 +1728,28 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     marginBottom: 14,
+  },
+  validationText: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  originSuggestionsCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginTop: -8,
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  originSuggestionRow: {
+    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  originSuggestionText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   textArea: {
     minHeight: 92,

@@ -56,7 +56,7 @@ Users can delete their account in the Account screen. Account deletion removes
 the account and associated app data, except where limited retention is required
 for security, abuse prevention, dispute handling, or legal compliance.
 
-Privacy contact: admin@summitscene.ca
+Privacy contact: summitscene@outlook.com
 
 ## Terms Of Use Draft
 

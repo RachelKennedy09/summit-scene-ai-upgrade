@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm Email Change | Summit Scene</title>
+    <link rel="icon" href="./assets/logo-app-earth-transparent-alpha.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="legal-body">
+    <header class="site-header legal-header">
+      <a class="brand" href="./index.html#top" aria-label="Summit Scene home">
+        <img src="./assets/logo-app-earth-transparent-alpha.png" alt="Summit Scene" class="brand-logo" />
+        <span>Summit Scene</span>
+      </a>
+    </header>
+
+    <main id="top" class="legal-main">
+      <p class="eyebrow">Account</p>
+      <h1>Confirm your new email</h1>
+      <p>
+        Open Summit Scene and paste this token into the confirm email change
+        screen if it was not filled automatically.
+      </p>
+      <pre id="token" style="white-space: pre-wrap; word-break: break-word;">Loading token...</pre>
+    </main>
+
+    <script>
+      const token = new URLSearchParams(window.location.search).get("token") || "";
+      document.getElementById("token").textContent = token || "No token found in this link.";
+    </script>
+  </body>
+</html>

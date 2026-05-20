@@ -38,7 +38,7 @@ export default function BusinessHelpScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:admin@summitscene.ca?subject=Summit%20Scene%20Business%20Support"
+      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Business%20Support"
     );
   }
 
@@ -117,7 +117,7 @@ export default function BusinessHelpScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Email admin@summitscene.ca
+            Email summitscene@outlook.com
           </Text>
         </Pressable>
       </ScrollView>

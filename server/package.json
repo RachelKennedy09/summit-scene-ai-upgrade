@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "mocha --exit --timeout 10000 \"test/**/*.test.js\"",
+    "test": "set NODE_ENV=test&& mocha --exit --timeout 10000 \"test/**/*.test.js\"",
     "seed:community": "node scripts/seedCommunityTestPosts.js",
     "seed:events": "node scripts/seedBusinessEvents.js",
     "seed:event-attendees": "node scripts/seedEventAttendeesDemo.js",
@@ -24,7 +24,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.2.0",
     "mongoose": "^8.19.3",
-    "openai": "^6.34.0"
+    "nodemailer": "^8.0.7",
+    "openai": "^6.34.0",
+    "resend": "^6.12.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

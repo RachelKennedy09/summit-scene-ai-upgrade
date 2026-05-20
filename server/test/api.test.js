@@ -18,6 +18,7 @@ const originalAdminEmails = process.env.ADMIN_EMAILS || "";
 let authToken = null;
 let pendingBusinessToken = null;
 let pendingBusinessUserId = null;
+let emailVerificationToken = null;
 
 describe("SummitScene API", function () {
   // give a bit more time for DB connections on first run
@@ -50,9 +51,22 @@ describe("SummitScene API", function () {
     });
     expect(res.body.user.languages).to.deep.equal(["English", "Spanish"]);
     expect(res.body.user.interests).to.deep.equal(["hiking", "live music"]);
+    expect(res.body.emailVerificationToken).to.be.a("string");
+    emailVerificationToken = res.body.emailVerificationToken;
   });
 
-  it("should reject duplicate public names at /api/auth/register", async () => {
+  it("should verify a registered user's email", async () => {
+    const res = await request(app).post("/api/auth/verify-email").send({
+      token: emailVerificationToken,
+    });
+
+    expect(res.status).to.equal(200);
+    expect(res.body.user).to.include({
+      emailVerified: true,
+    });
+  });
+
+  it("should allow duplicate public names at /api/auth/register", async () => {
     const res = await request(app).post("/api/auth/register").send({
       name: testName.toUpperCase(),
       email: `duplicate_name_${testRunId}@example.com`,
@@ -61,8 +75,8 @@ describe("SummitScene API", function () {
       town: "Banff",
     });
 
-    expect(res.status).to.equal(409);
-    expect(res.body.message).to.match(/public name is already taken/i);
+    expect(res.status).to.be.oneOf([200, 201]);
+    expect(res.body.user.name).to.equal(testName.toUpperCase());
   });
 
   it("should reject duplicate emails at /api/auth/register", async () => {
@@ -78,6 +92,22 @@ describe("SummitScene API", function () {
     expect(res.body.message).to.match(/email is already registered/i);
   });
 
+  it("should report email availability before signup continues", async () => {
+    const takenRes = await request(app)
+      .get("/api/auth/email-availability")
+      .query({ email: testEmail.toUpperCase() });
+
+    expect(takenRes.status).to.equal(200);
+    expect(takenRes.body).to.deep.equal({ available: false });
+
+    const availableRes = await request(app)
+      .get("/api/auth/email-availability")
+      .query({ email: `available_${testRunId}@example.com` });
+
+    expect(availableRes.status).to.equal(200);
+    expect(availableRes.body).to.deep.equal({ available: true });
+  });
+
   it("should log in the user and return a JWT at /api/auth/login", async () => {
     const res = await request(app).post("/api/auth/login").send({
       email: testEmail,
@@ -89,6 +119,95 @@ describe("SummitScene API", function () {
     expect(res.body.token).to.be.a("string");
 
     authToken = res.body.token;
+  });
+
+  it("should request and complete a password reset", async () => {
+    const resetEmail = `reset_${testRunId}@example.com`;
+    const resetPassword = "ResetPassword123!";
+    const newPassword = "NewResetPassword123!";
+
+    const registerRes = await request(app).post("/api/auth/register").send({
+      name: `Reset User ${testRunId}`,
+      email: resetEmail,
+      password: resetPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(registerRes.status).to.be.oneOf([200, 201]);
+
+    const forgotRes = await request(app).post("/api/auth/forgot-password").send({
+      email: resetEmail,
+    });
+
+    expect(forgotRes.status).to.equal(200);
+    expect(forgotRes.body.passwordResetToken).to.be.a("string");
+
+    const resetRes = await request(app).post("/api/auth/reset-password").send({
+      token: forgotRes.body.passwordResetToken,
+      password: newPassword,
+    });
+
+    expect(resetRes.status).to.equal(200);
+
+    const oldLoginRes = await request(app).post("/api/auth/login").send({
+      email: resetEmail,
+      password: resetPassword,
+    });
+    expect(oldLoginRes.status).to.equal(401);
+
+    const newLoginRes = await request(app).post("/api/auth/login").send({
+      email: resetEmail,
+      password: newPassword,
+    });
+    expect(newLoginRes.status).to.equal(200);
+  });
+
+  it("should confirm a pending email change", async () => {
+    const changeEmail = `change_${testRunId}@example.com`;
+    const changedEmail = `changed_${testRunId}@example.com`;
+
+    const registerRes = await request(app).post("/api/auth/register").send({
+      name: `Change Email User ${testRunId}`,
+      email: changeEmail,
+      password: testPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(registerRes.status).to.be.oneOf([200, 201]);
+
+    const requestChangeRes = await request(app)
+      .post("/api/auth/request-email-change")
+      .set("Authorization", `Bearer ${registerRes.body.token}`)
+      .send({
+        newEmail: changedEmail,
+        currentPassword: testPassword,
+      });
+
+    expect(requestChangeRes.status).to.equal(200);
+    expect(requestChangeRes.body.user).to.include({
+      pendingEmail: changedEmail,
+    });
+    expect(requestChangeRes.body.emailChangeToken).to.be.a("string");
+
+    const confirmRes = await request(app)
+      .post("/api/auth/confirm-email-change")
+      .send({
+        token: requestChangeRes.body.emailChangeToken,
+      });
+
+    expect(confirmRes.status).to.equal(200);
+    expect(confirmRes.body.user).to.include({
+      email: changedEmail,
+      emailVerified: true,
+    });
+
+    const loginRes = await request(app).post("/api/auth/login").send({
+      email: changedEmail,
+      password: testPassword,
+    });
+    expect(loginRes.status).to.equal(200);
   });
 
   it("should save and retrieve upgraded social profile fields", async () => {
@@ -199,7 +318,7 @@ describe("SummitScene API", function () {
       .get("/api/auth/me")
       .set("Authorization", `Bearer ${registerRes.body.token}`);
 
-    expect(meRes.status).to.equal(404);
+    expect(meRes.status).to.equal(401);
   });
 
   /* -----------------------------------------
@@ -549,7 +668,7 @@ describe("SummitScene API", function () {
         category: "Hiking",
         communityType: "local-plan",
         activityText: "Looking for someone to hike Tunnel Mountain after work.",
-        date: "2026-05-15",
+        date: "2026-06-15",
         time: "17:30",
         town: "Banff",
         skillLevel: "casual",
@@ -562,7 +681,7 @@ describe("SummitScene API", function () {
       category: "Hiking",
       communityType: "local-plan",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
-      date: "2026-05-15",
+      date: "2026-06-15",
       time: "17:30",
       town: "Banff",
       skillLevel: "casual",
@@ -595,7 +714,7 @@ describe("SummitScene API", function () {
     });
 
     const languageDateRes = await request(app)
-      .get("/api/buddy-posts?language=french&date=2026-05-15")
+      .get("/api/buddy-posts?language=french&date=2026-06-15")
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(languageDateRes.status).to.equal(200);
@@ -611,7 +730,7 @@ describe("SummitScene API", function () {
         type: "hiking",
         category: "Climbing",
         activityText: "Looking for a climbing partner after work.",
-        date: "2026-05-16",
+        date: "2026-06-16",
         time: "18:00",
         town: "Canmore",
         skillLevel: "beginner",
@@ -634,7 +753,7 @@ describe("SummitScene API", function () {
         category: "Local Clubs",
         communityType: "group",
         activityText: "Starting a casual monthly book club.",
-        date: "2026-05-20",
+        date: "2026-06-20",
         time: "19:00",
         town: "Canmore",
         groupSizePreference: "small-group",
@@ -679,7 +798,7 @@ describe("SummitScene API", function () {
         category: "Karaoke",
         communityType: "local-plan",
         activityText: "Anyone want to go to karaoke night?",
-        date: "2026-05-22",
+        date: "2026-06-22",
         time: "21:00",
         town: "Banff",
         groupSizePreference: "small-group",
@@ -701,7 +820,7 @@ describe("SummitScene API", function () {
         category: "Cultural Events",
         communityType: "new-in-town",
         activityText: "New in town and looking to meet people for easy walks.",
-        date: "2026-05-23",
+        date: "2026-06-23",
         town: "Canmore",
         groupSizePreference: "any",
       });

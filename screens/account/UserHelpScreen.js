@@ -38,7 +38,7 @@ export default function UserHelpScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:admin@summitscene.ca?subject=Summit%20Scene%20Help"
+      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Help"
     );
   }
 

@@ -74,6 +74,7 @@ function AccountScreen() {
     deleteAccount,
     isAuthLoading,
     revertToLocalProfile,
+    resendVerificationEmail,
   } = useAuth();
   const navigation = useNavigation();
 
@@ -128,11 +129,11 @@ function AccountScreen() {
 
   function handleEmailSummitScene() {
     Linking.openURL(
-      "mailto:admin@summitscene.ca?subject=Summit%20Scene%20Business%20Verification"
+      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Business%20Verification"
     ).catch(() => {
       Alert.alert(
         "Could not open email",
-        "Please email admin@summitscene.ca to verify your business profile."
+        "Please email summitscene@outlook.com to verify your business profile."
       );
     });
   }
@@ -220,6 +221,21 @@ function AccountScreen() {
     );
   }
 
+  async function handleResendVerificationEmail() {
+    try {
+      const data = await resendVerificationEmail();
+      Alert.alert("Verification email sent", data.message);
+      if (data.emailVerificationToken) {
+        navigation.navigate("VerifyEmail", { token: data.emailVerificationToken });
+      }
+    } catch (error) {
+      Alert.alert(
+        "Could not send verification",
+        error.message || "Please try again."
+      );
+    }
+  }
+
   // Format joined date nicely
   let joinedText = "Unknown";
   if (user.createdAt) {
@@ -257,6 +273,45 @@ function AccountScreen() {
           onEditProfile={() => navigation.navigate("EditProfile")}
         />
 
+        <View
+          style={[
+            styles.statusCard,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.statusTitle, { color: theme.text }]}>
+            Account security
+          </Text>
+          <Text style={[styles.statusText, { color: theme.textMuted }]}>
+            Email: {user.email}{"\n"}
+            Status: {user.emailVerified ? "Verified" : "Not verified"}
+            {user.pendingEmail ? `\nPending email: ${user.pendingEmail}` : ""}
+          </Text>
+          {!user.emailVerified ? (
+            <Pressable
+              style={[styles.emailButton, { borderColor: theme.accent }]}
+              onPress={handleResendVerificationEmail}
+            >
+              <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                Resend verification email
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <AccountNavRow
+          title="Change email"
+          subtitle="Confirm a new email before changing your login."
+          onPress={() => navigation.navigate("ChangeEmail")}
+          theme={theme}
+        />
+
+        <AccountNavRow
+          title="Change password"
+          subtitle="Update your password and log in again."
+          onPress={() => navigation.navigate("ChangePassword")}
+          theme={theme}
+        />
 
         {isBusinessPending && (
           <View
@@ -280,7 +335,7 @@ function AccountScreen() {
               onPress={handleEmailSummitScene}
             >
               <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                Email admin@summitscene.ca
+                Email summitscene@outlook.com
               </Text>
             </Pressable>
           </View>

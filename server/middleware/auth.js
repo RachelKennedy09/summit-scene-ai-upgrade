@@ -12,8 +12,9 @@
 //  - /api/auth/me (session restore)
 
 import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-export default function authMiddleware(req, res, next) {
+export default async function authMiddleware(req, res, next) {
   // Expecting: Authorization: Bearer <token>
   const authHeader = req.headers.authorization;
 
@@ -41,6 +42,22 @@ export default function authMiddleware(req, res, next) {
     // Verify signature + expiration
     // decoded payload includes: userId, role, name, email, etc.
     const decoded = jwt.verify(token, secret);
+
+    const user = await User.findById(decoded.userId).select("passwordChangedAt");
+    if (!user) {
+      return res.status(401).json({ message: "User not found. Please log in again." });
+    }
+
+    const tokenPasswordChangedAt = decoded.passwordChangedAt || null;
+    const currentPasswordChangedAt = user.passwordChangedAt
+      ? user.passwordChangedAt.getTime()
+      : null;
+
+    if (currentPasswordChangedAt !== tokenPasswordChangedAt) {
+      return res
+        .status(401)
+        .json({ message: "Password changed. Please log in again." });
+    }
 
     // Attach user info to request for downstream controllers
     req.user = decoded;

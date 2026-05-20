@@ -30,6 +30,8 @@ import EditCommunityPostScreen from "../screens/community/EditCommunityPostScree
 import CreateBuddyPostScreen from "../screens/community/CreateBuddyPostScreen";
 
 import EditProfileScreen from "../screens/account/EditProfileScreen";
+import ChangeEmailScreen from "../screens/account/ChangeEmailScreen";
+import ChangePasswordScreen from "../screens/account/ChangePasswordScreen";
 import BlockedUsersScreen from "../screens/account/BlockedUsersScreen";
 import BusinessHelpScreen from "../screens/account/BusinessHelpScreen";
 import BusinessVerificationScreen from "../screens/account/BusinessVerificationScreen";
@@ -42,6 +44,9 @@ import UserHelpScreen from "../screens/account/UserHelpScreen";
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
 import SafetyTipsScreen from "../screens/auth/SafetyTipsScreen";
+import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
+import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
+import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
 
 const Stack = createNativeStackNavigator();
 const BOOTSTRAP_FALLBACK_DELAY_MS = 12000;
@@ -180,6 +185,21 @@ export default function RootNavigator() {
               options={{ title: "Edit Profile" }}
             />
             <Stack.Screen
+              name="ChangeEmail"
+              component={ChangeEmailScreen}
+              options={{ title: "Change Email" }}
+            />
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+              options={{ title: "Change Password" }}
+            />
+            <Stack.Screen
+              name="VerifyEmail"
+              component={VerifyEmailScreen}
+              options={{ title: "Verify Email" }}
+            />
+            <Stack.Screen
               name="BlockedUsers"
               component={BlockedUsersScreen}
               options={{ title: "Blocked Users" }}
@@ -239,6 +259,21 @@ export default function RootNavigator() {
             name="Register"
             component={RegisterScreen}
             options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+            options={{ title: "Forgot Password" }}
+          />
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ title: "Reset Password" }}
+          />
+          <Stack.Screen
+            name="VerifyEmail"
+            component={VerifyEmailScreen}
+            options={{ title: "Verify Email" }}
           />
           <Stack.Screen
             name="Legal"

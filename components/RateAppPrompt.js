@@ -68,7 +68,7 @@ export default function RateAppPrompt() {
               onPress: async () => {
                 await AsyncStorage.setItem(RATE_STATUS_KEY, "rated");
                 Linking.openURL(
-                  "mailto:admin@summitscene.ca?subject=Summit%20Scene%20App%20Feedback"
+                  "mailto:summitscene@outlook.com?subject=Summit%20Scene%20App%20Feedback"
                 ).catch(() => {});
               },
             },

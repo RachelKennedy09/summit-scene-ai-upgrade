@@ -160,6 +160,12 @@ function LoginScreen() {
               }}
             />
 
+            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
+              <Text style={[styles.linkText, { color: theme.accent }]}>
+                Forgot password?
+              </Text>
+            </Pressable>
+
             {/* LINK → REGISTER SCREEN */}
             <Pressable onPress={() => navigation.navigate("Register")}>
               <Text

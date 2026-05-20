@@ -2,6 +2,21 @@
   publish = "landing"
   command = ""
 
+[[redirects]]
+  from = "/verify-email"
+  to = "/verify-email.html"
+  status = 200
+
+[[redirects]]
+  from = "/reset-password"
+  to = "/reset-password.html"
+  status = 200
+
+[[redirects]]
+  from = "/verify-email-change"
+  to = "/verify-email-change.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
