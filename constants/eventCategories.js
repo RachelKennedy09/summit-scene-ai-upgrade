@@ -39,6 +39,17 @@ export const EVENT_CATEGORY_GROUPS = [
     ],
   },
   {
+    title: "Inclusive Community",
+    options: [
+      "LGBTQ+ Meetups",
+      "Pride Events",
+      "Queer Community",
+      "Trans & Non-Binary Inclusive",
+      "Allyship",
+      "Inclusive Outdoors",
+    ],
+  },
+  {
     title: "Food & Drink",
     options: [
       "Brunch",

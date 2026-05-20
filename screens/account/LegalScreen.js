@@ -123,6 +123,12 @@ export default function LegalScreen() {
             attendance choices.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Optional profile choices, including community interests, languages,
+            social links, or LGBTQ+ related interests, may reveal personal or
+            sensitive information. Only add details you are comfortable sharing
+            with other users.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Location data: optional device location is used for nearby event
             features after permission is granted. Event addresses may be sent to
             address lookup/geocoding services to place events on the map.

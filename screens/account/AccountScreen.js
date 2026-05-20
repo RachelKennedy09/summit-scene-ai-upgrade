@@ -288,14 +288,24 @@ function AccountScreen() {
             {user.pendingEmail ? `\nPending email: ${user.pendingEmail}` : ""}
           </Text>
           {!user.emailVerified ? (
-            <Pressable
-              style={[styles.emailButton, { borderColor: theme.accent }]}
-              onPress={handleResendVerificationEmail}
-            >
-              <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                Resend verification email
-              </Text>
-            </Pressable>
+            <View style={styles.emailActionRow}>
+              <Pressable
+                style={[styles.emailButton, { borderColor: theme.accent }]}
+                onPress={() => navigation.navigate("VerifyEmail")}
+              >
+                <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                  Enter verification token
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.emailButton, { borderColor: theme.accent }]}
+                onPress={handleResendVerificationEmail}
+              >
+                <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                  Resend verification email
+                </Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
 
@@ -771,6 +781,12 @@ const styles = StyleSheet.create({
   emailButtonText: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  emailActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
   },
   blockedHeaderRow: {
     flexDirection: "row",

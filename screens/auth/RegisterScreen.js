@@ -43,27 +43,44 @@ const USER_TYPE_OPTIONS = [
   { value: "visitor", label: "Visiting" },
 ];
 const LANGUAGE_OPTIONS = [
-  "English",
-  "French",
-  "Spanish",
-  "German",
-  "Italian",
-  "Portuguese",
-  "Dutch",
-  "Swedish",
-  "Norwegian",
+  "Afrikaans",
+  "American Sign Language",
+  "Arabic",
+  "Bengali",
+  "Cantonese",
+  "Croatian",
+  "Czech",
   "Danish",
-  "Polish",
-  "Ukrainian",
+  "Dutch",
+  "English",
+  "Farsi",
+  "Filipino",
+  "Finnish",
+  "French",
+  "German",
+  "Greek",
+  "Hebrew",
+  "Hindi",
+  "Hungarian",
+  "Indonesian",
+  "Italian",
   "Japanese",
   "Korean",
   "Mandarin",
-  "Cantonese",
-  "Hindi",
+  "Norwegian",
+  "Polish",
+  "Portuguese",
   "Punjabi",
+  "Romanian",
+  "Russian",
+  "Spanish",
+  "Swedish",
   "Tagalog",
+  "Tamil",
+  "Thai",
+  "Turkish",
+  "Ukrainian",
   "Vietnamese",
-  "Arabic",
 ];
 const LOCAL_STEPS = [
   "name",
@@ -91,6 +108,7 @@ const FACEBOOK_OPTIONAL_MESSAGE =
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
+const LANGUAGE_SUGGESTION_LIMIT = 7;
 
 function normalizeSearchText(value = "") {
   return String(value).trim().toLowerCase();
@@ -112,6 +130,25 @@ function isKnownOriginCity(value) {
   return ORIGIN_CITY_OPTIONS.some(
     (city) => city.toLowerCase() === normalizedValue
   );
+}
+
+function getLanguageSuggestions(query, selectedLanguages = []) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (normalizedQuery.length < 1) {
+    return [];
+  }
+
+  const selectedSet = new Set(
+    selectedLanguages.map((language) => language.toLowerCase())
+  );
+
+  return LANGUAGE_OPTIONS.filter((language) => {
+    const normalizedLanguage = language.toLowerCase();
+    return (
+      !selectedSet.has(normalizedLanguage) &&
+      normalizedLanguage.includes(normalizedQuery)
+    );
+  }).slice(0, LANGUAGE_SUGGESTION_LIMIT);
 }
 
 function buildSocialAccounts(values, profileImageUrl = "") {
@@ -438,6 +475,9 @@ function RegisterScreen() {
   const [showOriginCitySuggestions, setShowOriginCitySuggestions] =
     useState(false);
   const [languages, setLanguages] = useState([]);
+  const [languageQuery, setLanguageQuery] = useState("");
+  const [languageSuggestions, setLanguageSuggestions] = useState([]);
+  const [showLanguageSuggestions, setShowLanguageSuggestions] = useState(false);
   const [interests, setInterests] = useState([]);
   const [socialValues, setSocialValues] = useState({
     instagram: "",
@@ -457,6 +497,7 @@ function RegisterScreen() {
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
   const facebookTimeoutRef = useRef(null);
   const facebookCallbackHandledRef = useRef(false);
+  const languageInputRef = useRef(null);
 
   const isLocal = role === "local";
   const isBusiness = role === "business";
@@ -558,12 +599,31 @@ function RegisterScreen() {
     Keyboard.dismiss();
   }
 
-  function handleToggleLanguage(language) {
+  function handleLanguageQueryChange(value) {
+    setLanguageQuery(value);
+    const suggestions = getLanguageSuggestions(value, languages);
+    setLanguageSuggestions(suggestions);
+    setShowLanguageSuggestions(suggestions.length > 0);
+  }
+
+  function handleSelectLanguage(language) {
     setLanguages((current) =>
-      current.includes(language)
-        ? current.filter((item) => item !== language)
-        : [...current, language]
+      current.includes(language) ? current : [...current, language]
     );
+    setLanguageQuery("");
+    setLanguageSuggestions([]);
+    setShowLanguageSuggestions(false);
+    setTimeout(() => languageInputRef.current?.focus(), 0);
+  }
+
+  function handleRemoveLanguage(language) {
+    setLanguages((current) => {
+      const nextLanguages = current.filter((item) => item !== language);
+      const suggestions = getLanguageSuggestions(languageQuery, nextLanguages);
+      setLanguageSuggestions(suggestions);
+      setShowLanguageSuggestions(suggestions.length > 0);
+      return nextLanguages;
+    });
   }
 
   function townQuestion() {
@@ -713,7 +773,7 @@ function RegisterScreen() {
     if (!hasAcceptedAgreements) {
       Alert.alert(
         "Agreement needed",
-        "Please confirm you meet the age requirement and agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before creating your account."
+        "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before creating your account."
       );
       return;
     }
@@ -1180,12 +1240,75 @@ function RegisterScreen() {
           <Text style={[styles.label, { color: theme.text }]}>
             Languages spoken
           </Text>
-          <ChipGroup
-            options={LANGUAGE_OPTIONS}
-            values={languages}
-            onToggle={handleToggleLanguage}
-            theme={theme}
+          <TextInput
+            ref={languageInputRef}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            value={languageQuery}
+            onChangeText={handleLanguageQueryChange}
+            onFocus={() => {
+              const suggestions = getLanguageSuggestions(
+                languageQuery,
+                languages
+              );
+              setLanguageSuggestions(suggestions);
+              setShowLanguageSuggestions(suggestions.length > 0);
+            }}
+            placeholder="Start typing a language..."
+            placeholderTextColor={theme.textMuted}
           />
+          {showLanguageSuggestions ? (
+            <View
+              style={[
+                styles.originSuggestionsCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              {languageSuggestions.map((language) => (
+                <Pressable
+                  key={language}
+                  style={[
+                    styles.originSuggestionRow,
+                    { borderBottomColor: theme.border },
+                  ]}
+                  onPress={() => handleSelectLanguage(language)}
+                >
+                  <Text
+                    style={[styles.originSuggestionText, { color: theme.text }]}
+                  >
+                    {language}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {languages.length ? (
+            <View style={styles.chipRow}>
+              {languages.map((language) => (
+                <Pressable
+                  key={language}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: theme.accentSoft || theme.card,
+                      borderColor: theme.accent,
+                    },
+                  ]}
+                  onPress={() => handleRemoveLanguage(language)}
+                >
+                  <Text style={[styles.chipText, { color: theme.accent }]}>
+                    {language} x
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </>
       );
     }
@@ -1197,7 +1320,7 @@ function RegisterScreen() {
             Main interests
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Pick up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category. These show on your profile, help people find like-minded locals, and start your Hub with a matching category. You can change these at any time.
+            Pick optional interests you are comfortable showing on your profile. Choose up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category. These help people find like-minded locals and inclusive events. You can change them at any time.
           </Text>
           <InterestGroupList
             groups={PROFILE_INTEREST_GROUPS}
@@ -1529,11 +1652,10 @@ function RegisterScreen() {
                 I agree to Summit Scene's account terms
               </Text>
               <Text style={[styles.agreementText, { color: theme.textMuted }]}>
-                I confirm I am at least 18 years old, or the age of majority
-                where I live if higher. I agree to the Privacy Policy, Terms of
-                Use, Community Guidelines, and Safety reminders. I understand
-                that my public profile, posts, replies, and event activity may
-                be visible to other users.
+                I agree to the Privacy Policy, Terms of Use, Community
+                Guidelines, and Safety reminders. I understand that my public
+                profile, posts, replies, and event activity may be visible to
+                other users.
               </Text>
               {isBusiness ? (
                 <Text style={[styles.agreementText, { color: theme.textMuted }]}>

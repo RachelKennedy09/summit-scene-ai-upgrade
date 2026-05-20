@@ -635,9 +635,10 @@ export default function EditProfileScreen({ navigation }) {
                 Main interests (optional)
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Pick up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category.
-                These show on your profile and help your Hub start with events
-                you care about. You can change these at any time.
+                Pick optional interests you are comfortable showing on your
+                profile. Choose up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each
+                category. These help your Hub start with events you care about,
+                and you can change them at any time.
               </Text>
               <InterestGroupList
                 groups={PROFILE_INTEREST_GROUPS}
