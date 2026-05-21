@@ -36,7 +36,6 @@ import {
   EVENT_CATEGORIES,
   getEventCategoryGroups,
 } from "../../constants/eventCategories";
-import { buildBuddyPostFromEventSearch } from "../../utils/buddyPostPrefill";
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
@@ -50,11 +49,15 @@ const CATEGORY_GROUPS = getEventCategoryGroups({
 
 // Date filter options (relative ranges)
 const DATE_FILTERS = [
-  "All",
   "Today",
+  "Tomorrow",
   "Next 3 days",
   "Next 7 days",
   "Next 30 days",
+  "Next 90 days",
+  "Next 6 months",
+  "Next 12 months",
+  "All dates",
 ];
 const EVENTS_PAGE_SIZE = 20;
 const NEAR_ME_RADIUS_KM = 15;
@@ -81,7 +84,7 @@ export default function HubScreen() {
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTown, setSelectedTown] = useState("All");
-  const [selectedDateFilter, setSelectedDateFilter] = useState("All");
+  const [selectedDateFilter, setSelectedDateFilter] = useState("Next 7 days");
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
@@ -234,20 +237,10 @@ export default function HubScreen() {
     ];
   }, [events, isShowingInterestFirst, userInterestCategories]);
 
-  const handleCreateBuddyPostFromSearch = useCallback(() => {
-    navigation.navigate("CreateBuddyPost", {
-      eventBuddy: buildBuddyPostFromEventSearch({
-        category: selectedCategory,
-        town: selectedTown,
-        userTown: user?.town,
-      }),
-    });
-  }, [navigation, selectedCategory, selectedTown, user?.town]);
-
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
     setSelectedCategory("All");
-    setSelectedDateFilter("All");
+    setSelectedDateFilter("Next 7 days");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -259,29 +252,29 @@ export default function HubScreen() {
       isNearMeEnabled &&
       selectedCategory === "All" &&
       selectedTown === "All" &&
-      selectedDateFilter === "All"
+      selectedDateFilter === "All dates"
     ) {
-      return "No nearby events found right now. Try turning off Near me or choosing a town.";
+      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Community for local plans and intros.";
     }
 
     if (
       selectedCategory === "All" &&
       selectedTown === "All" &&
-      selectedDateFilter === "All"
+      selectedDateFilter === "All dates"
     ) {
-      return "No events available yet. Check back soon!";
+      return "No events available yet. Check back soon, or open Community for local plans, intros, groups, and town notices.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
-      return `No events found in ${selectedTown}. Try another town or check back later.`;
+      return `No events found in ${selectedTown}. Try another town, a wider date range, or Community.`;
     }
 
     if (selectedTown === "All" && selectedCategory !== "All") {
-      return `No ${selectedCategory} events found. Try another category or town.`;
+      return `No ${selectedCategory} events found. Try another category, a wider date range, or Community.`;
     }
 
-    if (selectedDateFilter !== "All") {
-      return `No events match your filters for ${selectedDateFilter.toLowerCase()}.`;
+    if (selectedDateFilter !== "All dates") {
+      return `No events match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Community.`;
     }
 
     return `No ${selectedCategory} events found in ${selectedTown}.`;
@@ -298,7 +291,7 @@ export default function HubScreen() {
         : ` ${selectedCategory.toLowerCase()}`;
 
     const dateLabel =
-      selectedDateFilter === "All"
+      selectedDateFilter === "All dates"
         ? ""
         : ` (${selectedDateFilter.toLowerCase()})`;
 
@@ -331,7 +324,7 @@ export default function HubScreen() {
   const hasActiveFilters =
     selectedTown !== "All" ||
     selectedCategory !== "All" ||
-    selectedDateFilter !== "All" ||
+    selectedDateFilter !== "Next 7 days" ||
     isNearMeEnabled;
 
   // Inital loading state (before there are any events)
@@ -497,9 +490,9 @@ export default function HubScreen() {
                     styles.emptyAction,
                     { backgroundColor: theme.accent },
                   ]}
-                  onPress={handleCreateBuddyPostFromSearch}
+                  onPress={() => navigation.navigate("Community")}
                 >
-                  <Text style={styles.emptyActionText}>Create Buddy Post</Text>
+                  <Text style={styles.emptyActionText}>Open Community</Text>
                 </Pressable>
               </View>
             </View>

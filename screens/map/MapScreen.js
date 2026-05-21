@@ -48,7 +48,6 @@ import {
   getEventCategoryFilterOptions,
   getEventCategoryGroups,
 } from "../../constants/eventCategories";
-import { buildBuddyPostFromEventSearch } from "../../utils/buddyPostPrefill";
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
@@ -62,13 +61,20 @@ const CATEGORY_GROUPS = getEventCategoryGroups({
 
 // Date filter options (relative ranges)
 const DATE_FILTERS = [
-  "All",
   "Today",
+  "Tomorrow",
   "Next 3 days",
   "Next 7 days",
   "Next 30 days",
+  "Next 90 days",
+  "Next 6 months",
+  "Next 12 months",
+  "All dates",
 ];
 const NEAR_ME_RADIUS_KM = 15;
+const MARKER_SPREAD_ENTER_LONGITUDE_DELTA = 0.032;
+const MARKER_SPREAD_EXIT_LONGITUDE_DELTA = 0.052;
+const MARKER_SPREAD_STEP = 0.00028;
 
 // Static coordinates for each town
 const TOWN_COORDS = {
@@ -151,6 +157,52 @@ function getMarkerGroupKey(marker) {
   return `${latitude},${longitude}`;
 }
 
+function getEventIdValue(event) {
+  return event?._id?.toString?.() || event?.id?.toString?.() || "";
+}
+
+function getSpreadOffset(index, total) {
+  if (total <= 1) {
+    return { latitude: 0, longitude: 0 };
+  }
+
+  const angle = (Math.PI * 2 * index) / total;
+  const ring = Math.floor(index / 8);
+  const distance = MARKER_SPREAD_STEP * (ring + 1);
+
+  return {
+    latitude: Math.sin(angle) * distance,
+    longitude: Math.cos(angle) * distance,
+  };
+}
+
+function buildSpreadMarkers(group) {
+  const events = group.events || [];
+
+  if (events.length <= 1) {
+    return [group];
+  }
+
+  return events.map((event, index) => {
+    const offset = getSpreadOffset(index, events.length);
+
+    return {
+      ...group,
+      id: `${group.id}-${event._id || index}`,
+      event,
+      events: [event],
+      markerCount: 1,
+      coordinate: {
+        latitude: group.coordinate.latitude + offset.latitude,
+        longitude: group.coordinate.longitude + offset.longitude,
+      },
+      scheduleLabel: "",
+      isSpreadMarker: true,
+      clusterCount: events.length,
+    };
+  });
+}
+
 function EventChoiceModal({
   visible,
   marker,
@@ -158,7 +210,11 @@ function EventChoiceModal({
   onClose,
   onSelectEvent,
 }) {
-  const events = marker?.events || [];
+  const events = [...(marker?.events || [])].sort((a, b) => {
+    const aDate = getNextOccurrenceDateString(a) || a?.date || "";
+    const bDate = getNextOccurrenceDateString(b) || b?.date || "";
+    return String(aDate).localeCompare(String(bDate));
+  });
 
   return (
     <Modal
@@ -178,7 +234,7 @@ function EventChoiceModal({
           <View style={styles.eventPickerHeader}>
             <View style={styles.eventPickerHeaderCopy}>
               <Text style={[styles.eventPickerTitle, { color: theme.text }]}>
-                {events.length} events here
+                {events.length} events at this location
               </Text>
               {marker?.locationLabel ? (
                 <Text
@@ -259,12 +315,13 @@ function EventChoiceModal({
   );
 }
 
-export default function MapScreen() {
+export default function MapScreen({ route }) {
   const navigation = useNavigation();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const mapRef = useRef(null);
+  const lastFocusedEventIdRef = useRef("");
   const { user } = useAuth();
   const { theme } = useTheme();
   const isBusiness =
@@ -276,13 +333,15 @@ export default function MapScreen() {
   // Filter state (shared wtih Hub): town, category, date range
   const [selectedTown, setSelectedTown] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedDateFilter, setSelectedDateFilter] = useState("All");
+  const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [showOnlyMyEvents, setShowOnlyMyEvents] = useState(false);
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
   const [nearMeMessage, setNearMeMessage] = useState("");
   const [mapActionMessage, setMapActionMessage] = useState("");
+  const [mapRegion, setMapRegion] = useState(INITIAL_REGION);
+  const [shouldSpreadMapMarkers, setShouldSpreadMapMarkers] = useState(false);
 
   // Data + status state
   const [events, setEvents] = useState([]);
@@ -290,6 +349,12 @@ export default function MapScreen() {
   const [error, setError] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   const [selectedEventGroup, setSelectedEventGroup] = useState(null);
+  const focusEventId =
+    route?.params?.focusEventId ||
+    route?.params?.eventId ||
+    getEventIdValue(route?.params?.event);
+  const focusEvent = route?.params?.event || null;
+  const focusRequestedAt = route?.params?.focusRequestedAt || "";
 
   // Fetch events (same helper as Hub, with sorting, for consistency)
   const loadEvents = useCallback(async () => {
@@ -354,14 +419,14 @@ export default function MapScreen() {
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
     setSelectedCategory("All");
-    setSelectedDateFilter("All");
+    setSelectedDateFilter("Today");
     setShowOnlyMyEvents(false);
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
     setSelectedMarkerId(null);
     setSelectedEventGroup(null);
-    setMapActionMessage("Filters cleared. Showing all events.");
+    setMapActionMessage("Filters cleared. Showing today's events.");
   }, []);
 
   useFocusEffect(
@@ -371,7 +436,7 @@ export default function MapScreen() {
   );
 
   // Filter events for map markers (same logic as Hub date filters)
-  // I compute a date range ( Today / Next 3 / Next 7 / Next 30 ) and then
+  // I compute a date range (Today / Tomorrow / Next 3 / Next 7 / Next 30) and then
   // I keep only events that match town + category + date.
   const eventsForMap = useMemo(() => {
     const now = new Date();
@@ -388,6 +453,11 @@ export default function MapScreen() {
       rangeStart = todayStart;
       rangeEnd = new Date(todayStart);
       rangeEnd.setDate(rangeEnd.getDate() + 1);
+    } else if (selectedDateFilter === "Tomorrow") {
+      rangeStart = new Date(todayStart);
+      rangeStart.setDate(rangeStart.getDate() + 1);
+      rangeEnd = new Date(todayStart);
+      rangeEnd.setDate(rangeEnd.getDate() + 2);
     } else if (selectedDateFilter === "Next 3 days") {
       rangeStart = todayStart;
       rangeEnd = new Date(todayStart);
@@ -400,6 +470,18 @@ export default function MapScreen() {
       rangeStart = todayStart;
       rangeEnd = new Date(todayStart);
       rangeEnd.setDate(rangeEnd.getDate() + 30);
+    } else if (selectedDateFilter === "Next 90 days") {
+      rangeStart = todayStart;
+      rangeEnd = new Date(todayStart);
+      rangeEnd.setDate(rangeEnd.getDate() + 90);
+    } else if (selectedDateFilter === "Next 6 months") {
+      rangeStart = todayStart;
+      rangeEnd = new Date(todayStart);
+      rangeEnd.setMonth(rangeEnd.getMonth() + 6);
+    } else if (selectedDateFilter === "Next 12 months") {
+      rangeStart = todayStart;
+      rangeEnd = new Date(todayStart);
+      rangeEnd.setFullYear(rangeEnd.getFullYear() + 1);
     }
 
     return events.filter((event) => {
@@ -430,7 +512,7 @@ export default function MapScreen() {
       let dateMatch = true;
       const effectiveDate = getNextOccurrenceDateString(event) || event.date;
 
-      if (selectedDateFilter !== "All") {
+      if (selectedDateFilter !== "All dates") {
         if (!effectiveDate || typeof effectiveDate !== "string") {
           dateMatch = false;
         } else {
@@ -518,12 +600,84 @@ export default function MapScreen() {
       existing.events.push(marker.event);
       existing.markerCount = existing.events.length;
       existing.event = existing.events[0];
-      existing.scheduleLabel = `${existing.events.length} events at this location`;
+      existing.scheduleLabel = "";
       existing.locationLabel = existing.locationLabel || marker.locationLabel;
     });
 
     return Array.from(groups.values());
   }, [markersForMap]);
+
+  const markersForVisibleZoom = useMemo(() => {
+    if (!shouldSpreadMapMarkers) {
+      return groupedMarkersForMap;
+    }
+
+    return groupedMarkersForMap.flatMap((marker) => buildSpreadMarkers(marker));
+  }, [groupedMarkersForMap, shouldSpreadMapMarkers]);
+
+  useEffect(() => {
+    if (!focusEventId) return;
+
+    if (focusEvent?.town) {
+      setSelectedTown(focusEvent.town);
+    }
+    setSelectedCategory("All");
+    setSelectedDateFilter("All dates");
+    setShowOnlyMyEvents(false);
+    setIsNearMeEnabled(false);
+    setNearMeLocation(null);
+    setNearMeMessage("");
+    setSelectedEventGroup(null);
+    setShouldSpreadMapMarkers(true);
+    lastFocusedEventIdRef.current = "";
+  }, [focusEventId, focusEvent?.town, focusRequestedAt]);
+
+  useEffect(() => {
+    if (!focusEventId || loading || error || !mapRef.current) return;
+    if (lastFocusedEventIdRef.current === focusEventId) return;
+
+    const matchingMarker = markersForVisibleZoom.find((marker) =>
+      (marker.events || [marker.event]).some(
+        (event) => getEventIdValue(event) === focusEventId
+      )
+    );
+
+    if (!matchingMarker) return;
+
+    lastFocusedEventIdRef.current = focusEventId;
+    setSelectedMarkerId(matchingMarker.id);
+    mapRef.current.animateToRegion(
+      {
+        latitude: matchingMarker.coordinate.latitude,
+        longitude: matchingMarker.coordinate.longitude,
+        latitudeDelta: 0.018,
+        longitudeDelta: 0.018,
+      },
+      500
+    );
+    setMapActionMessage("Showing this event on the Summit Scene map.");
+  }, [focusEventId, focusRequestedAt, loading, error, markersForVisibleZoom]);
+
+  function handleMapRegionChangeComplete(nextRegion) {
+    setMapRegion(nextRegion);
+
+    const longitudeDelta = Number(nextRegion?.longitudeDelta);
+    if (!Number.isFinite(longitudeDelta)) return;
+
+    setShouldSpreadMapMarkers((current) => {
+      if (!current && longitudeDelta <= MARKER_SPREAD_ENTER_LONGITUDE_DELTA) {
+        setSelectedMarkerId(null);
+        return true;
+      }
+
+      if (current && longitudeDelta >= MARKER_SPREAD_EXIT_LONGITUDE_DELTA) {
+        setSelectedMarkerId(null);
+        return false;
+      }
+
+      return current;
+    });
+  }
 
   // Human-readable summary line under the filters (e.g. "Showing 3 events in Banff ...")
   const filterSummary = useMemo(() => {
@@ -536,7 +690,7 @@ export default function MapScreen() {
         : ` ${selectedCategory.toLowerCase()}`;
 
     const dateLabel =
-      selectedDateFilter === "All"
+      selectedDateFilter === "All dates"
         ? ""
         : ` (${selectedDateFilter.toLowerCase()})`;
 
@@ -573,6 +727,7 @@ export default function MapScreen() {
   // Keep the camera aligned with the actual filtered markers.
   useEffect(() => {
     if (!mapRef.current || loading || error) return;
+    if (focusEventId) return;
 
     if (isNearMeEnabled && nearMeLocation && groupedMarkersForMap.length === 0) {
       mapRef.current.animateToRegion(
@@ -634,7 +789,7 @@ export default function MapScreen() {
         animated: true,
       }
     );
-  }, [selectedTown, groupedMarkersForMap, loading, error, isNearMeEnabled, nearMeLocation]);
+  }, [selectedTown, groupedMarkersForMap, loading, error, isNearMeEnabled, nearMeLocation, focusEventId]);
 
   // Navigate to EventDetail when a marker is pressed.
   function handleEventPress(event) {
@@ -656,16 +811,6 @@ export default function MapScreen() {
     handleEventPress(groupedEvents[0] || marker.event || marker);
   }
 
-  const handleCreateBuddyPostFromSearch = useCallback(() => {
-    navigation.navigate("CreateBuddyPost", {
-      eventBuddy: buildBuddyPostFromEventSearch({
-        category: selectedCategory,
-        town: selectedTown,
-        userTown: user?.town,
-      }),
-    });
-  }, [navigation, selectedCategory, selectedTown, user?.town]);
-
   const handleCreateBusinessEvent = useCallback(() => {
     navigation.navigate("Post");
   }, [navigation]);
@@ -675,7 +820,7 @@ export default function MapScreen() {
   const hasActiveFilters =
     selectedTown !== "All" ||
     selectedCategory !== "All" ||
-    selectedDateFilter !== "All" ||
+    selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
     showOnlyMyEvents;
   const mapHeight = Math.max(
@@ -806,10 +951,11 @@ export default function MapScreen() {
               <EventMap
                 ref={mapRef}
                 theme={theme}
-                markers={groupedMarkersForMap}
+                markers={markersForVisibleZoom}
                 selectedMarkerId={selectedMarkerId}
                 onSelectMarker={setSelectedMarkerId}
                 onPressMarker={handleMarkerPress}
+                onRegionChangeComplete={handleMapRegionChangeComplete}
                 isNearMeEnabled={isNearMeEnabled}
               />
             )}
@@ -832,28 +978,77 @@ export default function MapScreen() {
                 <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                   {isBusinessMyEventsEmpty
                     ? "Your business events do not match these filters. You can post a new official event."
-                    : "No events match this town + date range. Try another filter combo."}
+                    : selectedDateFilter === "Today"
+                      ? "No events on the map today. Try upcoming dates, browse all dates, or check the Community tab for local plans and intros."
+                      : "No events match this town + date range. Try another date range or check the Community tab for local plans and intros."}
                 </Text>
-                <View style={styles.emptyActions}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.emptyAction,
-                      { backgroundColor: theme.accent },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={
-                      isBusinessMyEventsEmpty
-                        ? handleCreateBusinessEvent
-                        : handleCreateBuddyPostFromSearch
-                    }
-                  >
-                    <Text style={styles.emptyActionText}>
-                      {isBusinessMyEventsEmpty
-                        ? "Post Event"
-                        : "Create Buddy Post"}
-                    </Text>
-                  </Pressable>
-                </View>
+                {isBusinessMyEventsEmpty ? (
+                  <View style={styles.emptyActions}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.emptyAction,
+                        { backgroundColor: theme.accent },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={handleCreateBusinessEvent}
+                    >
+                      <Text style={styles.emptyActionText}>Post Event</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.emptyActions}>
+                    {["Next 7 days", "Next 30 days", "All dates"].map((label) => (
+                      <Pressable
+                        key={label}
+                        style={({ pressed }) => [
+                          styles.emptyAction,
+                          {
+                            backgroundColor:
+                              label === "All dates" ? theme.card : theme.accent,
+                            borderColor:
+                              label === "All dates" ? theme.accent : theme.accent,
+                          },
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => setSelectedDateFilter(label)}
+                      >
+                        <Text
+                          style={[
+                            styles.emptyActionText,
+                            {
+                              color:
+                                label === "All dates"
+                                  ? theme.accent
+                                  : theme.onAccent || "#FFFFFF",
+                            },
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.emptyAction,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: theme.border,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => navigation.navigate("Community")}
+                    >
+                      <Text
+                        style={[
+                          styles.emptyActionText,
+                          { color: theme.text },
+                        ]}
+                      >
+                        Open Community
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -1016,6 +1211,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   emptyAction: {
+    borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 10,

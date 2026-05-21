@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, Image, Pressable, Linking } from "react-native";
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
@@ -71,6 +71,8 @@ function Section({ label, children, theme }) {
   );
 }
 
+const INTEREST_PREVIEW_COUNT = 4;
+
 export default function ProfileCard({
   theme,
   user,
@@ -80,6 +82,7 @@ export default function ProfileCard({
   joinedText,
   onEditProfile,
 }) {
+  const [showAllInterests, setShowAllInterests] = useState(false);
   const avatarSource =
     user?.avatarKey && AVATARS[user.avatarKey]
       ? AVATARS[user.avatarKey]
@@ -110,6 +113,11 @@ export default function ProfileCard({
     email ? `Email: ${email}` : "",
     joinedText ? `Member since: ${joinedText}` : "",
   ].filter(Boolean);
+  const hasManyInterests = interests.length > INTEREST_PREVIEW_COUNT;
+  const visibleInterests =
+    hasManyInterests && !showAllInterests
+      ? interests.slice(0, INTEREST_PREVIEW_COUNT)
+      : interests;
 
   return (
     <View
@@ -173,10 +181,36 @@ export default function ProfileCard({
 
       {interests.length ? (
         <Section label="Interests" theme={theme}>
+          {hasManyInterests ? (
+            <Pressable
+              style={styles.sectionToggleRow}
+              onPress={() => setShowAllInterests((current) => !current)}
+            >
+              <Text style={[styles.sectionToggleText, { color: theme.text }]}>
+                {interests.length} selected
+              </Text>
+              <Text style={[styles.sectionToggleAction, { color: theme.accent }]}>
+                {showAllInterests ? "Show less" : "Show all"}
+              </Text>
+            </Pressable>
+          ) : null}
           <View style={styles.chipRow}>
-            {interests.map((interest) => (
+            {visibleInterests.map((interest) => (
               <Chip key={interest} label={interest} theme={theme} />
             ))}
+            {hasManyInterests && !showAllInterests ? (
+              <Pressable
+                style={[
+                  styles.moreChip,
+                  { borderColor: theme.accent, backgroundColor: theme.card },
+                ]}
+                onPress={() => setShowAllInterests(true)}
+              >
+                <Text style={[styles.moreChipText, { color: theme.accent }]}>
+                  +{interests.length - INTEREST_PREVIEW_COUNT} more
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </Section>
       ) : null}
@@ -283,6 +317,21 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: "uppercase",
   },
+  sectionToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  sectionToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sectionToggleAction: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   value: {
     fontSize: 14,
     lineHeight: 20,
@@ -305,6 +354,16 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  moreChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  moreChipText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   socialRow: {
     marginBottom: 8,

@@ -34,6 +34,7 @@ describe("SummitScene API", function () {
       email: testEmail,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
       userType: "seasonal",
       originallyFrom: "Melbourne",
@@ -72,6 +73,7 @@ describe("SummitScene API", function () {
       email: `duplicate_name_${testRunId}@example.com`,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
 
@@ -85,11 +87,39 @@ describe("SummitScene API", function () {
       email: testEmail.toUpperCase(),
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
 
     expect(res.status).to.equal(409);
     expect(res.body.message).to.match(/email is already registered/i);
+  });
+
+  it("should reject weak passwords at /api/auth/register", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Weak Password ${testRunId}`,
+      email: `weak_password_${testRunId}@example.com`,
+      password: "password1",
+      role: "local",
+      acceptedAgeTerms: true,
+      town: "Banff",
+    });
+
+    expect(res.status).to.equal(400);
+    expect(res.body.message).to.match(/at least 10 characters/i);
+  });
+
+  it("should require 18+ agreement at /api/auth/register", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Missing Age Agreement ${testRunId}`,
+      email: `missing_age_${testRunId}@example.com`,
+      password: testPassword,
+      role: "local",
+      town: "Banff",
+    });
+
+    expect(res.status).to.equal(400);
+    expect(res.body.message).to.match(/at least 18/i);
   });
 
   it("should report email availability before signup continues", async () => {
@@ -131,6 +161,7 @@ describe("SummitScene API", function () {
       email: resetEmail,
       password: resetPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
 
@@ -172,6 +203,7 @@ describe("SummitScene API", function () {
       email: changeEmail,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
 
@@ -301,6 +333,7 @@ describe("SummitScene API", function () {
       email: deleteEmail,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
 
@@ -418,6 +451,7 @@ describe("SummitScene API", function () {
       email: blockerEmail,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Banff",
     });
     const blockedRegister = await request(app).post("/api/auth/register").send({
@@ -425,6 +459,7 @@ describe("SummitScene API", function () {
       email: blockedEmail,
       password: testPassword,
       role: "local",
+      acceptedAgeTerms: true,
       town: "Canmore",
     });
 
@@ -463,6 +498,7 @@ describe("SummitScene API", function () {
       email: businessEmail,
       password: testPassword,
       role: "business",
+      acceptedAgeTerms: true,
       town: "Banff",
       lookingFor: "Live music venue",
       website: "https://example.com",
@@ -829,8 +865,8 @@ describe("SummitScene API", function () {
     expect(newInTownRes.body).to.include({
       type: "general",
       communityType: "new-in-town",
-      category: "Cultural Events",
     });
+    expect(newInTownRes.body).to.not.have.property("category");
 
     const newInTownListRes = await request(app)
       .get("/api/buddy-posts?communityType=new-in-town")

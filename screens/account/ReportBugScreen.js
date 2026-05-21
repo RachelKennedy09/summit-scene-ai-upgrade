@@ -60,12 +60,12 @@ export default function ReportBugScreen() {
 
     const subject = encodeURIComponent(`Summit Scene ${issueType}: ${title.trim()}`);
     const encodedBody = encodeURIComponent(body);
-    const url = `mailto:summitscene@outlook.com?subject=${subject}&body=${encodedBody}`;
+    const url = `mailto:hello@summitscene.ca?subject=${subject}&body=${encodedBody}`;
 
     Linking.openURL(url).catch(() => {
       Alert.alert(
         "Could not open email",
-        "Please email summitscene@outlook.com with what happened."
+        "Please email hello@summitscene.ca with what happened."
       );
     });
   }

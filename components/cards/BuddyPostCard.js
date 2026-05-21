@@ -178,9 +178,9 @@ function getCommunityTypeLabel(value) {
     case "group":
       return "Group";
     case "notice":
-      return "Local Notice";
+      return "Town Notice";
     case "update":
-      return "Community Update";
+      return "Town Notice";
     case "local-plan":
     default:
       return "Plan";
@@ -188,6 +188,11 @@ function getCommunityTypeLabel(value) {
 }
 
 function getActivityLabel(post) {
+  if (post.communityType === "new-in-town") return "";
+  if (post.communityType === "notice") return "Town Notice";
+  if (post.communityType === "update") return "Town Notice";
+  if (post.communityType === "group" && !post.category) return "Group";
+
   const type = titleCase(post.type);
   const category = post.category || "";
 
@@ -209,6 +214,10 @@ function getGroupSizeLabel(value) {
     default:
       return "";
   }
+}
+
+function shouldShowGroupSize(post) {
+  return post.communityType === "local-plan" || post.communityType === "group";
 }
 
 function splitActivityText(value) {
@@ -304,7 +313,9 @@ export default function BuddyPostCard({
   const activityLabel = getActivityLabel(post);
   const townLabel = post.town || author.town || "";
   const skillLabel = hasSkill ? titleCase(post.skillLevel) : "";
-  const groupSizeLabel = getGroupSizeLabel(post.groupSizePreference);
+  const groupSizeLabel = shouldShowGroupSize(post)
+    ? getGroupSizeLabel(post.groupSizePreference)
+    : "";
   const planText = splitActivityText(post.activityText);
   const linkedEvent =
     post.eventId && typeof post.eventId === "object" ? post.eventId : null;

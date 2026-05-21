@@ -573,6 +573,20 @@ export default function EventDetailScreen({ route }) {
     );
   };
 
+  const handleOpenSummitSceneMap = () => {
+    if (!eventId) return;
+
+    navigation.navigate("tabs", {
+      screen: "Map",
+      params: {
+        focusEventId: eventId,
+        event,
+        focusRequestedAt: Date.now(),
+      },
+      merge: true,
+    });
+  };
+
   // Defensive fallback if the screen is opened without an event.
   // Keep this below hooks so React hook order stays consistent.
   if (!event) {
@@ -816,19 +830,34 @@ export default function EventDetailScreen({ route }) {
                   </Text>
                 ) : null}
 
-                <Pressable
-                  style={[
-                    styles.mapButton,
-                    {
-                      borderColor: theme.accent,
-                    },
-                  ]}
-                  onPress={handleOpenMaps}
-                >
-                  <Text style={[styles.mapButtonText, { color: theme.accent }]}>
-                    Open in Maps
-                  </Text>
-                </Pressable>
+                <View style={styles.mapButtonRow}>
+                  <Pressable
+                    style={[
+                      styles.mapButton,
+                      {
+                        borderColor: theme.accent,
+                      },
+                    ]}
+                    onPress={handleOpenSummitSceneMap}
+                  >
+                    <Text style={[styles.mapButtonText, { color: theme.accent }]}>
+                      Open in Summit Scene Map
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.mapButton,
+                      {
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    onPress={handleOpenMaps}
+                  >
+                    <Text style={[styles.mapButtonText, { color: theme.text }]}>
+                      Open in Maps
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null}
 
@@ -1425,6 +1454,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 8,
+  },
+  mapButtonRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   mapButton: {
     alignSelf: "flex-start",

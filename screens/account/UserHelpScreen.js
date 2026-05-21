@@ -38,7 +38,7 @@ export default function UserHelpScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Help"
+      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Help"
     );
   }
 
@@ -53,7 +53,9 @@ export default function UserHelpScreen() {
         <HelpSection title="How to use the app" theme={theme}>
           <HelpText theme={theme}>
             Use Hub to browse events, Map to see what is nearby, and Community to
-            find people for plans, hikes, groups, and local meetups.
+            find people for plans, welcome newcomers, create or find groups, and
+            share community notices like gear swaps, garage sales, road blocks,
+            ride shares, and local updates.
           </HelpText>
           <HelpText theme={theme}>
             On an event page, tap I'm Going to save your attendance, or Find
@@ -63,9 +65,11 @@ export default function UserHelpScreen() {
 
         <HelpSection title="Community posts" theme={theme}>
           <HelpText theme={theme}>
-            Local Plans are for specific plans like open mic, walks, hikes, or
-            coffee before an event. New in Town is for newcomers. Groups are for
-            repeatable interests like book club, trivia, hiking, or art nights.
+            Local Plans are for specific meetups or plans before an event. New in
+            Town is for newcomers. Groups are for repeatable interests like book
+            club, trivia, outdoor days, or art nights. Town Notices are for gear
+            swaps, garage sales, road blocks, ride shares, lost and found, and
+            practical local updates.
           </HelpText>
         </HelpSection>
 
@@ -80,8 +84,33 @@ export default function UserHelpScreen() {
         <HelpSection title="FAQ" theme={theme}>
           <Question
             theme={theme}
+            question="Why do I need to verify my email?"
+            answer="Email verification helps protect accounts and keeps password resets, login changes, and safety messages connected to the right person."
+          />
+          <Question
+            theme={theme}
+            question="Why does the map sometimes show fewer events?"
+            answer="The map follows your date and category filters. Change the date range or clear filters if you want to see more events."
+          />
+          <Question
+            theme={theme}
+            question="What is the difference between Local Plans, New in Town, Groups, and Town Notices?"
+            answer="Local Plans are for specific meetups, New in Town is for introductions, Groups are for repeat interests, and Town Notices are for practical local updates like gear swaps, garage sales, road blocks, ride shares, and lost and found."
+          />
+          <Question
+            theme={theme}
             question="Do I need to message people outside the app?"
-            answer="For launch, replies and interest buttons help you connect inside Summit Scene. Social links can add trust when someone chooses to share them."
+            answer="Replies and interest buttons help you connect inside Summit Scene. Social links can add trust when someone chooses to share them."
+          />
+          <Question
+            theme={theme}
+            question="What happens when I block someone?"
+            answer="Blocked people are hidden from your posts, replies, profiles, attendee lists, and community areas where possible."
+          />
+          <Question
+            theme={theme}
+            question="When should I report something?"
+            answer="Report posts, events, replies, or profiles that feel unsafe, misleading, abusive, spammy, or not connected to the local community."
           />
           <Question
             theme={theme}
@@ -92,6 +121,11 @@ export default function UserHelpScreen() {
             theme={theme}
             question="Can I create business events from a user account?"
             answer="No. Business and organizer accounts are separate and must be created as business accounts during signup."
+          />
+          <Question
+            theme={theme}
+            question="Can I delete my account?"
+            answer="Yes. Go to Account and choose Delete Account. This removes your profile and associated app activity where the app can safely remove it."
           />
         </HelpSection>
 

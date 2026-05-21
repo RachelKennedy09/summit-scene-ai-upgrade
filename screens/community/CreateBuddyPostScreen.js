@@ -64,19 +64,14 @@ const COMMUNITY_TYPES = [
     helper: "Seasonal workers, visitors, newcomers, and locals open to meeting people.",
   },
   {
-    label: "Group",
+    label: "Groups",
     value: "group",
     helper: "Repeatable interest groups like book club, hiking, trivia, or art nights.",
   },
   {
-    label: "Local Notice",
+    label: "Town Notices",
     value: "notice",
-    helper: "Garage sales, gear swaps, lost and found, free stuff, or practical town notices.",
-  },
-  {
-    label: "Community Update",
-    value: "update",
-    helper: "Useful local updates, volunteer callouts, notices, and safety notes.",
+    helper: "Garage sales, gear swaps, ride shares, road blocks, lost and found, free stuff, or practical town notices.",
   },
 ];
 const SKILL_LEVELS = [
@@ -125,6 +120,7 @@ const COMMUNITY_FORM_COPY = {
   "local-plan": {
     title: "Make a Plan",
     subtitle: "Share a plan people can join, like coffee before open mic, a walk, or an event buddy post.",
+    showCategory: true,
     categoryLabel: "Category",
     categoryRequired: true,
     detailsLabel: "Plan",
@@ -142,10 +138,11 @@ const COMMUNITY_FORM_COPY = {
   "new-in-town": {
     title: "New in Town",
     subtitle: "Introduce yourself and make it easy for people nearby to say hello.",
-    categoryLabel: "Main interest",
+    showCategory: false,
+    categoryLabel: "",
     categoryRequired: false,
-    detailsLabel: "Intro",
-    detailsPlaceholder: "New here? Share where you are based, what you like doing, and who you would like to meet.",
+    detailsLabel: "Say hello",
+    detailsPlaceholder: "Share where you are based, what you like doing, and who you would like to meet.",
     townLabel: "Where are you based?",
     dateLabel: "",
     timeLabel: "",
@@ -153,14 +150,15 @@ const COMMUNITY_FORM_COPY = {
     showSchedule: false,
     showGroupSize: false,
     submitLabel: "Share Intro",
-    defaultCategory: "Other",
+    defaultCategory: "",
     defaultType: "general",
   },
   group: {
     title: "Start a Group",
     subtitle: "Create a repeatable interest group like book club, trivia team, hiking crew, or art night.",
-    categoryLabel: "Group category",
-    categoryRequired: true,
+    showCategory: true,
+    categoryLabel: "Group focus",
+    categoryRequired: false,
     detailsLabel: "Group idea",
     detailsPlaceholder: "What is the group, who is it for, and how often do you want to meet?",
     townLabel: "Home base",
@@ -174,10 +172,11 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "general",
   },
   notice: {
-    title: "Share Local Notice",
-    subtitle: "Post a useful notice like a garage sale, gear swap, lost and found, or free stuff.",
-    categoryLabel: "Notice type",
-    categoryRequired: true,
+    title: "Share Town Notice",
+    subtitle: "Post a useful notice like a garage sale, gear swap, lost and found, free stuff, or a practical town heads-up.",
+    showCategory: false,
+    categoryLabel: "",
+    categoryRequired: false,
     detailsLabel: "Notice",
     detailsPlaceholder: "What are you sharing? Add the location area, timing, and what people should know.",
     townLabel: "Applies to",
@@ -189,23 +188,6 @@ const COMMUNITY_FORM_COPY = {
     submitLabel: "Share Notice",
     defaultCategory: "",
     defaultType: "notice",
-  },
-  update: {
-    title: "Share Community Update",
-    subtitle: "Post a volunteer callout, safety note, or practical heads-up.",
-    categoryLabel: "Topic",
-    categoryRequired: false,
-    detailsLabel: "Update",
-    detailsPlaceholder: "What should locals know? Keep it useful and specific.",
-    townLabel: "Applies to",
-    dateLabel: "Relevant date",
-    timeLabel: "Time",
-    showDateTime: true,
-    showSchedule: false,
-    showGroupSize: false,
-    submitLabel: "Share Update",
-    defaultCategory: "Community Gatherings",
-    defaultType: "general",
   },
 };
 
@@ -383,9 +365,12 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
 
   const formCopy =
     COMMUNITY_FORM_COPY[communityType] || COMMUNITY_FORM_COPY["local-plan"];
-  const effectiveCategory = category || formCopy.defaultCategory;
+  const shouldShowCategory = formCopy.showCategory !== false;
+  const effectiveCategory = shouldShowCategory
+    ? category || formCopy.defaultCategory
+    : "";
   const effectiveType =
-    (category ? getBuddyTypeForEventCategory(category) : type) ||
+    (effectiveCategory ? getBuddyTypeForEventCategory(effectiveCategory) : type) ||
     formCopy.defaultType;
   const hasLinkedEvent = Boolean(getEventId(linkedEvent));
   const canLinkEvent = communityType === "local-plan";
@@ -395,10 +380,10 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     (SKILL_TYPES.has(effectiveType) || SKILL_CATEGORIES.has(effectiveCategory));
   const selectedActivityLabel = useMemo(
     () =>
-      category ||
+      effectiveCategory ||
       BUDDY_TYPES.find((option) => option.value === type)?.label ||
       "",
-    [category, type]
+    [effectiveCategory, type]
   );
   const filteredEventOptions = useMemo(() => {
     const query = eventSearch.trim().toLowerCase();
@@ -430,7 +415,12 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       setLinkedEvent(null);
     }
 
-    if (!category && formCopy.defaultCategory) {
+    if (!shouldShowCategory && category) {
+      setCategory("");
+      setType(formCopy.defaultType);
+    }
+
+    if (shouldShowCategory && !category && formCopy.defaultCategory) {
       setType(formCopy.defaultType);
     }
 
@@ -447,6 +437,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     category,
     formCopy.defaultCategory,
     formCopy.defaultType,
+    shouldShowCategory,
     formCopy.showGroupSize,
     canLinkEvent,
     canShowSchedule,
@@ -551,7 +542,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   async function handleSubmit() {
     const trimmedActivityText = activityText.trim();
 
-    if (formCopy.categoryRequired && !category) {
+    if (shouldShowCategory && formCopy.categoryRequired && !category) {
       Alert.alert("Missing category", "Please choose a category.");
       return;
     }
@@ -592,7 +583,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       await createBuddyPost(
         {
           type: effectiveType,
-          category: effectiveCategory || undefined,
+          category: shouldShowCategory ? effectiveCategory || undefined : undefined,
           communityType,
           activityText: trimmedActivityText,
           date: formatDateForApi(dateObj),
@@ -783,32 +774,36 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             }
           </Text>
 
-          <Text style={[styles.label, { color: theme.textMuted }]}>
-            {formCopy.categoryLabel}
-            {formCopy.categoryRequired ? " (Required)" : " (Optional)"}
-          </Text>
-          <Pressable
-            style={[
-              styles.selectButton,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-            onPress={() => setShowCategoryPicker(true)}
-          >
-            <Text
-              style={[
-                styles.selectText,
-                { color: category ? theme.text : theme.textMuted },
-              ]}
-            >
-              {category ||
-                (formCopy.categoryRequired
-                  ? "Choose a category"
-                  : "Choose a category if helpful")}
-            </Text>
-          </Pressable>
+          {shouldShowCategory ? (
+            <>
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                {formCopy.categoryLabel}
+                {formCopy.categoryRequired ? " (Required)" : " (Optional)"}
+              </Text>
+              <Pressable
+                style={[
+                  styles.selectButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => setShowCategoryPicker(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectText,
+                    { color: category ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {category ||
+                    (formCopy.categoryRequired
+                      ? "Choose a category"
+                      : "Choose a focus if helpful")}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
 
           <Text style={[styles.label, { color: theme.textMuted }]}>
             {formCopy.detailsLabel} (Required)
@@ -1065,7 +1060,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         />
 
         <GroupedCategoryModal
-          visible={showCategoryPicker}
+          visible={showCategoryPicker && shouldShowCategory}
           title="Choose category"
           groups={CATEGORY_GROUPS}
           selectedValue={category}

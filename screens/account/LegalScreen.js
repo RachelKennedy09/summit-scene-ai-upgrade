@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "May 20, 2026";
+const LAST_UPDATED = "May 21, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -84,7 +84,7 @@ export default function LegalScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Privacy%20or%20Legal%20Question"
+      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Privacy%20or%20Legal%20Question"
     ).catch(() => {});
   }
 
@@ -98,10 +98,9 @@ export default function LegalScreen() {
 
         <LegalSection title="Important Note" theme={theme}>
           <LegalText theme={theme}>
-            This screen is a practical policy draft for Summit Scene testing and
-            launch preparation. It is not legal advice. Have a qualified lawyer
-            review the final public policy, terms, and store listing before a
-            production launch.
+            This screen summarizes Summit Scene's privacy policy, terms,
+            community guidelines, safety notes, support information, and account
+            deletion process. It is not legal advice.
           </LegalText>
         </LegalSection>
 
@@ -120,7 +119,8 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Public content: event posts, community posts, buddy posts, replies,
             profile information you choose to share, likes, interests, and
-            attendance choices.
+            attendance choices, saved event choices, and business information
+            you choose to share.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Optional profile choices, including community interests, languages,
@@ -138,14 +138,21 @@ export default function LegalScreen() {
             actions are used to operate safety and moderation tools.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Technical and support data: device or app diagnostics, request logs,
+            server errors, support emails, bug reports, and security-related
+            records may be used to support, debug, protect, and improve the app.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Account recovery data: email verification, password reset, and email
             change confirmation tokens may be created for account security. These
-            tokens are temporary and are not intended to be reusable.
+            tokens are temporary and are stored in protected form where
+            applicable.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Service providers: data may be processed by hosting, database,
-            address lookup, social login, and AI description generation
-            providers when those features are used.
+            address lookup or geocoding, authentication, social login,
+            analytics, support, and app operations providers when those features
+            are used.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Deletion: users can delete their account in Account. Deletion
@@ -153,6 +160,39 @@ export default function LegalScreen() {
             retention is required for security, abuse prevention, or legal
             compliance.
           </LegalBullet>
+        </LegalSection>
+
+        <LegalSection title="How We Use Information" theme={theme}>
+          <LegalBullet theme={theme}>
+            To provide accounts, profiles, events, community posts, maps,
+            replies, saved events, attendance, reminders, and plan features.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            To review business and organizer accounts and manage event posting
+            access.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            To respond to reports, blocks, moderation issues, support requests,
+            bug reports, and account recovery requests.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            To improve app safety, reliability, performance, and compliance with
+            legal, safety, and platform review obligations.
+          </LegalBullet>
+        </LegalSection>
+
+        <LegalSection title="Public Content" theme={theme}>
+          <LegalText theme={theme}>
+            Profiles, events, community posts, replies, business information,
+            attendance signals, and similar content may be visible to other
+            users. Do not post private information you do not want others to see.
+          </LegalText>
+          <LegalText theme={theme}>
+            Optional profile choices, including community interests, languages,
+            social links, or LGBTQ+ related interests, may reveal personal or
+            sensitive information. Only add details you are comfortable sharing
+            with other users.
+          </LegalText>
         </LegalSection>
 
         <LegalSection title="Security Safeguards" theme={theme}>
@@ -170,8 +210,16 @@ export default function LegalScreen() {
             invalidate older sessions.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Email verification, password reset, and email change tokens are
+            temporary and are not intended to be reusable.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Database access and admin tools should be limited to people who need
             access to operate, secure, support, or moderate Summit Scene.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Summit Scene uses service providers that offer security controls for
+            hosting, database storage, email delivery, and app operations.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Users should use a strong unique password, keep their email account
@@ -210,7 +258,37 @@ export default function LegalScreen() {
           </LegalText>
         </LegalSection>
 
+        <LegalSection title="Account & Data Deletion" theme={theme}>
+          <LegalText theme={theme}>
+            Users can delete their account from Account in the app. This is the
+            fastest way to request deletion from inside Summit Scene.
+          </LegalText>
+          <LegalText theme={theme}>
+            Users can also request deletion by emailing hello@summitscene.ca
+            with the subject line "Delete my Summit Scene account" and the email
+            address connected to the account.
+          </LegalText>
+          <LegalBullet theme={theme}>
+            Deletion removes the account profile and login-associated app data.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Public content, saved events, interest signals, and app preferences
+            are removed where technically and operationally possible.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Some information may be retained for a limited time when needed for
+            security, abuse prevention, dispute handling, backups, legal
+            compliance, or platform review requirements.
+          </LegalBullet>
+        </LegalSection>
+
         <LegalSection title="Terms of Use" theme={theme}>
+          <LegalBullet theme={theme}>
+            Users must be at least 18 years old to create an account. Summit
+            Scene may show events at adults-only venues, including bars, and
+            users are responsible for following venue, alcohol, identification,
+            and local age rules.
+          </LegalBullet>
           <LegalBullet theme={theme}>
             Users must provide accurate account information and must not pretend
             to represent a business or organization they are not authorized to
@@ -220,6 +298,10 @@ export default function LegalScreen() {
             Users are responsible for the content they post and must not post
             harassment, scams, unsafe instructions, illegal content, misleading
             event details, spam, or content that violates another person's rights.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Users must not post official business, venue, or organizer content
+            unless they are authorized to do so.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Summit Scene can remove content, restrict accounts, reject business
@@ -234,6 +316,16 @@ export default function LegalScreen() {
         </LegalSection>
 
         <LegalSection title="Community Guidelines" theme={theme}>
+          <LegalText theme={theme}>
+            Summit Scene is for local events, plans, introductions, groups, town
+            notices, and community discovery around Banff, Canmore, Lake Louise,
+            and nearby areas.
+          </LegalText>
+          <LegalText theme={theme}>
+            LGBTQ+ people, newcomers, locals, visitors, and allies should be
+            able to use Summit Scene without harassment, outing, slurs, or
+            identity-based targeting.
+          </LegalText>
           <LegalBullet theme={theme}>
             Meet in public places, use good judgment, and do not share sensitive
             personal information in public posts or replies.
@@ -243,12 +335,52 @@ export default function LegalScreen() {
             Canmore, Lake Louise, or nearby Bow Valley activity.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Do not post harassment, hate, threats, bullying, unwanted sexual
+            content, scams, spam, misleading event details, fake business
+            listings, impersonation, illegal activity, unsafe instructions,
+            content encouraging harm, private personal information without
+            permission, or repeated off-topic content.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Use Report or Block if something feels unsafe, misleading, abusive,
-            or suspicious.
+            suspicious, or inappropriate.
+          </LegalBullet>
+        </LegalSection>
+
+        <LegalSection title="Safety" theme={theme}>
+          <LegalBullet theme={theme}>
+            Meet in public places for first plans, tell someone where you are
+            going and who you are meeting, and keep first meetups simple and
+            low-pressure.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Trust your judgment and leave any situation that feels
+            uncomfortable.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Review profiles, event details, location, date, and time before
+            making plans.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Confirm outdoor conditions, road conditions, weather, skill level,
+            required gear, tickets, venue access, and host details yourself when
+            they matter for safety.
           </LegalBullet>
         </LegalSection>
 
         <LegalSection title="Local Event & Business Compliance" theme={theme}>
+          <LegalText theme={theme}>
+            Business and organizer profiles are for venues, shops, activity
+            providers, event hosts, markets, wellness studios, community
+            organizations, and other local operators who want to share official
+            events or experiences.
+          </LegalText>
+          <LegalText theme={theme}>
+            Business and organizer accounts may be reviewed before they receive
+            posting access. Summit Scene may reject, pause, or remove business
+            access if a profile appears misleading, unauthorized, unsafe, or
+            incomplete.
+          </LegalText>
           <LegalText theme={theme}>
             Businesses and organizers are responsible for confirming and
             following all permits, licences, insurance, park rules, municipal
@@ -272,6 +404,30 @@ export default function LegalScreen() {
           </LegalBullet>
         </LegalSection>
 
+        <LegalSection title="Children" theme={theme}>
+          <LegalText theme={theme}>
+            Summit Scene accounts are intended for users who are at least 18
+            years old. If you believe a child has provided personal information,
+            contact Summit Scene.
+          </LegalText>
+        </LegalSection>
+
+        <LegalSection title="Support" theme={theme}>
+          <LegalText theme={theme}>
+            For app support, bug reports, privacy requests, business questions,
+            safety or moderation issues, or deletion requests, email
+            hello@summitscene.ca.
+          </LegalText>
+          <LegalBullet theme={theme}>
+            Helpful details include your account email if relevant, the screen
+            or feature you were using, what happened, what you expected to
+            happen, and your device type or app version if available.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            For urgent danger, contact local emergency services.
+          </LegalBullet>
+        </LegalSection>
+
         <LegalSection title="Official Resources" theme={theme}>
           {LEGAL_LINKS.map((link) => (
             <LegalLink
@@ -288,7 +444,7 @@ export default function LegalScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Contact summitscene@outlook.com
+            Contact hello@summitscene.ca
           </Text>
         </Pressable>
       </ScrollView>

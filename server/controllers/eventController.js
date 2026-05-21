@@ -220,27 +220,41 @@ function parseCoordinate(value) {
 
 function buildDateFilterRange(dateFilter) {
   const normalizedFilter = normalizeRequiredString(dateFilter);
-  if (!normalizedFilter || normalizedFilter === "All") {
+  if (
+    !normalizedFilter ||
+    normalizedFilter === "All" ||
+    normalizedFilter === "All dates"
+  ) {
     return null;
   }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const rangeStart = new Date(todayStart);
   const rangeEnd = new Date(todayStart);
 
   if (normalizedFilter === "Today") {
     rangeEnd.setDate(rangeEnd.getDate() + 1);
+  } else if (normalizedFilter === "Tomorrow") {
+    rangeStart.setDate(rangeStart.getDate() + 1);
+    rangeEnd.setDate(rangeEnd.getDate() + 2);
   } else if (normalizedFilter === "Next 3 days") {
     rangeEnd.setDate(rangeEnd.getDate() + 3);
   } else if (normalizedFilter === "Next 7 days") {
     rangeEnd.setDate(rangeEnd.getDate() + 7);
   } else if (normalizedFilter === "Next 30 days") {
     rangeEnd.setDate(rangeEnd.getDate() + 30);
+  } else if (normalizedFilter === "Next 90 days") {
+    rangeEnd.setDate(rangeEnd.getDate() + 90);
+  } else if (normalizedFilter === "Next 6 months") {
+    rangeEnd.setMonth(rangeEnd.getMonth() + 6);
+  } else if (normalizedFilter === "Next 12 months") {
+    rangeEnd.setFullYear(rangeEnd.getFullYear() + 1);
   } else {
     return null;
   }
 
-  return { start: todayStart, end: rangeEnd };
+  return { start: rangeStart, end: rangeEnd };
 }
 
 function matchesDateFilter(event, dateFilter) {

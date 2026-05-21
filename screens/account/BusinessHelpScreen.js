@@ -38,7 +38,7 @@ export default function BusinessHelpScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Business%20Support"
+      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Business%20Support"
     );
   }
 
@@ -102,13 +102,43 @@ export default function BusinessHelpScreen() {
           />
           <Question
             theme={theme}
+            question="What helps my business get approved?"
+            answer="Use a real business or organizer name, add your town, business type, website or official social link, and contact Summit Scene from that official account if needed."
+          />
+          <Question
+            theme={theme}
             question="Should I use a user account for business posts?"
             answer="No. Community accounts are for people making plans. Official events should come from verified business or organizer accounts."
           />
           <Question
             theme={theme}
+            question="Can I post events far in the future?"
+            answer="Yes. Add the correct date and details. Users can use date filters to find events happening soon or farther ahead."
+          />
+          <Question
+            theme={theme}
+            question="Can I post recurring events?"
+            answer="Use the recurring schedule options when the event repeats. Keep the end date accurate so old listings do not stay visible too long."
+          />
+          <Question
+            theme={theme}
             question="Can I edit or remove my event?"
             answer="Yes. Use My Events to manage events created by your business account."
+          />
+          <Question
+            theme={theme}
+            question="What if my event has alcohol or age restrictions?"
+            answer="Include clear details in the event description and follow venue, ID, alcohol, and local age rules. Summit Scene does not replace legal or venue requirements."
+          />
+          <Question
+            theme={theme}
+            question="What should I do if the map pin is wrong?"
+            answer="Edit the event address or location details. Clear, specific addresses help Summit Scene place events correctly on the map."
+          />
+          <Question
+            theme={theme}
+            question="Can Summit Scene approve my permits?"
+            answer="No. Businesses and organizers are responsible for permits, licences, insurance, venue approvals, and local rules."
           />
         </HelpSection>
 
@@ -117,7 +147,7 @@ export default function BusinessHelpScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Email summitscene@outlook.com
+            Email hello@summitscene.ca
           </Text>
         </Pressable>
       </ScrollView>

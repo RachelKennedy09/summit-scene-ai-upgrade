@@ -34,7 +34,13 @@ const businessUsers = [
       "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=600&q=80",
     town: "Canmore",
     lookingFor: "Taproom, live music, trivia, and community nights",
-    interests: ["Live Music", "Karaoke", "Pub Nights", "Restaurant Specials"],
+    interests: [
+      "Live Music",
+      "Karaoke",
+      "Pub Nights",
+      "Restaurant Specials",
+      "Allyship",
+    ],
     bio: "A relaxed Canmore taproom hosting music, trivia, pop-ups, and watch parties.",
     website: "https://example.com/three-sisters-taproom",
     instagram: "@threesisterstaproom",
@@ -188,6 +194,23 @@ const eventSeeds = [
       "https://images.unsplash.com/photo-1527289333746-f1025cd5b1ac?auto=format&fit=crop&w=1200&q=80",
     description:
       "A low-pressure karaoke night with classics, group songs, and a friendly host for first-timers.",
+  },
+  {
+    host: "Three Sisters Taproom",
+    title: "Pride Patio Social",
+    category: "Pride Events",
+    town: "Canmore",
+    date: dateString(4),
+    time: "6:30 PM",
+    endTime: "9:00 PM",
+    locationName: "Three Sisters Taproom",
+    address: "837 Main Street, Canmore, AB",
+    latitude: 51.0896,
+    longitude: -115.3593,
+    imageUrl:
+      "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "A relaxed LGBTQ+ friendly patio social for locals, seasonal workers, visitors, and allies.",
   },
   {
     host: "Canmore Arts Room",
@@ -594,17 +617,32 @@ async function main() {
 
   await mongoose.connect(process.env.MONGODB_URI);
 
-  const [deletedEvents, deletedPreferences] = await Promise.all([
-    Event.deleteMany({}),
-    EventPreference.deleteMany({}),
+  const oldSeedUsers = await User.find({ email: SEED_EMAIL_PATTERN })
+    .select("_id")
+    .lean();
+  const oldSeedUserIds = oldSeedUsers.map((user) => user._id);
+  const oldSeedEvents = await Event.find({ createdBy: { $in: oldSeedUserIds } })
+    .select("_id")
+    .lean();
+  const oldSeedEventIds = oldSeedEvents.map((event) => event._id);
+
+  const [deletedPreferences, deletedEvents, deletedSeedUsers] = await Promise.all([
+    EventPreference.deleteMany({
+      $or: [
+        { userId: { $in: oldSeedUserIds } },
+        { eventId: { $in: oldSeedEventIds } },
+      ],
+    }),
+    Event.deleteMany({ createdBy: { $in: oldSeedUserIds } }),
+    User.deleteMany({ _id: { $in: oldSeedUserIds } }),
   ]);
-  const deletedSeedUsers = await User.deleteMany({ email: SEED_EMAIL_PATTERN });
+
   const usersByName = await upsertBusinessUsers();
   const events = await seedEvents(usersByName);
 
   console.log("Business event seed complete.");
-  console.log(`Deleted Event documents: ${deletedEvents.deletedCount}`);
-  console.log(`Deleted EventPreference documents: ${deletedPreferences.deletedCount}`);
+  console.log(`Deleted old business seed events: ${deletedEvents.deletedCount}`);
+  console.log(`Deleted old business seed preferences: ${deletedPreferences.deletedCount}`);
   console.log(`Deleted old business seed users: ${deletedSeedUsers.deletedCount}`);
   console.log(`Verified business users ready: ${usersByName.size}`);
   console.log(`Events created: ${events.length}`);

@@ -304,6 +304,7 @@ export function AuthProvider({ children }) {
     avatarKey,
     profileImageUrl,
     facebookConnectToken,
+    acceptedAgeTerms,
   }) {
     try {
       setIsAuthLoading(true);
@@ -336,6 +337,7 @@ export function AuthProvider({ children }) {
             avatarKey: avatarKey || undefined,
             profileImageUrl: profileImageUrl || undefined,
             facebookConnectToken: facebookConnectToken || undefined,
+            acceptedAgeTerms: acceptedAgeTerms === true,
           }),
         },
         AUTH_REQUEST_TIMEOUT_MS

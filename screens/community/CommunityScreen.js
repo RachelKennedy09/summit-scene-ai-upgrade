@@ -22,10 +22,7 @@ import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import SelectModal from "../../components/common/SelectModal";
 import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
-import {
-  COMMUNITY_NOTICE_CATEGORIES,
-  getCommunityCategoryGroups,
-} from "../../constants/eventCategories";
+import { getCommunityCategoryGroups } from "../../constants/eventCategories";
 import { LANGUAGE_OPTIONS } from "../../constants/languages";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -44,12 +41,6 @@ const CATEGORY_GROUPS = getCommunityCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
 });
-const NOTICE_CATEGORY_GROUPS = [
-  {
-    title: "Town Notices",
-    options: ["All notice types", ...COMMUNITY_NOTICE_CATEGORIES],
-  },
-];
 const COMMUNITY_SECTIONS = [
   {
     label: "Make a Plan",
@@ -71,7 +62,7 @@ const COMMUNITY_SECTIONS = [
     cta: "Post Intro",
     emptyTitle: "Welcome someone in",
     emptyText:
-      "Post where you are based, what you like doing, and who you would like to meet.",
+      "Say hello, share where you are based, and mention what kinds of people or plans you are open to.",
     supportsCategory: false,
     supportsDate: false,
   },
@@ -84,6 +75,7 @@ const COMMUNITY_SECTIONS = [
     emptyTitle: "Start the first group",
     emptyText:
       "Create a recurring book club, hiking crew, trivia team, art night, or walking group.",
+    categoryLabel: "Group focus",
     supportsCategory: true,
     supportsDate: true,
   },
@@ -91,15 +83,12 @@ const COMMUNITY_SECTIONS = [
     label: "Town Notices",
     value: "notice",
     title: "Town Notices",
-    subtitle: "Share garage sales, gear swaps, free stuff, lost and found, or practical town notices.",
+    subtitle: "Share garage sales, gear swaps, ride shares, road blocks, free stuff, lost and found, or practical town notices.",
     cta: "Share Notice",
     emptyTitle: "No town notices yet",
     emptyText:
       "Share a garage sale, gear swap, lost and found item, free stuff, or practical local notice.",
-    categoryLabel: "Notice type",
-    categoryAllLabel: "All notice types",
-    categoryGroups: NOTICE_CATEGORY_GROUPS,
-    supportsCategory: true,
+    supportsCategory: false,
     supportsDate: true,
   },
 ];
@@ -214,13 +203,6 @@ export default function CommunityScreen({ navigation }) {
       return;
     }
 
-    if (
-      nextSection.value === "notice" &&
-      category !== "All" &&
-      !COMMUNITY_NOTICE_CATEGORIES.includes(category)
-    ) {
-      setCategory("All");
-    }
   }, [category, communityType, selectedDate]);
 
   const loadBuddyPosts = useCallback(async () => {

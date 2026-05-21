@@ -15,6 +15,26 @@ import { isEventUpcoming } from "../../utils/eventSchedule.js";
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram website createdAt";
 const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
+const COMMUNITY_TYPE_DEFAULTS = {
+  "new-in-town": {
+    type: "general",
+    category: undefined,
+    groupSizePreference: "any",
+    scheduleType: "single",
+  },
+  notice: {
+    type: "notice",
+    category: undefined,
+    groupSizePreference: "any",
+    scheduleType: "single",
+  },
+  update: {
+    type: "general",
+    category: undefined,
+    groupSizePreference: "any",
+    scheduleType: "single",
+  },
+};
 
 function buildListFilter(query = {}) {
   const filter = {};
@@ -167,21 +187,30 @@ function normalizeRecurrence(value) {
 
 function normalizeCreateBody(body = {}) {
   const scheduleType = normalizeEnum(body.scheduleType, BUDDY_SCHEDULE_TYPES) || "single";
+  const communityType =
+    normalizeEnum(body.communityType, BUDDY_COMMUNITY_TYPES) || "local-plan";
+  const defaults = COMMUNITY_TYPE_DEFAULTS[communityType] || {};
 
   return {
-    type: body.type,
+    type: defaults.type || body.type,
     activityText: typeof body.activityText === "string" ? body.activityText.trim() : body.activityText,
-    category: typeof body.category === "string" ? body.category.trim() : body.category,
-    communityType:
-      normalizeEnum(body.communityType, BUDDY_COMMUNITY_TYPES) || "local-plan",
+    category:
+      "category" in defaults
+        ? defaults.category
+        : typeof body.category === "string"
+          ? body.category.trim()
+          : body.category,
+    communityType,
     date: body.date,
     time: typeof body.time === "string" ? body.time.trim() : body.time,
     town: body.town,
     skillLevel: body.skillLevel || undefined,
-    groupSizePreference: body.groupSizePreference || "any",
-    scheduleType,
+    groupSizePreference: defaults.groupSizePreference || body.groupSizePreference || "any",
+    scheduleType: defaults.scheduleType || scheduleType,
     recurrence:
-      scheduleType === "recurring" ? normalizeRecurrence(body.recurrence) : undefined,
+      (defaults.scheduleType || scheduleType) === "recurring"
+        ? normalizeRecurrence(body.recurrence)
+        : undefined,
     eventId: body.eventId || undefined,
   };
 }

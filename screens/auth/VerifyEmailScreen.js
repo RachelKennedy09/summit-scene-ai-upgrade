@@ -38,6 +38,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         </Text>
         <Text style={[styles.copy, { color: theme.textMuted }]}>
           Paste the token from your email if it was not filled automatically.
+          Check your junk or spam folder if you do not see the email.
         </Text>
         <TextInput
           style={[

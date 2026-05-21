@@ -28,6 +28,10 @@ import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
 import { ORIGIN_CITY_OPTIONS } from "../../constants/originCities";
+import {
+  PASSWORD_RULES_TEXT,
+  validatePasswordStrength,
+} from "../../utils/passwordPolicy";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -149,6 +153,10 @@ function getLanguageSuggestions(query, selectedLanguages = []) {
       normalizedLanguage.includes(normalizedQuery)
     );
   }).slice(0, LANGUAGE_SUGGESTION_LIMIT);
+}
+
+function cleanLanguageValue(value = "") {
+  return String(value).trim().replace(/\s+/g, " ");
 }
 
 function buildSocialAccounts(values, profileImageUrl = "") {
@@ -616,6 +624,24 @@ function RegisterScreen() {
     setTimeout(() => languageInputRef.current?.focus(), 0);
   }
 
+  function handleAddTypedLanguage() {
+    const nextLanguage = cleanLanguageValue(languageQuery);
+    if (!nextLanguage) {
+      return;
+    }
+
+    setLanguages((current) => {
+      const alreadyAdded = current.some(
+        (language) => language.toLowerCase() === nextLanguage.toLowerCase()
+      );
+      return alreadyAdded ? current : [...current, nextLanguage];
+    });
+    setLanguageQuery("");
+    setLanguageSuggestions([]);
+    setShowLanguageSuggestions(false);
+    setTimeout(() => languageInputRef.current?.focus(), 0);
+  }
+
   function handleRemoveLanguage(language) {
     setLanguages((current) => {
       const nextLanguages = current.filter((item) => item !== language);
@@ -692,8 +718,9 @@ function RegisterScreen() {
         return false;
       }
 
-      if (password.length < 8) {
-        Alert.alert("Password too short", "Password must be at least 8 characters.");
+      const passwordError = validatePasswordStrength(password);
+      if (passwordError) {
+        Alert.alert("Password needs more strength", passwordError);
         return false;
       }
 
@@ -759,6 +786,12 @@ function RegisterScreen() {
       return;
     }
 
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      Alert.alert("Password needs more strength", passwordError);
+      return;
+    }
+
     if (role === "business") {
       const hasProofLink = Boolean(website.trim() || instagram.trim());
       if (!town.trim() || !lookingFor.trim() || !hasProofLink) {
@@ -801,6 +834,7 @@ function RegisterScreen() {
         avatarKey: null,
         profileImageUrl,
         facebookConnectToken,
+        acceptedAgeTerms: hasAcceptedAgreements,
       });
     } catch (error) {
       Alert.alert(
@@ -1114,6 +1148,9 @@ function RegisterScreen() {
             placeholderTextColor={theme.textMuted}
             secureTextEntry
           />
+          <Text style={[styles.validationText, { color: theme.textMuted }]}>
+            {PASSWORD_RULES_TEXT}
+          </Text>
           <Text style={[styles.label, { color: theme.text }]}>
             Confirm password
           </Text>
@@ -1260,9 +1297,26 @@ function RegisterScreen() {
               setLanguageSuggestions(suggestions);
               setShowLanguageSuggestions(suggestions.length > 0);
             }}
+            onSubmitEditing={handleAddTypedLanguage}
             placeholder="Start typing a language..."
             placeholderTextColor={theme.textMuted}
+            returnKeyType="done"
           />
+          {cleanLanguageValue(languageQuery) ? (
+            <Pressable
+              style={[
+                styles.addTypedLanguageButton,
+                { borderColor: theme.border, backgroundColor: theme.card },
+              ]}
+              onPress={handleAddTypedLanguage}
+            >
+              <Text
+                style={[styles.addTypedLanguageText, { color: theme.accent }]}
+              >
+                Add "{cleanLanguageValue(languageQuery)}"
+              </Text>
+            </Pressable>
+          ) : null}
           {showLanguageSuggestions ? (
             <View
               style={[
@@ -1652,10 +1706,11 @@ function RegisterScreen() {
                 I agree to Summit Scene's account terms
               </Text>
               <Text style={[styles.agreementText, { color: theme.textMuted }]}>
-                I agree to the Privacy Policy, Terms of Use, Community
-                Guidelines, and Safety reminders. I understand that my public
-                profile, posts, replies, and event activity may be visible to
-                other users.
+                I confirm I am at least 18 years old. I agree to the Privacy
+                Policy, Terms of Use, Community Guidelines, and Safety
+                reminders. I understand that my public profile, posts, replies,
+                and event activity may be visible to other users, and that some
+                events may involve adults-only venues such as bars.
               </Text>
               {isBusiness ? (
                 <Text style={[styles.agreementText, { color: theme.textMuted }]}>
@@ -1872,6 +1927,19 @@ const styles = StyleSheet.create({
   originSuggestionText: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  addTypedLanguageButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  addTypedLanguageText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   textArea: {
     minHeight: 92,

@@ -115,7 +115,11 @@ function buildEventsQueryString(options = {}) {
   if (options.category && options.category !== "All") {
     params.set("category", options.category);
   }
-  if (options.dateFilter && options.dateFilter !== "All") {
+  if (
+    options.dateFilter &&
+    options.dateFilter !== "All" &&
+    options.dateFilter !== "All dates"
+  ) {
     params.set("dateFilter", options.dateFilter);
   }
   if (

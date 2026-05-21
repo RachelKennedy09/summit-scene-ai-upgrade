@@ -4,6 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "../../components/common/AppButton";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import {
+  PASSWORD_RULES_TEXT,
+  validatePasswordStrength,
+} from "../../utils/passwordPolicy";
 
 export default function ChangePasswordScreen() {
   const { changePassword } = useAuth();
@@ -13,6 +17,12 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit() {
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      Alert.alert("Password needs more strength", passwordError);
+      return;
+    }
+
     try {
       setLoading(true);
       await changePassword({ currentPassword, newPassword });
@@ -44,6 +54,9 @@ export default function ChangePasswordScreen() {
           placeholderTextColor={theme.textMuted}
           secureTextEntry
         />
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          {PASSWORD_RULES_TEXT}
+        </Text>
         <AppButton
           title={loading ? "Saving..." : "Change Password"}
           onPress={handleSubmit}
@@ -60,4 +73,5 @@ const styles = StyleSheet.create({
   inner: { padding: 20, gap: 14 },
   title: { fontSize: 24, fontWeight: "900" },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11 },
+  helperText: { fontSize: 12, lineHeight: 18 },
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -85,6 +85,8 @@ function Section({ label, children, theme }) {
   );
 }
 
+const INTEREST_PREVIEW_COUNT = 5;
+
 export default function MemberProfileModal({
   visible,
   user,
@@ -95,6 +97,8 @@ export default function MemberProfileModal({
   currentUserId,
   blockedUserIds = [],
 }) {
+  const [showAllInterests, setShowAllInterests] = useState(false);
+
   if (!visible || !user) return null;
 
   const avatarSource =
@@ -122,6 +126,11 @@ export default function MemberProfileModal({
   const socialAccounts = Array.isArray(user.socialAccounts)
     ? user.socialAccounts
     : [];
+  const hasManyInterests = interests.length > INTEREST_PREVIEW_COUNT;
+  const visibleInterests =
+    hasManyInterests && !showAllInterests
+      ? interests.slice(0, INTEREST_PREVIEW_COUNT)
+      : interests;
 
   return (
     <Modal
@@ -239,10 +248,54 @@ export default function MemberProfileModal({
 
             {interests.length ? (
               <Section label="Interests" theme={theme}>
+                {hasManyInterests ? (
+                  <Pressable
+                    style={styles.sectionToggleRow}
+                    onPress={() => setShowAllInterests((current) => !current)}
+                  >
+                    <Text
+                      style={[
+                        styles.sectionToggleText,
+                        { color: theme.textMain || theme.text },
+                      ]}
+                    >
+                      {interests.length} selected
+                    </Text>
+                    <Text
+                      style={[
+                        styles.sectionToggleAction,
+                        { color: theme.accent || colors.accent },
+                      ]}
+                    >
+                      {showAllInterests ? "Show less" : "Show all"}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <View style={styles.chipRow}>
-                  {interests.map((interest) => (
+                  {visibleInterests.map((interest) => (
                     <Chip key={interest} label={interest} theme={theme} />
                   ))}
+                  {hasManyInterests && !showAllInterests ? (
+                    <Pressable
+                      style={[
+                        styles.moreChip,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: theme.accent || colors.accent,
+                        },
+                      ]}
+                      onPress={() => setShowAllInterests(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.moreChipText,
+                          { color: theme.accent || colors.accent },
+                        ]}
+                      >
+                        +{interests.length - INTEREST_PREVIEW_COUNT} more
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               </Section>
             ) : null}
@@ -440,6 +493,21 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: "uppercase",
   },
+  sectionToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  sectionToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sectionToggleAction: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   profileSectionText: {
     fontSize: 14,
     lineHeight: 20,
@@ -458,6 +526,16 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  moreChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  moreChipText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   socialRow: {
     marginBottom: 8,

@@ -31,10 +31,10 @@ const EventMap = React.forwardRef(function EventMap(
             >
               <Text style={[styles.eventTitle, { color: theme.text }]}>
                 {hasMultipleEvents
-                  ? `${eventCount} events here`
+                  ? `${eventCount} events at this location`
                   : marker.event.title}
               </Text>
-              {marker.scheduleLabel ? (
+              {marker.scheduleLabel && !hasMultipleEvents ? (
                 <Text style={[styles.meta, { color: theme.textMuted }]}>
                   {marker.scheduleLabel}
                 </Text>

@@ -77,6 +77,28 @@ function includeDevToken(token) {
     : undefined;
 }
 
+function validatePasswordStrength(password) {
+  const value = String(password || "");
+
+  if (value.length < 10) {
+    return "Password must be at least 10 characters.";
+  }
+
+  if (!/[A-Za-z]/.test(value)) {
+    return "Password must include at least one letter.";
+  }
+
+  if (!/\d/.test(value)) {
+    return "Password must include at least one number.";
+  }
+
+  if (!/[^A-Za-z0-9]/.test(value)) {
+    return "Password must include at least one symbol.";
+  }
+
+  return "";
+}
+
 async function sendEmailSafely(task) {
   try {
     await task();
@@ -172,6 +194,7 @@ router.post("/register", async (req, res) => {
       password,
       name,
       role,
+      acceptedAgeTerms,
     } = req.body || {};
 
     // Basic validation for required fields
@@ -179,6 +202,18 @@ router.post("/register", async (req, res) => {
       return res
         .status(400)
         .json({ message: "Name, Email, and password are required." });
+    }
+
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    if (acceptedAgeTerms !== true) {
+      return res.status(400).json({
+        message:
+          "You must confirm you are at least 18 years old to create a Summit Scene account.",
+      });
     }
 
     // Normalize email to avoid case sensitivity issues
@@ -421,10 +456,9 @@ router.post("/reset-password", async (req, res) => {
         .json({ message: "Reset token and new password are required." });
     }
 
-    if (String(password).length < 8) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 8 characters." });
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
     }
 
     const user = await User.findOne({
@@ -459,10 +493,9 @@ router.post("/change-password", authMiddleware, async (req, res) => {
         .json({ message: "Current password and new password are required." });
     }
 
-    if (String(newPassword).length < 8) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 8 characters." });
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
     }
 
     const user = await User.findById(req.user.userId);

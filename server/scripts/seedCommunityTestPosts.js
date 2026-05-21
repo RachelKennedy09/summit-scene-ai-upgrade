@@ -37,7 +37,7 @@ const seedUsers = [
     userType: "seasonal",
     originallyFrom: "Taiwan",
     languages: ["English", "Mandarin"],
-    interests: ["Hiking", "Karaoke", "Coffee", "New in Town"],
+    interests: ["Hiking", "Karaoke", "Coffee", "New in Town", "Pride Events"],
     bio: "New to Banff for the season and trying to say yes to more plans.",
     socialAccounts: [
       { provider: "instagram", handle: "@maya_in_banff", verified: false },
@@ -92,7 +92,13 @@ const seedUsers = [
     userType: "local",
     originallyFrom: "Edmonton",
     languages: ["English", "French"],
-    interests: ["Art Shows", "Local Clubs", "Photography Walks", "Craft Markets"],
+    interests: [
+      "Art Shows",
+      "Local Clubs",
+      "Photography Walks",
+      "Craft Markets",
+      "Queer Community",
+    ],
     bio: "I like relaxed plans, creative nights, and welcoming new people.",
   },
   {
@@ -185,10 +191,10 @@ const postSeeds = [
   {
     user: "Maya Chen",
     type: "general",
-    category: "Other",
+    category: "LGBTQ+ Meetups",
     communityType: "new-in-town",
     activityText:
-      "New to Banff this week.\nI like hikes, coffee, karaoke, and meeting people who are also figuring town out.",
+      "New to Banff this week.\nI like hikes, coffee, karaoke, and welcoming LGBTQ+ friendly meetups.",
     date: dateString(0),
     time: "6:00 PM",
     town: "Banff",
@@ -472,21 +478,42 @@ async function main() {
 
   await mongoose.connect(process.env.MONGODB_URI);
 
-  const [deletedBuddyPosts, deletedCommunityPosts] = await Promise.all([
-    BuddyPost.deleteMany({}),
-    CommunityPost.deleteMany({}),
+  const oldSeedUsers = await User.find({ email: SEED_EMAIL_PATTERN })
+    .select("_id")
+    .lean();
+  const oldSeedUserIds = oldSeedUsers.map((user) => user._id);
+
+  const [
+    deletedBuddyPosts,
+    updatedBuddyPosts,
+    deletedCommunityPosts,
+    updatedCommunityPosts,
+    deletedSeedUsers,
+  ] = await Promise.all([
+    BuddyPost.deleteMany({ createdBy: { $in: oldSeedUserIds } }),
+    BuddyPost.updateMany(
+      {},
+      { $pull: { interestedUsers: { $in: oldSeedUserIds }, replies: { createdBy: { $in: oldSeedUserIds } } } }
+    ),
+    CommunityPost.deleteMany({ user: { $in: oldSeedUserIds } }),
+    CommunityPost.updateMany(
+      {},
+      { $pull: { likes: { $in: oldSeedUserIds }, replies: { user: { $in: oldSeedUserIds } } } }
+    ),
+    User.deleteMany({ _id: { $in: oldSeedUserIds } }),
   ]);
-  const deletedSeedUsers = await User.deleteMany({ email: SEED_EMAIL_PATTERN });
 
   const usersByName = await upsertSeedUsers();
   const posts = await seedPosts(usersByName);
   await addSocialSignals(posts, usersByName);
 
   console.log("Community seed complete.");
-  console.log(`Deleted BuddyPost documents: ${deletedBuddyPosts.deletedCount}`);
+  console.log(`Deleted old community seed buddy posts: ${deletedBuddyPosts.deletedCount}`);
+  console.log(`Updated buddy posts referencing seed users: ${updatedBuddyPosts.modifiedCount}`);
   console.log(
-    `Deleted legacy CommunityPost documents: ${deletedCommunityPosts.deletedCount}`
+    `Deleted old community seed legacy posts: ${deletedCommunityPosts.deletedCount}`
   );
+  console.log(`Updated legacy posts referencing seed users: ${updatedCommunityPosts.modifiedCount}`);
   console.log(`Deleted old community seed users: ${deletedSeedUsers.deletedCount}`);
   console.log(`Seed users ready: ${usersByName.size}`);
   console.log(`Buddy posts created: ${posts.length}`);

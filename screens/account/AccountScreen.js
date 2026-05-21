@@ -28,6 +28,20 @@ import PageHeader from "../../components/common/PageHeader";
 import { fetchBusinessRequests } from "../../services/adminApi";
 import { fetchReports } from "../../services/reportsApi";
 
+function AccountSection({ title, subtitle, children, theme }) {
+  return (
+    <View style={styles.accountSection}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+      {subtitle ? (
+        <Text style={[styles.sectionSubtitle, { color: theme.textMuted }]}>
+          {subtitle}
+        </Text>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
 function AccountNavRow({ title, subtitle, onPress, theme, badge, actionLabel = "Open" }) {
   return (
     <Pressable
@@ -129,11 +143,11 @@ function AccountScreen() {
 
   function handleEmailSummitScene() {
     Linking.openURL(
-      "mailto:summitscene@outlook.com?subject=Summit%20Scene%20Business%20Verification"
+      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Business%20Verification"
     ).catch(() => {
       Alert.alert(
         "Could not open email",
-        "Please email summitscene@outlook.com to verify your business profile."
+        "Please email hello@summitscene.ca to verify your business profile."
       );
     });
   }
@@ -224,7 +238,10 @@ function AccountScreen() {
   async function handleResendVerificationEmail() {
     try {
       const data = await resendVerificationEmail();
-      Alert.alert("Verification email sent", data.message);
+      Alert.alert(
+        "Verification email sent",
+        `${data.message}\n\nPlease check your junk or spam folder if you do not see it in your inbox.`
+      );
       if (data.emailVerificationToken) {
         navigation.navigate("VerifyEmail", { token: data.emailVerificationToken });
       }
@@ -273,123 +290,147 @@ function AccountScreen() {
           onEditProfile={() => navigation.navigate("EditProfile")}
         />
 
-        <View
-          style={[
-            styles.statusCard,
-            { backgroundColor: theme.card, borderColor: theme.border },
-          ]}
+        <AccountSection
+          title="Login & Security"
+          subtitle="Manage your email verification and password."
+          theme={theme}
         >
-          <Text style={[styles.statusTitle, { color: theme.text }]}>
-            Account security
-          </Text>
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            Email: {user.email}{"\n"}
-            Status: {user.emailVerified ? "Verified" : "Not verified"}
-            {user.pendingEmail ? `\nPending email: ${user.pendingEmail}` : ""}
-          </Text>
-          {!user.emailVerified ? (
-            <View style={styles.emailActionRow}>
-              <Pressable
-                style={[styles.emailButton, { borderColor: theme.accent }]}
-                onPress={() => navigation.navigate("VerifyEmail")}
-              >
-                <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                  Enter verification token
+          <View
+            style={[
+              styles.statusCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.statusHeaderRow}>
+              <View style={styles.statusHeaderCopy}>
+                <Text style={[styles.statusTitle, { color: theme.text }]}>
+                  Email verification
                 </Text>
-              </Pressable>
+                <Text style={[styles.statusText, { color: theme.textMuted }]}>
+                  {user.email}
+                  {user.pendingEmail ? `\nPending email: ${user.pendingEmail}` : ""}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statusPill,
+                  {
+                    backgroundColor: user.emailVerified
+                      ? theme.accentSoft || theme.background
+                      : theme.background,
+                    borderColor: user.emailVerified ? theme.accent : theme.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusPillText,
+                    { color: user.emailVerified ? theme.accent : theme.textMuted },
+                  ]}
+                >
+                  {user.emailVerified ? "Verified" : "Not verified"}
+                </Text>
+              </View>
+            </View>
+            {!user.emailVerified ? (
+              <View style={styles.emailActionRow}>
+                <Pressable
+                  style={[styles.emailButton, { borderColor: theme.accent }]}
+                  onPress={() => navigation.navigate("VerifyEmail")}
+                >
+                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                    Enter verification token
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.emailButton, { borderColor: theme.accent }]}
+                  onPress={handleResendVerificationEmail}
+                >
+                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                    Resend verification email
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+
+          <AccountNavRow
+            title="Change email"
+            subtitle="Confirm a new email before changing your login."
+            onPress={() => navigation.navigate("ChangeEmail")}
+            theme={theme}
+          />
+
+          <AccountNavRow
+            title="Change password"
+            subtitle="Update your password and log in again."
+            onPress={() => navigation.navigate("ChangePassword")}
+            theme={theme}
+          />
+        </AccountSection>
+
+        {isBusinessPending && (
+          <AccountSection title="Business Profile" theme={theme}>
+            <View
+              style={[
+                styles.statusCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.statusTitle, { color: theme.text }]}>
+                Business review pending
+              </Text>
+              <Text style={[styles.statusText, { color: theme.textMuted }]}>
+                Your profile is saved, but official event posting stays locked
+                until Summit Scene verifies the business or organizer. Add your
+                business type, website, and official social links in Edit Profile.
+                If proof is unclear, email Summit Scene or DM from the official
+                business account.
+              </Text>
               <Pressable
                 style={[styles.emailButton, { borderColor: theme.accent }]}
-                onPress={handleResendVerificationEmail}
+                onPress={handleEmailSummitScene}
               >
                 <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                  Resend verification email
+                  Email hello@summitscene.ca
                 </Text>
               </Pressable>
             </View>
-          ) : null}
-        </View>
-
-        <AccountNavRow
-          title="Change email"
-          subtitle="Confirm a new email before changing your login."
-          onPress={() => navigation.navigate("ChangeEmail")}
-          theme={theme}
-        />
-
-        <AccountNavRow
-          title="Change password"
-          subtitle="Update your password and log in again."
-          onPress={() => navigation.navigate("ChangePassword")}
-          theme={theme}
-        />
-
-        {isBusinessPending && (
-          <View
-            style={[
-              styles.statusCard,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <Text style={[styles.statusTitle, { color: theme.text }]}>
-              Business review pending
-            </Text>
-            <Text style={[styles.statusText, { color: theme.textMuted }]}>
-              Your profile is saved, but official event posting stays locked
-              until Summit Scene verifies the business or organizer. Add your
-              business type, website, and official social links in Edit Profile.
-              If proof is unclear, email Summit Scene or DM from the official
-              business account.
-            </Text>
-            <Pressable
-              style={[styles.emailButton, { borderColor: theme.accent }]}
-              onPress={handleEmailSummitScene}
-            >
-              <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                Email summitscene@outlook.com
-              </Text>
-            </Pressable>
-          </View>
+          </AccountSection>
         )}
 
         {isBusinessRejected && (
-          <View
-            style={[
-              styles.statusCard,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <Text style={[styles.statusTitle, { color: theme.text }]}>
-              Business review needed
-            </Text>
-            <Text style={[styles.statusText, { color: theme.textMuted }]}>
-              Update your profile details and contact Summit Scene to review
-              your business or organizer profile again.
-            </Text>
-          </View>
+          <AccountSection title="Business Profile" theme={theme}>
+            <View
+              style={[
+                styles.statusCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.statusTitle, { color: theme.text }]}>
+                Business review needed
+              </Text>
+              <Text style={[styles.statusText, { color: theme.textMuted }]}>
+                Update your profile details and contact Summit Scene to review
+                your business or organizer profile again.
+              </Text>
+            </View>
+          </AccountSection>
         )}
 
         {user.isAdmin ? (
-          <View
-            style={[
-              styles.adminPanel,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
+          <AccountSection
+            title="Admin Tools"
+            subtitle="Review safety reports, business approvals, and official event tools."
+            theme={theme}
           >
             <View style={styles.adminHeaderRow}>
-              <View style={styles.adminHeaderCopy}>
-                <Text style={[styles.adminTitle, { color: theme.text }]}>
-                  Admin tools
-                </Text>
-                <Text style={[styles.adminSubtitle, { color: theme.textMuted }]}>
-                  Review safety reports, business approvals, and official event tools.
-                </Text>
-              </View>
               <Pressable onPress={loadAdminCounts} disabled={adminCountsLoading}>
                 {adminCountsLoading ? (
                   <ActivityIndicator size="small" color={theme.accent} />
                 ) : (
                   <Text style={[styles.refreshLink, { color: theme.accent }]}>
-                    Refresh
+                    Refresh counts
                   </Text>
                 )}
               </Pressable>
@@ -464,125 +505,143 @@ function AccountScreen() {
               onPress={() => navigation.navigate("BusinessHelp")}
               theme={theme}
             />
-          </View>
+          </AccountSection>
         ) : null}
 
-
-        <AccountNavRow
-          title="Saved events"
-          subtitle="View saved events and upcoming reminders."
-          onPress={() => navigation.navigate("SavedEvents")}
+        <AccountSection
+          title="Events"
+          subtitle="Your saved event activity and reminders."
           theme={theme}
-        />
+        >
+          <AccountNavRow
+            title="Saved events"
+            subtitle="View saved events and upcoming reminders."
+            onPress={() => navigation.navigate("SavedEvents")}
+            theme={theme}
+          />
+        </AccountSection>
 
-        {isBusiness && (
+        <AccountSection
+          title="Community & Support"
+          subtitle="Safety tools, help, and ways to contact Summit Scene."
+          theme={theme}
+        >
+          <AccountNavRow
+            title="Blocked users"
+            subtitle="Manage people hidden from posts, replies, and attendee lists."
+            onPress={() => navigation.navigate("BlockedUsers")}
+            theme={theme}
+          />
+
+          <AccountNavRow
+            title={isBusiness ? "Business help" : "Help & FAQ"}
+            subtitle={
+              isBusiness
+                ? "Learn verification, posting, event management, and support."
+                : "Learn events, buddies, community posts, safety, and support."
+            }
+            onPress={() =>
+              navigation.navigate(isBusiness ? "BusinessHelp" : "UserHelp")
+            }
+            theme={theme}
+          />
+
+          <AccountNavRow
+            title="Report a bug"
+            subtitle="Send Summit Scene a bug, wrong info report, safety concern, or idea."
+            onPress={() => navigation.navigate("ReportBug")}
+            theme={theme}
+          />
+        </AccountSection>
+
+        <AccountSection
+          title="Legal"
+          subtitle="Privacy, terms, community rules, and event responsibilities."
+          theme={theme}
+        >
+          <AccountNavRow
+            title="Privacy & Terms"
+            subtitle="Review privacy, account deletion, community rules, and event permit responsibilities."
+            onPress={() => navigation.navigate("Legal")}
+            theme={theme}
+          />
+        </AccountSection>
+
+        <AccountSection title="Account Actions" theme={theme}>
+          {isBusiness && (
+            <Pressable
+              style={[
+                styles.accountButtonSecondary,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+                (isAuthLoading || isReverting) && styles.buttonDisabled,
+              ]}
+              onPress={handleRevertToLocal}
+              disabled={isAuthLoading || isReverting}
+            >
+              <Text
+                style={[styles.accountButtonSecondaryText, { color: theme.text }]}
+              >
+                Switch back to community profile
+              </Text>
+              <Text
+                style={[
+                  styles.accountButtonSecondarySubtext,
+                  { color: theme.textMuted },
+                ]}
+              >
+                Use this if you no longer need business tools. Your profile
+                will return to the normal user side.
+              </Text>
+            </Pressable>
+          )}
+
+          <AppButton
+            title={isAuthLoading ? "Logging out..." : "Log Out"}
+            onPress={handleLogout}
+            loading={isAuthLoading}
+            variant="highlight"
+            size="lg"
+            style={{ marginTop: 4 }}
+          />
+
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Logging out will clear your session on this device.{"\n"}
+            You can log back in anytime to keep using Summit Scene.
+          </Text>
+
           <Pressable
             style={[
-              styles.accountButtonSecondary,
+              styles.deleteAccountButton,
               {
                 backgroundColor: theme.card,
-                borderColor: theme.border,
+                borderColor: theme.danger || "#B42318",
               },
-              (isAuthLoading || isReverting) && styles.buttonDisabled,
+              (isAuthLoading || isDeletingAccount) && styles.buttonDisabled,
             ]}
-            onPress={handleRevertToLocal}
-            disabled={isAuthLoading || isReverting}
+            onPress={handleDeleteAccount}
+            disabled={isAuthLoading || isDeletingAccount}
           >
             <Text
-              style={[styles.accountButtonSecondaryText, { color: theme.text }]}
+              style={[
+                styles.deleteAccountButtonText,
+                { color: theme.danger || "#B42318" },
+              ]}
             >
-              Switch back to community profile
+              {isDeletingAccount ? "Deleting account..." : "Delete Account"}
             </Text>
             <Text
               style={[
-                styles.accountButtonSecondarySubtext,
+                styles.deleteAccountButtonSubtext,
                 { color: theme.textMuted },
               ]}
             >
-              Use this if the account was only made business while testing.
-              Your profile will return to the normal user side.
+              Permanently remove this profile and clear your session.
             </Text>
           </Pressable>
-        )}
-
-        <AccountNavRow
-          title="Blocked users"
-          subtitle="Manage people hidden from posts, replies, and attendee lists."
-          onPress={() => navigation.navigate("BlockedUsers")}
-          theme={theme}
-        />
-
-        <AccountNavRow
-          title={isBusiness ? "Business help" : "Help & FAQ"}
-          subtitle={
-            isBusiness
-              ? "Learn verification, posting, event management, and support."
-              : "Learn events, buddies, community posts, safety, and support."
-          }
-          onPress={() =>
-            navigation.navigate(isBusiness ? "BusinessHelp" : "UserHelp")
-          }
-          theme={theme}
-        />
-
-        <AccountNavRow
-          title="Report a bug"
-          subtitle="Send Summit Scene a bug, wrong info report, safety concern, or idea."
-          onPress={() => navigation.navigate("ReportBug")}
-          theme={theme}
-        />
-
-        <AccountNavRow
-          title="Privacy & Terms"
-          subtitle="Review privacy, account deletion, community rules, and event permit responsibilities."
-          onPress={() => navigation.navigate("Legal")}
-          theme={theme}
-        />
-
-        {/* LOG OUT */}
-        <AppButton
-          title={isAuthLoading ? "Logging out..." : "Log Out"}
-          onPress={handleLogout}
-          loading={isAuthLoading}
-          variant="highlight"
-          size="lg"
-          style={{ marginTop: 4 }}
-        />
-
-        <Text style={[styles.helperText, { color: theme.textMuted }]}>
-          Logging out will clear your session on this device.{"\n"}
-          You can log back in anytime to keep using Summit Scene.
-        </Text>
-
-        <Pressable
-          style={[
-            styles.deleteAccountButton,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.danger || "#B42318",
-            },
-            (isAuthLoading || isDeletingAccount) && styles.buttonDisabled,
-          ]}
-          onPress={handleDeleteAccount}
-          disabled={isAuthLoading || isDeletingAccount}
-        >
-          <Text
-            style={[
-              styles.deleteAccountButtonText,
-              { color: theme.danger || "#B42318" },
-            ]}
-          >
-            {isDeletingAccount ? "Deleting account..." : "Delete Account"}
-          </Text>
-          <Text
-            style={[
-              styles.deleteAccountButtonSubtext,
-              { color: theme.textMuted },
-            ]}
-          >
-            Permanently remove this profile and clear your session.
-          </Text>
-        </Pressable>
+        </AccountSection>
       </ScrollView>
 
     </SafeAreaView>
@@ -610,6 +669,19 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  accountSection: {
+    marginBottom: 22,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
   },
   accountButtonSecondary: {
     backgroundColor: colors.secondary,
@@ -677,6 +749,25 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  statusHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  statusHeaderCopy: {
+    flex: 1,
+  },
+  statusPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: "900",
   },
   navRow: {
     borderWidth: 1,

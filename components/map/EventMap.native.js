@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import MapView, { Marker, Callout } from "react-native-maps";
 
@@ -16,10 +16,26 @@ const EventMap = React.forwardRef(function EventMap(
     selectedMarkerId,
     onSelectMarker,
     onPressMarker,
+    onRegionChangeComplete,
     isNearMeEnabled,
   },
   ref
 ) {
+  const markerRefs = useRef({});
+
+  useEffect(() => {
+    if (!selectedMarkerId) return;
+
+    const markerRef = markerRefs.current[selectedMarkerId];
+    if (!markerRef?.showCallout) return;
+
+    const timeoutId = setTimeout(() => {
+      markerRef.showCallout();
+    }, 650);
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedMarkerId, markers]);
+
   return (
     <MapView
       ref={ref}
@@ -27,6 +43,7 @@ const EventMap = React.forwardRef(function EventMap(
       initialRegion={INITIAL_REGION}
       moveOnMarkerPress={false}
       showsUserLocation={isNearMeEnabled}
+      onRegionChangeComplete={onRegionChangeComplete}
     >
       {markers.map((marker) => {
         const isSelected = marker.id === selectedMarkerId;
@@ -36,9 +53,22 @@ const EventMap = React.forwardRef(function EventMap(
         return (
           <Marker
             key={marker.id}
+            ref={(markerRef) => {
+              if (markerRef) {
+                markerRefs.current[marker.id] = markerRef;
+              } else {
+                delete markerRefs.current[marker.id];
+              }
+            }}
             coordinate={marker.coordinate}
             tracksViewChanges={false}
             onSelect={() => onSelectMarker(marker.id)}
+            onPress={() => {
+              onSelectMarker(marker.id);
+              if (hasMultipleEvents) {
+                onPressMarker(marker);
+              }
+            }}
           >
             <View
               style={[
@@ -74,7 +104,8 @@ const EventMap = React.forwardRef(function EventMap(
               )}
             </View>
 
-            <Callout tooltip={false} onPress={() => onPressMarker(marker)}>
+            {!hasMultipleEvents ? (
+              <Callout tooltip={false} onPress={() => onPressMarker(marker)}>
               <View
                 style={[
                   styles.calloutCard,
@@ -89,7 +120,7 @@ const EventMap = React.forwardRef(function EventMap(
                   numberOfLines={2}
                 >
                   {hasMultipleEvents
-                    ? `${eventCount} events here`
+                    ? `${eventCount} events at this location`
                     : marker.event.title}
                 </Text>
                 {hasMultipleEvents
@@ -103,7 +134,7 @@ const EventMap = React.forwardRef(function EventMap(
                       </Text>
                     ))
                   : null}
-                {marker.scheduleLabel ? (
+                {marker.scheduleLabel && !hasMultipleEvents ? (
                   <Text
                     style={[styles.calloutMeta, { color: theme.textMuted }]}
                     numberOfLines={2}
@@ -128,7 +159,8 @@ const EventMap = React.forwardRef(function EventMap(
                   {hasMultipleEvents ? "Choose event" : "View details"}
                 </Text>
               </View>
-            </Callout>
+              </Callout>
+            ) : null}
           </Marker>
         );
       })}

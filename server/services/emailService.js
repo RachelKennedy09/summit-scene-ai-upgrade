@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-const DEFAULT_FROM = "Summit Scene <summitscene@outlook.com>";
+const DEFAULT_FROM = "Summit Scene <no-reply@summitscene.ca>";
 
 function getAppUrl() {
   return (
