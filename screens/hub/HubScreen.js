@@ -25,11 +25,13 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 import EventCard from "../../components/cards/EventCard";
+import BuddyPostCard from "../../components/cards/BuddyPostCard";
 import HubFilters from "../../components/hub/HubFilters";
 
 import {
   fetchEvents as fetchEventsFromApi,
 } from "../../services/eventsApi";
+import { fetchBuddyPosts } from "../../services/buddyPostsApi";
 import { requestCurrentLocation } from "../../services/locationService";
 import { colors } from "../../theme/colors";
 import {
@@ -70,7 +72,7 @@ function getUserInterestCategories(user) {
 }
 
 export default function HubScreen() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { theme } = useTheme();
   const navigation = useNavigation();
 
@@ -89,9 +91,12 @@ export default function HubScreen() {
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
   const [nearMeMessage, setNearMeMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
 
   // Events + loading state
   const [events, setEvents] = useState([]);
+  const [buddySearchResults, setBuddySearchResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -121,13 +126,25 @@ export default function HubScreen() {
         nearLat: isNearMeEnabled ? nearMeLocation?.latitude : undefined,
         nearLng: isNearMeEnabled ? nearMeLocation?.longitude : undefined,
         radiusKm: isNearMeEnabled ? NEAR_ME_RADIUS_KM : undefined,
+        search: activeSearch || undefined,
       });
 
       const nextEvents = Array.isArray(data?.events) ? data.events : [];
+      let nextBuddyPosts = [];
+
+      if (activeSearch && token && nextPage === 1) {
+        nextBuddyPosts = await fetchBuddyPosts(
+          { search: activeSearch, status: "open" },
+          token
+        );
+      }
 
       setEvents((current) =>
         mode === "loadMore" ? [...current, ...nextEvents] : nextEvents
       );
+      if (mode !== "loadMore") {
+        setBuddySearchResults(nextBuddyPosts);
+      }
       setPage(data.page || nextPage);
       setHasMore(Boolean(data.hasMore));
       setTotalCount(Number.isFinite(data.totalCount) ? data.totalCount : 0);
@@ -142,7 +159,7 @@ export default function HubScreen() {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation]);
+  }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
 
   // Reload on focus so newly posted events appear when the user returns to the Hub.
   useFocusEffect(
@@ -189,53 +206,99 @@ export default function HubScreen() {
     }
   }, [isNearMeEnabled, nearMeLoading]);
 
+  const handleApplySearch = useCallback(() => {
+    const trimmedSearch = searchQuery.trim();
+    if (!trimmedSearch) {
+      setActiveSearch("");
+      setBuddySearchResults([]);
+      return;
+    }
+
+    setSelectedCategory("All");
+    setSelectedDateFilter("All dates");
+    setActiveSearch(trimmedSearch);
+  }, [searchQuery]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    setActiveSearch("");
+    setBuddySearchResults([]);
+  }, []);
+
   const isShowingInterestFirst =
     selectedCategory === "All" && userInterestCategories.length > 0;
 
   const eventsToShow = useMemo(() => {
-    if (!isShowingInterestFirst) {
-      return events;
-    }
+    const eventItems = !isShowingInterestFirst
+      ? events
+      : (() => {
+          const interestSet = new Set(userInterestCategories);
+          const interestEvents = [];
+          const otherEvents = [];
 
-    const interestSet = new Set(userInterestCategories);
-    const interestEvents = [];
-    const otherEvents = [];
+          events.forEach((event) => {
+            if (interestSet.has(event.category)) {
+              interestEvents.push(event);
+            } else {
+              otherEvents.push(event);
+            }
+          });
 
-    events.forEach((event) => {
-      if (interestSet.has(event.category)) {
-        interestEvents.push(event);
-      } else {
-        otherEvents.push(event);
-      }
-    });
+          if (!interestEvents.length) {
+            return events;
+          }
 
-    if (!interestEvents.length) {
-      return events;
+          return [
+            {
+              _listType: "sectionHeader",
+              id: "your-interests",
+              title: "Your interests",
+              subtitle: `${interestEvents.length} matching event${
+                interestEvents.length === 1 ? "" : "s"
+              } in this list.`,
+            },
+            ...interestEvents,
+            ...(otherEvents.length
+              ? [
+                  {
+                    _listType: "sectionHeader",
+                    id: "more-events",
+                    title: "More events",
+                    subtitle: "Everything else happening nearby.",
+                  },
+                  ...otherEvents,
+                ]
+              : []),
+          ];
+        })();
+
+    if (!activeSearch || !buddySearchResults.length) {
+      return eventItems;
     }
 
     return [
       {
         _listType: "sectionHeader",
-        id: "your-interests",
-        title: "Your interests",
-        subtitle: `${interestEvents.length} matching event${
-          interestEvents.length === 1 ? "" : "s"
-        } in this list.`,
+        id: "event-search-results",
+        title: "Event results",
+        subtitle: `${events.length} matching event${events.length === 1 ? "" : "s"}.`,
       },
-      ...interestEvents,
-      ...(otherEvents.length
-        ? [
-            {
-              _listType: "sectionHeader",
-              id: "more-events",
-              title: "More events",
-              subtitle: "Everything else happening nearby.",
-            },
-            ...otherEvents,
-          ]
-        : []),
+      ...eventItems,
+      {
+        _listType: "sectionHeader",
+        id: "buddy-search-results",
+        title: "Community and buddy posts",
+        subtitle: `${buddySearchResults.length} matching post${
+          buddySearchResults.length === 1 ? "" : "s"
+        }.`,
+      },
+      ...buddySearchResults.map((post) => ({
+        ...post,
+        _listType: "buddyPost",
+        _searchKey: `buddy-${post._id}`,
+      })),
     ];
-  }, [events, isShowingInterestFirst, userInterestCategories]);
+  }, [events, isShowingInterestFirst, userInterestCategories, activeSearch, buddySearchResults]);
 
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
@@ -244,10 +307,21 @@ export default function HubScreen() {
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
+    setSearchQuery("");
+    setActiveSearch("");
+    setBuddySearchResults([]);
   }, []);
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
+    if (
+      activeSearch &&
+      events.length === 0 &&
+      buddySearchResults.length === 0
+    ) {
+      return `No matches found for "${activeSearch}". Try a simpler word like music, book, club, yoga, concert, or ride share.`;
+    }
+
     if (
       isNearMeEnabled &&
       selectedCategory === "All" &&
@@ -278,7 +352,7 @@ export default function HubScreen() {
     }
 
     return `No ${selectedCategory} events found in ${selectedTown}.`;
-  }, [selectedCategory, selectedTown, selectedDateFilter, isNearMeEnabled]);
+  }, [selectedCategory, selectedTown, selectedDateFilter, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
@@ -296,9 +370,24 @@ export default function HubScreen() {
         : ` (${selectedDateFilter.toLowerCase()})`;
 
     if (count === 0) {
+      if (activeSearch && buddySearchResults.length) {
+        return `No events found for "${activeSearch}", but ${buddySearchResults.length} community post${
+          buddySearchResults.length === 1 ? "" : "s"
+        } matched.`;
+      }
+
       return isNearMeEnabled
         ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
         : "No events match your current filters.";
+    }
+
+    if (activeSearch) {
+      const buddyText = buddySearchResults.length
+        ? ` and ${buddySearchResults.length} community post${
+            buddySearchResults.length === 1 ? "" : "s"
+          }`
+        : "";
+      return `Showing ${count} event${count === 1 ? "" : "s"}${buddyText} for "${activeSearch}".`;
     }
 
     if (isShowingInterestFirst) {
@@ -314,7 +403,7 @@ export default function HubScreen() {
     return isNearMeEnabled
       ? `Showing ${count} events near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
       : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst]);
+  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
 
   const hubSubtitle =
     isShowingInterestFirst
@@ -325,7 +414,8 @@ export default function HubScreen() {
     selectedTown !== "All" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Next 7 days" ||
-    isNearMeEnabled;
+    isNearMeEnabled ||
+    Boolean(activeSearch);
 
   // Inital loading state (before there are any events)
   if (loading && !refreshing && events.length === 0) {
@@ -393,6 +483,16 @@ export default function HubScreen() {
     }
 
     return (
+      item._listType === "buddyPost" ? (
+        <BuddyPostCard
+          post={item}
+          theme={theme}
+          currentUserId={user?._id || user?.id}
+          onOpenEvent={(event) =>
+            navigation.navigate("EventDetail", { event, eventId: event._id })
+          }
+        />
+      ) :
       <EventCard
         event={item}
         onPress={() =>
@@ -426,7 +526,7 @@ export default function HubScreen() {
           data={eventsToShow}
           keyExtractor={(item) =>
             item._listType
-              ? item.id
+              ? item.id || item._searchKey || item._id?.toString()
               : item._id?.toString() || `${item.title}-${item.date}-${item.time}`
           }
           renderItem={renderEvent}
@@ -472,6 +572,11 @@ export default function HubScreen() {
                 onToggleNearMe={handleToggleNearMe}
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={handleClearFilters}
+                searchQuery={searchQuery}
+                activeSearch={activeSearch}
+                onChangeSearchQuery={setSearchQuery}
+                onApplySearch={handleApplySearch}
+                onClearSearch={handleClearSearch}
                 onRetry={() => loadEvents({ nextPage: 1, mode: "initial" })}
               />
             </>

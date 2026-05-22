@@ -100,8 +100,9 @@ const eventSchema = new mongoose.Schema(
         "Wildlife Tours",
         "Photography Walks",
         "Ice Skating",
+        "Curling",
         "Snowshoeing",
-        "Outdoor Yoga",
+        "Yoga",
         "Meetups",
         "New in Town",
         "Community Gatherings",
@@ -138,7 +139,6 @@ const eventSchema = new mongoose.Schema(
         "Pub Nights",
         "After Parties",
         "Comedy",
-        "Yoga",
         "Meditation",
         "Breathwork",
         "Sauna & Cold Plunges",
@@ -325,6 +325,7 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
     "Book Club": "Local Clubs",
     Wellness: "Wellness Retreats",
     "Yoga/Fitness": "Yoga",
+    "Outdoor Yoga": "Yoga",
   };
 
   if (legacyCategoryMap[this.category]) {

@@ -9,6 +9,7 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
@@ -126,6 +127,11 @@ export default function MapFilters({
   onToggleNearMe,
   hasActiveFilters = false,
   onClearFilters,
+  searchQuery = "",
+  activeSearch = "",
+  onChangeSearchQuery,
+  onApplySearch,
+  onClearSearch,
 }) {
   const { theme } = useTheme();
   const [isTownModalVisible, setIsTownModalVisible] = useState(false);
@@ -145,26 +151,67 @@ export default function MapFilters({
         </Text>
       ) : null}
 
-      <View style={styles.pillRow}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.pill,
-            {
-              backgroundColor: theme.pill || theme.card,
-              borderColor: theme.border,
-            },
-            pressed && styles.pressed,
-          ]}
-          onPress={() => setIsTownModalVisible(true)}
-        >
-          <Text style={[styles.pillLabel, { color: theme.textMuted }]}>
-            Town
-          </Text>
-          <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedTown === "All" ? "All towns ▾" : `${selectedTown} ▾`}
-          </Text>
-        </Pressable>
+      <View
+        style={[
+          styles.searchPanel,
+          { backgroundColor: theme.card, borderColor: theme.border },
+        ]}
+      >
+        <Text style={[styles.searchTitle, { color: theme.textMain || theme.text }]}>
+          Search map events
+        </Text>
+        <Text style={[styles.searchHelper, { color: theme.textMuted }]}>
+          Search events by name, category, town, venue, or address.
+        </Text>
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[
+              styles.searchInput,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+                color: theme.textMain || theme.text,
+              },
+            ]}
+            value={searchQuery}
+            onChangeText={onChangeSearchQuery}
+            placeholder="Search map events"
+            placeholderTextColor={theme.textMuted}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onSubmitEditing={onApplySearch}
+          />
+          <Pressable
+            style={({ pressed }) => [
+              styles.searchButton,
+              { backgroundColor: theme.accent },
+              pressed && styles.pressed,
+            ]}
+            onPress={onApplySearch}
+          >
+            <Text style={styles.searchButtonText}>Search</Text>
+          </Pressable>
+        </View>
+        {activeSearch ? (
+          <View style={styles.activeSearchRow}>
+            <Text style={[styles.activeSearchText, { color: theme.textMuted }]}>
+              Searching for "{activeSearch}"
+            </Text>
+            <Pressable onPress={onClearSearch}>
+              <Text style={[styles.clearSearchText, { color: theme.accent }]}>
+                Clear
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
 
+      <Text style={[styles.filterGroupTitle, { color: theme.textMain || theme.text }]}>
+        Or choose a category
+      </Text>
+
+      <View style={styles.pillRow}>
         <Pressable
           style={({ pressed }) => [
             styles.pill,
@@ -181,8 +228,27 @@ export default function MapFilters({
           </Text>
           <Text style={[styles.pillValue, { color: theme.textMain }]}>
             {selectedCategory === "All"
-              ? "All categories ▾"
-              : `${selectedCategory} ▾`}
+              ? "All categories"
+              : selectedCategory}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.pill,
+            {
+              backgroundColor: theme.pill || theme.card,
+              borderColor: theme.border,
+            },
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setIsTownModalVisible(true)}
+        >
+          <Text style={[styles.pillLabel, { color: theme.textMuted }]}>
+            Town
+          </Text>
+          <Text style={[styles.pillValue, { color: theme.textMain }]}>
+            {selectedTown === "All" ? "All towns" : selectedTown}
           </Text>
         </Pressable>
 
@@ -201,7 +267,7 @@ export default function MapFilters({
             Date
           </Text>
           <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedDateFilter} ▾
+            {selectedDateFilter}
           </Text>
         </Pressable>
       </View>
@@ -325,6 +391,67 @@ const styles = StyleSheet.create({
   errorText: {
     marginBottom: 6,
     fontSize: 13,
+  },
+  searchPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+  },
+  searchTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 3,
+  },
+  searchHelper: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    fontSize: 14,
+  },
+  searchButton: {
+    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+  },
+  searchButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  activeSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 10,
+  },
+  activeSearchText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  filterGroupTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 2,
+    marginBottom: 8,
   },
   pillRow: {
     gap: 12,

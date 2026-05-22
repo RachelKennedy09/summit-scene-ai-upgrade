@@ -22,7 +22,10 @@ import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import SelectModal from "../../components/common/SelectModal";
 import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
-import { getCommunityCategoryGroups } from "../../constants/eventCategories";
+import {
+  COMMUNITY_NOTICE_CATEGORIES,
+  getCommunityCategoryGroups,
+} from "../../constants/eventCategories";
 import { LANGUAGE_OPTIONS } from "../../constants/languages";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -41,6 +44,9 @@ const CATEGORY_GROUPS = getCommunityCategoryGroups({
   includeAll: true,
   allLabel: "All categories",
 });
+const NOTICE_CATEGORY_GROUPS = [
+  { title: "Local Notices", options: ["All notice types", ...COMMUNITY_NOTICE_CATEGORIES] },
+];
 const COMMUNITY_SECTIONS = [
   {
     label: "Make a Plan",
@@ -87,8 +93,11 @@ const COMMUNITY_SECTIONS = [
     cta: "Share Notice",
     emptyTitle: "No town notices yet",
     emptyText:
-      "Share a garage sale, gear swap, lost and found item, free stuff, or practical local notice.",
-    supportsCategory: false,
+      "Share a garage sale, gear swap, ride share, lost and found item, free stuff, or practical local notice.",
+    categoryLabel: "Notice type",
+    categoryAllLabel: "All notice types",
+    categoryGroups: NOTICE_CATEGORY_GROUPS,
+    supportsCategory: true,
     supportsDate: true,
   },
 ];

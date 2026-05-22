@@ -115,6 +115,9 @@ function buildEventsQueryString(options = {}) {
   if (options.category && options.category !== "All") {
     params.set("category", options.category);
   }
+  if (options.search && String(options.search).trim()) {
+    params.set("search", String(options.search).trim());
+  }
   if (
     options.dateFilter &&
     options.dateFilter !== "All" &&

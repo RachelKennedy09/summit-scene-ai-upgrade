@@ -24,6 +24,21 @@ function HelpText({ children, theme }) {
   return <Text style={[styles.bodyText, { color: theme.textMuted }]}>{children}</Text>;
 }
 
+function HelpList({ items, theme }) {
+  return (
+    <View style={styles.helpList}>
+      {items.map((item) => (
+        <View key={item} style={styles.helpListItem}>
+          <Text style={[styles.helpListDot, { color: theme.accent }]}>-</Text>
+          <Text style={[styles.helpListText, { color: theme.textMuted }]}>
+            {item}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function Question({ question, answer, theme }) {
   return (
     <View style={styles.questionBlock}>
@@ -50,27 +65,81 @@ export default function UserHelpScreen() {
           subtitle="How to find events, meet people, and use Summit Scene safely."
         />
 
-        <HelpSection title="How to use the app" theme={theme}>
+        <HelpSection title="How to use the Hub" theme={theme}>
           <HelpText theme={theme}>
-            Use Hub to browse events, Map to see what is nearby, and Community to
-            find people for plans, welcome newcomers, create or find groups, and
-            share community notices like gear swaps, garage sales, road blocks,
-            ride shares, and local updates.
+            Hub is the main place to browse what is happening. Start with search
+            if you already know what you want, or choose a category, town, and
+            date range to browse more casually.
           </HelpText>
-          <HelpText theme={theme}>
-            On an event page, tap I'm Going to save your attendance, or Find
-            Event Buddies to create a post for people who want to go together.
-          </HelpText>
+          <HelpList
+            theme={theme}
+            items={[
+              "Use Search events to look across events plus community posts like groups/clubs, town notices, and buddy posts.",
+              "Use Category when you want a specific type of event, such as music, markets, wellness, sports, food, nightlife, arts, or community activities.",
+              "Use Town to focus on Banff, Canmore, Lake Louise, or all towns.",
+              "Use Date to switch from today or upcoming dates to All dates when you want to plan farther ahead.",
+              "Use Near me when you want events close to your current location. Location access is optional and can be turned off.",
+              "Open an event to see the host, date, time, location, description, map actions, and attendance options.",
+              "Tap I'm Going to save your attendance, or use Find Event Buddies if you want to connect with others going to the same event.",
+            ]}
+          />
         </HelpSection>
 
-        <HelpSection title="Community posts" theme={theme}>
+        <HelpSection title="How to use the Map" theme={theme}>
           <HelpText theme={theme}>
-            Local Plans are for specific meetups or plans before an event. New in
-            Town is for newcomers. Groups are for repeatable interests like book
-            club, trivia, outdoor days, or art nights. Town Notices are for gear
-            swaps, garage sales, road blocks, ride shares, lost and found, and
-            practical local updates.
+            Map shows events by location so you can understand what is nearby,
+            what is clustered in one area, and what is worth visiting without
+            leaving Summit Scene.
           </HelpText>
+          <HelpList
+            theme={theme}
+            items={[
+              "Use Search map events when you know the event, venue, category, town, or address you are looking for.",
+              "Use Category, Town, and Date the same way as Hub to narrow the pins on the map.",
+              "Tap a single pin to open the event preview, then tap the preview to view full event details.",
+              "When several events share one location, tap the numbered marker to choose which event you want.",
+              "Zoom in when many events are close together. Summit Scene separates close pins at tighter zoom levels so busy streets are easier to browse.",
+              "Use Open in Summit Scene Map from an event page when you want to jump back to the map focused on that event.",
+              "Use Open in Google Maps when you need outside directions.",
+            ]}
+          />
+        </HelpSection>
+
+        <HelpSection title="How to use Connect and Community" theme={theme}>
+          <HelpText theme={theme}>
+            Connect and Community help people make plans, meet newcomers, join
+            repeat groups, and share practical local updates.
+          </HelpText>
+          <HelpList
+            theme={theme}
+            items={[
+              "Make a Plan is for specific meetups like coffee, walks, hikes, ski days, casual hangouts, or attending an event together.",
+              "New in Town is for introductions from people who recently moved, arrived for a season, or want to meet locals.",
+              "Groups are for repeat interests like book clubs, trivia, yoga, outdoor days, art nights, sports, or hobby meetups.",
+              "Town Notices are for practical updates like ride shares, gear swaps, garage sales, road blocks, lost and found, and local notices.",
+              "Use post replies and interest buttons to connect inside the app before moving to any outside contact.",
+              "Open a profile before meeting someone so you can review their public name, interests, town, languages, and shared socials.",
+            ]}
+          />
+        </HelpSection>
+
+        <HelpSection title="How to use Account" theme={theme}>
+          <HelpText theme={theme}>
+            Account is where you manage your profile, safety settings, saved
+            activity, business tools, support, and privacy controls.
+          </HelpText>
+          <HelpList
+            theme={theme}
+            items={[
+              "Edit Profile lets you update your public name, town, languages, interests, photo, bio, and social links.",
+              "Saved Events and I'm Going help you keep track of upcoming plans you care about.",
+              "Email verification protects your account and lets password resets go to the correct email address.",
+              "Business accounts can manage business profile details, verification, and posted events from Account.",
+              "Help & FAQ, Safety, Privacy, Terms, and Community Guidelines are available from Account so public rules are easy to find.",
+              "Report a Bug is for app issues. Contact Summit Scene is for support questions or account help.",
+              "Delete Account removes your account and associated activity where Summit Scene can safely remove it.",
+            ]}
+          />
         </HelpSection>
 
         <HelpSection title="Safety" theme={theme}>
@@ -165,6 +234,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 8,
+  },
+  helpList: {
+    gap: 7,
+  },
+  helpListItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  helpListDot: {
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 19,
+  },
+  helpListText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
   },
   questionBlock: {
     borderTopWidth: 1,

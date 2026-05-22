@@ -24,6 +24,7 @@ import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import TimePickerModal from "../../components/events/TimePickerModal";
 import {
+  COMMUNITY_NOTICE_CATEGORIES,
   COMMUNITY_FORM_CATEGORIES,
   getCommunityCategoryGroups,
 } from "../../constants/eventCategories";
@@ -52,6 +53,9 @@ const BUDDY_TYPES = [
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
+const NOTICE_CATEGORY_GROUPS = [
+  { title: "Local Notices", options: COMMUNITY_NOTICE_CATEGORIES },
+];
 const COMMUNITY_TYPES = [
   {
     label: "Make a Plan",
@@ -173,10 +177,11 @@ const COMMUNITY_FORM_COPY = {
   },
   notice: {
     title: "Share Town Notice",
-    subtitle: "Post a useful notice like a garage sale, gear swap, lost and found, free stuff, or a practical town heads-up.",
-    showCategory: false,
-    categoryLabel: "",
+    subtitle: "Post a useful notice like a garage sale, gear swap, ride share, lost and found, free stuff, or a practical town heads-up.",
+    showCategory: true,
+    categoryLabel: "Notice type",
     categoryRequired: false,
+    categoryGroups: NOTICE_CATEGORY_GROUPS,
     detailsLabel: "Notice",
     detailsPlaceholder: "What are you sharing? Add the location area, timing, and what people should know.",
     townLabel: "Applies to",
@@ -799,7 +804,9 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                   {category ||
                     (formCopy.categoryRequired
                       ? "Choose a category"
-                      : "Choose a focus if helpful")}
+                      : formCopy.categoryLabel === "Notice type"
+                        ? "Choose a notice type if helpful"
+                        : "Choose a focus if helpful")}
                 </Text>
               </Pressable>
             </>
@@ -1062,7 +1069,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         <GroupedCategoryModal
           visible={showCategoryPicker && shouldShowCategory}
           title="Choose category"
-          groups={CATEGORY_GROUPS}
+          groups={formCopy.categoryGroups || CATEGORY_GROUPS}
           selectedValue={category}
           onSelect={handleSelectCategory}
           onClose={() => setShowCategoryPicker(false)}

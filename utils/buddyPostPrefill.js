@@ -93,6 +93,7 @@ const EVENT_CATEGORY_TO_BUDDY_TYPE = {
   "Gear Sale / Swap": "notice",
   "Free Stuff": "notice",
   "Lost & Found": "notice",
+  "Ride Share": "notice",
   "Community Notice": "notice",
   "Volunteer Help": "notice",
 };

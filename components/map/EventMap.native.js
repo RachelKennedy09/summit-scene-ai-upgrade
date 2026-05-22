@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import MapView, { Marker, Callout } from "react-native-maps";
+import { Platform, View, Text, StyleSheet } from "react-native";
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from "react-native-maps";
 
 const INITIAL_REGION = {
   latitude: 51.18,
@@ -40,6 +40,7 @@ const EventMap = React.forwardRef(function EventMap(
     <MapView
       ref={ref}
       style={styles.map}
+      provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
       initialRegion={INITIAL_REGION}
       moveOnMarkerPress={false}
       showsUserLocation={isNearMeEnabled}
@@ -61,7 +62,6 @@ const EventMap = React.forwardRef(function EventMap(
               }
             }}
             coordinate={marker.coordinate}
-            tracksViewChanges={false}
             onSelect={() => onSelectMarker(marker.id)}
             onPress={() => {
               onSelectMarker(marker.id);

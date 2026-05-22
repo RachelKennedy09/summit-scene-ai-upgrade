@@ -24,7 +24,6 @@ const COMMUNITY_TYPE_DEFAULTS = {
   },
   notice: {
     type: "notice",
-    category: undefined,
     groupSizePreference: "any",
     scheduleType: "single",
   },
@@ -38,7 +37,7 @@ const COMMUNITY_TYPE_DEFAULTS = {
 
 function buildListFilter(query = {}) {
   const filter = {};
-  const { type, category, communityType, town, skillLevel, status, eventId, date } = query;
+  const { type, category, communityType, town, skillLevel, status, eventId, date, search } = query;
 
   if (type) filter.type = type;
   if (category) filter.category = category;
@@ -48,8 +47,37 @@ function buildListFilter(query = {}) {
   filter.status = status || "open";
   if (eventId) filter.eventId = eventId;
   if (date) filter.date = date;
+  const searchTerms = buildSearchTerms(search);
+  if (searchTerms.length) {
+    const searchRegexes = searchTerms.map((term) => new RegExp(escapeRegex(term), "i"));
+    filter.$or = [
+      { activityText: { $in: searchRegexes } },
+      { category: { $in: searchRegexes } },
+      { type: { $in: searchRegexes } },
+      { communityType: { $in: searchRegexes } },
+      { town: { $in: searchRegexes } },
+    ];
+  }
 
   return filter;
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildSearchTerms(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) return [];
+
+  const terms = [normalized];
+  const lower = normalized.toLowerCase();
+
+  if (lower.includes("book club") || lower.includes("bookclub")) {
+    terms.push("Book Club", "bookclub", "Local Clubs");
+  }
+
+  return [...new Set(terms)];
 }
 
 function getTodayDateString() {

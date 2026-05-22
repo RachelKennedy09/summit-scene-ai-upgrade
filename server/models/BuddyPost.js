@@ -41,8 +41,9 @@ export const BUDDY_POST_CATEGORIES = [
   "Wildlife Tours",
   "Photography Walks",
   "Ice Skating",
+  "Curling",
   "Snowshoeing",
-  "Outdoor Yoga",
+  "Yoga",
   "Meetups",
   "New in Town",
   "Community Gatherings",
@@ -79,7 +80,6 @@ export const BUDDY_POST_CATEGORIES = [
   "Pub Nights",
   "After Parties",
   "Comedy",
-  "Yoga",
   "Meditation",
   "Breathwork",
   "Sauna & Cold Plunges",
@@ -120,11 +120,12 @@ export const BUDDY_POST_CATEGORIES = [
   "Dog Friendly",
   "Pet Meetups",
   "Adoption Events",
+  "Community Notice",
+  "Free Stuff",
   "Garage Sale",
   "Gear Sale / Swap",
-  "Free Stuff",
   "Lost & Found",
-  "Community Notice",
+  "Ride Share",
   "Volunteer Help",
   "Other",
 ];
@@ -325,6 +326,10 @@ buddyPostSchema.pre("validate", function normalizeLegacyCategories(next) {
 
   if (this.category === "Market") {
     this.category = "Markets";
+  }
+
+  if (this.category === "Outdoor Yoga") {
+    this.category = "Yoga";
   }
 
   next();

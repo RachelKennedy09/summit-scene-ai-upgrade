@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -24,6 +24,10 @@ export default function GroupedCategoryModal({
   onClose,
 }) {
   const { theme } = useTheme();
+  const scrollRef = useRef(null);
+  const groupOffsetsRef = useRef({});
+  const pendingScrollTitleRef = useRef("");
+  const scrollRetryRef = useRef(null);
 
   const selectedGroupTitle = useMemo(() => {
     if (!selectedValue || !groups?.length) return "";
@@ -48,15 +52,66 @@ export default function GroupedCategoryModal({
 
   useEffect(() => {
     if (visible) {
+      pendingScrollTitleRef.current = "";
+      groupOffsetsRef.current = {};
       setExpandedGroupTitle(initialExpandedTitle);
     }
   }, [initialExpandedTitle, visible]);
 
+  const scrollToGroup = (groupTitle) => {
+    const attemptScroll = (attempt = 0) => {
+      const y = groupOffsetsRef.current[groupTitle];
+      if (typeof y !== "number") {
+        if (attempt < 4) {
+          scrollRetryRef.current = setTimeout(
+            () => attemptScroll(attempt + 1),
+            40
+          );
+        }
+        return;
+      }
+
+      scrollRef.current?.scrollTo({
+        y: Math.max(y - 8, 0),
+        animated: true,
+      });
+    };
+
+    requestAnimationFrame(() => attemptScroll());
+  };
+
   const toggleGroup = (groupTitle) => {
+    const isOpening = expandedGroupTitle !== groupTitle;
+    pendingScrollTitleRef.current = isOpening ? groupTitle : "";
+    if (scrollRetryRef.current) {
+      clearTimeout(scrollRetryRef.current);
+      scrollRetryRef.current = null;
+    }
+
     setExpandedGroupTitle((currentTitle) =>
       currentTitle === groupTitle ? "" : groupTitle
     );
   };
+
+  useEffect(() => {
+    if (!visible || !expandedGroupTitle) return undefined;
+    if (pendingScrollTitleRef.current !== expandedGroupTitle) return undefined;
+
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => scrollToGroup(expandedGroupTitle));
+      pendingScrollTitleRef.current = "";
+    }, 80);
+
+    return () => clearTimeout(timer);
+  }, [expandedGroupTitle, visible]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollRetryRef.current) {
+        clearTimeout(scrollRetryRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Modal
@@ -80,11 +135,18 @@ export default function GroupedCategoryModal({
           </Text>
 
           <ScrollView
+            ref={scrollRef}
             style={styles.modalOptionsScroll}
             showsVerticalScrollIndicator
           >
             {groups.map((group) => (
-              <View key={group.title} style={styles.optionGroup}>
+              <View
+                key={group.title}
+                style={styles.optionGroup}
+                onLayout={(event) => {
+                  groupOffsetsRef.current[group.title] = event.nativeEvent.layout.y;
+                }}
+              >
                 <Pressable
                   style={({ pressed }) => [
                     styles.groupHeader,
@@ -134,6 +196,8 @@ export default function GroupedCategoryModal({
                   ? group.options.map((categoryLabel) => {
                       const category = normalizeCategoryLabel(categoryLabel);
                       const isSelected = category === selectedValue;
+                      const isAllOption =
+                        category === "All" || categoryLabel.startsWith("All ");
 
                       return (
                         <Pressable
@@ -156,6 +220,7 @@ export default function GroupedCategoryModal({
                             style={[
                               styles.optionText,
                               { color: theme.textMain || theme.text },
+                              isAllOption && styles.optionTextAll,
                               isSelected && styles.optionTextSelected,
                             ]}
                           >
@@ -268,6 +333,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flex: 1,
     paddingRight: 12,
+  },
+  optionTextAll: {
+    fontWeight: "900",
   },
   optionTextSelected: {
     fontWeight: "700",

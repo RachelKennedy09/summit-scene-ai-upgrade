@@ -125,13 +125,15 @@ function getOffsetForTownIndex(index) {
 }
 
 function getEventMarkerCoords(event, townCounts) {
+  const latitude = Number(event?.latitude);
+  const longitude = Number(event?.longitude);
   const hasExactCoords =
-    Number.isFinite(event?.latitude) && Number.isFinite(event?.longitude);
+    Number.isFinite(latitude) && Number.isFinite(longitude);
 
   if (hasExactCoords) {
     return {
-      latitude: event.latitude,
-      longitude: event.longitude,
+      latitude,
+      longitude,
     };
   }
 
@@ -159,6 +161,30 @@ function getMarkerGroupKey(marker) {
 
 function getEventIdValue(event) {
   return event?._id?.toString?.() || event?.id?.toString?.() || "";
+}
+
+function normalizeSearchText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function eventMatchesSearch(event, searchTerm) {
+  const normalizedSearch = normalizeSearchText(searchTerm);
+  if (!normalizedSearch) return true;
+
+  const searchableText = [
+    event?.title,
+    event?.description,
+    event?.category,
+    event?.town,
+    event?.locationName,
+    event?.location,
+    event?.address,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(normalizedSearch);
 }
 
 function getSpreadOffset(index, total) {
@@ -342,6 +368,8 @@ export default function MapScreen({ route }) {
   const [mapActionMessage, setMapActionMessage] = useState("");
   const [mapRegion, setMapRegion] = useState(INITIAL_REGION);
   const [shouldSpreadMapMarkers, setShouldSpreadMapMarkers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
 
   // Data + status state
   const [events, setEvents] = useState([]);
@@ -424,9 +452,39 @@ export default function MapScreen({ route }) {
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
+    setSearchQuery("");
+    setActiveSearch("");
     setSelectedMarkerId(null);
     setSelectedEventGroup(null);
     setMapActionMessage("Filters cleared. Showing today's events.");
+  }, []);
+
+  const handleApplySearch = useCallback(() => {
+    const trimmedSearch = searchQuery.trim();
+
+    setActiveSearch(trimmedSearch);
+    setSelectedTown("All");
+    setSelectedCategory("All");
+    setSelectedDateFilter(trimmedSearch ? "All dates" : "Today");
+    setIsNearMeEnabled(false);
+    setNearMeLocation(null);
+    setNearMeMessage("");
+    setSelectedMarkerId(null);
+    setSelectedEventGroup(null);
+    setMapActionMessage(
+      trimmedSearch
+        ? `Searching all map events for "${trimmedSearch}".`
+        : "Search cleared. Showing today's events."
+    );
+  }, [searchQuery]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    setActiveSearch("");
+    setSelectedDateFilter("Today");
+    setSelectedMarkerId(null);
+    setSelectedEventGroup(null);
+    setMapActionMessage("Search cleared. Showing today's events.");
   }, []);
 
   useFocusEffect(
@@ -508,6 +566,7 @@ export default function MapScreen({ route }) {
           const distanceKm = getEventDistanceKm(event, nearMeLocation);
           return distanceKm !== null && distanceKm <= NEAR_ME_RADIUS_KM;
         })();
+      const searchMatch = eventMatchesSearch(event, activeSearch);
 
       let dateMatch = true;
       const effectiveDate = getNextOccurrenceDateString(event) || event.date;
@@ -530,7 +589,14 @@ export default function MapScreen({ route }) {
         }
       }
 
-      return ownershipMatch && townMatch && categoryMatch && dateMatch && nearMeMatch;
+      return (
+        ownershipMatch &&
+        townMatch &&
+        categoryMatch &&
+        dateMatch &&
+        nearMeMatch &&
+        searchMatch
+      );
     });
   }, [
     events,
@@ -541,6 +607,7 @@ export default function MapScreen({ route }) {
     currentUserId,
     isNearMeEnabled,
     nearMeLocation,
+    activeSearch,
   ]);
 
   const markersForMap = useMemo(() => {
@@ -574,7 +641,8 @@ export default function MapScreen({ route }) {
           scheduleLabel: scheduleBits.join(" | "),
           locationLabel: event.locationName || event.location || event.address || "",
           usesExactCoords:
-            Number.isFinite(event?.latitude) && Number.isFinite(event?.longitude),
+            Number.isFinite(Number(event?.latitude)) &&
+            Number.isFinite(Number(event?.longitude)),
         };
       })
       .filter(Boolean);
@@ -693,13 +761,16 @@ export default function MapScreen({ route }) {
       selectedDateFilter === "All dates"
         ? ""
         : ` (${selectedDateFilter.toLowerCase()})`;
+    const searchLabel = activeSearch ? ` matching "${activeSearch}"` : "";
 
     if (count === 0) {
       return isNearMeEnabled
         ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
         : showOnlyMyEvents
         ? "No posted events match your current map filters."
-        : "No events match your current map filters.";
+        : activeSearch
+          ? `No map events found for "${activeSearch}". Try a simpler search or clear filters.`
+          : "No events match your current map filters.";
     }
 
     if (count === 1) {
@@ -707,14 +778,14 @@ export default function MapScreen({ route }) {
         isNearMeEnabled ? "nearby " : ""
       }${
         showOnlyMyEvents ? "posted event" : "event"
-      } in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+      }${searchLabel} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
     }
 
     return `Showing ${count} ${
       isNearMeEnabled ? "nearby " : ""
     }${
       showOnlyMyEvents ? "posted events" : "events"
-    } in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+    }${searchLabel} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
   }, [
     eventsForMap.length,
     selectedTown,
@@ -722,6 +793,7 @@ export default function MapScreen({ route }) {
     selectedDateFilter,
     showOnlyMyEvents,
     isNearMeEnabled,
+    activeSearch,
   ]);
 
   // Keep the camera aligned with the actual filtered markers.
@@ -822,7 +894,8 @@ export default function MapScreen({ route }) {
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
-    showOnlyMyEvents;
+    showOnlyMyEvents ||
+    Boolean(activeSearch);
   const mapHeight = Math.max(
     260,
     Math.min(420, windowHeight - tabBarHeight - insets.bottom - 330)
@@ -865,6 +938,11 @@ export default function MapScreen({ route }) {
           onToggleNearMe={handleToggleNearMe}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearFilters}
+          searchQuery={searchQuery}
+          activeSearch={activeSearch}
+          onChangeSearchQuery={setSearchQuery}
+          onApplySearch={handleApplySearch}
+          onClearSearch={handleClearSearch}
         />
         {isBusiness ? (
           <View style={styles.businessToggleRow}>

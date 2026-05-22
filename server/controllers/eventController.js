@@ -218,6 +218,24 @@ function parseCoordinate(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildSearchTerms(value) {
+  const normalized = normalizeRequiredString(value);
+  if (!normalized) return [];
+
+  const terms = [normalized];
+  const lower = normalized.toLowerCase();
+
+  if (lower.includes("book club") || lower.includes("bookclub")) {
+    terms.push("Book Club", "Local Clubs");
+  }
+
+  return [...new Set(terms)];
+}
+
 function buildDateFilterRange(dateFilter) {
   const normalizedFilter = normalizeRequiredString(dateFilter);
   if (
@@ -289,6 +307,7 @@ export async function getAllEvents(req, res) {
     const normalizedTown = normalizeRequiredString(req.query?.town);
     const normalizedCategory = normalizeRequiredString(req.query?.category);
     const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
+    const searchTerms = buildSearchTerms(req.query?.search);
     const requestedPage = parsePositiveInt(req.query?.page, 1);
     const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), 50);
     const nearLat = parseCoordinate(req.query?.nearLat);
@@ -329,6 +348,23 @@ export async function getAllEvents(req, res) {
         categoryFilterOptions.length === 1
           ? categoryFilterOptions[0]
           : { $in: categoryFilterOptions };
+    }
+
+    if (searchTerms.length) {
+      const searchRegexes = searchTerms.map((term) => new RegExp(escapeRegex(term), "i"));
+      baseQuery.$and = [
+        ...(baseQuery.$and || []),
+        {
+          $or: [
+            { title: { $in: searchRegexes } },
+            { description: { $in: searchRegexes } },
+            { category: { $in: searchRegexes } },
+            { town: { $in: searchRegexes } },
+            { locationName: { $in: searchRegexes } },
+            { address: { $in: searchRegexes } },
+          ],
+        },
+      ];
     }
 
     const events = await Event.find(baseQuery)
