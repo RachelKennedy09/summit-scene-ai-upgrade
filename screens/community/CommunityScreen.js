@@ -42,10 +42,10 @@ import { openReportReasonPicker } from "../../utils/reporting";
 
 const CATEGORY_GROUPS = getCommunityCategoryGroups({
   includeAll: true,
-  allLabel: "All categories",
+  allLabel: "All Categories",
 });
 const NOTICE_CATEGORY_GROUPS = [
-  { title: "Local Notices", options: ["All notice types", ...COMMUNITY_NOTICE_CATEGORIES] },
+  { title: "Local Notices", options: ["All Notice Types", ...COMMUNITY_NOTICE_CATEGORIES] },
 ];
 const COMMUNITY_SECTIONS = [
   {
@@ -95,7 +95,7 @@ const COMMUNITY_SECTIONS = [
     emptyText:
       "Share a garage sale, gear swap, ride share, lost and found item, free stuff, or practical local notice.",
     categoryLabel: "Notice type",
-    categoryAllLabel: "All notice types",
+    categoryAllLabel: "All Notice Types",
     categoryGroups: NOTICE_CATEGORY_GROUPS,
     supportsCategory: true,
     supportsDate: true,
@@ -176,7 +176,7 @@ export default function CommunityScreen({ navigation }) {
   const [profileUser, setProfileUser] = useState(null);
 
   const activeSection = getSection(communityType);
-  const categoryAllLabel = activeSection.categoryAllLabel || "All categories";
+  const categoryAllLabel = activeSection.categoryAllLabel || "All Categories";
   const sectionSupportsCategory = Boolean(activeSection.supportsCategory);
   const sectionSupportsDate = Boolean(activeSection.supportsDate);
   const categoryGroups = activeSection.categoryGroups || CATEGORY_GROUPS;
@@ -664,6 +664,7 @@ export default function CommunityScreen({ navigation }) {
                 onSubmitReply={handleSubmitReply}
                 onUpdateReply={handleUpdateReply}
                 onDeleteReply={handleDeleteReply}
+                onBlockProfile={handleBlockProfile}
                 onReport={handleReport}
               />
             ))}

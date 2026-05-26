@@ -77,7 +77,7 @@ export default function UserHelpScreen() {
               "Use Search events to look across events plus community posts like groups/clubs, town notices, and buddy posts.",
               "Use Category when you want a specific type of event, such as music, markets, wellness, sports, food, nightlife, arts, or community activities.",
               "Use Town to focus on Banff, Canmore, Lake Louise, or all towns.",
-              "Use Date to switch from today or upcoming dates to All dates when you want to plan farther ahead.",
+              "Use Date to switch from today or upcoming dates to All Dates when you want to plan farther ahead.",
               "Use Near me when you want events close to your current location. Location access is optional and can be turned off.",
               "Open an event to see the host, date, time, location, description, map actions, and attendance options.",
               "Tap I'm Going to save your attendance, or use Find Event Buddies if you want to connect with others going to the same event.",

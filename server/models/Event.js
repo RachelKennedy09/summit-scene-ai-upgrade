@@ -10,6 +10,13 @@
 //  - Includes optional fields: time, endTime, venue/address, imageUrl, coordinates
 
 import mongoose from "mongoose";
+import {
+  EVENT_CATEGORY_TAGS,
+  EVENT_CATEGORY_VALUES,
+  MAX_VIBE_TAGS,
+  VIBE_TAGS,
+  getMainCategoryForTag,
+} from "../../constants/eventCategories.js";
 
 const timeSlotSchema = new mongoose.Schema(
   {
@@ -70,6 +77,18 @@ const eventSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Optional human-readable duration, useful for tours/classes.
+    duration: {
+      type: String,
+      trim: true,
+    },
+
+    // Optional public price/range such as "Free", "$25", "$60-$90", or "Varies".
+    priceRange: {
+      type: String,
+      trim: true,
+    },
+
     // Which mountain town this event belongs to (used for filtering)
     town: {
       type: String,
@@ -78,110 +97,64 @@ const eventSchema = new mongoose.Schema(
       enum: ["Banff", "Canmore", "Lake Louise"],
     },
 
-    // Event category used for filtering chips
+    // Primary event category used for legacy clients and compact display.
     category: {
       type: String,
       trim: true,
-      enum: [
-        "Hiking",
-        "Trail Running",
-        "Climbing",
-        "Bouldering",
-        "Skiing",
-        "Snowboarding",
-        "Cross-Country Skiing",
-        "Backcountry",
-        "Mountain Biking",
-        "Paddleboarding",
-        "Kayaking",
-        "Canoeing",
-        "Camping",
-        "Fishing",
-        "Wildlife Tours",
-        "Photography Walks",
-        "Ice Skating",
-        "Curling",
-        "Snowshoeing",
-        "Yoga",
-        "Meetups",
-        "New in Town",
-        "Community Gatherings",
-        "Networking",
-        "Coffee Meetups",
-        "Cultural Events",
-        "Volunteer Events",
-        "Local Clubs",
-        "Student Events",
-        "Digital Nomad Meetups",
-        "LGBTQ+ Meetups",
-        "Pride Events",
-        "Queer Community",
-        "Trans & Non-Binary Inclusive",
-        "Allyship",
-        "Inclusive Outdoors",
-        "Brunch",
-        "Coffee",
-        "Breweries",
-        "Wine Tastings",
-        "Cocktail Nights",
-        "Food Trucks",
-        "Farmers Markets",
-        "Pop-Up Dinners",
-        "Restaurant Specials",
-        "Cooking Classes",
-        "Live Music",
-        "DJs",
-        "Open Mic",
-        "Karaoke",
-        "Dance Nights",
-        "Festivals",
-        "Concerts",
-        "Pub Nights",
-        "After Parties",
-        "Comedy",
-        "Meditation",
-        "Breathwork",
-        "Sauna & Cold Plunges",
-        "Wellness Retreats",
-        "Sound Baths",
-        "Fitness Classes",
-        "Run Clubs",
-        "Gym Events",
-        "Mental Wellness",
-        "Recovery Sessions",
-        "Art Shows",
-        "Pottery",
-        "Painting Nights",
-        "Photography",
-        "Writing Groups",
-        "Creative Workshops",
-        "Film Screenings",
-        "Craft Markets",
-        "Makers Markets",
-        "Business Workshops",
-        "Coding Meetups",
-        "AI & Tech",
-        "Finance",
-        "Career Events",
-        "Public Speaking",
-        "Skill Sharing",
-        "Language Exchange",
-        "Holiday Events",
-        "Canada Day",
-        "Christmas Markets",
-        "Summer Kickoff",
-        "Ski Season Launch",
-        "Stampede Events",
-        "Local Tours",
-        "Visitor Experiences",
-        "Family Friendly",
-        "Kids Activities",
-        "Dog Friendly",
-        "Pet Meetups",
-        "Adoption Events",
-        "Other",
-      ],
+      enum: EVENT_CATEGORY_VALUES,
       default: "Other",
+    },
+
+    // Additional searchable categories. The first item mirrors `category`.
+    categories: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          enum: EVENT_CATEGORY_VALUES,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= 3;
+        },
+        message: "Choose up to 3 categories.",
+      },
+    },
+
+    categoryTags: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          enum: EVENT_CATEGORY_TAGS,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= 8;
+        },
+        message: "Choose up to 8 category tags.",
+      },
+    },
+
+    vibeTags: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          enum: VIBE_TAGS,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= MAX_VIBE_TAGS;
+        },
+        message: `Choose up to ${MAX_VIBE_TAGS} vibe tags.`,
+      },
     },
 
     // -------------------------------------------
@@ -264,6 +237,12 @@ const eventSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Optional external booking page for tours, classes, retreats, and ticketed events.
+    bookingUrl: {
+      type: String,
+      trim: true,
+    },
+
     // -------------------------------------------
     // CREATOR INFO
     // -------------------------------------------
@@ -323,13 +302,33 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
     Dance: "Dance Nights",
     "Museum/Heritage": "Cultural Events",
     "Book Club": "Local Clubs",
+    "Seasonal & Tourism": "Tours & Experiences",
     Wellness: "Wellness Retreats",
     "Yoga/Fitness": "Yoga",
     "Outdoor Yoga": "Yoga",
   };
 
-  if (legacyCategoryMap[this.category]) {
-    this.category = legacyCategoryMap[this.category];
+  const normalizeCategory = (category) => {
+    const normalized = legacyCategoryMap[category] || category;
+    return getMainCategoryForTag(normalized) || normalized;
+  };
+
+  if (this.category) {
+    this.category = normalizeCategory(this.category);
+  }
+
+  if (Array.isArray(this.categories)) {
+    this.categories = [
+      ...new Set(this.categories.map(normalizeCategory).filter(Boolean)),
+    ].slice(0, 3);
+  }
+
+  if (!this.categories?.length && this.category) {
+    this.categories = [this.category];
+  }
+
+  if (this.categories?.length) {
+    this.category = this.categories[0];
   }
 
   next();

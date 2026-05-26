@@ -132,3 +132,38 @@ export async function updateReport(reportId, updates, token) {
     );
   }
 }
+
+export async function applyReportAction(reportId, action, token) {
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/reports/${reportId}/actions`,
+      {
+        method: "POST",
+        headers: buildHeaders(token),
+        body: JSON.stringify({ action }),
+      }
+    );
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          data.message ||
+          `Failed to apply moderation action (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError =
+      error?.name === "AbortError"
+        ? new Error("Moderation action timed out. Please try again.")
+        : error;
+
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't apply that moderation action right now. Please try again."
+    );
+  }
+}

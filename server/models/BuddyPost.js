@@ -3,6 +3,14 @@
 
 import mongoose from "mongoose";
 import { ACTIVITY_SKILL_LEVELS } from "./User.js";
+import {
+  COMMUNITY_CATEGORY_TAGS,
+  COMMUNITY_FORM_CATEGORIES,
+  EVENT_CATEGORY_GROUPS,
+  MAX_VIBE_TAGS,
+  VIBE_TAGS,
+  getMainCategoryForTag,
+} from "../../constants/eventCategories.js";
 
 const { Schema } = mongoose;
 
@@ -24,111 +32,12 @@ export const BUDDY_POST_TYPES = [
 ];
 
 export const BUDDY_POST_CATEGORIES = [
-  "Hiking",
-  "Trail Running",
-  "Climbing",
-  "Bouldering",
-  "Skiing",
-  "Snowboarding",
-  "Cross-Country Skiing",
-  "Backcountry",
-  "Mountain Biking",
-  "Paddleboarding",
-  "Kayaking",
-  "Canoeing",
-  "Camping",
-  "Fishing",
-  "Wildlife Tours",
-  "Photography Walks",
-  "Ice Skating",
-  "Curling",
-  "Snowshoeing",
-  "Yoga",
-  "Meetups",
-  "New in Town",
-  "Community Gatherings",
-  "Networking",
-  "Coffee Meetups",
-  "Cultural Events",
-  "Volunteer Events",
-  "Local Clubs",
-  "Student Events",
-  "Digital Nomad Meetups",
-  "LGBTQ+ Meetups",
-  "Pride Events",
-  "Queer Community",
-  "Trans & Non-Binary Inclusive",
-  "Allyship",
-  "Inclusive Outdoors",
-  "Brunch",
-  "Coffee",
-  "Breweries",
-  "Wine Tastings",
-  "Cocktail Nights",
-  "Food Trucks",
-  "Farmers Markets",
-  "Pop-Up Dinners",
-  "Restaurant Specials",
-  "Cooking Classes",
-  "Live Music",
-  "DJs",
-  "Open Mic",
-  "Karaoke",
-  "Dance Nights",
-  "Festivals",
-  "Concerts",
-  "Pub Nights",
-  "After Parties",
-  "Comedy",
-  "Meditation",
-  "Breathwork",
-  "Sauna & Cold Plunges",
-  "Wellness Retreats",
-  "Sound Baths",
-  "Fitness Classes",
-  "Run Clubs",
-  "Gym Events",
-  "Mental Wellness",
-  "Recovery Sessions",
-  "Art Shows",
-  "Pottery",
-  "Painting Nights",
-  "Photography",
-  "Writing Groups",
-  "Creative Workshops",
-  "Film Screenings",
-  "Craft Markets",
-  "Makers Markets",
-  "Business Workshops",
-  "Coding Meetups",
-  "AI & Tech",
-  "Finance",
-  "Career Events",
-  "Public Speaking",
-  "Skill Sharing",
-  "Language Exchange",
-  "Holiday Events",
-  "Canada Day",
-  "Christmas Markets",
-  "Summer Kickoff",
-  "Ski Season Launch",
-  "Stampede Events",
-  "Local Tours",
-  "Visitor Experiences",
-  "Family Friendly",
-  "Kids Activities",
-  "Dog Friendly",
-  "Pet Meetups",
-  "Adoption Events",
-  "Community Notice",
-  "Free Stuff",
-  "Garage Sale",
-  "Gear Sale / Swap",
-  "Lost & Found",
-  "Ride Share",
-  "Volunteer Help",
-  "Other",
+  ...new Set([
+    ...EVENT_CATEGORY_GROUPS.map((group) => group.title),
+    ...COMMUNITY_FORM_CATEGORIES,
+  ]),
 ];
+export const BUDDY_POST_CATEGORY_TAGS = COMMUNITY_CATEGORY_TAGS;
 
 export const BUDDY_POST_TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
 
@@ -223,6 +132,57 @@ const buddyPostSchema = new Schema(
       index: true,
     },
 
+    categories: {
+      type: [
+        {
+          type: String,
+          enum: BUDDY_POST_CATEGORIES,
+          trim: true,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= 3;
+        },
+        message: "Choose up to 3 categories.",
+      },
+    },
+
+    categoryTags: {
+      type: [
+        {
+          type: String,
+          enum: BUDDY_POST_CATEGORY_TAGS,
+          trim: true,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= 8;
+        },
+        message: "Choose up to 8 category tags.",
+      },
+    },
+
+    vibeTags: {
+      type: [
+        {
+          type: String,
+          enum: VIBE_TAGS,
+          trim: true,
+        },
+      ],
+      default: undefined,
+      validate: {
+        validator(value) {
+          return !value || value.length <= MAX_VIBE_TAGS;
+        },
+        message: `Choose up to ${MAX_VIBE_TAGS} vibe tags.`,
+      },
+    },
+
     communityType: {
       type: String,
       enum: BUDDY_COMMUNITY_TYPES,
@@ -313,6 +273,7 @@ const buddyPostSchema = new Schema(
 buddyPostSchema.index({
   communityType: 1,
   category: 1,
+  categories: 1,
   type: 1,
   town: 1,
   date: 1,
@@ -320,16 +281,33 @@ buddyPostSchema.index({
 });
 
 buddyPostSchema.pre("validate", function normalizeLegacyCategories(next) {
-  if (this.category === "Food & Drink") {
-    this.category = "Food Trucks";
+  const legacyCategoryMap = {
+    Market: "Farmers Markets",
+    Markets: "Farmers Markets",
+    "Outdoor Yoga": "Yoga",
+    "Seasonal & Tourism": "Tours & Experiences",
+  };
+  const normalizeCategory = (category) => {
+    const normalized = legacyCategoryMap[category] || category;
+    return getMainCategoryForTag(normalized) || normalized;
+  };
+
+  if (this.category) {
+    this.category = normalizeCategory(this.category);
   }
 
-  if (this.category === "Market") {
-    this.category = "Markets";
+  if (Array.isArray(this.categories)) {
+    this.categories = [
+      ...new Set(this.categories.map(normalizeCategory).filter(Boolean)),
+    ].slice(0, 3);
   }
 
-  if (this.category === "Outdoor Yoga") {
-    this.category = "Yoga";
+  if (!this.categories?.length && this.category) {
+    this.categories = [this.category];
+  }
+
+  if (this.categories?.length) {
+    this.category = this.categories[0];
   }
 
   next();

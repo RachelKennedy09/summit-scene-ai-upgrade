@@ -4,7 +4,7 @@
 // - Validates required fields an sends a POST request via createEvent()
 // - Only business accounts (role=business) are allowed to publish events.
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -30,12 +30,16 @@ import { useTheme } from "../../context/ThemeContext";
 import DatePickerModal from "../../components/events/DatePickerModal.js";
 import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal";
+import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import AppButton from "../../components/common/AppButton";
 import AppLogoHeader from "../../components/AppLogoHeader";
 import PageHeader from "../../components/common/PageHeader";
 import {
-  EVENT_FORM_CATEGORIES,
-  getEventCategoryGroups,
+  EVENT_MAIN_CATEGORIES,
+  MAX_CATEGORY_TAGS,
+  MAX_VIBE_TAGS,
+  VIBE_TAG_GROUPS,
+  getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
 
 const API_BASE_URL =
@@ -44,8 +48,9 @@ const API_BASE_URL =
 const AI_REQUEST_TIMEOUT_MS = 15000;
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
-const FORM_CATEGORIES = EVENT_FORM_CATEGORIES;
-const FORM_CATEGORY_GROUPS = getEventCategoryGroups();
+const FORM_CATEGORIES = EVENT_MAIN_CATEGORIES;
+const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
+const MAX_EVENT_CATEGORIES = 3;
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
   { value: "recurring", label: "Recurring event" },
@@ -122,8 +127,13 @@ export default function PostEventScreen() {
   // Basic event fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [duration, setDuration] = useState("");
+  const [priceRange, setPriceRange] = useState("");
   const [town, setTown] = useState("");
-  const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
+  const category = categories[0] || "";
+  const [categoryTags, setCategoryTags] = useState([]);
+  const [vibeTags, setVibeTags] = useState([]);
 
   // Date + Time state
   const [dateObj, setDateObj] = useState(new Date()); // Date object for picker
@@ -157,6 +167,7 @@ export default function PostEventScreen() {
 
   // Hero image (optional). Used on EventDetailScreen hero image.
   const [imageUrl, setImageUrl] = useState("");
+  const [bookingUrl, setBookingUrl] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -171,8 +182,13 @@ export default function PostEventScreen() {
     useState(false);
   const [showTownModal, setShowTownModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
+  const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
-
+  const categoryTagGroups = useMemo(
+    () => getCategoryTagGroupsForCategories(categories),
+    [categories]
+  );
   useEffect(() => {
     const trimmedAddress = address.trim();
 
@@ -285,6 +301,60 @@ export default function PostEventScreen() {
     );
   };
 
+  const toggleCategory = (nextCategory) => {
+    setCategories((current) => {
+      if (current.includes(nextCategory)) {
+        return current.filter((item) => item !== nextCategory);
+      }
+
+      if (current.length >= MAX_EVENT_CATEGORIES) {
+        Alert.alert(
+          "Category limit",
+          `Choose up to ${MAX_EVENT_CATEGORIES} categories for one event.`
+        );
+        return current;
+      }
+
+      return [...current, nextCategory];
+    });
+  };
+
+  const toggleCategoryTag = (nextTag) => {
+    setCategoryTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_CATEGORY_TAGS) {
+        Alert.alert(
+          "Tag limit",
+          `Choose up to ${MAX_CATEGORY_TAGS} category tags for one event.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  };
+
+  const toggleVibeTag = (nextTag) => {
+    setVibeTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_VIBE_TAGS) {
+        Alert.alert(
+          "Vibe tag limit",
+          `Choose up to ${MAX_VIBE_TAGS} vibe tags for one event.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  };
+
   const addExtraTimeSlot = () => {
     setExtraTimeSlots((current) => [...current, createEmptyTimeSlot()]);
   };
@@ -327,6 +397,9 @@ export default function PostEventScreen() {
             title: title.trim(),
             town,
             category,
+            categories,
+            categoryTags,
+            vibeTags,
             date,
             scheduleType,
             isAllDay,
@@ -381,9 +454,12 @@ export default function PostEventScreen() {
 
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
+    const trimmedDuration = duration.trim();
+    const trimmedPriceRange = priceRange.trim();
     const trimmedLocationName = locationName.trim();
     const trimmedAddress = address.trim();
     const trimmedImageUrl = imageUrl.trim();
+    const trimmedBookingUrl = bookingUrl.trim();
     const normalizedTimeSlots = getNormalizedTimeSlots();
 
     if (!trimmedTitle) {
@@ -450,8 +526,13 @@ export default function PostEventScreen() {
         {
           title: trimmedTitle,
           description: trimmedDescription,
+          duration: trimmedDuration || undefined,
+          priceRange: trimmedPriceRange || undefined,
           town,
           category,
+          categories,
+          categoryTags,
+          vibeTags,
           date,
           time: normalizedTimeSlots[0]?.startTime || undefined,
           endTime: normalizedTimeSlots[0]?.endTime || undefined,
@@ -471,6 +552,7 @@ export default function PostEventScreen() {
           locationName: trimmedLocationName,
           address: trimmedAddress,
           imageUrl: trimmedImageUrl || undefined,
+          bookingUrl: trimmedBookingUrl || undefined,
         },
         token
       );
@@ -514,6 +596,8 @@ export default function PostEventScreen() {
             // clear form fields
             setTitle("");
             setDescription("");
+            setDuration("");
+            setPriceRange("");
             setHasGeneratedDescription(false);
             setLocationName("");
             setAddress("");
@@ -521,7 +605,9 @@ export default function PostEventScreen() {
             setTime("");
             setEndTime("");
             setTown("");
-            setCategory("");
+            setCategories([]);
+            setCategoryTags([]);
+            setVibeTags([]);
             setDateObj(new Date());
             setTimeObj(new Date());
             setEndTimeObj(new Date());
@@ -537,6 +623,7 @@ export default function PostEventScreen() {
             setAddressSuggestionsError("");
             setShouldShowAddressSuggestions(false);
             setImageUrl("");
+            setBookingUrl("");
 
             navigation.navigate("MyEvents", {
               postedEventId: data?._id,
@@ -644,6 +731,19 @@ export default function PostEventScreen() {
           <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
             Add the details people use first when deciding what to click.
           </Text>
+          <View
+            style={[
+              styles.safetyReminder,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.safetyReminderTitle, { color: theme.text }]}>
+              Before you post
+            </Text>
+            <Text style={[styles.safetyReminderText, { color: theme.textMuted }]}>
+              Use accurate event details, avoid misleading claims, and include a real public location so people know what to expect.
+            </Text>
+          </View>
 
           {/* Title */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -688,12 +788,12 @@ export default function PostEventScreen() {
             </Text>
           </Pressable>
 
-          {/* Category */}
+          {/* Categories */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
-            Category (Required)
+            Categories (Required)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose the most appropriate category for this event.
+            Choose up to 3 broad categories. Use tags below for specifics.
           </Text>
           <Pressable
             style={[
@@ -707,7 +807,55 @@ export default function PostEventScreen() {
             onPress={() => setShowCategoryModal(true)}
           >
             <Text style={{ color: category ? theme.text : theme.textMuted }}>
-              {category || "Choose a category"}
+              {categories.length
+                ? categories.join(", ")
+                : "Choose up to 3 main categories"}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Category tags (Optional)
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Add searchable details like Sober Events, Strength Training, Coffee, or Book Clubs.
+          </Text>
+          <Pressable
+            style={[
+              styles.selectButton,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={() => setShowCategoryTagsModal(true)}
+          >
+            <Text style={{ color: categoryTags.length ? theme.text : theme.textMuted }}>
+              {categoryTags.length
+                ? categoryTags.join(", ")
+                : "Choose tags that fit"}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Vibe tags (Optional)
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Choose up to {MAX_VIBE_TAGS} tags people can search for.
+          </Text>
+          <Pressable
+            style={[
+              styles.selectButton,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={() => setShowVibeTagsModal(true)}
+          >
+            <Text style={{ color: vibeTags.length ? theme.text : theme.textMuted }}>
+              {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
             </Text>
           </Pressable>
         </View>
@@ -1212,7 +1360,7 @@ export default function PostEventScreen() {
             Details
           </Text>
           <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
-            Add a description and photo if you want the listing to feel complete.
+            Add a description, booking link, and photo if you want the listing to feel complete.
           </Text>
 
           {/* Description */}
@@ -1274,6 +1422,68 @@ export default function PostEventScreen() {
               AI draft added to the description field.
             </Text>
           ) : null}
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Duration (Optional)
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                color: theme.text,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            placeholder="2 hours, half day, 3-day retreat..."
+            placeholderTextColor={theme.textMuted}
+            value={duration}
+            onChangeText={setDuration}
+          />
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Price Range (Optional)
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                color: theme.text,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            placeholder="Free, $25, $60-$90, varies..."
+            placeholderTextColor={theme.textMuted}
+            value={priceRange}
+            onChangeText={setPriceRange}
+          />
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            External Booking Link (Optional)
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Add a website, booking page, Instagram DM link, FareHarbor, Viator, or similar. People will book outside Summit Scene.
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                color: theme.text,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            placeholder="https://your-booking-page.com"
+            placeholderTextColor={theme.textMuted}
+            value={bookingUrl}
+            onChangeText={setBookingUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
 
           {/* Event photo */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -1339,7 +1549,14 @@ export default function PostEventScreen() {
             {title.trim() || "Your event title"}
           </Text>
           <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
-            {[town || "Town", category || "Category"].join(" • ")}
+            {[
+              town || "Town",
+              categories.length ? categories.join(", ") : "Category",
+              categoryTags.length ? categoryTags.join(", ") : "",
+              vibeTags.length ? vibeTags.join(", ") : "",
+            ]
+              .filter(Boolean)
+              .join(" • ")}
           </Text>
           <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
             {date || "Date"}{isAllDay ? " • All day" : time ? ` • ${time}` : ""}
@@ -1378,15 +1595,38 @@ export default function PostEventScreen() {
       {/* Category Select Modal (shared) */}
       <SelectModal
         visible={showCategoryModal}
-        title="Select Category"
+        title="Select up to 3 main categories"
         options={FORM_CATEGORIES}
         optionGroups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
-        onSelect={(value) => {
-          setCategory(value);
-          setShowCategoryModal(false);
-        }}
+        selectedValues={categories}
+        onSelect={toggleCategory}
         onClose={() => setShowCategoryModal(false)}
+        closeLabel="Done"
+      />
+
+      <GroupedCategoryModal
+        visible={showCategoryTagsModal}
+        title="Select category tags"
+        groups={categoryTagGroups}
+        selectedValues={categoryTags}
+        onSelect={toggleCategoryTag}
+        onClose={() => setShowCategoryTagsModal(false)}
+        closeLabel="Done"
+        searchable
+        searchPlaceholder="Search category tags"
+      />
+
+      <GroupedCategoryModal
+        visible={showVibeTagsModal}
+        title="Select vibe tags"
+        groups={VIBE_TAG_GROUPS}
+        selectedValues={vibeTags}
+        onSelect={toggleVibeTag}
+        onClose={() => setShowVibeTagsModal(false)}
+        closeLabel="Done"
+        searchable
+        searchPlaceholder="Search vibe tags"
       />
 
       <SelectModal
@@ -1573,6 +1813,22 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 12,
     lineHeight: 19,
+  },
+  safetyReminder: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  safetyReminderTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  safetyReminderText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   photoPickerButton: {
     alignItems: "center",

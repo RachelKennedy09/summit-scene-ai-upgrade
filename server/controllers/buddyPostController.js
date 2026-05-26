@@ -11,9 +11,17 @@ import BuddyPost, {
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 import { isEventUpcoming } from "../../utils/eventSchedule.js";
+import {
+  COMMUNITY_CATEGORY_TAGS,
+  EVENT_CATEGORY_GROUPS,
+  MAX_CATEGORY_TAGS,
+  MAX_VIBE_TAGS,
+  VIBE_TAGS,
+  getMainCategoryForTag,
+} from "../../constants/eventCategories.js";
 
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram website createdAt";
+  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
 const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
@@ -40,7 +48,19 @@ function buildListFilter(query = {}) {
   const { type, category, communityType, town, skillLevel, status, eventId, date, search } = query;
 
   if (type) filter.type = type;
-  if (category) filter.category = category;
+  if (category) {
+    const categoryOptions = getBuddyCategoryFilterOptions(category);
+    filter.$and = [
+      ...(filter.$and || []),
+      {
+        $or: [
+          { category: { $in: categoryOptions } },
+          { categories: { $in: categoryOptions } },
+          { categoryTags: { $in: categoryOptions } },
+        ],
+      },
+    ];
+  }
   if (communityType) filter.communityType = communityType;
   if (town) filter.town = town;
   if (skillLevel) filter.skillLevel = skillLevel;
@@ -53,6 +73,9 @@ function buildListFilter(query = {}) {
     filter.$or = [
       { activityText: { $in: searchRegexes } },
       { category: { $in: searchRegexes } },
+      { categories: { $in: searchRegexes } },
+      { categoryTags: { $in: searchRegexes } },
+      { vibeTags: { $in: searchRegexes } },
       { type: { $in: searchRegexes } },
       { communityType: { $in: searchRegexes } },
       { town: { $in: searchRegexes } },
@@ -60,6 +83,14 @@ function buildListFilter(query = {}) {
   }
 
   return filter;
+}
+
+function getBuddyCategoryFilterOptions(category) {
+  const normalized = typeof category === "string" ? category.trim() : "";
+  if (!normalized) return [];
+
+  const group = EVENT_CATEGORY_GROUPS.find((item) => item.title === normalized);
+  return group ? [group.title, ...group.options] : [normalized];
 }
 
 function escapeRegex(value) {
@@ -213,21 +244,107 @@ function normalizeRecurrence(value) {
   return Object.keys(recurrence).length ? recurrence : undefined;
 }
 
+function normalizeBuddyCategories({ category, categories, categoryRequired = false } = {}) {
+  const rawCategories = Array.isArray(categories) ? categories : [category];
+  const normalizedCategories = [
+    ...new Set(
+      rawCategories
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .map((item) => getMainCategoryForTag(item) || item)
+        .filter(Boolean)
+    ),
+  ];
+
+  if (categoryRequired && !normalizedCategories.length) {
+    throw new Error("Please choose at least one category.");
+  }
+
+  if (normalizedCategories.length > 3) {
+    throw new Error("Choose up to 3 categories.");
+  }
+
+  return normalizedCategories;
+}
+
+function normalizeCategoryTags({ categoryTags, category, categories } = {}) {
+  const rawCategories = Array.isArray(categories) ? categories : [category];
+  const legacyDetailTags = rawCategories
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => COMMUNITY_CATEGORY_TAGS.includes(item));
+  const rawTags = Array.isArray(categoryTags) ? categoryTags : [];
+  const normalizedTags = [
+    ...new Set(
+      [...legacyDetailTags, ...rawTags]
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean)
+    ),
+  ];
+
+  if (normalizedTags.length > MAX_CATEGORY_TAGS) {
+    throw new Error(`Choose up to ${MAX_CATEGORY_TAGS} category tags.`);
+  }
+
+  const invalidTag = normalizedTags.find(
+    (item) => !COMMUNITY_CATEGORY_TAGS.includes(item)
+  );
+  if (invalidTag) {
+    throw new Error(`"${invalidTag}" is not a valid category tag.`);
+  }
+
+  return normalizedTags;
+}
+
+function normalizeVibeTags(value) {
+  if (!Array.isArray(value)) return [];
+
+  const normalizedTags = [
+    ...new Set(
+      value
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter(Boolean)
+    ),
+  ];
+
+  if (normalizedTags.length > MAX_VIBE_TAGS) {
+    throw new Error(`Choose up to ${MAX_VIBE_TAGS} vibe tags.`);
+  }
+
+  const invalidTag = normalizedTags.find((item) => !VIBE_TAGS.includes(item));
+  if (invalidTag) {
+    throw new Error(`"${invalidTag}" is not a valid vibe tag.`);
+  }
+
+  return normalizedTags;
+}
+
 function normalizeCreateBody(body = {}) {
   const scheduleType = normalizeEnum(body.scheduleType, BUDDY_SCHEDULE_TYPES) || "single";
   const communityType =
     normalizeEnum(body.communityType, BUDDY_COMMUNITY_TYPES) || "local-plan";
   const defaults = COMMUNITY_TYPE_DEFAULTS[communityType] || {};
+  const rawCategories =
+    "category" in defaults
+      ? []
+      : normalizeBuddyCategories({
+          category: body.category,
+          categories: body.categories,
+          categoryRequired: communityType === "local-plan",
+        });
 
   return {
     type: defaults.type || body.type,
     activityText: typeof body.activityText === "string" ? body.activityText.trim() : body.activityText,
-    category:
+    category: "category" in defaults ? defaults.category : rawCategories[0],
+    categories: "category" in defaults ? undefined : rawCategories,
+    categoryTags:
       "category" in defaults
-        ? defaults.category
-        : typeof body.category === "string"
-          ? body.category.trim()
-          : body.category,
+        ? undefined
+        : normalizeCategoryTags({
+            categoryTags: body.categoryTags,
+            category: body.category,
+            categories: body.categories,
+          }),
+    vibeTags: normalizeVibeTags(body.vibeTags),
     communityType,
     date: body.date,
     time: typeof body.time === "string" ? body.time.trim() : body.time,
@@ -248,7 +365,7 @@ function populateBuddyPost(query) {
     .populate("createdBy", USER_POPULATE_FIELDS)
     .populate("interestedUsers", USER_POPULATE_FIELDS)
     .populate("replies.createdBy", USER_POPULATE_FIELDS)
-    .populate("eventId", "title date time town category imageUrl");
+    .populate("eventId", "title date time town category categories categoryTags vibeTags imageUrl");
 }
 
 export async function getBuddyPosts(req, res) {
@@ -335,6 +452,10 @@ export async function createBuddyPost(req, res) {
         message: "Buddy post validation failed.",
         error: error.message,
       });
+    }
+
+    if (/categor/i.test(error.message || "")) {
+      return res.status(400).json({ message: error.message });
     }
 
     return res.status(500).json({

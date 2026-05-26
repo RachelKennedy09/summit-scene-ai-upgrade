@@ -24,6 +24,12 @@ import {
 } from "../../utils/eventSchedule.js";
 import { getEventDistanceKm } from "../../utils/proximity.js";
 import {
+  EVENT_CATEGORY_TAGS,
+  EVENT_CATEGORY_VALUES,
+  MAX_CATEGORY_TAGS,
+  MAX_VIBE_TAGS,
+  VIBE_TAGS,
+  getMainCategoryForTag,
   getEventCategoryFilterOptions,
 } from "../../constants/eventCategories.js";
 
@@ -51,7 +57,7 @@ function isAdminEmail(email) {
   return Boolean(email) && adminEmails.includes(String(email).toLowerCase());
 }
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt";
+  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
 
 function getUserId(value) {
   if (!value) return "";
@@ -97,6 +103,88 @@ function normalizeOptionalString(value) {
 function normalizeRequiredString(value) {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+function normalizeEventCategories({ category, categories } = {}) {
+  const rawCategories = Array.isArray(categories) ? categories : [category];
+  const normalizedCategories = [
+    ...new Set(
+      rawCategories
+        .map((item) => {
+          const normalized = normalizeRequiredString(item);
+          return getMainCategoryForTag(normalized) || normalized;
+        })
+        .filter(Boolean)
+    ),
+  ];
+
+  if (!normalizedCategories.length) {
+    throw new Error("Please choose at least one category.");
+  }
+
+  if (normalizedCategories.length > 3) {
+    throw new Error("Choose up to 3 categories.");
+  }
+
+  const invalidCategory = normalizedCategories.find(
+    (item) => !EVENT_CATEGORY_VALUES.includes(item)
+  );
+  if (invalidCategory) {
+    throw new Error(`"${invalidCategory}" is not a valid event category.`);
+  }
+
+  return normalizedCategories;
+}
+
+function normalizeCategoryTags({ categoryTags, category, categories } = {}) {
+  const rawCategories = Array.isArray(categories) ? categories : [category];
+  const legacyDetailTags = rawCategories
+    .map((item) => normalizeRequiredString(item))
+    .filter((item) => EVENT_CATEGORY_TAGS.includes(item));
+  const rawTags = Array.isArray(categoryTags) ? categoryTags : [];
+  const normalizedTags = [
+    ...new Set(
+      [...legacyDetailTags, ...rawTags]
+        .map((item) => normalizeRequiredString(item))
+        .filter(Boolean)
+    ),
+  ];
+
+  if (normalizedTags.length > MAX_CATEGORY_TAGS) {
+    throw new Error(`Choose up to ${MAX_CATEGORY_TAGS} category tags.`);
+  }
+
+  const invalidTag = normalizedTags.find(
+    (item) => !EVENT_CATEGORY_TAGS.includes(item)
+  );
+  if (invalidTag) {
+    throw new Error(`"${invalidTag}" is not a valid category tag.`);
+  }
+
+  return normalizedTags;
+}
+
+function normalizeVibeTags(value) {
+  if (!Array.isArray(value)) return [];
+
+  const normalizedTags = [
+    ...new Set(
+      value
+        .map((item) => normalizeRequiredString(item))
+        .filter(Boolean)
+    ),
+  ];
+
+  if (normalizedTags.length > MAX_VIBE_TAGS) {
+    throw new Error(`Choose up to ${MAX_VIBE_TAGS} vibe tags.`);
+  }
+
+  const invalidTag = normalizedTags.find((item) => !VIBE_TAGS.includes(item));
+  if (invalidTag) {
+    throw new Error(`"${invalidTag}" is not a valid vibe tag.`);
+  }
+
+  return normalizedTags;
 }
 
 function buildTodayString() {
@@ -241,6 +329,7 @@ function buildDateFilterRange(dateFilter) {
   if (
     !normalizedFilter ||
     normalizedFilter === "All" ||
+    normalizedFilter === "All Dates" ||
     normalizedFilter === "All dates"
   ) {
     return null;
@@ -344,10 +433,16 @@ export async function getAllEvents(req, res) {
     const categoryFilterOptions = getEventCategoryFilterOptions(normalizedCategory);
 
     if (categoryFilterOptions) {
-      baseQuery.category =
-        categoryFilterOptions.length === 1
-          ? categoryFilterOptions[0]
-          : { $in: categoryFilterOptions };
+      baseQuery.$and = [
+        ...(baseQuery.$and || []),
+        {
+          $or: [
+            { category: { $in: categoryFilterOptions } },
+            { categories: { $in: categoryFilterOptions } },
+            { categoryTags: { $in: categoryFilterOptions } },
+          ],
+        },
+      ];
     }
 
     if (searchTerms.length) {
@@ -358,7 +453,13 @@ export async function getAllEvents(req, res) {
           $or: [
             { title: { $in: searchRegexes } },
             { description: { $in: searchRegexes } },
+            { duration: { $in: searchRegexes } },
+            { priceRange: { $in: searchRegexes } },
+            { bookingUrl: { $in: searchRegexes } },
             { category: { $in: searchRegexes } },
+            { categories: { $in: searchRegexes } },
+            { categoryTags: { $in: searchRegexes } },
+            { vibeTags: { $in: searchRegexes } },
             { town: { $in: searchRegexes } },
             { locationName: { $in: searchRegexes } },
             { address: { $in: searchRegexes } },
@@ -371,7 +472,7 @@ export async function getAllEvents(req, res) {
       .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     const filteredEvents =
@@ -474,8 +575,13 @@ export async function createEvent(req, res) {
     const {
       title,
       description,
+      duration,
+      priceRange,
       town,
       category,
+      categories,
+      categoryTags,
+      vibeTags,
       date,
       time,
       endTime,
@@ -489,12 +595,34 @@ export async function createEvent(req, res) {
       address,
       location,
       imageUrl,
+      bookingUrl,
     } = rawBody;
 
     const normalizedTitle = normalizeRequiredString(title);
     const normalizedTown = normalizeRequiredString(town);
-    const normalizedCategory = normalizeRequiredString(category);
     const normalizedDate = normalizeRequiredString(date);
+    let normalizedCategories;
+    try {
+      normalizedCategories = normalizeEventCategories({ category, categories });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+    let normalizedVibeTags;
+    let normalizedCategoryTags;
+    try {
+      normalizedVibeTags = normalizeVibeTags(vibeTags);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+    try {
+      normalizedCategoryTags = normalizeCategoryTags({
+        categoryTags,
+        category,
+        categories,
+      });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
     const normalizedLocationName = normalizeOptionalString(
       locationName ?? location
     );
@@ -506,7 +634,7 @@ export async function createEvent(req, res) {
     if (
       !normalizedTitle ||
       !normalizedTown ||
-      !normalizedCategory ||
+      !normalizedCategories.length ||
       !normalizedDate
     ) {
       return res.status(400).json({
@@ -572,8 +700,13 @@ export async function createEvent(req, res) {
     const event = new Event({
       title: normalizedTitle,
       description: normalizeOptionalString(description),
+      duration: normalizeOptionalString(duration),
+      priceRange: normalizeOptionalString(priceRange),
       town: normalizedTown,
-      category: normalizedCategory,
+      category: normalizedCategories[0],
+      categories: normalizedCategories,
+      categoryTags: normalizedCategoryTags,
+      vibeTags: normalizedVibeTags,
       date: normalizedDate,
       time: legacyTimeFields.time,
       endTime: legacyTimeFields.endTime,
@@ -590,6 +723,7 @@ export async function createEvent(req, res) {
       latitude: geocodedFields.latitude,
       longitude: geocodedFields.longitude,
       imageUrl: normalizeOptionalString(imageUrl),
+      bookingUrl: normalizeOptionalString(bookingUrl),
       createdBy: userId,
     });
 
@@ -612,7 +746,6 @@ export async function createEvent(req, res) {
 // -------------------------------------------
 export async function getEventById(req, res) {
   try {
-    console.log("🔥 getEventById hit with id =", req.params.id);
     const { id } = req.params;
 
     const event = await Event.findById(id)
@@ -741,8 +874,13 @@ export async function updateEvent(req, res) {
     const {
       title,
       description,
+      duration,
+      priceRange,
       town,
       category,
+      categories,
+      categoryTags,
+      vibeTags,
       date,
       time,
       endTime,
@@ -756,6 +894,7 @@ export async function updateEvent(req, res) {
       address,
       location,
       imageUrl,
+      bookingUrl,
     } = rawBody;
 
     if (title !== undefined) {
@@ -768,6 +907,12 @@ export async function updateEvent(req, res) {
     if (description !== undefined) {
       event.description = normalizeOptionalString(description);
     }
+    if (duration !== undefined) {
+      event.duration = normalizeOptionalString(duration);
+    }
+    if (priceRange !== undefined) {
+      event.priceRange = normalizeOptionalString(priceRange);
+    }
     if (town !== undefined) {
       const normalizedTown = normalizeRequiredString(town);
       if (!normalizedTown) {
@@ -775,12 +920,37 @@ export async function updateEvent(req, res) {
       }
       event.town = normalizedTown;
     }
-    if (category !== undefined) {
-      const normalizedCategory = normalizeRequiredString(category);
-      if (!normalizedCategory) {
-        return res.status(400).json({ message: "Category is required." });
+    if (category !== undefined || categories !== undefined) {
+      let normalizedCategories;
+      try {
+        normalizedCategories = normalizeEventCategories({
+          category: category ?? event.category,
+          categories: categories ?? event.categories,
+        });
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
       }
-      event.category = normalizedCategory;
+
+      event.category = normalizedCategories[0];
+      event.categories = normalizedCategories;
+    }
+    if (categoryTags !== undefined || category !== undefined || categories !== undefined) {
+      try {
+        event.categoryTags = normalizeCategoryTags({
+          categoryTags: categoryTags ?? event.categoryTags,
+          category: category ?? event.category,
+          categories: categories ?? event.categories,
+        });
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+    if (vibeTags !== undefined) {
+      try {
+        event.vibeTags = normalizeVibeTags(vibeTags);
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
     }
     if (date !== undefined) {
       const normalizedDate = normalizeRequiredString(date);
@@ -805,6 +975,7 @@ export async function updateEvent(req, res) {
       event.locationName = normalizeOptionalString(locationName ?? location);
     }
     if (imageUrl !== undefined) event.imageUrl = normalizeOptionalString(imageUrl);
+    if (bookingUrl !== undefined) event.bookingUrl = normalizeOptionalString(bookingUrl);
 
     if (
       recurrence !== undefined ||
@@ -933,7 +1104,6 @@ export async function deleteEvent(req, res) {
 // -------------------------------------------
 export async function getMyEvents(req, res) {
   try {
-    console.log("🌲 getMyEvents hit for user =", req.user?.userId);
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -945,7 +1115,7 @@ export async function getMyEvents(req, res) {
       .sort({ date: 1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     return res.json(events);

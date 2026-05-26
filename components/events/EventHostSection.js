@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, Image, Pressable, Modal } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import TrustBadgeRow from "../common/TrustBadges";
 
 // Helper: map avatarKey -> local avatar image, then fall back to social photo.
 function getAvatarSource(host) {
@@ -15,7 +16,7 @@ function getAvatarSource(host) {
   return null;
 }
 
-export default function EventHostSection({ host }) {
+export default function EventHostSection({ host, onReport, currentUserId }) {
   const { theme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -26,7 +27,10 @@ export default function EventHostSection({ host }) {
   const hasConnectedInstagram = host.socialAccounts?.some(
     (account) => account.provider === "instagram"
   );
-  const isVerifiedHost = host.businessVerificationStatus === "verified";
+  const hostId = host._id || host.id || "";
+  const canReportHost =
+    Boolean(onReport && hostId) &&
+    hostId.toString() !== currentUserId?.toString();
 
   return (
     <>
@@ -67,9 +71,7 @@ export default function EventHostSection({ host }) {
                 {host.businessType}
               </Text>
             ) : null}
-            <Text style={[styles.hostMeta, { color: theme.textMuted }]}>
-              {isVerifiedHost ? "Verified business host" : "Business host"}
-            </Text>
+            <TrustBadgeRow profile={host} theme={theme} compact />
           </View>
         </View>
 
@@ -148,11 +150,7 @@ export default function EventHostSection({ host }) {
                   >
                     {host.town || "Rockies business"}
                   </Text>
-                  <Text
-                    style={[styles.profileRole, { color: theme.textMuted }]}
-                  >
-                    Business host
-                  </Text>
+                  <TrustBadgeRow profile={host} theme={theme} />
                 </View>
               </View>
 
@@ -234,6 +232,24 @@ export default function EventHostSection({ host }) {
                 </View>
               ) : null}
 
+              {host.facebook ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Facebook
+                  </Text>
+                  <Text
+                    style={[styles.profileLinkText, { color: theme.accent }]}
+                  >
+                    {host.facebook}
+                  </Text>
+                </View>
+              ) : null}
+
               {/* Website */}
               {host.website ? (
                 <View style={styles.profileSection}>
@@ -251,6 +267,60 @@ export default function EventHostSection({ host }) {
                     {host.website}
                   </Text>
                 </View>
+              ) : null}
+
+              {host.googleBusinessUrl ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Google Business
+                  </Text>
+                  <Text
+                    style={[styles.profileLinkText, { color: theme.accent }]}
+                  >
+                    {host.googleBusinessUrl}
+                  </Text>
+                </View>
+              ) : null}
+
+              {host.phone ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Phone
+                  </Text>
+                  <Text
+                    style={[styles.profileLinkText, { color: theme.accent }]}
+                  >
+                    {host.phone}
+                  </Text>
+                </View>
+              ) : null}
+
+              {canReportHost ? (
+                <Pressable
+                  style={[styles.reportProfileButton, { borderColor: theme.border }]}
+                  onPress={() =>
+                    onReport({
+                      targetType: "user",
+                      targetId: hostId,
+                    })
+                  }
+                >
+                  <Text
+                    style={[styles.reportProfileText, { color: theme.textMuted }]}
+                  >
+                    Report Profile
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
           </View>
@@ -375,10 +445,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  profileRole: {
-    fontSize: 12,
-    marginTop: 2,
-  },
   profileSection: {
     marginTop: 10,
   },
@@ -392,5 +458,16 @@ const styles = StyleSheet.create({
   },
   profileLinkText: {
     fontSize: 13,
+  },
+  reportProfileButton: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 9,
+    alignItems: "center",
+  },
+  reportProfileText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

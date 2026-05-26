@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, Pressable, Linking } from "react-native"
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 import AppButton from "../common/AppButton";
+import TrustBadgeRow from "../common/TrustBadges";
 
 function titleCase(value) {
   return String(value || "")
@@ -93,7 +94,6 @@ export default function ProfileCard({
   const displayName = user?.name || "SummitScene member";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
   const town = user?.town || "";
-  const userType = user?.userType ? titleCase(user.userType) : "";
   const originallyFrom = user?.originallyFrom || "";
   const interests = Array.isArray(user?.interests) ? user.interests : [];
   const languages = Array.isArray(user?.languages) ? user.languages : [];
@@ -104,10 +104,10 @@ export default function ProfileCard({
   const businessStatus = user?.businessVerificationStatus || "none";
   const profileTypeLabel = roleLabel || (isBusiness
     ? businessStatus === "verified"
-      ? "Verified business host"
+      ? "Verified Local"
       : businessStatus === "pending"
-        ? "Business review pending"
-        : "Business profile"
+        ? "New Organizer"
+        : "Community Organizer"
     : "Community member");
   const accountDetails = [
     email ? `Email: ${email}` : "",
@@ -152,6 +152,9 @@ export default function ProfileCard({
           <Text style={[styles.headerSubtitle, { color: theme.textMuted }]}>
             {profileTypeLabel}
           </Text>
+          <View style={styles.profileBadgeRow}>
+            <TrustBadgeRow profile={user} theme={theme} compact />
+          </View>
           {accountDetails.length ? (
             <Text style={[styles.accountMeta, { color: theme.textMuted }]}>
               {accountDetails.join(" | ")}
@@ -162,7 +165,6 @@ export default function ProfileCard({
 
       <View style={styles.chipRow}>
         {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
-        {userType ? <Chip label={userType} theme={theme} /> : null}
         {originallyFrom ? (
           <Chip label={`Originally from ${originallyFrom}`} theme={theme} />
         ) : null}
@@ -302,6 +304,9 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  profileBadgeRow: {
+    marginTop: 6,
   },
   accountMeta: {
     fontSize: 12,

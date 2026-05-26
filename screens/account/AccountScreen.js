@@ -5,7 +5,7 @@
 // - Theme picker
 // - Logout
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { colors } from "../../theme/colors";
 import { useTheme } from "../../context/ThemeContext";
 import AppLogoHeader from "../../components/AppLogoHeader";
@@ -137,9 +137,11 @@ function AccountScreen() {
     }
   }, [token, user?.isAdmin]);
 
-  useEffect(() => {
-    loadAdminCounts();
-  }, [loadAdminCounts]);
+  useFocusEffect(
+    useCallback(() => {
+      loadAdminCounts();
+    }, [loadAdminCounts])
+  );
 
   function handleEmailSummitScene() {
     Linking.openURL(
@@ -261,11 +263,11 @@ function AccountScreen() {
   }
 
   const roleLabel = isBusinessVerified
-    ? "Verified business profile"
+    ? "Verified Local"
     : isBusinessPending
-      ? "Business profile pending review"
+      ? "New Organizer"
       : isBusinessRejected
-        ? "Business profile needs review"
+        ? "Community Organizer needs review"
         : "Community profile";
 
   return (
@@ -378,12 +380,12 @@ function AccountScreen() {
               ]}
             >
               <Text style={[styles.statusTitle, { color: theme.text }]}>
-                Business review pending
+                New Organizer
               </Text>
               <Text style={[styles.statusText, { color: theme.textMuted }]}>
                 Your profile is saved, but official event posting stays locked
                 until Summit Scene verifies the business or organizer. Add your
-                business type, website, and official social links in Edit Profile.
+                business category, short description, and one proof link in Edit Profile.
                 If proof is unclear, email Summit Scene or DM from the official
                 business account.
               </Text>

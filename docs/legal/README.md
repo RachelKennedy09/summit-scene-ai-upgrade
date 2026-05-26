@@ -1,6 +1,6 @@
 # Summit Scene Legal Drafts
 
-Last updated: May 4, 2026
+Last updated: May 26, 2026
 
 These drafts are working product/legal copy for testing and launch preparation.
 They are not legal advice. Before publishing Summit Scene publicly, have a
@@ -78,6 +78,11 @@ honestly.
 - Summit Scene is an events and community discovery tool. It is not an emergency
   service, government service, municipal authority, Parks Canada authority,
   travel advisor, or permit/licensing advisor.
+- Summit Scene is a discovery platform and is not responsible for third-party
+  tours, events, bookings, payments, cancellations, safety, quality,
+  availability, refunds, or experiences. Users book and attend third-party
+  offerings at their own discretion and should confirm details directly with the
+  organizer.
 
 ## Local Compliance Notice Draft
 
@@ -89,6 +94,10 @@ event or business activity.
 Posting or approving an event in Summit Scene does not mean the event is
 licensed, permitted, insured, or approved by Parks Canada, the Town of Banff, the
 Town of Canmore, Alberta Health Services, AGLC, or any venue.
+
+Third-party organizers, tour guides, tour companies, venues, and booking
+providers are responsible for their own tours, events, cancellations, refunds,
+safety practices, communications, and customer experiences.
 
 ## Launch Checklist
 

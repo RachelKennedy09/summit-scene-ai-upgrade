@@ -2,7 +2,7 @@
 // Edit an existing event
 // Let business users update events they've already created
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -27,16 +27,21 @@ import { useTheme } from "../../context/ThemeContext";
 import DatePickerModal from "../../components/events/DatePickerModal.js";
 import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal.js";
+import GroupedCategoryModal from "../../components/common/GroupedCategoryModal.js";
 import AppButton from "../../components/common/AppButton.js";
 import PageHeader from "../../components/common/PageHeader";
 import {
-  EVENT_FORM_CATEGORIES,
-  getEventCategoryGroups,
+  EVENT_MAIN_CATEGORIES,
+  MAX_CATEGORY_TAGS,
+  MAX_VIBE_TAGS,
+  VIBE_TAG_GROUPS,
+  getCategoryTagGroupsForCategories,
+  getMainCategoryForTag,
 } from "../../constants/eventCategories";
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
-const FORM_CATEGORIES = EVENT_FORM_CATEGORIES;
-const FORM_CATEGORY_GROUPS = getEventCategoryGroups();
+const FORM_CATEGORIES = EVENT_MAIN_CATEGORIES;
+const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
@@ -123,13 +128,25 @@ export default function EditEventScreen({ route, navigation }) {
   // ----- INITIAL STATE FROM EXISTING EVENT -----
   const [title, setTitle] = useState(event.title || "");
   const [description, setDescription] = useState(event.description || "");
+  const [duration, setDuration] = useState(event.duration || "");
+  const [priceRange, setPriceRange] = useState(event.priceRange || "");
   const [town, setTown] = useState(
     event.town && TOWNS.includes(event.town) ? event.town : TOWNS[0]
   );
   const [category, setCategory] = useState(
-    FORM_CATEGORIES.includes(event.category)
-      ? event.category
+    FORM_CATEGORIES.includes(getMainCategoryForTag(event.category) || event.category)
+      ? getMainCategoryForTag(event.category) || event.category
       : FORM_CATEGORIES[0]
+  );
+  const [categoryTags, setCategoryTags] = useState(
+    Array.isArray(event.categoryTags)
+      ? event.categoryTags
+      : event.category && !FORM_CATEGORIES.includes(event.category)
+        ? [event.category]
+        : []
+  );
+  const [vibeTags, setVibeTags] = useState(
+    Array.isArray(event.vibeTags) ? event.vibeTags : []
   );
 
   // Date state
@@ -187,6 +204,7 @@ export default function EditEventScreen({ route, navigation }) {
   const [shouldShowAddressSuggestions, setShouldShowAddressSuggestions] =
     useState(false);
   const [imageUrl, setImageUrl] = useState(event.imageUrl || "");
+  const [bookingUrl, setBookingUrl] = useState(event.bookingUrl || "");
   const [loading, setLoading] = useState(false);
 
   // Picker visibility toggles
@@ -197,8 +215,13 @@ export default function EditEventScreen({ route, navigation }) {
     useState(false);
   const [showTownModal, setShowTownModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
+  const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
-
+  const categoryTagGroups = useMemo(
+    () => getCategoryTagGroupsForCategories([category]),
+    [category]
+  );
   useEffect(() => {
     const trimmedAddress = address.trim();
 
@@ -282,6 +305,42 @@ export default function EditEventScreen({ route, navigation }) {
     );
   };
 
+  const toggleVibeTag = (nextTag) => {
+    setVibeTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_VIBE_TAGS) {
+        Alert.alert(
+          "Vibe tag limit",
+          `Choose up to ${MAX_VIBE_TAGS} vibe tags for one event.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  };
+
+  const toggleCategoryTag = (nextTag) => {
+    setCategoryTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_CATEGORY_TAGS) {
+        Alert.alert(
+          "Tag limit",
+          `Choose up to ${MAX_CATEGORY_TAGS} category tags for one event.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  };
+
   const addExtraTimeSlot = () => {
     setExtraTimeSlots((current) => [...current, createEmptyTimeSlot()]);
   };
@@ -310,9 +369,12 @@ export default function EditEventScreen({ route, navigation }) {
 
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
+    const trimmedDuration = duration.trim();
+    const trimmedPriceRange = priceRange.trim();
     const trimmedLocationName = locationName.trim();
     const trimmedAddress = address.trim();
     const trimmedImageUrl = imageUrl.trim();
+    const trimmedBookingUrl = bookingUrl.trim();
     const normalizedTimeSlots = getNormalizedTimeSlots();
 
     if (!trimmedTitle) {
@@ -370,8 +432,13 @@ export default function EditEventScreen({ route, navigation }) {
       const payload = {
         title: trimmedTitle,
         description: trimmedDescription,
+        duration: trimmedDuration || undefined,
+        priceRange: trimmedPriceRange || undefined,
         town,
         category,
+        categories: [category],
+        categoryTags,
+        vibeTags,
         date,
         time: normalizedTimeSlots[0]?.startTime || undefined,
         endTime: normalizedTimeSlots[0]?.endTime || undefined,
@@ -391,10 +458,10 @@ export default function EditEventScreen({ route, navigation }) {
         locationName: trimmedLocationName,
         address: trimmedAddress,
         imageUrl: trimmedImageUrl || undefined,
+        bookingUrl: trimmedBookingUrl || undefined,
       };
 
       const updatedEvent = await updateEvent(event._id, payload, token);
-      console.info("Event updated:", updatedEvent);
 
       if (typeof onUpdated === "function") {
         onUpdated();
@@ -515,6 +582,19 @@ export default function EditEventScreen({ route, navigation }) {
         <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
           Start with the core details people need to find your event.
         </Text>
+        <View
+          style={[
+            styles.safetyReminder,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.safetyReminderTitle, { color: theme.text }]}>
+            Before you save
+          </Text>
+          <Text style={[styles.safetyReminderText, { color: theme.textMuted }]}>
+            Keep times, location, and event expectations accurate so people can make safe plans.
+          </Text>
+        </View>
 
         {/* Title */}
         <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -553,7 +633,7 @@ export default function EditEventScreen({ route, navigation }) {
 
         {/* Category */}
         <Text style={[styles.label, { color: theme.textMuted }]}>
-          Category (Required)
+          Main category (Required)
         </Text>
         <Pressable
           style={[
@@ -562,8 +642,54 @@ export default function EditEventScreen({ route, navigation }) {
           ]}
           onPress={() => setShowCategoryModal(true)}
         >
-          <Text style={[styles.selectButtonText, { color: theme.text }]}>
+        <Text style={[styles.selectButtonText, { color: theme.text }]}>
             {category}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Category tags (Optional)
+        </Text>
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          Add searchable details like Sober Events, Strength Training, Coffee, or Book Clubs.
+        </Text>
+        <Pressable
+          style={[
+            styles.selectButton,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+          onPress={() => setShowCategoryTagsModal(true)}
+        >
+          <Text
+            style={[
+              styles.selectButtonText,
+              { color: categoryTags.length ? theme.text : theme.textMuted },
+            ]}
+          >
+            {categoryTags.length ? categoryTags.join(", ") : "Choose tags that fit"}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Vibe tags (Optional)
+        </Text>
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          Choose up to {MAX_VIBE_TAGS} tags people can search for.
+        </Text>
+        <Pressable
+          style={[
+            styles.selectButton,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+          onPress={() => setShowVibeTagsModal(true)}
+        >
+          <Text
+            style={[
+              styles.selectButtonText,
+              { color: vibeTags.length ? theme.text : theme.textMuted },
+            ]}
+          >
+            {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
           </Text>
         </Pressable>
 
@@ -1014,7 +1140,7 @@ export default function EditEventScreen({ route, navigation }) {
           Optional Details
         </Text>
         <Text style={[styles.sectionDescription, { color: theme.textMuted }]}>
-          Add a description and photo if you want the listing to feel more complete.
+          Add a description, booking link, and photo if you want the listing to feel more complete.
         </Text>
 
         {/* Description */}
@@ -1036,6 +1162,65 @@ export default function EditEventScreen({ route, navigation }) {
           value={description}
           onChangeText={setDescription}
           multiline
+        />
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Duration (Optional)
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="2 hours, half day, 3-day retreat..."
+          placeholderTextColor={theme.textMuted}
+          value={duration}
+          onChangeText={setDuration}
+        />
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Price Range (Optional)
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="Free, $25, $60-$90, varies..."
+          placeholderTextColor={theme.textMuted}
+          value={priceRange}
+          onChangeText={setPriceRange}
+        />
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          External Booking Link (Optional)
+        </Text>
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          Add a website, booking page, Instagram DM link, FareHarbor, Viator, or similar. People will book outside Summit Scene.
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              color: theme.text,
+              borderColor: theme.border,
+            },
+          ]}
+          placeholder="https://your-booking-page.com"
+          placeholderTextColor={theme.textMuted}
+          value={bookingUrl}
+          onChangeText={setBookingUrl}
+          autoCapitalize="none"
+          keyboardType="url"
         />
 
         {/* Event photo */}
@@ -1116,15 +1301,44 @@ export default function EditEventScreen({ route, navigation }) {
       {/* Category Select */}
       <SelectModal
         visible={showCategoryModal}
-        title="Select Category"
+        title="Select main category"
         options={FORM_CATEGORIES}
         optionGroups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
         onSelect={(value) => {
           setCategory(value);
+          const nextTagOptions = getCategoryTagGroupsForCategories([value])
+            .flatMap((group) => group.options);
+          setCategoryTags((current) =>
+            current.filter((tag) => nextTagOptions.includes(tag))
+          );
           setShowCategoryModal(false);
         }}
         onClose={() => setShowCategoryModal(false)}
+      />
+
+      <GroupedCategoryModal
+        visible={showCategoryTagsModal}
+        title="Select category tags"
+        groups={categoryTagGroups}
+        selectedValues={categoryTags}
+        onSelect={toggleCategoryTag}
+        onClose={() => setShowCategoryTagsModal(false)}
+        closeLabel="Done"
+        searchable
+        searchPlaceholder="Search category tags"
+      />
+
+      <GroupedCategoryModal
+        visible={showVibeTagsModal}
+        title="Select vibe tags"
+        groups={VIBE_TAG_GROUPS}
+        selectedValues={vibeTags}
+        onSelect={toggleVibeTag}
+        onClose={() => setShowVibeTagsModal(false)}
+        closeLabel="Done"
+        searchable
+        searchPlaceholder="Search vibe tags"
       />
 
       <SelectModal
@@ -1317,6 +1531,22 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 12,
     lineHeight: 19,
+  },
+  safetyReminder: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  safetyReminderTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  safetyReminderText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   photoPickerButton: {
     alignItems: "center",

@@ -1,0 +1,66 @@
+export default {
+  expo: {
+    name: "Summit Scene",
+    slug: "summit-scene",
+    version: "1.0.0",
+    orientation: "portrait",
+    scheme: "summitscene",
+    icon: "./assets/logo-app-full-color-square.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    splash: {
+      image: "./assets/splash-icon-android-safe.png",
+      resizeMode: "contain",
+      backgroundColor: "#F5F3EE",
+    },
+    plugins: [
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Summit Scene uses your location to show events near you.",
+        },
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission:
+            "Summit Scene lets you choose a profile photo from your camera roll.",
+        },
+      ],
+    ],
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon-earth-tone.png",
+        backgroundColor: "#F5F3EE",
+      },
+      edgeToEdgeEnabled: true,
+      config: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY
+        ? {
+            googleMaps: {
+              apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY,
+            },
+          }
+        : undefined,
+      permissions: [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+      ],
+      package: "com.rachellaurenxx.summitscene",
+    },
+    web: {
+      favicon: "./assets/logo-app-full-color-square.png",
+    },
+    extra: {
+      eas: {
+        projectId: "368f8454-2a6a-4fef-9951-50b943c38981",
+      },
+    },
+    owner: "rachellaurenxx",
+  },
+};

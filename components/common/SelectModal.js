@@ -18,8 +18,10 @@ export default function SelectModal({
   options = [],
   optionGroups,
   selectedValue,
+  selectedValues,
   onSelect,
   onClose,
+  closeLabel = "Cancel",
 }) {
   const { theme } = useTheme();
 
@@ -30,6 +32,7 @@ export default function SelectModal({
   const accentSoft = theme.accentSoft || "rgba(47, 124, 255, 0.15)";
   const cardBg = theme.card || "#fff";
   const groups = optionGroups || [{ title: "", options }];
+  const selectedSet = new Set(Array.isArray(selectedValues) ? selectedValues : []);
 
   return (
     <Modal
@@ -55,7 +58,9 @@ export default function SelectModal({
                   </Text>
                 ) : null}
                 {group.options.map((opt) => {
-                  const isSelected = opt === selectedValue;
+                  const isSelected = selectedSet.size
+                    ? selectedSet.has(opt)
+                    : opt === selectedValue;
 
                   return (
                     <Pressable
@@ -95,7 +100,7 @@ export default function SelectModal({
             ]}
             onPress={onClose}
           >
-            <Text style={[styles.cancelText, { color: accent }]}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: accent }]}>{closeLabel}</Text>
           </Pressable>
         </View>
       </View>

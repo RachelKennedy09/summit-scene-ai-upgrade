@@ -1,5 +1,5 @@
 // theme/colors.js
-// Summit Scene fixed brand palette using the approved sage-green hex codes.
+// Summit Scene fixed brand palette with restrained green brand usage.
 
 export const colors = {
   // Core brand palette
@@ -19,9 +19,9 @@ export const colors = {
   background: "#F5F3EE",
   section: "#E6E1D6",
   surface: "#E6E1D6",
-  surfaceMuted: "#EEF2E8",
+  surfaceMuted: "#F1EFE8",
   card: "#FFFFFF",
-  pill: "#A3B18A",
+  pill: "#ECEAE4",
   border: "#D6D2C4",
   hairline: "#DDD9CD",
 
@@ -34,7 +34,7 @@ export const colors = {
 
   // Semantic / accent usage
   accent: "#254A3B",
-  accentSoft: "rgba(37, 74, 59, 0.12)",
+  accentSoft: "rgba(37, 74, 59, 0.08)",
   accentWarm: "#E9B89A",
   success: "#567A5D",
   error: "#B35340",

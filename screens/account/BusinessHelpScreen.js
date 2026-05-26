@@ -53,8 +53,9 @@ export default function BusinessHelpScreen() {
         <HelpSection title="Getting verified" theme={theme}>
           <HelpText theme={theme}>
             Business accounts are reviewed before official event posting unlocks.
-            Add your business type, website, and official social links in Edit
-            Profile.
+            Tour guides, tour companies, venues, shops, studios, and organizers
+            can apply. Add your business type, website, and official social
+            links in Edit Profile.
           </HelpText>
           <HelpText theme={theme}>
             To speed up approval, email Summit Scene or DM from the official
@@ -65,8 +66,16 @@ export default function BusinessHelpScreen() {
         <HelpSection title="Posting events" theme={theme}>
           <HelpText theme={theme}>
             Use Post Event for official events hosted by your venue, shop,
-            organization, or event series. Choose a specific category so users
-            can find it through Hub, Map, filters, and buddy posts.
+            organization, tour company, guide service, or event series. Choose
+            a broad category, then add tags like Food Tours, Guided Hikes,
+            Canoe Tours, Wildlife Tours, Photography Tours, Yoga Retreats, or
+            Ski Clinics so users can find it through Hub, Map, filters, and
+            buddy posts.
+          </HelpText>
+          <HelpText theme={theme}>
+            If users need to reserve a spot, add the external booking link on
+            the event. Summit Scene shows the tour or event, and users book on
+            your website.
           </HelpText>
           <HelpText theme={theme}>
             Keep titles clear, add accurate time and location details, and update
@@ -103,7 +112,7 @@ export default function BusinessHelpScreen() {
           <Question
             theme={theme}
             question="What helps my business get approved?"
-            answer="Use a real business or organizer name, add your town, business type, website or official social link, and contact Summit Scene from that official account if needed."
+            answer="Use a real business, guide, tour company, or organizer name, add your town, business type, website or official social link, and contact Summit Scene from that official account if needed."
           />
           <Question
             theme={theme}

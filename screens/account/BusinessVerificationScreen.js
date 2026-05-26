@@ -105,7 +105,7 @@ export default function BusinessVerificationScreen() {
 
     const subject = encodeURIComponent("Summit Scene business verification");
     const body = encodeURIComponent(
-      `Hi ${businessUser.name || "there"},\n\nThanks for creating a Summit Scene business profile. To verify the account, please reply with a quick note confirming you represent this business.\n\nYou can also send a business website, Instagram/Facebook page, or any public proof that connects you to the business.\n\nThanks,\nSummit Scene`
+      `Hi ${businessUser.name || "there"},\n\nThanks for creating a Summit Scene business profile. To verify the account, please reply with a quick note confirming you represent this business.\n\nPlease send one public proof link if it is not already on your profile: website, Instagram page, Facebook page, or Google Business listing.\n\nThanks,\nSummit Scene`
     );
     Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`).catch(() => {
       Alert.alert("Could not open email", `Please email ${email} manually.`);
@@ -126,7 +126,7 @@ export default function BusinessVerificationScreen() {
       `${actionLabel} business profile?`,
       `${businessUser.name || businessUser.email} will ${
         status === "verified"
-          ? "be able to post official events."
+          ? "receive the Verified Local badge and be able to post official events."
           : status === "pending"
           ? "go back into the review queue."
           : "stay blocked from official event posting."
@@ -241,11 +241,14 @@ export default function BusinessVerificationScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <PageHeader
           title="Business Verification"
-          subtitle="Approve real businesses and organizers before official event posting unlocks."
+          subtitle="Manually approve real local businesses and organizers before official event posting unlocks."
         />
         <Text style={[styles.hint, { color: theme.textMuted }]}>
-          Only approve when the website, social profile, email, or a direct
-          email/DM clearly proves they represent the business.
+          To post official business events, profiles need business name,
+          contact email, town, category, short description, and one proof link.
+          Tour guides and tour companies are okay when their website, social
+          pages, or Google listing are clearly real/local, the tour types make
+          sense, and branding matches.
         </Text>
 
         <View style={styles.statusTabs}>
@@ -341,6 +344,8 @@ export default function BusinessVerificationScreen() {
           const proof = [
             businessUser.website,
             businessUser.instagram,
+            businessUser.facebook,
+            businessUser.googleBusinessUrl,
             ...socials.map((account) => account.url || account.handle),
           ]
             .filter(Boolean)
@@ -410,12 +415,12 @@ export default function BusinessVerificationScreen() {
                     Proof to check
                   </Text>
                   <Text style={[styles.details, { color: theme.textMuted }]}>
-                    No website or social link added yet. Use Email Business to ask for proof.
+                    No website, Instagram, Facebook, or Google Business listing added yet. Use Email Business to ask for proof.
                   </Text>
                 </View>
               )}
               <Text style={[styles.checklist, { color: theme.textMuted }]}>
-                Check: business name matches proof, email/social looks real, and this is not a duplicate account.
+                Check: social pages/listing are real and local, events make sense, branding matches, and this is not a duplicate account. Approved profiles get the Verified Local badge.
               </Text>
               <View style={styles.actions}>
                 <Pressable

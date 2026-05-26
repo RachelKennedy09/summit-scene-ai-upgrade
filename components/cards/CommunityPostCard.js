@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import TrustBadgeRow from "../common/TrustBadges";
 import CommunityRepliesSection from "./CommunityRepliesSection";
 
 // ----- Helpers -----
@@ -36,8 +37,11 @@ function getPostAuthor(post) {
   const socialAccounts = userObj?.socialAccounts || [];
   const lookingFor = userObj?.lookingFor || "";
   const instagram = userObj?.instagram || "";
+  const facebook = userObj?.facebook || "";
   const bio = userObj?.bio || "";
   const website = userObj?.website || "";
+  const googleBusinessUrl = userObj?.googleBusinessUrl || "";
+  const phone = userObj?.phone || "";
 
   return {
     _id: userObj?._id || userObj?.id || post.user || "",
@@ -57,8 +61,11 @@ function getPostAuthor(post) {
     socialAccounts,
     lookingFor,
     instagram,
+    facebook,
     bio,
     website,
+    googleBusinessUrl,
+    phone,
   };
 }
 
@@ -84,6 +91,7 @@ export default function CommunityPostCard({
   onEdit,
   onToggleLike,
   onOpenProfile,
+  onBlockProfile,
   onReport,
 }) {
   const {
@@ -114,6 +122,7 @@ export default function CommunityPostCard({
   // Likes
   const likesArray = Array.isArray(post.likes) ? post.likes : [];
   const likesCount = likesArray.length;
+  const replyCount = Array.isArray(post.replies) ? post.replies.length : 0;
 
   const userId = user?._id || user?.id;
 
@@ -138,20 +147,6 @@ export default function CommunityPostCard({
     return postUserId === userId;
   })();
 
-  // ----- Role pill-----
-  const isBusiness = role === "business";
-  const isVerifiedBusiness =
-    isBusiness && businessVerificationStatus === "verified";
-
-  const roleBgColor =
-    theme.rolePillBg || (theme.accentSoft ? theme.accentSoft : colors.tealTint);
-
-  const roleTextColor =
-    theme.rolePillText ||
-    (isBusiness
-      ? theme.accent || colors.teal
-      : theme.textMain || colors.textLight);
-
   return (
     <View
       style={[
@@ -163,7 +158,7 @@ export default function CommunityPostCard({
       ]}
     >
       {/* Identity row (avatar, name, timestamp, email, town, role) */}
-      <View className="card-header" style={styles.cardHeaderRow}>
+      <View style={styles.cardHeaderRow}>
         <View style={styles.authorRow}>
           <View
             style={[
@@ -187,7 +182,7 @@ export default function CommunityPostCard({
 
             {createdDate && (
               <Text style={[styles.timestampText, { color: theme.textMuted }]}>
-                {createdDate.toLocaleDateString()} •{" "}
+                {createdDate.toLocaleDateString()} |{" "}
                 {createdDate.toLocaleTimeString([], {
                   hour: "numeric",
                   minute: "2-digit",
@@ -211,21 +206,16 @@ export default function CommunityPostCard({
           </Text>
 
           {/* Role Pill  */}
-          <Text
-            style={[
-              styles.roleBadge,
-              {
-                backgroundColor: roleBgColor,
-                color: roleTextColor,
-              },
-            ]}
-          >
-            {isVerifiedBusiness
-              ? "Verified business"
-              : isBusiness
-                ? "Business pending"
-                : "Local member"}
-          </Text>
+          <TrustBadgeRow
+            profile={{
+              role,
+              businessVerificationStatus,
+              userType,
+            }}
+            theme={theme}
+            compact
+            align="flex-end"
+          />
 
           {post.targetDate ? (
             <Text style={[styles.dateBadge, { color: theme.textMuted }]}>
@@ -272,7 +262,8 @@ export default function CommunityPostCard({
             ? "No likes yet"
             : likesCount === 1
             ? "1 like"
-            : `${likesCount} likes`}
+            : `${likesCount} likes`}{" "}
+          | {replyCount} comment{replyCount === 1 ? "" : "s"}
         </Text>
       </View>
 
@@ -321,8 +312,11 @@ export default function CommunityPostCard({
                   profileImageUrl,
                   lookingFor,
                   instagram,
+                  facebook,
                   bio,
                   website,
+                  googleBusinessUrl,
+                  phone,
                   businessVerificationStatus,
                   createdAt: post.user?.createdAt,
                 })
@@ -367,6 +361,7 @@ export default function CommunityPostCard({
         onChangeReplyText={onChangeReplyText}
         onSubmitReply={onSubmitReply}
         onOpenProfile={onOpenProfile}
+        onBlockProfile={onBlockProfile}
         currentUserId={userId}
         onReport={(reply) =>
           onReport?.({
@@ -445,13 +440,6 @@ const styles = StyleSheet.create({
   townTag: {
     fontSize: 12,
     color: colors.textMuted,
-  },
-  roleBadge: {
-    fontSize: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    overflow: "hidden",
   },
   dateBadge: {
     fontSize: 12,
@@ -557,3 +545,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
 });
+

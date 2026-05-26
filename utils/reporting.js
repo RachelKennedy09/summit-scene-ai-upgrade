@@ -1,11 +1,10 @@
 import { Alert } from "react-native";
 
 export const REPORT_REASONS = [
-  { label: "Harassment or bullying", value: "harassment" },
-  { label: "Spam", value: "spam" },
-  { label: "Unsafe behavior", value: "unsafe" },
-  { label: "Scam or fake account", value: "scam" },
+  { label: "Fake event", value: "fake_event" },
+  { label: "Scam", value: "scam" },
   { label: "Inappropriate content", value: "inappropriate" },
+  { label: "Misleading business", value: "misleading_business" },
   { label: "Other", value: "other" },
 ];
 

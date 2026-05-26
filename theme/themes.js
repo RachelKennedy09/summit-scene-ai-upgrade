@@ -27,6 +27,8 @@ export const summitSceneTheme = {
   accent: colors.accent,
   accentSoft: colors.accentSoft,
   accentWarm: colors.accentWarm,
+  teal: colors.teal,
+  tealTint: colors.tealTint,
 
   // borders / dividers
   border: colors.border,

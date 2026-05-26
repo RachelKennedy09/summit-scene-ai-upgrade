@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import TrustBadgeRow from "../common/TrustBadges";
 
 function titleCase(value) {
   return String(value || "")
@@ -118,13 +119,21 @@ export default function MemberProfileModal({
   const canShowSafetyActions = Boolean(userId) && !isOwnProfile && (onReport || onBlock);
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "M";
   const town = user.town || "";
-  const userType = user.userType ? titleCase(user.userType) : "";
   const memberSince = formatMemberSince(user.createdAt);
   const originallyFrom = user.originallyFrom || "";
   const interests = Array.isArray(user.interests) ? user.interests : [];
   const languages = Array.isArray(user.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user.socialAccounts)
     ? user.socialAccounts
+    : [];
+  const phone = user.role === "business" ? user.phone || "" : "";
+  const businessLinks = user.role === "business"
+    ? [
+        ["Instagram", user.instagram],
+        ["Facebook", user.facebook],
+        ["Website", user.website],
+        ["Google Business", user.googleBusinessUrl],
+      ].filter(([, value]) => Boolean(value))
     : [];
   const hasManyInterests = interests.length > INTEREST_PREVIEW_COUNT;
   const visibleInterests =
@@ -204,24 +213,14 @@ export default function MemberProfileModal({
                 >
                   {displayName}
                 </Text>
-                <Text
-                  style={[
-                    styles.profileRole,
-                    { color: theme.textMuted || colors.textMuted },
-                  ]}
-                >
-                  {user.role === "business"
-                    ? user.businessVerificationStatus === "verified"
-                      ? "Verified business host"
-                      : "Business review pending"
-                    : "Community member"}
-                </Text>
+                <View style={styles.profileBadgeRow}>
+                  <TrustBadgeRow profile={user} theme={theme} />
+                </View>
               </View>
             </View>
 
             <View style={styles.chipRow}>
               {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
-              {userType ? <Chip label={userType} theme={theme} /> : null}
               {memberSince ? (
                 <Chip label={`Member since ${memberSince}`} theme={theme} />
               ) : null}
@@ -353,6 +352,35 @@ export default function MemberProfileModal({
               </Section>
             ) : null}
 
+            {businessLinks.length ? (
+              <Section label="Business proof links" theme={theme}>
+                {businessLinks.map(([label, value]) => (
+                  <Text
+                    key={label}
+                    style={[
+                      styles.profileLinkText,
+                      { color: theme.accent || colors.accent },
+                    ]}
+                  >
+                    {label}: {value}
+                  </Text>
+                ))}
+              </Section>
+            ) : null}
+
+            {phone ? (
+              <Section label="Phone" theme={theme}>
+                <Text
+                  style={[
+                    styles.profileLinkText,
+                    { color: theme.accent || colors.accent },
+                  ]}
+                >
+                  {phone}
+                </Text>
+              </Section>
+            ) : null}
+
             {canShowSafetyActions ? (
               <View
                 style={[
@@ -480,9 +508,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  profileRole: {
-    fontSize: 13,
-    marginTop: 2,
+  profileBadgeRow: {
+    marginTop: 6,
   },
   profileSection: {
     marginTop: 12,

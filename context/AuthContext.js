@@ -120,6 +120,9 @@ export function AuthProvider({ children }) {
       socialAccounts: Array.isArray(rawUser?.socialAccounts)
         ? rawUser.socialAccounts
         : [],
+      facebook: rawUser?.facebook ?? "",
+      googleBusinessUrl: rawUser?.googleBusinessUrl ?? "",
+      phone: rawUser?.phone ?? "",
       blockedUsers: Array.isArray(rawUser?.blockedUsers)
         ? rawUser.blockedUsers
         : [],
@@ -300,7 +303,10 @@ export function AuthProvider({ children }) {
     bio,
     lookingFor,
     instagram,
+    facebook,
     website,
+    googleBusinessUrl,
+    phone,
     avatarKey,
     profileImageUrl,
     facebookConnectToken,
@@ -333,7 +339,10 @@ export function AuthProvider({ children }) {
             bio: bio || undefined,
             lookingFor: lookingFor || undefined,
             instagram: instagram || undefined,
+            facebook: facebook || undefined,
             website: website || undefined,
+            googleBusinessUrl: googleBusinessUrl || undefined,
+            phone: phone || undefined,
             avatarKey: avatarKey || undefined,
             profileImageUrl: profileImageUrl || undefined,
             facebookConnectToken: facebookConnectToken || undefined,

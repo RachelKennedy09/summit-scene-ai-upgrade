@@ -25,8 +25,17 @@ import DatePickerModal from "../../components/events/DatePickerModal";
 import TimePickerModal from "../../components/events/TimePickerModal";
 import {
   COMMUNITY_NOTICE_CATEGORIES,
+  COMMUNITY_CATEGORY_TAGS,
   COMMUNITY_FORM_CATEGORIES,
+  EVENT_CATEGORY_GROUPS,
+  EVENT_MAIN_CATEGORIES,
+  MAX_CATEGORY_TAGS,
+  MAX_VIBE_TAGS,
+  VIBE_TAG_GROUPS,
+  VIBE_TAGS,
+  getCategoryTagGroupsForCategories,
   getCommunityCategoryGroups,
+  getMainCategoryForTag,
 } from "../../constants/eventCategories";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -53,9 +62,11 @@ const BUDDY_TYPES = [
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
+const PLAN_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const NOTICE_CATEGORY_GROUPS = [
   { title: "Local Notices", options: COMMUNITY_NOTICE_CATEGORIES },
 ];
+const MAX_BUDDY_CATEGORIES = 3;
 const COMMUNITY_TYPES = [
   {
     label: "Make a Plan",
@@ -125,8 +136,9 @@ const COMMUNITY_FORM_COPY = {
     title: "Make a Plan",
     subtitle: "Share a plan people can join, like coffee before open mic, a walk, or an event buddy post.",
     showCategory: true,
-    categoryLabel: "Category",
+    categoryLabel: "Categories",
     categoryRequired: true,
+    categoryGroups: PLAN_CATEGORY_GROUPS,
     detailsLabel: "Plan",
     detailsPlaceholder: "What is the plan? Add enough detail for someone to say yes.",
     townLabel: "Where",
@@ -161,8 +173,9 @@ const COMMUNITY_FORM_COPY = {
     title: "Start a Group",
     subtitle: "Create a repeatable interest group like book club, trivia team, hiking crew, or art night.",
     showCategory: true,
-    categoryLabel: "Group focus",
+    categoryLabel: "Group categories",
     categoryRequired: false,
+    categoryGroups: PLAN_CATEGORY_GROUPS,
     detailsLabel: "Group idea",
     detailsPlaceholder: "What is the group, who is it for, and how often do you want to meet?",
     townLabel: "Home base",
@@ -260,6 +273,48 @@ function ChipGroup({ options, selectedValue, onSelect, theme }) {
   );
 }
 
+function MultiChipGroup({ options, selectedValues, onSelect, theme }) {
+  const values = Array.isArray(selectedValues) ? selectedValues : [];
+
+  return (
+    <View style={styles.chipRow}>
+      {options.map((option) => {
+        const value = option.value ?? option;
+        const label = option.label ?? option;
+        const selected = values.includes(value);
+
+        return (
+          <Pressable
+            key={value}
+            onPress={() => onSelect(value)}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: selected
+                  ? theme.accentSoft || theme.card
+                  : theme.card,
+                borderColor: selected ? theme.accent : theme.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                {
+                  color: selected ? theme.text : theme.textMuted,
+                  fontWeight: selected ? "700" : "500",
+                },
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function parseDateString(value) {
   if (!value) return new Date();
   const [year, month, day] = String(value).split("-").map(Number);
@@ -274,13 +329,10 @@ function normalizeCategory(value) {
   if (!trimmed || trimmed === "Event") return "";
 
   const aliases = {
-    "Food and Drink": "Food Trucks",
-    "Food + Drink": "Food Trucks",
-    "Food/Drink": "Food Trucks",
-    "Food & Drink": "Food Trucks",
-    Market: "Markets",
-    "Sports Watch Party": "Sports/Watch Party",
-    "Seasonal Holiday Special": "Seasonal/Holiday Special",
+    "Food and Drink": "Food & Drink",
+    "Food + Drink": "Food & Drink",
+    "Food/Drink": "Food & Drink",
+    Market: "Farmers Markets",
     "Gear Sale": "Gear Sale / Swap",
     "Gear Swap": "Gear Sale / Swap",
     "Lost and Found": "Lost & Found",
@@ -288,11 +340,50 @@ function normalizeCategory(value) {
 
   if (aliases[trimmed]) return aliases[trimmed];
 
+  const groupTitle = EVENT_CATEGORY_GROUPS.find(
+    (group) => group.title.toLowerCase() === trimmed.toLowerCase()
+  )?.title;
+  if (groupTitle) return groupTitle;
+
   return (
     COMMUNITY_FORM_CATEGORIES.find(
       (category) => category.toLowerCase() === trimmed.toLowerCase()
     ) || ""
   );
+}
+
+function normalizeCategories(values) {
+  const source = Array.isArray(values) ? values : [values];
+  return [
+    ...new Set(source.map((item) => normalizeCategory(item)).filter(Boolean)),
+  ].slice(0, MAX_BUDDY_CATEGORIES);
+}
+
+function normalizeCategoryTags(values) {
+  const source = Array.isArray(values) ? values : [values];
+  return [
+    ...new Set(source.filter((item) => COMMUNITY_CATEGORY_TAGS.includes(item))),
+  ].slice(0, MAX_CATEGORY_TAGS);
+}
+
+function getLegacyCategoryTags(values) {
+  const source = Array.isArray(values) ? values : [values];
+  return source.filter((item) => COMMUNITY_CATEGORY_TAGS.includes(item));
+}
+
+function normalizeVibeTags(values) {
+  const source = Array.isArray(values) ? values : [values];
+  return [
+    ...new Set(source.filter((item) => VIBE_TAGS.includes(item))),
+  ].slice(0, MAX_VIBE_TAGS);
+}
+
+function getEventCategoryList(event) {
+  return Array.isArray(event?.categories) && event.categories.length
+    ? event.categories
+    : event?.category
+      ? [event.category]
+      : [];
 }
 
 function getEventId(event) {
@@ -305,6 +396,9 @@ function getEventSearchText(event) {
     event?.title,
     event?.town,
     event?.category,
+    ...getEventCategoryList(event),
+    ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
+    ...(Array.isArray(event?.vibeTags) ? event.vibeTags : []),
     event?.date,
     event?.time,
     event?.locationName,
@@ -318,14 +412,24 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const { token } = useAuth();
   const { theme } = useTheme();
   const eventBuddy = route?.params?.eventBuddy || {};
-  const initialCategory = normalizeCategory(eventBuddy.category);
+  const initialCategories = normalizeCategories(
+    eventBuddy.categories || eventBuddy.category
+  );
+  const initialCategoryTags = normalizeCategoryTags([
+    ...getLegacyCategoryTags(eventBuddy.categories || eventBuddy.category),
+    ...(Array.isArray(eventBuddy.categoryTags) ? eventBuddy.categoryTags : []),
+  ]);
+  const initialCategory = initialCategories[0] || "";
   const initialCommunityType =
     COMMUNITY_TYPES.some((option) => option.value === eventBuddy.communityType)
       ? eventBuddy.communityType
       : "local-plan";
 
   const [communityType, setCommunityType] = useState(initialCommunityType);
-  const [category, setCategory] = useState(initialCategory);
+  const [categories, setCategories] = useState(initialCategories);
+  const category = categories[0] || "";
+  const [categoryTags, setCategoryTags] = useState(initialCategoryTags);
+  const [vibeTags, setVibeTags] = useState(normalizeVibeTags(eventBuddy.vibeTags));
   const [type, setType] = useState(
     initialCategory
       ? getBuddyTypeForEventCategory(initialCategory)
@@ -350,6 +454,9 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           id: eventBuddy.eventId,
           title: eventBuddy.eventTitle || "Linked event",
           category: initialCategory,
+          categories: initialCategories,
+          categoryTags: initialCategoryTags,
+          vibeTags: normalizeVibeTags(eventBuddy.vibeTags),
           town: eventBuddy.town,
           date: eventBuddy.date,
           time: eventBuddy.time,
@@ -366,6 +473,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showCategoryTagPicker, setShowCategoryTagPicker] = useState(false);
+  const [showVibeTagPicker, setShowVibeTagPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const formCopy =
@@ -374,6 +483,11 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const effectiveCategory = shouldShowCategory
     ? category || formCopy.defaultCategory
     : "";
+  const effectiveCategories = shouldShowCategory ? categories : [];
+  const categoryTagGroups = useMemo(() => {
+    if (communityType === "notice") return NOTICE_CATEGORY_GROUPS;
+    return getCategoryTagGroupsForCategories(shouldShowCategory ? categories : []);
+  }, [communityType, shouldShowCategory, categories]);
   const effectiveType =
     (effectiveCategory ? getBuddyTypeForEventCategory(effectiveCategory) : type) ||
     formCopy.defaultType;
@@ -420,9 +534,17 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       setLinkedEvent(null);
     }
 
-    if (!shouldShowCategory && category) {
-      setCategory("");
+    if (!shouldShowCategory && categories.length) {
+      setCategories([]);
       setType(formCopy.defaultType);
+    }
+
+    if (!shouldShowCategory && categoryTags.length) {
+      setCategoryTags([]);
+    }
+
+    if (!shouldShowCategory && vibeTags.length) {
+      setVibeTags([]);
     }
 
     if (shouldShowCategory && !category && formCopy.defaultCategory) {
@@ -440,6 +562,9 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     }
   }, [
     category,
+    categories,
+    categoryTags,
+    vibeTags,
     formCopy.defaultCategory,
     formCopy.defaultType,
     shouldShowCategory,
@@ -452,28 +577,110 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   ]);
 
   function handleSelectCategory(nextCategory) {
-    setCategory(nextCategory);
+    setCategories((current) => {
+      if (current.includes(nextCategory)) {
+        const nextCategories = current.filter((item) => item !== nextCategory);
+        const nextPrimaryCategory = nextCategories[0] || "";
+        const nextType = nextPrimaryCategory
+          ? getBuddyTypeForEventCategory(nextPrimaryCategory)
+          : formCopy.defaultType;
+        setType(nextType);
+        if (
+          !SKILL_TYPES.has(nextType) &&
+          !nextCategories.some((item) => SKILL_CATEGORIES.has(item))
+        ) {
+          setSkillLevel("");
+        }
+        const nextTagOptions = getCategoryTagGroupsForCategories(nextCategories)
+          .flatMap((group) => group.options);
+        setCategoryTags((currentTags) =>
+          currentTags.filter((tag) => nextTagOptions.includes(tag))
+        );
+        return nextCategories;
+      }
+
+      if (current.length >= MAX_BUDDY_CATEGORIES) {
+        Alert.alert(
+          "Category limit",
+          `Choose up to ${MAX_BUDDY_CATEGORIES} categories for one plan.`
+        );
+        return current;
+      }
+
+      const nextCategories = [...current, nextCategory];
+      const nextPrimaryCategory = nextCategories[0] || "";
+      const nextType = getBuddyTypeForEventCategory(nextPrimaryCategory);
+      setType(nextType);
+      if (
+        !SKILL_TYPES.has(nextType) &&
+        !nextCategories.some((item) => SKILL_CATEGORIES.has(item))
+      ) {
+        setSkillLevel("");
+      }
+      return nextCategories;
+    });
+  }
+
+  function handleSelectCategoryTag(nextTag) {
+    setCategoryTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_CATEGORY_TAGS) {
+        Alert.alert(
+          "Tag limit",
+          `Choose up to ${MAX_CATEGORY_TAGS} category tags.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  }
+
+  function handleSelectVibeTag(nextTag) {
+    setVibeTags((current) => {
+      if (current.includes(nextTag)) {
+        return current.filter((item) => item !== nextTag);
+      }
+
+      if (current.length >= MAX_VIBE_TAGS) {
+        Alert.alert(
+          "Vibe tag limit",
+          `Choose up to ${MAX_VIBE_TAGS} vibe tags.`
+        );
+        return current;
+      }
+
+      return [...current, nextTag];
+    });
+  }
+
+  function applyPrimaryCategory(nextCategory) {
     const nextType = getBuddyTypeForEventCategory(nextCategory);
     setType(nextType);
     if (!SKILL_TYPES.has(nextType) && !SKILL_CATEGORIES.has(nextCategory)) {
       setSkillLevel("");
     }
-    setShowCategoryPicker(false);
   }
 
   function applyLinkedEvent(nextEvent) {
     if (!nextEvent) return;
 
-    const linkedCategory = normalizeCategory(nextEvent.category);
+    const linkedCategories = normalizeCategories(getEventCategoryList(nextEvent));
+    const linkedCategoryTags = normalizeCategoryTags([
+      ...getLegacyCategoryTags(getEventCategoryList(nextEvent)),
+      ...(Array.isArray(nextEvent.categoryTags) ? nextEvent.categoryTags : []),
+    ]);
+    const linkedCategory = linkedCategories[0] || "";
     setLinkedEvent(nextEvent);
+    setCategoryTags(linkedCategoryTags);
+    setVibeTags(normalizeVibeTags(nextEvent.vibeTags));
 
     if (linkedCategory) {
-      const linkedType = getBuddyTypeForEventCategory(linkedCategory);
-      setCategory(linkedCategory);
-      setType(linkedType);
-      if (!SKILL_TYPES.has(linkedType) && !SKILL_CATEGORIES.has(linkedCategory)) {
-        setSkillLevel("");
-      }
+      setCategories(linkedCategories);
+      applyPrimaryCategory(linkedCategory);
     }
 
     if (nextEvent.town) {
@@ -507,15 +714,22 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         if (cancelled) return;
         setLinkedEvent(linkedEvent);
 
-        const linkedCategory = normalizeCategory(linkedEvent?.category);
+        const linkedCategories = normalizeCategories(
+          getEventCategoryList(linkedEvent)
+        );
+        const linkedCategoryTags = normalizeCategoryTags([
+          ...getLegacyCategoryTags(getEventCategoryList(linkedEvent)),
+          ...(Array.isArray(linkedEvent.categoryTags)
+            ? linkedEvent.categoryTags
+            : []),
+        ]);
+        const linkedCategory = linkedCategories[0] || "";
         if (linkedCategory) {
-          const linkedType = getBuddyTypeForEventCategory(linkedCategory);
-          setCategory(linkedCategory);
-          setType(linkedType);
-          if (!SKILL_TYPES.has(linkedType) && !SKILL_CATEGORIES.has(linkedCategory)) {
-            setSkillLevel("");
-          }
+          setCategories(linkedCategories);
+          applyPrimaryCategory(linkedCategory);
         }
+        setCategoryTags(linkedCategoryTags);
+        setVibeTags(normalizeVibeTags(linkedEvent.vibeTags));
 
         if (!town && linkedEvent?.town) {
           setTown(linkedEvent.town);
@@ -547,8 +761,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   async function handleSubmit() {
     const trimmedActivityText = activityText.trim();
 
-    if (shouldShowCategory && formCopy.categoryRequired && !category) {
-      Alert.alert("Missing category", "Please choose a category.");
+    if (shouldShowCategory && formCopy.categoryRequired && !categories.length) {
+      Alert.alert("Missing category", "Please choose at least one category.");
       return;
     }
 
@@ -589,6 +803,14 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         {
           type: effectiveType,
           category: shouldShowCategory ? effectiveCategory || undefined : undefined,
+          categories: shouldShowCategory
+            ? effectiveCategories.length
+              ? effectiveCategories
+              : undefined
+            : undefined,
+          categoryTags:
+            shouldShowCategory && categoryTags.length ? categoryTags : undefined,
+          vibeTags: shouldShowCategory && vibeTags.length ? vibeTags : undefined,
           communityType,
           activityText: trimmedActivityText,
           date: formatDateForApi(dateObj),
@@ -665,6 +887,20 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             </Text>
           </View>
 
+          <View
+            style={[
+              styles.boundaryNote,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.boundaryNoteTitle, { color: theme.text }]}>
+              Before you post
+            </Text>
+            <Text style={[styles.boundaryNoteText, { color: theme.textMuted }]}>
+              Be kind, be clear about the plan, and choose public meetup spots when meeting someone new. Use report or block if something feels off.
+            </Text>
+          </View>
+
           {canLinkEvent ? (
             <>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -685,7 +921,12 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                       {linkedEvent.title || "Linked event"}
                     </Text>
                     <Text style={[styles.linkedEventMeta, { color: theme.textMuted }]}>
-                      {[linkedEvent.town, linkedEvent.category, linkedEvent.date]
+                      {[
+                        linkedEvent.town,
+                        getEventCategoryList(linkedEvent).join(", ") ||
+                          linkedEvent.category,
+                        linkedEvent.date,
+                      ]
                         .filter(Boolean)
                         .join(" | ")}
                     </Text>
@@ -782,8 +1023,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           {shouldShowCategory ? (
             <>
               <Text style={[styles.label, { color: theme.textMuted }]}>
-                {formCopy.categoryLabel}
-                {formCopy.categoryRequired ? " (Required)" : " (Optional)"}
+                    {formCopy.categoryLabel}
+                    {formCopy.categoryRequired ? " (Required)" : " (Optional)"}
               </Text>
               <Pressable
                 style={[
@@ -798,15 +1039,79 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 <Text
                   style={[
                     styles.selectText,
-                    { color: category ? theme.text : theme.textMuted },
+                    {
+                      color: categories.length ? theme.text : theme.textMuted,
+                    },
                   ]}
                 >
-                  {category ||
+                  {categories.length
+                    ? categories.join(", ")
+                    : 
                     (formCopy.categoryRequired
-                      ? "Choose a category"
+                      ? "Choose a main category"
                       : formCopy.categoryLabel === "Notice type"
                         ? "Choose a notice type if helpful"
                         : "Choose a focus if helpful")}
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
+
+          {shouldShowCategory ? (
+            <>
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Category tags (Optional)
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Add searchable specifics like Coffee, Sober Events, Strength Training, or Book Clubs.
+              </Text>
+              <Pressable
+                style={[
+                  styles.selectButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => setShowCategoryTagPicker(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectText,
+                    { color: categoryTags.length ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {categoryTags.length
+                    ? categoryTags.join(", ")
+                    : "Choose tags that fit"}
+                </Text>
+              </Pressable>
+
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Vibe tags (Optional)
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Choose up to {MAX_VIBE_TAGS} tags people can search for.
+              </Text>
+              <Pressable
+                style={[
+                  styles.selectButton,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => setShowVibeTagPicker(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectText,
+                    { color: vibeTags.length ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {vibeTags.length
+                    ? vibeTags.join(", ")
+                    : "Search and choose vibe tags"}
                 </Text>
               </Pressable>
             </>
@@ -1068,11 +1373,37 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
 
         <GroupedCategoryModal
           visible={showCategoryPicker && shouldShowCategory}
-          title="Choose category"
+          title="Choose main categories"
           groups={formCopy.categoryGroups || CATEGORY_GROUPS}
           selectedValue={category}
+          selectedValues={categories}
           onSelect={handleSelectCategory}
           onClose={() => setShowCategoryPicker(false)}
+          closeLabel="Done"
+        />
+
+        <GroupedCategoryModal
+          visible={showCategoryTagPicker && shouldShowCategory}
+          title="Choose category tags"
+          groups={categoryTagGroups}
+          selectedValues={categoryTags}
+          onSelect={handleSelectCategoryTag}
+          onClose={() => setShowCategoryTagPicker(false)}
+          closeLabel="Done"
+          searchable
+          searchPlaceholder="Search category tags"
+        />
+
+        <GroupedCategoryModal
+          visible={showVibeTagPicker && shouldShowCategory}
+          title="Choose vibe tags"
+          groups={VIBE_TAG_GROUPS}
+          selectedValues={vibeTags}
+          onSelect={handleSelectVibeTag}
+          onClose={() => setShowVibeTagPicker(false)}
+          closeLabel="Done"
+          searchable
+          searchPlaceholder="Search vibe tags"
         />
 
         <Modal

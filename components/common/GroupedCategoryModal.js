@@ -5,12 +5,18 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
 function normalizeCategoryLabel(categoryLabel) {
-  return categoryLabel === "All categories" || categoryLabel === "All notice types"
+  return (
+    categoryLabel === "All Categories" ||
+    categoryLabel === "All categories" ||
+    categoryLabel === "All Notice Types" ||
+    categoryLabel === "All notice types"
+  )
     ? "All"
     : categoryLabel;
 }
@@ -20,27 +26,47 @@ export default function GroupedCategoryModal({
   title = "Choose a category",
   groups,
   selectedValue,
+  selectedValues,
   onSelect,
   onClose,
+  closeLabel = "Cancel",
+  searchable = false,
+  searchPlaceholder = "Search",
 }) {
   const { theme } = useTheme();
+  const [query, setQuery] = useState("");
   const scrollRef = useRef(null);
   const groupOffsetsRef = useRef({});
   const pendingScrollTitleRef = useRef("");
   const scrollRetryRef = useRef(null);
+  const selectedSet = new Set(Array.isArray(selectedValues) ? selectedValues : []);
+  const filteredGroups = useMemo(() => {
+    if (!searchable || !query.trim()) return groups || [];
+
+    const normalizedQuery = query.trim().toLowerCase();
+    return (groups || [])
+      .map((group) => ({
+        ...group,
+        options: group.options.filter((option) =>
+          String(option).toLowerCase().includes(normalizedQuery)
+        ),
+      }))
+      .filter((group) => group.options.length);
+  }, [groups, query, searchable]);
 
   const selectedGroupTitle = useMemo(() => {
-    if (!selectedValue || !groups?.length) return "";
+    const valuesToCheck = selectedSet.size ? selectedSet : new Set([selectedValue]);
+    if (!valuesToCheck.size || !groups?.length) return "";
 
     return (
       groups.find((group) =>
         group.options.some((categoryLabel) => {
           const category = normalizeCategoryLabel(categoryLabel);
-          return category === selectedValue;
+          return valuesToCheck.has(category);
         })
       )?.title || ""
     );
-  }, [groups, selectedValue]);
+  }, [groups, selectedSet, selectedValue]);
 
   const initialExpandedTitle = useMemo(() => {
     if (selectedGroupTitle) return selectedGroupTitle;
@@ -54,6 +80,7 @@ export default function GroupedCategoryModal({
     if (visible) {
       pendingScrollTitleRef.current = "";
       groupOffsetsRef.current = {};
+      setQuery("");
       setExpandedGroupTitle(initialExpandedTitle);
     }
   }, [initialExpandedTitle, visible]);
@@ -134,12 +161,31 @@ export default function GroupedCategoryModal({
             {title}
           </Text>
 
+          {searchable ? (
+            <TextInput
+              style={[
+                styles.searchInput,
+                {
+                  backgroundColor: theme.background || theme.card,
+                  borderColor: theme.border,
+                  color: theme.textMain || theme.text,
+                },
+              ]}
+              value={query}
+              onChangeText={setQuery}
+              placeholder={searchPlaceholder}
+              placeholderTextColor={theme.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          ) : null}
+
           <ScrollView
             ref={scrollRef}
             style={styles.modalOptionsScroll}
             showsVerticalScrollIndicator
           >
-            {groups.map((group) => (
+            {filteredGroups.map((group) => (
               <View
                 key={group.title}
                 style={styles.optionGroup}
@@ -192,10 +238,12 @@ export default function GroupedCategoryModal({
                   </Text>
                 </Pressable>
 
-                {expandedGroupTitle === group.title
+                {expandedGroupTitle === group.title || query.trim()
                   ? group.options.map((categoryLabel) => {
                       const category = normalizeCategoryLabel(categoryLabel);
-                      const isSelected = category === selectedValue;
+                      const isSelected = selectedSet.size
+                        ? selectedSet.has(category)
+                        : category === selectedValue;
                       const isAllOption =
                         category === "All" || categoryLabel.startsWith("All ");
 
@@ -242,6 +290,11 @@ export default function GroupedCategoryModal({
                   : null}
               </View>
             ))}
+            {searchable && query.trim() && !filteredGroups.length ? (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                No matching tags.
+              </Text>
+            ) : null}
           </ScrollView>
 
           <Pressable
@@ -252,7 +305,7 @@ export default function GroupedCategoryModal({
             onPress={onClose}
           >
             <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
-              Cancel
+              {closeLabel}
             </Text>
           </Pressable>
         </View>
@@ -282,6 +335,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "700",
+    marginBottom: 12,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     marginBottom: 12,
   },
   modalOptionsScroll: {
@@ -356,5 +417,10 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  emptyText: {
+    fontSize: 14,
+    paddingVertical: 18,
+    textAlign: "center",
   },
 });

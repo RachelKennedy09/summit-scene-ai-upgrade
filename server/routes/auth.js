@@ -239,16 +239,24 @@ router.post("/register", async (req, res) => {
       const hasBusinessType =
         typeof req.body?.lookingFor === "string" &&
         req.body.lookingFor.trim().length > 0;
+      const hasDescription =
+        typeof req.body?.bio === "string" && req.body.bio.trim().length > 0;
+      const hasTown =
+        typeof req.body?.town === "string" && req.body.town.trim().length > 0;
       const hasProofLink =
         (typeof req.body?.website === "string" &&
           req.body.website.trim().length > 0) ||
         (typeof req.body?.instagram === "string" &&
-          req.body.instagram.trim().length > 0);
+          req.body.instagram.trim().length > 0) ||
+        (typeof req.body?.facebook === "string" &&
+          req.body.facebook.trim().length > 0) ||
+        (typeof req.body?.googleBusinessUrl === "string" &&
+          req.body.googleBusinessUrl.trim().length > 0);
 
-      if (!hasBusinessType || !hasProofLink) {
+      if (!hasTown || !hasBusinessType || !hasDescription || !hasProofLink) {
         return res.status(400).json({
           message:
-            "Business profile requests require a business type and either a website or Instagram.",
+            "Business profile requests require a town, category, short description, and one proof link: website, Instagram, Facebook, or Google Business listing.",
         });
       }
     }

@@ -55,7 +55,7 @@ const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
   includeAll: true,
-  allLabel: "All categories",
+  allLabel: "All Categories",
   includeGroupAll: true,
 });
 
@@ -69,7 +69,7 @@ const DATE_FILTERS = [
   "Next 90 days",
   "Next 6 months",
   "Next 12 months",
-  "All dates",
+  "All Dates",
 ];
 const NEAR_ME_RADIUS_KM = 15;
 const MARKER_SPREAD_ENTER_LONGITUDE_DELTA = 0.032;
@@ -167,6 +167,14 @@ function normalizeSearchText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function getEventCategoryList(event) {
+  return Array.isArray(event?.categories) && event.categories.length
+    ? event.categories
+    : event?.category
+      ? [event.category]
+      : [];
+}
+
 function eventMatchesSearch(event, searchTerm) {
   const normalizedSearch = normalizeSearchText(searchTerm);
   if (!normalizedSearch) return true;
@@ -175,6 +183,9 @@ function eventMatchesSearch(event, searchTerm) {
     event?.title,
     event?.description,
     event?.category,
+    ...getEventCategoryList(event),
+    ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
+    ...(Array.isArray(event?.vibeTags) ? event.vibeTags : []),
     event?.town,
     event?.locationName,
     event?.location,
@@ -465,7 +476,7 @@ export default function MapScreen({ route }) {
     setActiveSearch(trimmedSearch);
     setSelectedTown("All");
     setSelectedCategory("All");
-    setSelectedDateFilter(trimmedSearch ? "All dates" : "Today");
+    setSelectedDateFilter(trimmedSearch ? "All Dates" : "Today");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -557,9 +568,12 @@ export default function MapScreen({ route }) {
 
       const selectedCategoryOptions =
         getEventCategoryFilterOptions(selectedCategory);
+      const eventCategories = getEventCategoryList(event);
       const categoryMatch =
         !selectedCategoryOptions ||
-        selectedCategoryOptions.includes(event.category);
+        eventCategories.some((eventCategory) =>
+          selectedCategoryOptions.includes(eventCategory)
+        );
       const nearMeMatch =
         !isNearMeEnabled ||
         (() => {
@@ -571,7 +585,7 @@ export default function MapScreen({ route }) {
       let dateMatch = true;
       const effectiveDate = getNextOccurrenceDateString(event) || event.date;
 
-      if (selectedDateFilter !== "All dates") {
+      if (selectedDateFilter !== "All Dates") {
         if (!effectiveDate || typeof effectiveDate !== "string") {
           dateMatch = false;
         } else {
@@ -690,7 +704,7 @@ export default function MapScreen({ route }) {
       setSelectedTown(focusEvent.town);
     }
     setSelectedCategory("All");
-    setSelectedDateFilter("All dates");
+    setSelectedDateFilter("All Dates");
     setShowOnlyMyEvents(false);
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
@@ -758,7 +772,7 @@ export default function MapScreen({ route }) {
         : ` ${selectedCategory.toLowerCase()}`;
 
     const dateLabel =
-      selectedDateFilter === "All dates"
+      selectedDateFilter === "All Dates"
         ? ""
         : ` (${selectedDateFilter.toLowerCase()})`;
     const searchLabel = activeSearch ? ` matching "${activeSearch}"` : "";
@@ -795,6 +809,21 @@ export default function MapScreen({ route }) {
     isNearMeEnabled,
     activeSearch,
   ]);
+
+  const searchStatus = useMemo(() => {
+    if (!activeSearch) return "";
+
+    if (loading) {
+      return `Searching for "${activeSearch}"...`;
+    }
+
+    const count = eventsForMap.length;
+    if (count === 0) {
+      return `0 map events found for "${activeSearch}". Try a broader word or clear filters.`;
+    }
+
+    return `${count} map event${count === 1 ? "" : "s"} found for "${activeSearch}".`;
+  }, [activeSearch, eventsForMap.length, loading]);
 
   // Keep the camera aligned with the actual filtered markers.
   useEffect(() => {
@@ -940,6 +969,7 @@ export default function MapScreen({ route }) {
           onClearFilters={handleClearFilters}
           searchQuery={searchQuery}
           activeSearch={activeSearch}
+          searchStatus={searchStatus}
           onChangeSearchQuery={setSearchQuery}
           onApplySearch={handleApplySearch}
           onClearSearch={handleClearSearch}
@@ -1075,16 +1105,16 @@ export default function MapScreen({ route }) {
                   </View>
                 ) : (
                   <View style={styles.emptyActions}>
-                    {["Next 7 days", "Next 30 days", "All dates"].map((label) => (
+                    {["Next 7 days", "Next 30 days", "All Dates"].map((label) => (
                       <Pressable
                         key={label}
                         style={({ pressed }) => [
                           styles.emptyAction,
                           {
                             backgroundColor:
-                              label === "All dates" ? theme.card : theme.accent,
+                              label === "All Dates" ? theme.card : theme.accent,
                             borderColor:
-                              label === "All dates" ? theme.accent : theme.accent,
+                              label === "All Dates" ? theme.accent : theme.accent,
                           },
                           pressed && styles.pressed,
                         ]}
@@ -1095,7 +1125,7 @@ export default function MapScreen({ route }) {
                             styles.emptyActionText,
                             {
                               color:
-                                label === "All dates"
+                                label === "All Dates"
                                   ? theme.accent
                                   : theme.onAccent || "#FFFFFF",
                             },

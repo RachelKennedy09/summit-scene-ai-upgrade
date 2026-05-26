@@ -129,6 +129,7 @@ export default function MapFilters({
   onClearFilters,
   searchQuery = "",
   activeSearch = "",
+  searchStatus = "",
   onChangeSearchQuery,
   onApplySearch,
   onClearSearch,
@@ -205,6 +206,11 @@ export default function MapFilters({
             </Pressable>
           </View>
         ) : null}
+        {searchStatus ? (
+          <Text style={[styles.searchStatusText, { color: theme.textMuted }]}>
+            {searchStatus}
+          </Text>
+        ) : null}
       </View>
 
       <Text style={[styles.filterGroupTitle, { color: theme.textMain || theme.text }]}>
@@ -228,7 +234,7 @@ export default function MapFilters({
           </Text>
           <Text style={[styles.pillValue, { color: theme.textMain }]}>
             {selectedCategory === "All"
-              ? "All categories"
+              ? "All Categories"
               : selectedCategory}
           </Text>
         </Pressable>
@@ -248,7 +254,7 @@ export default function MapFilters({
             Town
           </Text>
           <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedTown === "All" ? "All towns" : selectedTown}
+            {selectedTown === "All" ? "All Towns" : selectedTown}
           </Text>
         </Pressable>
 
@@ -331,10 +337,10 @@ export default function MapFilters({
       <FilterModal
         visible={isTownModalVisible}
         title="Choose a town"
-        options={towns.map((town) => (town === "All" ? "All towns" : town))}
-        selectedValue={selectedTown === "All" ? "All towns" : selectedTown}
+        options={towns.map((town) => (town === "All" ? "All Towns" : town))}
+        selectedValue={selectedTown === "All" ? "All Towns" : selectedTown}
         onSelect={(value) => {
-          onSelectTown(value === "All towns" ? "All" : value);
+          onSelectTown(value === "All Towns" ? "All" : value);
           setIsTownModalVisible(false);
         }}
         onClose={() => setIsTownModalVisible(false)}
@@ -345,13 +351,13 @@ export default function MapFilters({
         visible={!categoryGroups && isCategoryModalVisible}
         title="Choose a category"
         options={categories.map((category) =>
-          category === "All" ? "All categories" : category
+          category === "All" ? "All Categories" : category
         )}
         selectedValue={
-          selectedCategory === "All" ? "All categories" : selectedCategory
+          selectedCategory === "All" ? "All Categories" : selectedCategory
         }
         onSelect={(value) => {
-          onSelectCategory(value === "All categories" ? "All" : value);
+          onSelectCategory(value === "All Categories" ? "All" : value);
           setIsCategoryModalVisible(false);
         }}
         onClose={() => setIsCategoryModalVisible(false)}
@@ -446,6 +452,11 @@ const styles = StyleSheet.create({
   clearSearchText: {
     fontSize: 12,
     fontWeight: "900",
+  },
+  searchStatusText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 6,
   },
   filterGroupTitle: {
     fontSize: 14,

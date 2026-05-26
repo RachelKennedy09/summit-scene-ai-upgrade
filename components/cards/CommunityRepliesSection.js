@@ -5,7 +5,7 @@
 // - lets the user type and send a reply
 // Also wires replies to the porfile modal when a reply author is tapped.
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import TrustBadgeRow from "../common/TrustBadges";
 
 // Map avatarKey -> local image source for replies
 function getAvatarSource(avatarKey, profileImageUrl) {
@@ -35,16 +36,38 @@ export default function CommunityRepliesSection({
   onChangeReplyText,
   onSubmitReply,
   onOpenProfile,
+  onBlockProfile,
   onReport,
   currentUserId,
 }) {
   const trimmed = replyText?.trim?.() ?? "";
   const disabled = !trimmed || submittingReply;
+  const replyCount = Array.isArray(replies) ? replies.length : 0;
+  const [isThreadOpen, setIsThreadOpen] = useState(false);
+
+  useEffect(() => {
+    if (replyCount === 0 && isThreadOpen) {
+      setIsThreadOpen(false);
+    }
+  }, [isThreadOpen, replyCount]);
 
   return (
     <View>
+      {replyCount > 0 ? (
+        <Pressable
+          style={styles.threadToggleButton}
+          onPress={() => setIsThreadOpen((current) => !current)}
+        >
+          <Text style={[styles.threadToggleText, { color: theme.accent }]}>
+            {isThreadOpen
+              ? "Hide reply thread"
+              : `Show reply thread (${replyCount})`}
+          </Text>
+        </Pressable>
+      ) : null}
+
       {/* Existing replies */}
-      {Array.isArray(replies) && replies.length > 0 && (
+      {isThreadOpen && replyCount > 0 && (
         <View style={styles.repliesContainer}>
           {replies.map((reply) => {
             const replyCreated = reply.createdAt
@@ -90,8 +113,11 @@ export default function CommunityRepliesSection({
                   profileImageUrl: replyProfileImageUrl,
                   lookingFor: replyUserObj.lookingFor || "",
                   instagram: replyUserObj.instagram || "",
+                  facebook: replyUserObj.facebook || "",
                   bio: replyUserObj.bio || "",
                   website: replyUserObj.website || "",
+                  googleBusinessUrl: replyUserObj.googleBusinessUrl || "",
+                  phone: replyUserObj.phone || "",
                   createdAt: replyUserObj.createdAt,
                   businessVerificationStatus:
                     replyUserObj.businessVerificationStatus || "none",
@@ -147,6 +173,11 @@ export default function CommunityRepliesSection({
                       {replyTown}
                     </Text>
                   ) : null}
+                  {replyProfile ? (
+                    <View style={styles.replyBadgeRow}>
+                      <TrustBadgeRow profile={replyProfile} theme={theme} compact />
+                    </View>
+                  ) : null}
                   <Text
                     style={[styles.replyBodyText, { color: theme.textMuted }]}
                   >
@@ -168,6 +199,21 @@ export default function CommunityRepliesSection({
                           ]}
                         >
                           View Profile
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    {replyProfile && !isOwnReply ? (
+                      <Pressable
+                        style={[styles.replyMiniButton, { borderColor: theme.border }]}
+                        onPress={() => onBlockProfile?.(replyProfile)}
+                      >
+                        <Text
+                          style={[
+                            styles.reportReplyText,
+                            { color: theme.textMuted },
+                          ]}
+                        >
+                          Block user
                         </Text>
                       </Pressable>
                     ) : null}
@@ -258,6 +304,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+  threadToggleButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginBottom: 4,
+  },
+  threadToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   replyRow: {
     flexDirection: "row",
@@ -300,6 +357,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     marginBottom: 2,
+  },
+  replyBadgeRow: {
+    marginBottom: 4,
   },
 
   replyAuthor: {

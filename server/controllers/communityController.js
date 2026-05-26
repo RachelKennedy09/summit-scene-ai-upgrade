@@ -90,11 +90,11 @@ export async function getCommunityPosts(req, res) {
     const posts = await CommunityPost.find(filter)
       .populate(
         "user",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       )
       .populate(
         "replies.user",
-        "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram bio website createdAt"
+        "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram facebook bio website googleBusinessUrl phone createdAt"
       )
       .sort({ createdAt: -1 });
 
@@ -320,13 +320,13 @@ export async function addCommunityReply(req, res) {
     // Populate replies.user with avatarKey and profile info
     await post.populate(
       "replies.user",
-      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram bio website createdAt"
+      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts lookingFor instagram facebook bio website googleBusinessUrl phone createdAt"
     );
 
     // Also include avatarKey etc on the main post user
     const populated = await post.populate(
       "user",
-      "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+      "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
     );
 
     return res.status(201).json({

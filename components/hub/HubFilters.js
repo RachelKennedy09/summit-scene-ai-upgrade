@@ -39,6 +39,7 @@ export default function HubFilters({
   onClearFilters,
   searchQuery = "",
   activeSearch = "",
+  searchStatus = "",
   onChangeSearchQuery,
   onApplySearch,
   onClearSearch,
@@ -158,6 +159,11 @@ export default function HubFilters({
               </Pressable>
             </View>
           ) : null}
+          {searchStatus ? (
+            <Text style={[styles.searchStatusText, { color: theme.textMuted }]}>
+              {searchStatus}
+            </Text>
+          ) : null}
         </View>
 
         <Text style={[styles.filterGroupTitle, { color: theme.textMain || theme.text }]}>
@@ -183,7 +189,7 @@ export default function HubFilters({
             </Text>
             <Text style={[styles.pillValue, { color: theme.textMain }]}>
               {selectedCategory === "All"
-                ? "All categories"
+                ? "All Categories"
                 : selectedCategory}
             </Text>
           </Pressable>
@@ -204,7 +210,7 @@ export default function HubFilters({
               Town
             </Text>
             <Text style={[styles.pillValue, { color: theme.textMain }]}>
-              {selectedTown === "All" ? "All towns" : selectedTown}
+              {selectedTown === "All" ? "All Towns" : selectedTown}
             </Text>
           </Pressable>
 
@@ -336,7 +342,7 @@ export default function HubFilters({
                       isSelected && styles.townOptionTextSelected,
                     ]}
                   >
-                    {town === "All" ? "All towns" : town}
+                    {town === "All" ? "All Towns" : town}
                   </Text>
                   {isSelected && (
                     <Text
@@ -427,7 +433,7 @@ export default function HubFilters({
                       isSelected && styles.townOptionTextSelected,
                     ]}
                   >
-                    {category === "All" ? "All categories" : category}
+                    {category === "All" ? "All Categories" : category}
                   </Text>
                   {isSelected && (
                     <Text
@@ -657,6 +663,11 @@ const styles = StyleSheet.create({
   clearSearchText: {
     fontSize: 12,
     fontWeight: "900",
+  },
+  searchStatusText: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 6,
   },
   pill: {
     borderRadius: 999,

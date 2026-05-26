@@ -116,7 +116,10 @@ export function buildSafeUser(user) {
     bio: user.bio,
     lookingFor: user.lookingFor,
     instagram: user.instagram,
+    facebook: user.facebook,
     website: user.website,
+    googleBusinessUrl: user.googleBusinessUrl,
+    phone: user.phone,
     socialAccounts: user.socialAccounts || [],
     blockedUsers: (user.blockedUsers || []).map((id) => id.toString()),
   };
@@ -130,7 +133,10 @@ export function buildProfileUpdates(body = {}) {
     "bio",
     "lookingFor",
     "instagram",
+    "facebook",
     "website",
+    "googleBusinessUrl",
+    "phone",
     "originallyFrom",
     "profileImageUrl",
   ];

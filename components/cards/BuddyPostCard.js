@@ -8,7 +8,9 @@ import {
   View,
 } from "react-native";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
+import TrustBadgeRow from "../common/TrustBadges";
 import { colors } from "../../theme/colors";
+import { getVisibleTags } from "../../utils/categoryVisuals";
 
 function titleCase(value) {
   return String(value || "")
@@ -37,7 +39,10 @@ function getAuthor(post) {
     socialAccounts: user.socialAccounts || [],
     bio: user.bio || "",
     instagram: user.instagram || "",
+    facebook: user.facebook || "",
     website: user.website || "",
+    googleBusinessUrl: user.googleBusinessUrl || "",
+    phone: user.phone || "",
   };
 }
 
@@ -69,7 +74,10 @@ function getUserProfile(user, fallbackName = "Member") {
     socialAccounts: user.socialAccounts || [],
     bio: user.bio || "",
     instagram: user.instagram || "",
+    facebook: user.facebook || "",
     website: user.website || "",
+    googleBusinessUrl: user.googleBusinessUrl || "",
+    phone: user.phone || "",
   };
 }
 
@@ -191,10 +199,16 @@ function getActivityLabel(post) {
   if (post.communityType === "new-in-town") return "";
   if (post.communityType === "notice") return "Town Notice";
   if (post.communityType === "update") return "Town Notice";
-  if (post.communityType === "group" && !post.category) return "Group";
+  const categories =
+    Array.isArray(post.categories) && post.categories.length
+      ? post.categories
+      : post.category
+        ? [post.category]
+        : [];
+  if (post.communityType === "group" && !categories.length) return "Group";
 
   const type = titleCase(post.type);
-  const category = post.category || "";
+  const category = categories.join(", ");
 
   if (!category) return type;
   if (!type || type === "Event" || type === "General") return category;
@@ -288,6 +302,7 @@ export default function BuddyPostCard({
   onSubmitReply,
   onUpdateReply,
   onDeleteReply,
+  onBlockProfile,
   onReport,
 }) {
   const [replyText, setReplyText] = useState("");
@@ -332,6 +347,11 @@ export default function BuddyPostCard({
     .map((user) => getUserProfile(user, "Member"))
     .filter((profile) => profile._id || profile.id);
   const replies = Array.isArray(post.replies) ? post.replies : [];
+  const categoryTags = Array.isArray(post.categoryTags) ? post.categoryTags : [];
+  const vibeTags = Array.isArray(post.vibeTags) ? post.vibeTags : [];
+  const combinedTags = [...vibeTags, ...categoryTags];
+  const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
+  const commentsLabel = `${replies.length} comment${replies.length === 1 ? "" : "s"}`;
   const isNewInTown = post.communityType === "new-in-town";
   const isCommunityUpdate = post.communityType === "update";
   const isInterested = interestedUsers.some(
@@ -444,6 +464,14 @@ export default function BuddyPostCard({
                 {postedAgoText}
               </Text>
             ) : null}
+            <View style={styles.authorBadgeRow}>
+              <TrustBadgeRow
+                profile={author}
+                communityType={post.communityType}
+                theme={theme}
+                compact
+              />
+            </View>
             {author.originallyFrom ? (
               <Text style={[styles.authorMeta, { color: theme.textMuted }]}>
                 Originally from {author.originallyFrom}
@@ -499,6 +527,21 @@ export default function BuddyPostCard({
               {groupSizeLabel}
             </Text>
           </View>
+        </View>
+      ) : null}
+
+      {visibleTags.length ? (
+        <View style={styles.vibeRow}>
+          {visibleTags.map((tag) => (
+            <Chip key={tag} theme={theme}>
+              {tag}
+            </Chip>
+          ))}
+          {hiddenCount ? (
+            <Text style={[styles.moreTagsText, { color: theme.textMuted }]}>
+              +{hiddenCount}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -593,7 +636,7 @@ export default function BuddyPostCard({
         </Pressable>
         {!isCommunityUpdate ? (
           <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {countLabel}
+            {countLabel} | {commentsLabel}
           </Text>
         ) : null}
       </View>
@@ -864,6 +907,18 @@ export default function BuddyPostCard({
                           { borderColor: theme.border },
                           pressed && styles.pressed,
                         ]}
+                        onPress={() => onBlockProfile?.(replyProfile)}
+                      >
+                        <Text style={[styles.reportText, { color: theme.textMuted }]}>
+                          Block user
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.replyMiniButton,
+                          { borderColor: theme.border },
+                          pressed && styles.pressed,
+                        ]}
                         onPress={() =>
                           onReport?.({
                             targetType: "buddyReply",
@@ -977,6 +1032,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  authorBadgeRow: {
+    marginTop: 6,
+  },
   planBlock: {
     marginBottom: 12,
   },
@@ -1000,6 +1058,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   preferenceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  vibeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
@@ -1065,6 +1129,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
+  },
+  moreTagsText: {
+    fontSize: 12,
+    fontWeight: "700",
+    alignSelf: "center",
   },
   footerRow: {
     marginTop: 14,

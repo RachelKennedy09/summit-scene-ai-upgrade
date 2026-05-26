@@ -215,7 +215,12 @@ export default function EditProfileScreen({ navigation }) {
   const [bio, setBio] = useState(user?.bio || "");
   const [lookingFor, setLookingFor] = useState(user?.lookingFor || "");
   const [instagram, setInstagram] = useState(user?.instagram || "");
+  const [facebook, setFacebook] = useState(user?.facebook || "");
   const [website, setWebsite] = useState(user?.website || "");
+  const [googleBusinessUrl, setGoogleBusinessUrl] = useState(
+    user?.googleBusinessUrl || ""
+  );
+  const [phone, setPhone] = useState(user?.phone || "");
   const [profileImageUrl, setProfileImageUrl] = useState(
     user?.profileImageUrl || ""
   );
@@ -294,6 +299,29 @@ export default function EditProfileScreen({ navigation }) {
 
   async function handleSave() {
     try {
+      if (isBusiness) {
+        const hasProofLink = Boolean(
+          website.trim() ||
+            instagram.trim() ||
+            facebook.trim() ||
+            googleBusinessUrl.trim()
+        );
+        if (!name.trim() || !town.trim() || !lookingFor.trim() || !bio.trim()) {
+          Alert.alert(
+            "Business verification info needed",
+            "Please add business name, town, category, and a short description."
+          );
+          return;
+        }
+        if (!hasProofLink) {
+          Alert.alert(
+            "Proof link needed",
+            "Please add one proof link: website, Instagram, Facebook, or Google Business listing."
+          );
+          return;
+        }
+      }
+
       const languages = languagesText
         .split(",")
         .map((language) => language.trim())
@@ -316,6 +344,9 @@ export default function EditProfileScreen({ navigation }) {
 
       if (isBusiness) {
         updates.website = website;
+        updates.facebook = facebook;
+        updates.googleBusinessUrl = googleBusinessUrl;
+        updates.phone = phone;
       }
 
       await updateProfile(updates);
@@ -653,7 +684,7 @@ export default function EditProfileScreen({ navigation }) {
           {isBusiness ? (
             <>
               <Text style={[styles.label, { color: theme.text }]}>
-                Business type
+                Business category
               </Text>
               <TextInput
                 style={[
@@ -669,7 +700,7 @@ export default function EditProfileScreen({ navigation }) {
                 onChangeText={setLookingFor}
                 multiline
                 numberOfLines={3}
-                placeholder="Cafe, yoga studio, music venue..."
+                placeholder="Cafe, hiking guide, tour company, yoga studio..."
                 placeholderTextColor={theme.textMuted}
               />
             </>
@@ -677,7 +708,8 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* Bio */}
           <Text style={[styles.label, { color: theme.text }]}>
-            {isBusiness ? "Business description" : "Short bio"} (optional)
+            {isBusiness ? "Short description" : "Short bio"}
+            {isBusiness ? "" : " (optional)"}
           </Text>
           <TextInput
             style={[
@@ -695,7 +727,7 @@ export default function EditProfileScreen({ navigation }) {
             numberOfLines={4}
             placeholder={
               isBusiness
-                ? "Tell people about your business, vibe, and what you host."
+                ? "Tell people about your business, vibe, and what events, tours, or experiences you host."
                 : "A little about you or what you like doing around town..."
             }
             placeholderTextColor={theme.textMuted}
@@ -746,28 +778,30 @@ export default function EditProfileScreen({ navigation }) {
             </Pressable>
           </View>
 
-          {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
-            <View key={provider}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                {label} (optional)
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                value={socialValues[provider]}
-                onChangeText={(value) => handleSocialChange(provider, value)}
-                placeholder={placeholder}
-                placeholderTextColor={theme.textMuted}
-                autoCapitalize="none"
-              />
-            </View>
-          ))}
+          {!isBusiness
+            ? SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
+                <View key={provider}>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    {label} (optional)
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
+                    value={socialValues[provider]}
+                    onChangeText={(value) => handleSocialChange(provider, value)}
+                    placeholder={placeholder}
+                    placeholderTextColor={theme.textMuted}
+                    autoCapitalize="none"
+                  />
+                </View>
+              ))
+            : null}
 
           <Text style={[styles.label, { color: theme.text }]}>
             Profile photo
@@ -825,7 +859,11 @@ export default function EditProfileScreen({ navigation }) {
           {isBusiness && (
             <>
               <Text style={[styles.label, { color: theme.text }]}>
-                Website (optional)
+                Website
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Add at least one proof link: website, Instagram, Facebook, or
+                Google Business listing.
               </Text>
               <TextInput
                 style={[
@@ -841,6 +879,81 @@ export default function EditProfileScreen({ navigation }) {
                 placeholder="https://your-business.com"
                 placeholderTextColor={theme.textMuted}
                 autoCapitalize="none"
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Instagram page
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={instagram}
+                onChangeText={setInstagram}
+                placeholder="@yourbusiness"
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="none"
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Facebook page
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={facebook}
+                onChangeText={setFacebook}
+                placeholder="https://facebook.com/yourbusiness"
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="none"
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Google Business listing
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={googleBusinessUrl}
+                onChangeText={setGoogleBusinessUrl}
+                placeholder="Google Business profile link"
+                placeholderTextColor={theme.textMuted}
+                autoCapitalize="none"
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Public phone number (optional)
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Only add a number you want shown on your event posting profile.
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Business phone number"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="phone-pad"
               />
             </>
           )}

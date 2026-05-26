@@ -2,6 +2,10 @@ import nodemailer from "nodemailer";
 
 const DEFAULT_FROM = "Summit Scene <no-reply@summitscene.ca>";
 
+function isEmailDeliveryEnabled() {
+  return process.env.EMAIL_DELIVERY_ENABLED === "true";
+}
+
 function getAppUrl() {
   return (
     process.env.APP_PUBLIC_URL ||
@@ -17,6 +21,10 @@ function buildUrl(path, token) {
 }
 
 async function sendWithResend({ to, subject, text }) {
+  if (!isEmailDeliveryEnabled()) {
+    return false;
+  }
+
   if (!process.env.RESEND_API_KEY) {
     return false;
   }
@@ -44,6 +52,10 @@ async function sendWithResend({ to, subject, text }) {
 }
 
 async function sendWithSmtp({ to, subject, text }) {
+  if (!isEmailDeliveryEnabled()) {
+    return false;
+  }
+
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     return false;
   }
@@ -82,7 +94,7 @@ async function sendEmail({ to, subject, text, devLink }) {
   }
 
   if (!sent) {
-    console.log(`[email disabled] ${subject} for ${to}`);
+    console.log(`[email delivery disabled] ${subject} for ${to}`);
     if (devLink) {
       console.log(`[email link] ${devLink}`);
     }

@@ -121,7 +121,7 @@ function buildEventsQueryString(options = {}) {
   if (
     options.dateFilter &&
     options.dateFilter !== "All" &&
-    options.dateFilter !== "All dates"
+    options.dateFilter !== "All Dates"
   ) {
     params.set("dateFilter", options.dateFilter);
   }

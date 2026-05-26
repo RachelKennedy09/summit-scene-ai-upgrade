@@ -45,7 +45,7 @@ const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
   includeAll: true,
-  allLabel: "All categories",
+  allLabel: "All Categories",
   includeGroupAll: true,
 });
 
@@ -59,7 +59,7 @@ const DATE_FILTERS = [
   "Next 90 days",
   "Next 6 months",
   "Next 12 months",
-  "All dates",
+  "All Dates",
 ];
 const EVENTS_PAGE_SIZE = 20;
 const NEAR_ME_RADIUS_KM = 15;
@@ -215,7 +215,7 @@ export default function HubScreen() {
     }
 
     setSelectedCategory("All");
-    setSelectedDateFilter("All dates");
+    setSelectedDateFilter("All Dates");
     setActiveSearch(trimmedSearch);
   }, [searchQuery]);
 
@@ -229,6 +229,13 @@ export default function HubScreen() {
     selectedCategory === "All" && userInterestCategories.length > 0;
 
   const eventsToShow = useMemo(() => {
+    const getEventCategoryList = (event) =>
+      Array.isArray(event?.categories) && event.categories.length
+        ? event.categories
+        : event?.category
+          ? [event.category]
+          : [];
+
     const eventItems = !isShowingInterestFirst
       ? events
       : (() => {
@@ -237,7 +244,11 @@ export default function HubScreen() {
           const otherEvents = [];
 
           events.forEach((event) => {
-            if (interestSet.has(event.category)) {
+            if (
+              getEventCategoryList(event).some((eventCategory) =>
+                interestSet.has(eventCategory)
+              )
+            ) {
               interestEvents.push(event);
             } else {
               otherEvents.push(event);
@@ -326,7 +337,7 @@ export default function HubScreen() {
       isNearMeEnabled &&
       selectedCategory === "All" &&
       selectedTown === "All" &&
-      selectedDateFilter === "All dates"
+      selectedDateFilter === "All Dates"
     ) {
       return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Community for local plans and intros.";
     }
@@ -334,7 +345,7 @@ export default function HubScreen() {
     if (
       selectedCategory === "All" &&
       selectedTown === "All" &&
-      selectedDateFilter === "All dates"
+      selectedDateFilter === "All Dates"
     ) {
       return "No events available yet. Check back soon, or open Community for local plans, intros, groups, and town notices.";
     }
@@ -347,7 +358,7 @@ export default function HubScreen() {
       return `No ${selectedCategory} events found. Try another category, a wider date range, or Community.`;
     }
 
-    if (selectedDateFilter !== "All dates") {
+    if (selectedDateFilter !== "All Dates") {
       return `No events match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Community.`;
     }
 
@@ -365,7 +376,7 @@ export default function HubScreen() {
         : ` ${selectedCategory.toLowerCase()}`;
 
     const dateLabel =
-      selectedDateFilter === "All dates"
+      selectedDateFilter === "All Dates"
         ? ""
         : ` (${selectedDateFilter.toLowerCase()})`;
 
@@ -405,9 +416,29 @@ export default function HubScreen() {
       : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
   }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
 
+  const searchStatus = useMemo(() => {
+    if (!activeSearch) return "";
+
+    const eventCount = totalCount;
+    const buddyCount = buddySearchResults.length;
+    const totalMatches = eventCount + buddyCount;
+
+    if (loading && !refreshing) {
+      return `Searching for "${activeSearch}"...`;
+    }
+
+    if (totalMatches === 0) {
+      return `0 results found for "${activeSearch}". Try a broader word or clear filters.`;
+    }
+
+    return `${totalMatches} result${totalMatches === 1 ? "" : "s"} found: ${eventCount} event${
+      eventCount === 1 ? "" : "s"
+    }${token ? `, ${buddyCount} community post${buddyCount === 1 ? "" : "s"}` : ""}.`;
+  }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
+
   const hubSubtitle =
     isShowingInterestFirst
-      ? "Your interests appear first while All categories is selected.\nChoose a category anytime to focus the list."
+      ? "Your interests appear first while All Categories is selected.\nChoose a category anytime to focus the list."
       : "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you.";
 
   const hasActiveFilters =
@@ -574,6 +605,7 @@ export default function HubScreen() {
                 onClearFilters={handleClearFilters}
                 searchQuery={searchQuery}
                 activeSearch={activeSearch}
+                searchStatus={searchStatus}
                 onChangeSearchQuery={setSearchQuery}
                 onApplySearch={handleApplySearch}
                 onClearSearch={handleClearSearch}
@@ -584,7 +616,7 @@ export default function HubScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                No events found
+                {activeSearch ? "No search results" : "No events found"}
               </Text>
               <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                 {emptyMessage}

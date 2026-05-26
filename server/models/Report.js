@@ -10,6 +10,8 @@ const REPORT_TARGET_TYPES = [
 ];
 
 const REPORT_REASONS = [
+  "fake_event",
+  "misleading_business",
   "harassment",
   "spam",
   "unsafe",
@@ -23,6 +25,7 @@ const REPORT_ACTIONS = [
   "warning",
   "content_removed",
   "user_blocked",
+  "user_deleted",
   "business_review",
   "other",
 ];

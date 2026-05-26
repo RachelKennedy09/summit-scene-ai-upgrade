@@ -24,7 +24,7 @@ function normalizePublicName(value = "") {
 const router = express.Router();
 
 const BUSINESS_REVIEW_FIELDS =
-  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio lookingFor instagram website socialAccounts createdAt";
+  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
 
 /* -------------------------------------------
    PATCH /api/users/revert-to-local
@@ -111,10 +111,10 @@ router.patch(
       return res.json({
         message:
           status === "verified"
-            ? "Business profile verified."
+            ? "Verified Local approved."
             : status === "rejected"
-              ? "Business profile rejected."
-              : "Business profile moved back to pending review.",
+              ? "Organizer profile rejected."
+              : "Organizer profile moved back to pending review.",
         user: buildSafeUser(user),
       });
     } catch (error) {
@@ -219,7 +219,7 @@ router.get("/me/blocked-users", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).populate(
       "blockedUsers",
-      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram website createdAt"
+      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
     );
 
     if (!user) {
@@ -313,7 +313,7 @@ router.delete("/me", authMiddleware, async (req, res) => {
    AUTH: required (must be logged in)
    - Update the logged-in user's profile fields:
      name, town, userType, languages, interests, skillLevel, socialAccounts,
-     bio, lookingFor, instagram, website, avatarKey
+     bio, lookingFor, instagram, website, phone, avatarKey
    - Only updates fields that are provided and of the correct type.
    - Trims strings before saving.
    - Special handling for avatarKey:

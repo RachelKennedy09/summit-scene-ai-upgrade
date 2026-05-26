@@ -313,6 +313,13 @@ export default function LegalScreen() {
             emergency service, government service, municipal authority, Parks
             Canada authority, travel advisor, or permit/licensing advisor.
           </LegalBullet>
+          <LegalBullet theme={theme}>
+            Summit Scene is a discovery platform and is not responsible for
+            third-party tours, events, bookings, payments, cancellations,
+            safety, quality, availability, refunds, or experiences. Users book
+            and attend third-party offerings at their own discretion and should
+            confirm details directly with the organizer.
+          </LegalBullet>
         </LegalSection>
 
         <LegalSection title="Community Guidelines" theme={theme}>
@@ -386,6 +393,12 @@ export default function LegalScreen() {
             following all permits, licences, insurance, park rules, municipal
             bylaws, venue rules, alcohol rules, food rules, road use rules, and
             safety requirements that apply to their event or business activity.
+          </LegalText>
+          <LegalText theme={theme}>
+            Third-party organizers, tour guides, tour companies, venues, and
+            booking providers are responsible for their own tours, events,
+            cancellations, refunds, safety practices, communications, and
+            customer experiences.
           </LegalText>
           <LegalBullet theme={theme}>
             Banff and Lake Louise activities may involve Parks Canada and Town

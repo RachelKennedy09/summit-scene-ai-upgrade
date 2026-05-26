@@ -368,7 +368,7 @@ function SignupProfilePreview({
             {displayName}
           </Text>
           <Text style={[styles.previewMeta, { color: theme.textMuted }]}>
-            {isBusiness ? "Business review pending" : "Community member"}
+            {isBusiness ? "New Organizer" : "Community member"}
           </Text>
           {email ? (
             <Text style={[styles.previewMeta, { color: theme.textMuted }]}>
@@ -497,7 +497,10 @@ function RegisterScreen() {
   const [bio, setBio] = useState("");
   const [lookingFor, setLookingFor] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
   const [website, setWebsite] = useState("");
+  const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
+  const [phone, setPhone] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [facebookConnectToken, setFacebookConnectToken] = useState("");
   const [facebookProfileName, setFacebookProfileName] = useState("");
@@ -759,11 +762,16 @@ function RegisterScreen() {
     }
 
     if (currentStep === "business") {
-      const hasProofLink = Boolean(website.trim() || instagram.trim());
-      if (!town.trim() || !lookingFor.trim() || !hasProofLink) {
+      const hasProofLink = Boolean(
+        website.trim() ||
+          instagram.trim() ||
+          facebook.trim() ||
+          googleBusinessUrl.trim()
+      );
+      if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your business town, business type, and either a website or Instagram."
+          "Please add your town, category, short description, and one proof link: website, Instagram, Facebook, or Google Business listing."
         );
         return false;
       }
@@ -793,11 +801,16 @@ function RegisterScreen() {
     }
 
     if (role === "business") {
-      const hasProofLink = Boolean(website.trim() || instagram.trim());
-      if (!town.trim() || !lookingFor.trim() || !hasProofLink) {
+      const hasProofLink = Boolean(
+        website.trim() ||
+          instagram.trim() ||
+          facebook.trim() ||
+          googleBusinessUrl.trim()
+      );
+      if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your business town, business type, and either a website or Instagram so Summit Scene can review the profile."
+          "Please add your business town, category, short description, and one proof link so Summit Scene can review the profile."
         );
         return;
       }
@@ -830,12 +843,21 @@ function RegisterScreen() {
         bio,
         lookingFor: isBusiness ? lookingFor : undefined,
         instagram: isBusiness ? instagram : socialValues.instagram,
+        facebook: isBusiness ? facebook : undefined,
         website,
+        googleBusinessUrl: isBusiness ? googleBusinessUrl : undefined,
+        phone: isBusiness ? phone : undefined,
         avatarKey: null,
         profileImageUrl,
         facebookConnectToken,
         acceptedAgeTerms: hasAcceptedAgreements,
       });
+      if (isBusiness) {
+        Alert.alert(
+          "Pending approval",
+          "Your organizer account is pending approval."
+        );
+      }
     } catch (error) {
       Alert.alert(
         "Registration failed",
@@ -1032,7 +1054,7 @@ function RegisterScreen() {
           Business or organizer signup
         </Text>
         <Text style={[styles.businessLinkText, { color: theme.textMuted }]}>
-          Tap here first if this account is for a business, venue, or organizer.
+          Tap here first if this account is for a business, venue, tour guide, tour company, or organizer.
         </Text>
       </Pressable>
     ) : (
@@ -1539,7 +1561,8 @@ function RegisterScreen() {
             Tell us about the business
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Business profiles are reviewed before they can post official events.
+            To post official business events, provide a business name, contact
+            email, town, category, short description, and one public proof link. Tour guides and tour companies can use this for tours, clinics, retreats, and guided experiences.
           </Text>
           <Text style={[styles.label, { color: theme.text }]}>
             Where is it located?
@@ -1559,11 +1582,11 @@ function RegisterScreen() {
             onChangeText={setTown}
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Business type / category
+            Business category
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
             A short label for what you are, like cafe, ski hill, market,
-            wellness studio, shop, live music venue, or community organizer.
+            wellness studio, tour guide, tour company, live music venue, or community organizer.
           </Text>
           <TextInput
             style={[
@@ -1575,14 +1598,14 @@ function RegisterScreen() {
                 color: theme.text,
               },
             ]}
-            placeholder="Cafe, yoga studio, live music venue, shop..."
+            placeholder="Cafe, hiking guide, tour company, yoga studio..."
             placeholderTextColor={theme.textMuted}
             value={lookingFor}
             onChangeText={setLookingFor}
             multiline
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Business description
+            Short description
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
             This appears on your public profile. Keep it friendly and clear.
@@ -1597,7 +1620,7 @@ function RegisterScreen() {
                 color: theme.text,
               },
             ]}
-            placeholder="Tell people what your business is about, the vibe, and what kinds of events or experiences you host."
+            placeholder="Tell people what your business is about, the vibe, and what kinds of events, tours, or experiences you host."
             placeholderTextColor={theme.textMuted}
             value={bio}
             onChangeText={setBio}
@@ -1605,7 +1628,11 @@ function RegisterScreen() {
             numberOfLines={4}
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Website or official page
+            Website
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Add at least one proof link: website, Instagram, Facebook, or Google
+            Business listing.
           </Text>
           <TextInput
             style={[
@@ -1623,7 +1650,7 @@ function RegisterScreen() {
             autoCapitalize="none"
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Instagram or public social account
+            Instagram page
           </Text>
           <TextInput
             style={[
@@ -1639,6 +1666,63 @@ function RegisterScreen() {
             value={instagram}
             onChangeText={setInstagram}
             autoCapitalize="none"
+          />
+          <Text style={[styles.label, { color: theme.text }]}>
+            Facebook page
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder="https://facebook.com/yourbusiness"
+            placeholderTextColor={theme.textMuted}
+            value={facebook}
+            onChangeText={setFacebook}
+            autoCapitalize="none"
+          />
+          <Text style={[styles.label, { color: theme.text }]}>
+            Google Business listing
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder="Google Business profile link"
+            placeholderTextColor={theme.textMuted}
+            value={googleBusinessUrl}
+            onChangeText={setGoogleBusinessUrl}
+            autoCapitalize="none"
+          />
+          <Text style={[styles.label, { color: theme.text }]}>
+            Public phone number (optional)
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Only add a number you want shown on your event posting profile.
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder="Business phone number"
+            placeholderTextColor={theme.textMuted}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
           />
         </>
       );

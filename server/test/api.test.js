@@ -501,6 +501,7 @@ describe("SummitScene API", function () {
       acceptedAgeTerms: true,
       town: "Banff",
       lookingFor: "Live music venue",
+      bio: "A real local venue hosting live music and community events.",
       website: "https://example.com",
     });
 
@@ -636,6 +637,78 @@ describe("SummitScene API", function () {
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 
+  it("should create an event with up to 3 searchable categories", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const title = `Multi Category Event ${testRunId}`;
+
+    const createRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title,
+        description: "A class that should be found by each category.",
+        town: "Canmore",
+        category: "Wellness",
+        categories: ["Wellness", "Tours & Experiences"],
+        categoryTags: ["Strength Training", "Sober Events", "Yoga Retreats"],
+        vibeTags: ["Sober-friendly", "Beginner-friendly"],
+        duration: "3 hours",
+        priceRange: "$60-$90",
+        bookingUrl: "https://example.com/book-yoga-retreat",
+        date: "2026-12-29",
+        time: "18:00",
+        address: "100 Banff Avenue, Banff, AB",
+        latitude: 51.1762,
+        longitude: -115.5708,
+      });
+
+    expect(createRes.status).to.equal(201);
+    expect(createRes.body.category).to.equal("Wellness");
+    expect(createRes.body.categories).to.deep.equal([
+      "Wellness",
+      "Tours & Experiences",
+    ]);
+    expect(createRes.body.categoryTags).to.deep.equal([
+      "Strength Training",
+      "Sober Events",
+      "Yoga Retreats",
+    ]);
+    expect(createRes.body.vibeTags).to.deep.equal([
+      "Sober-friendly",
+      "Beginner-friendly",
+    ]);
+    expect(createRes.body.duration).to.equal("3 hours");
+    expect(createRes.body.priceRange).to.equal("$60-$90");
+    expect(createRes.body.bookingUrl).to.equal(
+      "https://example.com/book-yoga-retreat"
+    );
+
+    const filterRes = await request(app).get(
+      "/api/events?category=Sober%20Events"
+    );
+
+    expect(filterRes.status).to.equal(200);
+    expect(filterRes.body.some((event) => event.title === title)).to.equal(true);
+
+    const vibeSearchRes = await request(app).get(
+      "/api/events?search=Sober-friendly"
+    );
+
+    expect(vibeSearchRes.status).to.equal(200);
+    expect(vibeSearchRes.body.some((event) => event.title === title)).to.equal(
+      true
+    );
+
+    const priceSearchRes = await request(app).get("/api/events?search=90");
+
+    expect(priceSearchRes.status).to.equal(200);
+    expect(priceSearchRes.body.some((event) => event.title === title)).to.equal(
+      true
+    );
+
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+  });
+
   it("should filter events by a main category group", async () => {
     const res = await request(app).get(
       "/api/events?category=All%20Music%20%26%20Nightlife"
@@ -646,6 +719,7 @@ describe("SummitScene API", function () {
     expect(
       res.body.every((event) =>
         [
+          "Music & Nightlife",
           "Live Music",
           "DJs",
           "Open Mic",
@@ -695,7 +769,8 @@ describe("SummitScene API", function () {
    * BUDDY POST TESTS
    * --------------------------------------- */
 
-  it("should save and retrieve a buddy post", async () => {
+  it("should save and retrieve a buddy post", async function () {
+    this.timeout(20000);
     const createRes = await request(app)
       .post("/api/buddy-posts")
       .set("Authorization", `Bearer ${authToken}`)
@@ -714,7 +789,7 @@ describe("SummitScene API", function () {
     expect(createRes.status).to.equal(201);
     expect(createRes.body).to.include({
       type: "hiking",
-      category: "Hiking",
+      category: "Outdoors & Sports",
       communityType: "local-plan",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
       date: "2026-06-15",
@@ -743,7 +818,7 @@ describe("SummitScene API", function () {
     );
     expect(listedPost).to.include({
       type: "hiking",
-      category: "Hiking",
+      category: "Outdoors & Sports",
       communityType: "local-plan",
       town: "Banff",
       groupSizePreference: "small-group",
@@ -776,7 +851,7 @@ describe("SummitScene API", function () {
     expect(discGolfRes.status).to.equal(201);
     expect(discGolfRes.body).to.include({
       type: "hiking",
-      category: "Climbing",
+      category: "Outdoors & Sports",
       skillLevel: "beginner",
       groupSizePreference: "any",
     });
@@ -804,7 +879,7 @@ describe("SummitScene API", function () {
     expect(recurringRes.status).to.equal(201);
     expect(recurringRes.body).to.include({
       type: "general",
-      category: "Local Clubs",
+      category: "Community",
       communityType: "group",
       scheduleType: "recurring",
     });
@@ -814,6 +889,46 @@ describe("SummitScene API", function () {
       untilDate: "2026-09-30",
     });
 
+    const multiCategoryGroupRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "general",
+        category: "Community",
+        categories: ["Community"],
+        categoryTags: ["Book Clubs", "Sober Events"],
+        communityType: "group",
+        activityText: "Starting a sober book club group.",
+        date: "2026-06-21",
+        time: "18:30",
+        town: "Canmore",
+        groupSizePreference: "small-group",
+        scheduleType: "recurring",
+        recurrence: {
+          frequency: "monthly",
+          weekday: "Thursday",
+        },
+      });
+
+    expect(multiCategoryGroupRes.status).to.equal(201);
+    expect(multiCategoryGroupRes.body.category).to.equal("Community");
+    expect(multiCategoryGroupRes.body.categories).to.deep.equal(["Community"]);
+    expect(multiCategoryGroupRes.body.categoryTags).to.deep.equal([
+      "Book Clubs",
+      "Sober Events",
+    ]);
+
+    const soberGroupListRes = await request(app)
+      .get("/api/buddy-posts?communityType=group&category=Sober%20Events")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(soberGroupListRes.status).to.equal(200);
+    expect(
+      soberGroupListRes.body.some(
+        (post) => post._id === multiCategoryGroupRes.body._id
+      )
+    ).to.equal(true);
+
     const detailRes = await request(app)
       .get(`/api/buddy-posts/${createRes.body._id}`)
       .set("Authorization", `Bearer ${authToken}`);
@@ -822,7 +937,7 @@ describe("SummitScene API", function () {
     expect(detailRes.body).to.include({
       _id: createRes.body._id,
       type: "hiking",
-      category: "Hiking",
+      category: "Outdoors & Sports",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
     });
 
@@ -843,10 +958,64 @@ describe("SummitScene API", function () {
     expect(karaokeRes.status).to.equal(201);
     expect(karaokeRes.body).to.include({
       type: "event",
-      category: "Karaoke",
+      category: "Music & Nightlife",
       communityType: "local-plan",
       town: "Banff",
     });
+
+    const multiCategoryPlanRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "event",
+        category: "Food & Drink",
+        categories: ["Food & Drink", "Wellness"],
+        categoryTags: ["Coffee", "Sober Events"],
+        vibeTags: ["Sober-friendly", "Drop-in"],
+        communityType: "local-plan",
+        activityText: "Anyone want a sober coffee meetup?",
+        date: "2026-06-23",
+        time: "10:00",
+        town: "Canmore",
+        groupSizePreference: "small-group",
+      });
+
+    expect(multiCategoryPlanRes.status).to.equal(201);
+    expect(multiCategoryPlanRes.body.category).to.equal("Food & Drink");
+    expect(multiCategoryPlanRes.body.categories).to.deep.equal([
+      "Food & Drink",
+      "Wellness",
+    ]);
+    expect(multiCategoryPlanRes.body.categoryTags).to.deep.equal([
+      "Coffee",
+      "Sober Events",
+    ]);
+    expect(multiCategoryPlanRes.body.vibeTags).to.deep.equal([
+      "Sober-friendly",
+      "Drop-in",
+    ]);
+
+    const soberPlanListRes = await request(app)
+      .get("/api/buddy-posts?category=Sober%20Events")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(soberPlanListRes.status).to.equal(200);
+    expect(
+      soberPlanListRes.body.some(
+        (post) => post._id === multiCategoryPlanRes.body._id
+      )
+    ).to.equal(true);
+
+    const vibePlanListRes = await request(app)
+      .get("/api/buddy-posts?search=Drop-in")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(vibePlanListRes.status).to.equal(200);
+    expect(
+      vibePlanListRes.body.some(
+        (post) => post._id === multiCategoryPlanRes.body._id
+      )
+    ).to.equal(true);
 
     const newInTownRes = await request(app)
       .post("/api/buddy-posts")
@@ -1020,14 +1189,14 @@ describe("SummitScene API", function () {
       .send({
         targetType: "buddyPost",
         targetId: createRes.body._id,
-        reason: "unsafe",
-        details: "Test safety report.",
+        reason: "scam",
+        details: "Test scam report.",
       });
 
     expect(reportPostRes.status).to.equal(201);
     expect(reportPostRes.body.report).to.include({
       targetType: "buddyPost",
-      reason: "unsafe",
+      reason: "scam",
       status: "open",
     });
 
@@ -1039,14 +1208,14 @@ describe("SummitScene API", function () {
         targetId: replyRes.body.replies[0]._id,
         parentType: "buddyPost",
         parentId: createRes.body._id,
-        reason: "harassment",
+        reason: "inappropriate",
       });
 
     expect(reportReplyRes.status).to.equal(201);
     expect(reportReplyRes.body.report).to.include({
       targetType: "buddyReply",
       parentType: "buddyPost",
-      reason: "harassment",
+      reason: "inappropriate",
     });
 
     process.env.ADMIN_EMAILS = "";
@@ -1082,15 +1251,41 @@ describe("SummitScene API", function () {
       moderatorNote: "Reviewed in integration test.",
     });
 
-    process.env.ADMIN_EMAILS = originalAdminEmails;
-
-    const deleteReplyRes = await request(app)
-      .delete(
-        `/api/buddy-posts/${createRes.body._id}/replies/${replyRes.body.replies[0]._id}`
-      )
+    const openReportsAfterReviewRes = await request(app)
+      .get("/api/reports")
       .set("Authorization", `Bearer ${authToken}`);
 
-    expect(deleteReplyRes.status).to.equal(200);
-    expect(deleteReplyRes.body.replies).to.be.an("array").with.length(0);
+    expect(openReportsAfterReviewRes.status).to.equal(200);
+    expect(
+      openReportsAfterReviewRes.body.some(
+        (report) => report._id === reviewedReportRes.body._id
+      )
+    ).to.equal(false);
+
+    const deleteReportedReplyRes = await request(app)
+      .post(`/api/reports/${reportReplyRes.body.report._id}/actions`)
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(deleteReportedReplyRes.status).to.equal(400);
+
+    const appliedReplyActionRes = await request(app)
+      .post(`/api/reports/${reportReplyRes.body.report._id}/actions`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ action: "delete-content" });
+
+    expect(appliedReplyActionRes.status).to.equal(200);
+    expect(appliedReplyActionRes.body).to.include({
+      status: "reviewed",
+      actionTaken: "content_removed",
+    });
+
+    const postAfterModerationRes = await request(app)
+      .get(`/api/buddy-posts/${createRes.body._id}`)
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(postAfterModerationRes.status).to.equal(200);
+    expect(postAfterModerationRes.body.replies).to.be.an("array").with.length(0);
+
+    process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 });

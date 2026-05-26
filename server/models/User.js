@@ -198,9 +198,28 @@ const userSchema = new mongoose.Schema(
       type: String,
     },
 
+    // Public Facebook page for business verification/contact.
+    facebook: {
+      type: String,
+      trim: true,
+    },
+
     // Website for business users
     website: {
       type: String,
+    },
+
+    // Optional Google Business listing URL for manual verification.
+    googleBusinessUrl: {
+      type: String,
+      trim: true,
+    },
+
+    // Optional public business phone number.
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: 40,
     },
 
     socialAccounts: {
@@ -304,6 +323,11 @@ userSchema.virtual("safeProfile").get(function () {
     interests: this.interests,
     skillLevel: this.skillLevel,
     lookingFor: this.lookingFor,
+    instagram: this.instagram,
+    facebook: this.facebook,
+    website: this.website,
+    googleBusinessUrl: this.googleBusinessUrl,
+    phone: this.phone,
     socialAccounts: this.socialAccounts,
   };
 });
