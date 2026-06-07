@@ -16,7 +16,12 @@ function getAvatarSource(host) {
   return null;
 }
 
-export default function EventHostSection({ host, onReport, currentUserId }) {
+export default function EventHostSection({
+  host,
+  onReport,
+  onOpenHostEvents,
+  currentUserId,
+}) {
   const { theme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -28,6 +33,10 @@ export default function EventHostSection({ host, onReport, currentUserId }) {
     (account) => account.provider === "instagram"
   );
   const hostId = host._id || host.id || "";
+  const hostEventsLabel =
+    host.role === "business"
+      ? "View all events from this business"
+      : "View all events from this user";
   const canReportHost =
     Boolean(onReport && hostId) &&
     hostId.toString() !== currentUserId?.toString();
@@ -83,6 +92,25 @@ export default function EventHostSection({ host, onReport, currentUserId }) {
             View event posting profile
           </Text>
         </Pressable>
+
+        {onOpenHostEvents ? (
+          <Pressable
+            style={[
+              styles.hostEventsButton,
+              { backgroundColor: theme.accent },
+            ]}
+            onPress={onOpenHostEvents}
+          >
+            <Text
+              style={[
+                styles.hostEventsButtonText,
+                { color: theme.onAccent || theme.textOnAccent || "#FFFFFF" },
+              ]}
+            >
+              {hostEventsLabel}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Full profile modal */}
@@ -305,6 +333,31 @@ export default function EventHostSection({ host, onReport, currentUserId }) {
                 </View>
               ) : null}
 
+              {onOpenHostEvents ? (
+                <Pressable
+                  style={[
+                    styles.profileEventsButton,
+                    { backgroundColor: theme.accent },
+                  ]}
+                  onPress={() => {
+                    setIsProfileOpen(false);
+                    onOpenHostEvents();
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.profileEventsButtonText,
+                      {
+                        color:
+                          theme.onAccent || theme.textOnAccent || "#FFFFFF",
+                      },
+                    ]}
+                  >
+                    {hostEventsLabel}
+                  </Text>
+                </Pressable>
+              ) : null}
+
               {canReportHost ? (
                 <Pressable
                   style={[styles.reportProfileButton, { borderColor: theme.border }]}
@@ -389,6 +442,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+  hostEventsButton: {
+    marginTop: 10,
+    paddingVertical: 9,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  hostEventsButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   profileModalOverlay: {
     flex: 1,
@@ -458,6 +521,16 @@ const styles = StyleSheet.create({
   },
   profileLinkText: {
     fontSize: 13,
+  },
+  profileEventsButton: {
+    marginTop: 16,
+    borderRadius: 999,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  profileEventsButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   reportProfileButton: {
     marginTop: 16,

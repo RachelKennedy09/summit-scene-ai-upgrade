@@ -210,6 +210,19 @@ export default function EventDetailScreen({ route }) {
     navigation.navigate("EditEvent", { event });
   };
 
+  const handleOpenHostEvents = () => {
+    if (!host) return;
+
+    const hostId = host._id || host.id;
+    if (!hostId) return;
+
+    navigation.navigate("HostEvents", {
+      hostId,
+      hostName: host.name,
+      hostRole: host.role,
+    });
+  };
+
   // Delete flow: confirm, call API, then refresh parent list via onUpdated callback if provided
   const handleDelete = () => {
     Alert.alert("Delete this event?", "This action cannot be undone.", [
@@ -625,30 +638,57 @@ export default function EventDetailScreen({ route }) {
     }
   };
 
-  // Open native maps app (Apple Maps / Android geo / web) using location/town/title as a query
-  const handleOpenMaps = () => {
+  function buildExternalMapUrl(provider) {
     const hasExactCoords =
       Number.isFinite(event.latitude) && Number.isFinite(event.longitude);
     const query = encodeURIComponent(address || locationName || town || title);
-    if (!hasExactCoords && !query) return;
+    if (!hasExactCoords && !query) return "";
 
-    const url = hasExactCoords
-      ? Platform.select({
-          ios: `http://maps.apple.com/?ll=${event.latitude},${event.longitude}&q=${query}`,
-          android: `geo:${event.latitude},${event.longitude}?q=${event.latitude},${event.longitude}(${query})`,
-          default: `https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`,
-        })
-      : Platform.select({
-          ios: `http://maps.apple.com/?q=${query}`,
-          android: `geo:0,0?q=${query}`,
-          default: `https://www.google.com/maps/search/?api=1&query=${query}`,
-        });
+    if (provider === "apple") {
+      return hasExactCoords
+        ? `http://maps.apple.com/?ll=${event.latitude},${event.longitude}&q=${query}`
+        : `http://maps.apple.com/?q=${query}`;
+    }
 
+    return hasExactCoords
+      ? `https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${query}`;
+  }
+
+  function openExternalMap(provider) {
+    const url = buildExternalMapUrl(provider);
     if (!url) return;
 
     Linking.openURL(url).catch((err) =>
       console.warn("Open maps issue:", err?.message || "Failed to open maps.")
     );
+  }
+
+  const handleOpenMaps = () => {
+    const buttons = [
+      ...(Platform.OS === "ios"
+        ? [
+            {
+              text: "Apple Maps",
+              onPress: () => openExternalMap("apple"),
+            },
+          ]
+        : []),
+      {
+        text: "Google Maps",
+        onPress: () => openExternalMap("google"),
+      },
+      {
+        text: "Summit Scene Maps",
+        onPress: handleOpenSummitSceneMap,
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ];
+
+    Alert.alert("Open event location", "Choose where to view this event.", buttons);
   };
 
   const handleOpenSummitSceneMap = () => {
@@ -1052,19 +1092,6 @@ export default function EventDetailScreen({ route }) {
                     style={[
                       styles.mapButton,
                       {
-                        borderColor: theme.accent,
-                      },
-                    ]}
-                    onPress={handleOpenSummitSceneMap}
-                  >
-                    <Text style={[styles.mapButtonText, { color: theme.accent }]}>
-                      Open in Summit Scene Map
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.mapButton,
-                      {
                         borderColor: theme.border,
                       },
                     ]}
@@ -1366,6 +1393,7 @@ export default function EventDetailScreen({ route }) {
               host={host}
               currentUserId={currentUserId}
               onReport={handleReport}
+              onOpenHostEvents={host ? handleOpenHostEvents : undefined}
             />
 
             <View style={styles.eventSafetyRow}>

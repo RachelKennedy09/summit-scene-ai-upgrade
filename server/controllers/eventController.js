@@ -67,6 +67,10 @@ function getUserId(value) {
     : value._id?.toString() || value.id?.toString() || "";
 }
 
+function isMongoObjectId(value) {
+  return /^[a-f\d]{24}$/i.test(String(value || "").trim());
+}
+
 async function getBlockContext(viewerId) {
   if (!viewerId) {
     return {
@@ -403,6 +407,7 @@ export async function getAllEvents(req, res) {
     const nearLat = parseCoordinate(req.query?.nearLat);
     const nearLng = parseCoordinate(req.query?.nearLng);
     const radiusKm = parseCoordinate(req.query?.radiusKm);
+    const creatorId = normalizeRequiredString(req.query?.creatorId);
     const shouldPaginate =
       req.query?.page !== undefined || req.query?.limit !== undefined;
 
@@ -429,6 +434,14 @@ export async function getAllEvents(req, res) {
 
     if (normalizedTown && normalizedTown !== "All") {
       baseQuery.town = normalizedTown;
+    }
+
+    if (creatorId) {
+      if (!isMongoObjectId(creatorId)) {
+        return res.status(400).json({ message: "Invalid creator id." });
+      }
+
+      baseQuery.createdBy = creatorId;
     }
 
     const categoryFilterOptions = getEventCategoryFilterOptions(normalizedCategory);

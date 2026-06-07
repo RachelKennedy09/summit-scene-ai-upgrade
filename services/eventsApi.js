@@ -135,6 +135,9 @@ function buildEventsQueryString(options = {}) {
   if (Number.isFinite(options.radiusKm)) {
     params.set("radiusKm", String(options.radiusKm));
   }
+  if (options.creatorId) {
+    params.set("creatorId", String(options.creatorId));
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
@@ -187,6 +190,17 @@ export async function fetchEvents(options = {}) {
       "We couldn't load events right now. Please try again."
     );
   }
+}
+
+export async function fetchEventsByCreator(creatorId, options = {}) {
+  if (!creatorId) {
+    return [];
+  }
+
+  return fetchEvents({
+    ...options,
+    creatorId,
+  });
 }
 
 //    FETCH MY EVENTS
