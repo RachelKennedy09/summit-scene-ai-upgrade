@@ -1,3 +1,26 @@
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON ||
+  process.env.EXPO_PUBLIC_GOOGLE_SERVICES_JSON;
+
+const plugins = [
+  "expo-apple-authentication",
+  googleServicesFile ? "@react-native-google-signin/google-signin" : null,
+  [
+    "expo-location",
+    {
+      locationWhenInUsePermission:
+        "Summit Scene uses your location to show events near you.",
+    },
+  ],
+  [
+    "expo-image-picker",
+    {
+      photosPermission:
+        "Summit Scene lets you choose profile and event photos from your camera roll.",
+    },
+  ],
+].filter(Boolean);
+
 export default {
   expo: {
     name: "Summit Scene",
@@ -13,31 +36,26 @@ export default {
       resizeMode: "contain",
       backgroundColor: "#F5F3EE",
     },
-    plugins: [
-      [
-        "expo-location",
-        {
-          locationWhenInUsePermission:
-            "Summit Scene uses your location to show events near you.",
-        },
-      ],
-      [
-        "expo-image-picker",
-        {
-          photosPermission:
-            "Summit Scene lets you choose a profile photo from your camera roll.",
-        },
-      ],
-    ],
+    plugins,
     ios: {
+      bundleIdentifier: "com.rachellauren.summitscene",
+      buildNumber: "1",
       supportsTablet: true,
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription:
+          "Summit Scene uses your location to show events near you. You can also browse by town without sharing location.",
+        NSPhotoLibraryUsageDescription:
+          "Summit Scene lets you choose profile and event photos from your camera roll.",
+      },
     },
     android: {
+      versionCode: 1,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon-earth-tone.png",
         backgroundColor: "#F5F3EE",
       },
       edgeToEdgeEnabled: true,
+      googleServicesFile,
       config: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY
         ? {
             googleMaps: {
@@ -51,7 +69,8 @@ export default {
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
       ],
-      package: "com.rachellaurenxx.summitscene",
+      blockedPermissions: ["android.permission.RECORD_AUDIO"],
+      package: "com.rachellauren.summitscene",
     },
     web: {
       favicon: "./assets/logo-app-full-color-square.png",
@@ -64,3 +83,4 @@ export default {
     owner: "rachellaurenxx",
   },
 };
+

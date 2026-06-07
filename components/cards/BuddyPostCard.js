@@ -166,6 +166,19 @@ function getId(value) {
   return typeof value === "string" ? value : value._id || value.id || "";
 }
 
+function getReplyThreadCount(replies) {
+  if (!Array.isArray(replies)) return 0;
+  return replies.reduce(
+    (count, reply) => count + 1 + (Array.isArray(reply.replies) ? reply.replies.length : 0),
+    0
+  );
+}
+
+function isLikedByUser(likes, userId) {
+  if (!Array.isArray(likes) || !userId) return false;
+  return likes.some((like) => getId(like).toString() === userId.toString());
+}
+
 function getRecurrenceLabel(post) {
   if (post.scheduleType !== "recurring" || !post.recurrence) return "";
 
@@ -300,6 +313,8 @@ export default function BuddyPostCard({
   onOpenEvent,
   onToggleInterested,
   onSubmitReply,
+  onSubmitReplyResponse,
+  onToggleReplyLike,
   onUpdateReply,
   onDeleteReply,
   onBlockProfile,
@@ -312,6 +327,9 @@ export default function BuddyPostCard({
   const [editingReplyId, setEditingReplyId] = useState("");
   const [editingReplyText, setEditingReplyText] = useState("");
   const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
+  const [replyingToId, setReplyingToId] = useState("");
+  const [replyResponseText, setReplyResponseText] = useState("");
+  const [submittingReplyResponse, setSubmittingReplyResponse] = useState(false);
   const [updatingInterest, setUpdatingInterest] = useState(false);
   const author = getAuthor(post);
   const avatarSource =
@@ -351,7 +369,8 @@ export default function BuddyPostCard({
   const vibeTags = Array.isArray(post.vibeTags) ? post.vibeTags : [];
   const combinedTags = [...vibeTags, ...categoryTags];
   const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
-  const commentsLabel = `${replies.length} comment${replies.length === 1 ? "" : "s"}`;
+  const commentCount = getReplyThreadCount(replies);
+  const commentsLabel = `${commentCount} comment${commentCount === 1 ? "" : "s"}`;
   const isNewInTown = post.communityType === "new-in-town";
   const isCommunityUpdate = post.communityType === "update";
   const isInterested = interestedUsers.some(
@@ -416,6 +435,28 @@ export default function BuddyPostCard({
       setEditingReplyText("");
     } finally {
       setSubmittingReplyEdit(false);
+    }
+  }
+
+  async function handleSubmitReplyResponse(reply) {
+    const replyId = reply._id || reply.id;
+    const trimmedReply = replyResponseText.trim();
+    if (
+      !replyId ||
+      !trimmedReply ||
+      !onSubmitReplyResponse ||
+      submittingReplyResponse
+    ) {
+      return;
+    }
+
+    try {
+      setSubmittingReplyResponse(true);
+      await onSubmitReplyResponse(post, reply, trimmedReply);
+      setReplyingToId("");
+      setReplyResponseText("");
+    } finally {
+      setSubmittingReplyResponse(false);
     }
   }
 
@@ -769,6 +810,10 @@ export default function BuddyPostCard({
               Boolean(currentUserId) &&
               getId(replyAuthor).toString() === currentUserId?.toString();
             const isEditingReply = editingReplyId === replyId.toString();
+            const replyLikes = Array.isArray(reply.likes) ? reply.likes : [];
+            const hasLikedReply = isLikedByUser(replyLikes, currentUserId);
+            const childReplies = Array.isArray(reply.replies) ? reply.replies : [];
+            const isReplyingToThis = replyingToId === replyId.toString();
 
             return (
               <View
@@ -809,6 +854,44 @@ export default function BuddyPostCard({
                   </Text>
                 )}
                 <View style={styles.replyActionsRow}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.replyMiniButton,
+                      {
+                        borderColor: hasLikedReply ? theme.accent : theme.border,
+                        backgroundColor: hasLikedReply
+                          ? theme.accentSoft || colors.tealTint
+                          : "transparent",
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => onToggleReplyLike?.(post, reply)}
+                  >
+                    <Text
+                      style={[
+                        styles.replyMiniButtonText,
+                        { color: hasLikedReply ? theme.accent : theme.textMuted },
+                      ]}
+                    >
+                      {hasLikedReply ? "Liked" : "Like"}
+                      {replyLikes.length ? ` (${replyLikes.length})` : ""}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.replyMiniButton,
+                      { borderColor: theme.border },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => {
+                      setReplyingToId(isReplyingToThis ? "" : replyId.toString());
+                      setReplyResponseText("");
+                    }}
+                  >
+                    <Text style={[styles.replyMiniButtonText, { color: theme.accent }]}>
+                      {isReplyingToThis ? "Cancel" : "Reply"}
+                    </Text>
+                  </Pressable>
                   {isOwnReply ? (
                     isEditingReply ? (
                       <>
@@ -935,6 +1018,80 @@ export default function BuddyPostCard({
                     </>
                   )}
                 </View>
+                {childReplies.length ? (
+                  <View style={styles.replyResponsesList}>
+                    {childReplies.map((childReply) => {
+                      const childAuthor =
+                        childReply.createdBy && typeof childReply.createdBy === "object"
+                          ? childReply.createdBy
+                          : {};
+                      const childName = childAuthor.name || "Member";
+                      const childId =
+                        childReply._id ||
+                        childReply.id ||
+                        `${childName}-${childReply.createdAt}`;
+
+                      return (
+                        <View
+                          key={childId}
+                          style={[
+                            styles.replyResponseBubble,
+                            {
+                              backgroundColor: theme.card,
+                              borderColor: theme.border,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.replyMeta, { color: theme.textMuted }]}>
+                            {childName}
+                            {childReply.createdAt
+                              ? ` | ${formatShortDateTime(childReply.createdAt)}`
+                              : ""}
+                          </Text>
+                          <Text style={[styles.replyText, { color: theme.text }]}>
+                            {childReply.text}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
+                {isReplyingToThis ? (
+                  <View style={styles.replyResponseComposer}>
+                    <TextInput
+                      style={[
+                        styles.replyEditInput,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
+                      placeholder={`Reply to ${replyName}...`}
+                      placeholderTextColor={theme.textMuted}
+                      value={replyResponseText}
+                      onChangeText={setReplyResponseText}
+                      multiline
+                    />
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.replySubmit,
+                        {
+                          backgroundColor: replyResponseText.trim()
+                            ? theme.accent
+                            : theme.pill || colors.surfaceMuted,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => handleSubmitReplyResponse(reply)}
+                      disabled={!replyResponseText.trim() || submittingReplyResponse}
+                    >
+                      <Text style={styles.replySubmitText}>
+                        {submittingReplyResponse ? "Sending..." : "Send"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
             );
           })}
@@ -1295,6 +1452,22 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     marginTop: 8,
+  },
+  replyResponsesList: {
+    gap: 6,
+    marginTop: 8,
+    paddingLeft: 12,
+  },
+  replyResponseBubble: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  replyResponseComposer: {
+    gap: 8,
+    marginTop: 8,
+    paddingLeft: 12,
   },
   replyMiniButton: {
     borderWidth: 1,

@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "May 21, 2026";
+const LAST_UPDATED = "May 26, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -107,20 +107,30 @@ export default function LegalScreen() {
         <LegalSection title="Privacy Policy" theme={theme}>
           <LegalText theme={theme}>
             Summit Scene collects the information needed to create accounts,
-            show local events, support community features, review business
-            accounts, moderate reports, and keep the app working.
+            show local events and tours, support community features, review
+            business and organizer accounts, moderate reports, and keep the app
+            working.
           </LegalText>
           <LegalBullet theme={theme}>
             Account data: name or business name, email, password hash, role,
-            town, profile details, avatar, selected languages, interests,
-            social links, email verification status, and business verification
-            status.
+            town, profile details, avatar, selected languages, interests, social
+            links, public business phone number, website, Instagram, Facebook,
+            Google Business listing, email verification status, and business
+            verification status.
           </LegalBullet>
           <LegalBullet theme={theme}>
-            Public content: event posts, community posts, buddy posts, replies,
-            profile information you choose to share, likes, interests, and
-            attendance choices, saved event choices, and business information
-            you choose to share.
+            Public content: event and tour posts, photos, categories, category
+            tags, vibe tags, duration, price range, meeting location, booking
+            links, community posts, buddy posts, replies, profile information
+            you choose to share, likes, interests, attendance choices, saved
+            event choices, reminder choices, and business information you choose
+            to share.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            External booking links: organizers may link to their own website,
+            booking page, Instagram, direct message option, FareHarbor, Viator,
+            or another third-party service. Those services have their own
+            privacy policies and terms.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Optional profile choices, including community interests, languages,
@@ -134,8 +144,15 @@ export default function LegalScreen() {
             address lookup/geocoding services to place events on the map.
           </LegalBullet>
           <LegalBullet theme={theme}>
-            Safety data: reports, blocks, moderation notes, and admin review
+            Safety data: reports about fake events, scams, inappropriate
+            content, misleading businesses, posts, replies, users, or business
+            profiles; blocks; moderation notes; review status; and admin review
             actions are used to operate safety and moderation tools.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Event preferences: saved events, going status, interest signals,
+            reminder preferences, reminder times, and related notification
+            records may be used to support event planning features.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Technical and support data: device or app diagnostics, request logs,
@@ -150,9 +167,10 @@ export default function LegalScreen() {
           </LegalBullet>
           <LegalBullet theme={theme}>
             Service providers: data may be processed by hosting, database,
-            address lookup or geocoding, authentication, social login,
-            analytics, support, and app operations providers when those features
-            are used.
+            address lookup or geocoding, authentication including Sign in with
+            Apple and Google Sign-In, analytics, AI event description
+            generation, email delivery if enabled, support, and app operations
+            providers when those features are used.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Deletion: users can delete their account in Account. Deletion
@@ -164,8 +182,14 @@ export default function LegalScreen() {
 
         <LegalSection title="How We Use Information" theme={theme}>
           <LegalBullet theme={theme}>
-            To provide accounts, profiles, events, community posts, maps,
-            replies, saved events, attendance, reminders, and plan features.
+            To provide accounts, profiles, events, tours, external booking
+            links, community posts, maps, replies, saved events, attendance,
+            reminders, and plan features.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            To help users discover events and tours through search, towns,
+            dates, categories, category tags, vibe tags, saved choices, and
+            going choices.
           </LegalBullet>
           <LegalBullet theme={theme}>
             To review business and organizer accounts and manage event posting
@@ -183,9 +207,11 @@ export default function LegalScreen() {
 
         <LegalSection title="Public Content" theme={theme}>
           <LegalText theme={theme}>
-            Profiles, events, community posts, replies, business information,
-            attendance signals, and similar content may be visible to other
-            users. Do not post private information you do not want others to see.
+            Profiles, events, tours, photos, categories, tags, booking links,
+            community posts, replies, business information, public business
+            phone numbers, social links, attendance signals, and similar content
+            may be visible to other users. Do not post private information you
+            do not want others to see.
           </LegalText>
           <LegalText theme={theme}>
             Optional profile choices, including community interests, languages,
@@ -256,6 +282,11 @@ export default function LegalScreen() {
             security, verification, and support messages can be handled
             separately from marketing.
           </LegalText>
+          <LegalText theme={theme}>
+            External booking pages, social media pages, and third-party booking
+            providers have their own privacy policies, terms, payment rules, and
+            cancellation rules. Review them before booking.
+          </LegalText>
         </LegalSection>
 
         <LegalSection title="Account & Data Deletion" theme={theme}>
@@ -302,6 +333,12 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Users must not post official business, venue, or organizer content
             unless they are authorized to do so.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Official event and tour listings may link to external booking pages,
+            websites, social pages, or direct message options. Any booking,
+            payment, refund, cancellation, or customer service issue happens
+            outside Summit Scene unless Summit Scene clearly says otherwise.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Summit Scene can remove content, restrict accounts, reject business
@@ -378,9 +415,9 @@ export default function LegalScreen() {
         <LegalSection title="Local Event & Business Compliance" theme={theme}>
           <LegalText theme={theme}>
             Business and organizer profiles are for venues, shops, activity
-            providers, event hosts, markets, wellness studios, community
-            organizations, and other local operators who want to share official
-            events or experiences.
+            providers, tour guides, tour companies, event hosts, markets,
+            wellness studios, community organizations, and other local operators
+            who want to share official events, tours, or experiences.
           </LegalText>
           <LegalText theme={theme}>
             Business and organizer accounts may be reviewed before they receive
@@ -392,7 +429,8 @@ export default function LegalScreen() {
             Businesses and organizers are responsible for confirming and
             following all permits, licences, insurance, park rules, municipal
             bylaws, venue rules, alcohol rules, food rules, road use rules, and
-            safety requirements that apply to their event or business activity.
+            safety requirements that apply to their event, tour, booking link,
+            or business activity.
           </LegalText>
           <LegalText theme={theme}>
             Third-party organizers, tour guides, tour companies, venues, and

@@ -1,7 +1,7 @@
 // screens/auth/LoginScreen.js (or similar path)
 // Lets users enter email/password and requests a JWT from the backend via AuthContext
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,15 +14,31 @@ import {
   Keyboard,
   Image,
   ScrollView,
+  Alert,
+  NativeModules,
 } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
 
+function getGoogleSignInModule() {
+  if (!NativeModules.RNGoogleSignin) {
+    return null;
+  }
+
+  try {
+    return require("@react-native-google-signin/google-signin");
+  } catch {
+    return null;
+  }
+}
+
 function LoginScreen() {
-  const { login, isAuthLoading } = useAuth(); // login() talks to backend, isAuthLoading = global auth state
+  const { login, signInWithApple, signInWithGoogle, isAuthLoading } =
+    useAuth(); // login() talks to backend, isAuthLoading = global auth state
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -31,6 +47,19 @@ function LoginScreen() {
   const [password, setPassword] = useState(""); // user password
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
+  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+  useEffect(() => {
+    if (!googleWebClientId) {
+      return;
+    }
+
+    const googleModule = getGoogleSignInModule();
+    googleModule?.GoogleSignin?.configure({
+      webClientId: googleWebClientId,
+      offlineAccess: false,
+    });
+  }, [googleWebClientId]);
 
   // ----- HANDLERS -----
 
@@ -52,6 +81,79 @@ function LoginScreen() {
       // Navigation is handled by RootNavigator based on auth state
     } catch (error) {
       setErrorMessage(error.message || "Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleAppleSignIn() {
+    try {
+      setErrorMessage("");
+      setIsSubmitting(true);
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error("Apple did not return an identity token.");
+      }
+
+      await signInWithApple({
+        identityToken: credential.identityToken,
+        fullName: credential.fullName,
+      });
+    } catch (error) {
+      if (error?.code === "ERR_REQUEST_CANCELED") {
+        return;
+      }
+
+      Alert.alert(
+        "Apple sign-in failed",
+        error.message || "Please try again or use email login."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      setErrorMessage("");
+      setIsSubmitting(true);
+
+      if (!googleWebClientId) {
+        throw new Error("Google sign-in is not configured yet.");
+      }
+
+      const googleModule = getGoogleSignInModule();
+      const googleSignIn = googleModule?.GoogleSignin;
+      if (!googleSignIn) {
+        throw new Error("Google sign-in requires a development or store build.");
+      }
+
+      await googleSignIn.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      const result = await googleSignIn.signIn();
+
+      if (result.type !== "success" || !result.data?.idToken) {
+        return;
+      }
+
+      await signInWithGoogle({ idToken: result.data.idToken });
+    } catch (error) {
+      if (error?.code === "SIGN_IN_CANCELLED") {
+        return;
+      }
+
+      Alert.alert(
+        "Google sign-in failed",
+        error.message || "Please try again or use email login."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -160,6 +262,43 @@ function LoginScreen() {
               }}
             />
 
+            {Platform.OS === "ios" ? (
+              <>
+                <Text style={[styles.termsNote, { color: theme.textMuted }]}>
+                  By continuing with Apple, you confirm you are 18+ and agree to
+                  Summit Scene's Privacy & Terms.
+                </Text>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={8}
+                  style={styles.appleButton}
+                  onPress={handleAppleSignIn}
+                />
+              </>
+            ) : null}
+
+            {Platform.OS === "android" ? (
+              <>
+                <Text style={[styles.termsNote, { color: theme.textMuted }]}>
+                  By continuing with Google, you confirm you are 18+ and agree
+                  to Summit Scene's Privacy & Terms.
+                </Text>
+                <Pressable
+                  style={[
+                    styles.googleButton,
+                    { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
+                  ]}
+                  disabled={isSubmitting || isAuthLoading}
+                  onPress={handleGoogleSignIn}
+                >
+                  <Text style={styles.googleButtonText}>
+                    Sign in with Google
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+
             <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
               <Text style={[styles.linkText, { color: theme.accent }]}>
                 Forgot password?
@@ -231,6 +370,32 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: "center",
     fontSize: 12,
+    fontWeight: "700",
+  },
+  termsNote: {
+    marginTop: 14,
+    marginBottom: 8,
+    textAlign: "center",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  appleButton: {
+    height: 46,
+    width: "100%",
+    marginBottom: 4,
+  },
+  googleButton: {
+    height: 46,
+    width: "100%",
+    marginBottom: 4,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1F1F1F",
+  },
+  googleButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
     fontWeight: "700",
   },
   errorText: {

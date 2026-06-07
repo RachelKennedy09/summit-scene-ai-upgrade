@@ -86,6 +86,36 @@ const buddyRecurrenceSchema = new Schema(
   { _id: false }
 );
 
+const buddyReplyResponseSchema = new Schema(
+  {
+    text: {
+      type: String,
+      required: [true, "Reply text is required"],
+      trim: true,
+      maxlength: 500,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    likes: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 const buddyReplySchema = new Schema(
   {
     text: {
@@ -105,6 +135,19 @@ const buddyReplySchema = new Schema(
     },
     updatedAt: {
       type: Date,
+    },
+    likes: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
+    },
+    replies: {
+      type: [buddyReplyResponseSchema],
+      default: [],
     },
   },
   { _id: true }

@@ -1,0 +1,8 @@
+env: load .env
+env: export ADMIN_EMAILS EXPO_PUBLIC_API_BASE_URL GOOGLE_SERVICES_JSON EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+Starting project at C:\SummitSceneUpgrade\summit-scene-ai-upgrade
+Starting Metro Bundler
+Tunnel connected.
+Tunnel ready.
+Waiting on http://localhost:8083
+Logs for your project will appear below.

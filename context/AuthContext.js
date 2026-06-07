@@ -309,7 +309,6 @@ export function AuthProvider({ children }) {
     phone,
     avatarKey,
     profileImageUrl,
-    facebookConnectToken,
     acceptedAgeTerms,
   }) {
     try {
@@ -345,7 +344,6 @@ export function AuthProvider({ children }) {
             phone: phone || undefined,
             avatarKey: avatarKey || undefined,
             profileImageUrl: profileImageUrl || undefined,
-            facebookConnectToken: facebookConnectToken || undefined,
             acceptedAgeTerms: acceptedAgeTerms === true,
           }),
         },
@@ -591,23 +589,22 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function connectFacebook(code, redirectUri) {
-    if (!token) {
-      throw new Error("You must be logged in to connect Facebook.");
-    }
-
+  async function signInWithApple({ identityToken, fullName }) {
     try {
       setIsAuthLoading(true);
 
       const response = await fetchWithTimeout(
-        `${API_BASE_URL}/api/social/facebook/connect`,
+        `${API_BASE_URL}/api/auth/apple`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ code, redirectUri }),
+          body: JSON.stringify({
+            identityToken,
+            fullName,
+            acceptedAgeTerms: true,
+          }),
         },
         AUTH_REQUEST_TIMEOUT_MS
       );
@@ -615,37 +612,45 @@ export function AuthProvider({ children }) {
       const data = await readJsonSafely(response);
 
       if (!response.ok) {
-        throw new Error(data?.message || "Could not connect Facebook.");
+        throw new Error(data?.message || "Could not sign in with Apple.");
       }
 
-      if (data.user) {
-        setUser(buildUser(data.user));
-      }
+      const mergedUser = await setLoggedInState(
+        data.token,
+        data.user || {},
+        "Apple sign-in successful. Opening app."
+      );
 
-      return data.user;
+      return { ...data, user: mergedUser };
     } catch (error) {
-      console.error("Error in connectFacebook:", error);
-      throw toUserFriendlyError(
+      const normalizedError = normalizeNetworkError(
         error,
-        "We couldn't connect Facebook right now. Please try again."
+        "Apple sign-in request timed out. Please try again."
+      );
+      throw toUserFriendlyError(
+        normalizedError,
+        "We couldn't sign you in with Apple right now. Please try again."
       );
     } finally {
       setIsAuthLoading(false);
     }
   }
 
-  async function previewFacebookSignup(code, redirectUri) {
+  async function signInWithGoogle({ idToken }) {
     try {
       setIsAuthLoading(true);
 
       const response = await fetchWithTimeout(
-        `${API_BASE_URL}/api/social/facebook/signup-preview`,
+        `${API_BASE_URL}/api/auth/google`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ code, redirectUri }),
+          body: JSON.stringify({
+            idToken,
+            acceptedAgeTerms: true,
+          }),
         },
         AUTH_REQUEST_TIMEOUT_MS
       );
@@ -653,15 +658,19 @@ export function AuthProvider({ children }) {
       const data = await readJsonSafely(response);
 
       if (!response.ok) {
-        throw new Error(data?.message || "Could not connect Facebook.");
+        throw new Error(data?.message || "Could not sign in with Google.");
       }
 
-      return data;
+      return setLoggedInState(
+        data.token,
+        data.user || {},
+        "Google sign-in successful. Opening app."
+      );
     } catch (error) {
-      console.error("Error in previewFacebookSignup:", error);
+      console.error("Error in signInWithGoogle:", error);
       throw toUserFriendlyError(
         error,
-        "We couldn't connect Facebook right now. Please try again."
+        "We couldn't sign you in with Google right now. Please try email login."
       );
     } finally {
       setIsAuthLoading(false);
@@ -959,8 +968,8 @@ export function AuthProvider({ children }) {
     unblockUser,
     fetchBlockedUsers,
     markSafetyTipsSeen,
-    connectFacebook,
-    previewFacebookSignup,
+    signInWithApple,
+    signInWithGoogle,
     updateProfile,
     deleteAccount,
     resendVerificationEmail,

@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { getCategoryAccent } from "../../utils/categoryVisuals";
 
 function normalizeCategoryLabel(categoryLabel) {
   return (
@@ -185,67 +186,80 @@ export default function GroupedCategoryModal({
             style={styles.modalOptionsScroll}
             showsVerticalScrollIndicator
           >
-            {filteredGroups.map((group) => (
-              <View
-                key={group.title}
-                style={styles.optionGroup}
-                onLayout={(event) => {
-                  groupOffsetsRef.current[group.title] = event.nativeEvent.layout.y;
-                }}
-              >
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.groupHeader,
-                    {
-                      backgroundColor: theme.pill || theme.card,
-                      borderColor:
-                        group.title === selectedGroupTitle
-                          ? theme.accent
-                          : theme.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => toggleGroup(group.title)}
-                >
-                  <View style={styles.groupHeaderTextWrap}>
-                    <Text
-                      style={[
-                        styles.groupTitle,
-                        { color: theme.textMain || theme.text },
-                      ]}
-                    >
-                      {group.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.groupCount,
-                        {
-                          color:
-                            group.title === selectedGroupTitle
-                              ? theme.accent
-                              : theme.textMuted,
-                        },
-                      ]}
-                    >
-                      {group.options.length} option
-                      {group.options.length === 1 ? "" : "s"}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[styles.groupToggle, { color: theme.textMuted }]}
-                  >
-                    {expandedGroupTitle === group.title ? "-" : "+"}
-                  </Text>
-                </Pressable>
+            {filteredGroups.map((group) => {
+              const groupAccent = getCategoryAccent(group.title, theme);
+              const isSelectedGroup = group.title === selectedGroupTitle;
 
-                {expandedGroupTitle === group.title || query.trim()
-                  ? group.options.map((categoryLabel) => {
+              return (
+                <View
+                  key={group.title}
+                  style={styles.optionGroup}
+                  onLayout={(event) => {
+                    groupOffsetsRef.current[group.title] = event.nativeEvent.layout.y;
+                  }}
+                >
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.groupHeader,
+                      {
+                        backgroundColor: groupAccent.tint,
+                        borderColor: isSelectedGroup ? groupAccent.border : theme.border,
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => toggleGroup(group.title)}
+                  >
+                    <View
+                      style={[
+                        styles.groupAccentBar,
+                        { backgroundColor: groupAccent.border },
+                      ]}
+                    />
+                    <View style={styles.groupHeaderTextWrap}>
+                      <Text
+                        style={[
+                          styles.groupTitle,
+                          { color: groupAccent.text || theme.textMain || theme.text },
+                        ]}
+                      >
+                        {group.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.groupCount,
+                          {
+                            color: isSelectedGroup
+                              ? groupAccent.text || theme.accent
+                              : theme.textMuted,
+                          },
+                        ]}
+                      >
+                        {group.options.length} option
+                        {group.options.length === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[styles.groupToggle, { color: groupAccent.text }]}
+                    >
+                      {expandedGroupTitle === group.title ? "-" : "+"}
+                    </Text>
+                  </Pressable>
+
+                  {expandedGroupTitle === group.title || query.trim()
+                    ? group.options.map((categoryLabel) => {
                       const category = normalizeCategoryLabel(categoryLabel);
                       const isSelected = selectedSet.size
                         ? selectedSet.has(category)
                         : category === selectedValue;
                       const isAllOption =
                         category === "All" || categoryLabel.startsWith("All ");
+                      const optionAccent = isAllOption
+                        ? {
+                            tint: theme.pill || theme.card,
+                            text: theme.textMain || theme.text,
+                            border: theme.border,
+                          }
+                        : getCategoryAccent(categoryLabel, theme);
 
                       return (
                         <Pressable
@@ -253,21 +267,34 @@ export default function GroupedCategoryModal({
                           style={({ pressed }) => [
                             styles.optionRow,
                             {
-                              backgroundColor: theme.card,
-                              borderColor: "transparent",
-                            },
-                            isSelected && {
-                              backgroundColor: theme.accentSoft || theme.accent,
-                              borderColor: theme.accent,
+                              backgroundColor: isSelected
+                                ? optionAccent.tint
+                                : theme.card,
+                              borderColor: isSelected
+                                ? optionAccent.border
+                                : "transparent",
                             },
                             pressed && styles.pressed,
                           ]}
                           onPress={() => onSelect(category)}
                         >
+                          <View
+                            style={[
+                              styles.optionSwatch,
+                              {
+                                backgroundColor: optionAccent.tint,
+                                borderColor: optionAccent.border,
+                              },
+                            ]}
+                          />
                           <Text
                             style={[
                               styles.optionText,
-                              { color: theme.textMain || theme.text },
+                              {
+                                color: isSelected
+                                  ? optionAccent.text
+                                  : theme.textMain || theme.text,
+                              },
                               isAllOption && styles.optionTextAll,
                               isSelected && styles.optionTextSelected,
                             ]}
@@ -278,7 +305,7 @@ export default function GroupedCategoryModal({
                             <Text
                               style={[
                                 styles.optionCheckMark,
-                                { color: theme.accent },
+                                { color: optionAccent.text || theme.accent },
                               ]}
                             >
                               *
@@ -287,9 +314,10 @@ export default function GroupedCategoryModal({
                         </Pressable>
                       );
                     })
-                  : null}
-              </View>
-            ))}
+                    : null}
+                </View>
+              );
+            })}
             {searchable && query.trim() && !filteredGroups.length ? (
               <Text style={[styles.emptyText, { color: theme.textMuted }]}>
                 No matching tags.
@@ -361,6 +389,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  groupAccentBar: {
+    width: 4,
+    alignSelf: "stretch",
+    borderRadius: 999,
+    marginRight: 10,
+  },
   groupHeaderTextWrap: {
     flex: 1,
     paddingRight: 12,
@@ -389,6 +423,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 8,
     borderWidth: 1,
+  },
+  optionSwatch: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginRight: 10,
   },
   optionText: {
     fontSize: 15,

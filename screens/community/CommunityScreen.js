@@ -31,9 +31,11 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
   createBuddyPostReply,
+  createBuddyPostReplyResponse,
   deleteBuddyPostReply,
   fetchBuddyPosts,
   toggleBuddyPostInterest,
+  toggleBuddyPostReplyLike,
   updateBuddyPostReply,
 } from "../../services/buddyPostsApi";
 import { submitReport } from "../../services/reportsApi";
@@ -270,6 +272,43 @@ export default function CommunityScreen({ navigation }) {
       await loadBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  }
+
+  async function handleSubmitReplyResponse(post, reply, text) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to reply.");
+      return;
+    }
+
+    try {
+      await createBuddyPostReplyResponse(
+        post._id || post.id,
+        reply._id || reply.id,
+        text,
+        token
+      );
+      await loadBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  }
+
+  async function handleToggleReplyLike(post, reply) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to like comments.");
+      return;
+    }
+
+    try {
+      await toggleBuddyPostReplyLike(
+        post._id || post.id,
+        reply._id || reply.id,
+        token
+      );
+      await loadBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update like", error.message || "Please try again.");
     }
   }
 
@@ -662,6 +701,8 @@ export default function CommunityScreen({ navigation }) {
                 onOpenEvent={handleOpenLinkedEvent}
                 onToggleInterested={handleToggleInterested}
                 onSubmitReply={handleSubmitReply}
+                onSubmitReplyResponse={handleSubmitReplyResponse}
+                onToggleReplyLike={handleToggleReplyLike}
                 onUpdateReply={handleUpdateReply}
                 onDeleteReply={handleDeleteReply}
                 onBlockProfile={handleBlockProfile}

@@ -16,6 +16,7 @@ import Event from "../models/Event.js";
 import EventPreference from "../models/EventPreference.js";
 import Report from "../models/Report.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
+import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
@@ -329,6 +330,16 @@ router.patch("/me", authMiddleware, async (req, res) => {
 
     if (updates.name) {
       updates.name = normalizePublicName(updates.name);
+    }
+
+    const moderationIssue = findContentModerationIssue({
+      name: updates.name,
+      bio: updates.bio,
+      lookingFor: updates.lookingFor,
+      originallyFrom: updates.originallyFrom,
+    });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
     }
 
     // Guard: if no valid fields were provided, don't hit the DB

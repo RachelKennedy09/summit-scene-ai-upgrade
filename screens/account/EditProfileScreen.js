@@ -1,7 +1,7 @@
 // screens/account/EditProfileScreen.js
 // Lets logged-in users edit their profile fields (not email/password yet)
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,6 @@ import {
   Platform,
   Pressable,
   Image,
-  Linking,
-  AppState,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,15 +29,6 @@ const SOCIAL_PROVIDERS = [
   { provider: "linkedin", label: "LinkedIn", placeholder: "Profile link" },
   { provider: "website", label: "Website", placeholder: "https://..." },
 ];
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
-const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
-const FACEBOOK_REDIRECT_URI =
-  process.env.EXPO_PUBLIC_FACEBOOK_REDIRECT_URI ||
-  `${API_BASE_URL}/api/social/facebook/mobile-callback`;
-const FACEBOOK_OPTIONAL_MESSAGE =
-  "Facebook connection needs the installed Summit Scene app to return automatically. You can keep using manual social links now and connect Facebook later.";
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
@@ -173,23 +162,8 @@ function buildSocialAccounts(values, profileImageUrl = "") {
   }).filter(Boolean);
 }
 
-function getUrlParam(url, paramName) {
-  const pattern = new RegExp(`[?&#]${paramName}=([^&#]+)`);
-  const match = String(url || "").match(pattern);
-  return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
-}
-
-function buildFacebookAuthUrl() {
-  const url = new URL("https://www.facebook.com/v19.0/dialog/oauth");
-  url.searchParams.set("client_id", FACEBOOK_APP_ID);
-  url.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "public_profile");
-  return url.toString();
-}
-
 export default function EditProfileScreen({ navigation }) {
-  const { user, updateProfile, connectFacebook, isAuthLoading } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { theme } = useTheme();
 
   // Safeguard – if somehow no user
@@ -224,9 +198,6 @@ export default function EditProfileScreen({ navigation }) {
   const [profileImageUrl, setProfileImageUrl] = useState(
     user?.profileImageUrl || ""
   );
-  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
-  const facebookTimeoutRef = useRef(null);
-  const facebookCallbackHandledRef = useRef(false);
   const [socialValues, setSocialValues] = useState(() => {
     const accounts = Array.isArray(user?.socialAccounts)
       ? user.socialAccounts
@@ -237,50 +208,6 @@ export default function EditProfileScreen({ navigation }) {
       return current;
     }, {});
   });
-
-  useEffect(() => {
-    return () => {
-      if (facebookTimeoutRef.current) {
-        clearTimeout(facebookTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active" || !isConnectingFacebook) {
-        return;
-      }
-
-      setTimeout(() => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        facebookCallbackHandledRef.current = true;
-        if (facebookTimeoutRef.current) {
-          clearTimeout(facebookTimeoutRef.current);
-          facebookTimeoutRef.current = null;
-        }
-        setIsConnectingFacebook(false);
-        Alert.alert(
-          "Continue without Facebook",
-          FACEBOOK_OPTIONAL_MESSAGE
-        );
-      }, 1200);
-    });
-
-    return () => subscription.remove();
-  }, [isConnectingFacebook]);
-
-  function finishFacebookConnection() {
-    facebookCallbackHandledRef.current = true;
-    if (facebookTimeoutRef.current) {
-      clearTimeout(facebookTimeoutRef.current);
-      facebookTimeoutRef.current = null;
-    }
-    setIsConnectingFacebook(false);
-  }
 
   if (!user) {
     return (
@@ -396,105 +323,6 @@ export default function EditProfileScreen({ navigation }) {
 
       return [...current, interest];
     });
-  }
-
-  async function handleConnectFacebook() {
-    if (!FACEBOOK_APP_ID) {
-      Alert.alert(
-        "Facebook not configured",
-        "Add EXPO_PUBLIC_FACEBOOK_APP_ID to the app environment before connecting Facebook."
-      );
-      return;
-    }
-
-    let subscription;
-
-    try {
-      setIsConnectingFacebook(true);
-      facebookCallbackHandledRef.current = false;
-      if (facebookTimeoutRef.current) {
-        clearTimeout(facebookTimeoutRef.current);
-      }
-      facebookTimeoutRef.current = setTimeout(() => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        finishFacebookConnection();
-        subscription?.remove?.();
-        Alert.alert(
-          "Continue without Facebook",
-          FACEBOOK_OPTIONAL_MESSAGE
-        );
-      }, 90000);
-
-      subscription = Linking.addEventListener("url", async ({ url }) => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        const code = getUrlParam(url, "code");
-        const errorMessage =
-          getUrlParam(url, "error_message") || getUrlParam(url, "error");
-
-        subscription?.remove?.();
-
-        if (errorMessage) {
-          finishFacebookConnection();
-          Alert.alert(
-            "Facebook not connected",
-            `${errorMessage}\n\nYou can still use manual social links and connect Facebook later.`
-          );
-          return;
-        }
-
-        if (!code) {
-          finishFacebookConnection();
-          Alert.alert(
-            "Continue without Facebook",
-            FACEBOOK_OPTIONAL_MESSAGE
-          );
-          return;
-        }
-
-        try {
-          const updatedUser = await connectFacebook(code, FACEBOOK_REDIRECT_URI);
-          const facebookAccount = updatedUser?.socialAccounts?.find(
-            (account) => account.provider === "facebook"
-          );
-
-          setSocialValues((current) => ({
-            ...current,
-            facebook:
-              facebookAccount?.handle ||
-              facebookAccount?.url ||
-              current.facebook ||
-              "Facebook connected",
-          }));
-
-          Alert.alert(
-            "Facebook connected",
-            "Your Facebook profile photo is now ready to use on Summit Scene."
-          );
-        } catch (error) {
-          Alert.alert(
-            "Facebook failed",
-            `${error.message || "Could not connect Facebook."}\n\nYou can still use manual social links and connect Facebook later.`
-          );
-        } finally {
-          finishFacebookConnection();
-        }
-      });
-
-      await Linking.openURL(buildFacebookAuthUrl());
-    } catch (error) {
-      subscription?.remove?.();
-      finishFacebookConnection();
-      Alert.alert(
-        "Facebook failed",
-        `${error.message || "Could not open Facebook."}\n\nYou can still use manual social links and connect Facebook later.`
-      );
-    }
   }
 
   async function handleChooseProfilePhoto() {
@@ -745,38 +573,6 @@ export default function EditProfileScreen({ navigation }) {
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
             Optional links people can use to recognize you.
           </Text>
-
-          <View
-            style={[
-              styles.connectPanel,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <View style={styles.connectPanelCopy}>
-              <Text style={[styles.connectPanelTitle, { color: theme.text }]}>
-                Facebook
-              </Text>
-              <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Optional: verify Facebook and use its profile photo when the
-                installed app build is available.
-              </Text>
-            </View>
-            <Pressable
-              style={[
-                styles.connectButton,
-                {
-                  borderColor: theme.accent,
-                  opacity: isConnectingFacebook || isAuthLoading ? 0.65 : 1,
-                },
-              ]}
-              disabled={isConnectingFacebook || isAuthLoading}
-              onPress={handleConnectFacebook}
-            >
-              <Text style={[styles.connectButtonText, { color: theme.accent }]}>
-                {isConnectingFacebook ? "Connecting..." : "Connect"}
-              </Text>
-            </Pressable>
-          </View>
 
           {!isBusiness
             ? SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (

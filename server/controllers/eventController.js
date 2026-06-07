@@ -32,6 +32,7 @@ import {
   getMainCategoryForTag,
   getEventCategoryFilterOptions,
 } from "../../constants/eventCategories.js";
+import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
@@ -648,6 +649,17 @@ export async function createEvent(req, res) {
       });
     }
 
+    const moderationIssue = findContentModerationIssue({
+      title: normalizedTitle,
+      description: normalizeOptionalString(description),
+      duration: normalizeOptionalString(duration),
+      priceRange: normalizeOptionalString(priceRange),
+      locationName: normalizedLocationName,
+    });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
+
     let normalizedRecurrence;
     let normalizedTimeSlots;
 
@@ -1047,6 +1059,17 @@ export async function updateEvent(req, res) {
     }
 
     event.location = buildLegacyLocation(event.locationName, event.address);
+
+    const moderationIssue = findContentModerationIssue({
+      title: event.title,
+      description: event.description,
+      duration: event.duration,
+      priceRange: event.priceRange,
+      locationName: event.locationName,
+    });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
 
     const updated = await event.save();
 

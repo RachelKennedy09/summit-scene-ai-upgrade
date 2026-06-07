@@ -15,8 +15,6 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
-  Linking,
-  AppState,
   Image,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -100,15 +98,6 @@ const LOCAL_STEPS = [
 const BUSINESS_STEPS = ["name", "login", "business", "photo", "review"];
 const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]);
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
-const FACEBOOK_APP_ID = process.env.EXPO_PUBLIC_FACEBOOK_APP_ID;
-const FACEBOOK_REDIRECT_URI =
-  process.env.EXPO_PUBLIC_FACEBOOK_REDIRECT_URI ||
-  `${API_BASE_URL}/api/social/facebook/mobile-callback`;
-const FACEBOOK_OPTIONAL_MESSAGE =
-  "Facebook connection needs the installed Summit Scene app to return automatically. You can keep building your profile now and connect Facebook later.";
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
@@ -180,21 +169,6 @@ function buildSocialAccounts(values, profileImageUrl = "") {
       verified: false,
     };
   }).filter(Boolean);
-}
-
-function getUrlParam(url, paramName) {
-  const pattern = new RegExp(`[?&#]${paramName}=([^&#]+)`);
-  const match = String(url || "").match(pattern);
-  return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
-}
-
-function buildFacebookAuthUrl() {
-  const url = new URL("https://www.facebook.com/v19.0/dialog/oauth");
-  url.searchParams.set("client_id", FACEBOOK_APP_ID);
-  url.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "public_profile");
-  return url.toString();
 }
 
 function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
@@ -458,7 +432,6 @@ function SignupProfilePreview({
 function RegisterScreen() {
   const {
     register,
-    previewFacebookSignup,
     checkEmailAvailability,
     isAuthLoading,
   } = useAuth();
@@ -502,12 +475,7 @@ function RegisterScreen() {
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
-  const [facebookConnectToken, setFacebookConnectToken] = useState("");
-  const [facebookProfileName, setFacebookProfileName] = useState("");
-  const [isConnectingFacebook, setIsConnectingFacebook] = useState(false);
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
-  const facebookTimeoutRef = useRef(null);
-  const facebookCallbackHandledRef = useRef(false);
   const languageInputRef = useRef(null);
 
   const isLocal = role === "local";
@@ -522,47 +490,6 @@ function RegisterScreen() {
       setStepIndex(steps.length - 1);
     }
   }, [stepIndex, steps.length]);
-
-  useEffect(() => {
-    return () => {
-      if (facebookTimeoutRef.current) {
-        clearTimeout(facebookTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active" || !isConnectingFacebook) {
-        return;
-      }
-
-      setTimeout(() => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        facebookCallbackHandledRef.current = true;
-        if (facebookTimeoutRef.current) {
-          clearTimeout(facebookTimeoutRef.current);
-          facebookTimeoutRef.current = null;
-        }
-        setIsConnectingFacebook(false);
-        Alert.alert("Continue without Facebook", FACEBOOK_OPTIONAL_MESSAGE);
-      }, 1200);
-    });
-
-    return () => subscription.remove();
-  }, [isConnectingFacebook]);
-
-  function finishFacebookConnection() {
-    facebookCallbackHandledRef.current = true;
-    if (facebookTimeoutRef.current) {
-      clearTimeout(facebookTimeoutRef.current);
-      facebookTimeoutRef.current = null;
-    }
-    setIsConnectingFacebook(false);
-  }
 
   function handleToggleInterest(interest) {
     setInterests((current) => {
@@ -849,7 +776,6 @@ function RegisterScreen() {
         phone: isBusiness ? phone : undefined,
         avatarKey: null,
         profileImageUrl,
-        facebookConnectToken,
         acceptedAgeTerms: hasAcceptedAgreements,
       });
       if (isBusiness) {
@@ -889,99 +815,6 @@ function RegisterScreen() {
     setRole(nextRole);
     setStepIndex(0);
     setHasAcceptedAgreements(false);
-  }
-
-  async function handleConnectFacebook() {
-    if (!FACEBOOK_APP_ID) {
-      Alert.alert(
-        "Facebook not configured",
-        "Add EXPO_PUBLIC_FACEBOOK_APP_ID to the app environment before connecting Facebook."
-      );
-      return;
-    }
-
-    let subscription;
-
-    try {
-      setIsConnectingFacebook(true);
-      facebookCallbackHandledRef.current = false;
-      if (facebookTimeoutRef.current) {
-        clearTimeout(facebookTimeoutRef.current);
-      }
-      facebookTimeoutRef.current = setTimeout(() => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        finishFacebookConnection();
-        subscription?.remove?.();
-        Alert.alert("Continue without Facebook", FACEBOOK_OPTIONAL_MESSAGE);
-      }, 90000);
-
-      subscription = Linking.addEventListener("url", async ({ url }) => {
-        if (facebookCallbackHandledRef.current) {
-          return;
-        }
-
-        const code = getUrlParam(url, "code");
-        const errorMessage =
-          getUrlParam(url, "error_message") || getUrlParam(url, "error");
-
-        subscription?.remove?.();
-
-        if (errorMessage) {
-          finishFacebookConnection();
-          Alert.alert(
-            "Facebook not connected",
-            `${errorMessage}\n\nYou can still create your account without Facebook.`
-          );
-          return;
-        }
-
-        if (!code) {
-          finishFacebookConnection();
-          Alert.alert("Continue without Facebook", FACEBOOK_OPTIONAL_MESSAGE);
-          return;
-        }
-
-        try {
-          const data = await previewFacebookSignup(
-            code,
-            FACEBOOK_REDIRECT_URI
-          );
-          const facebookProfile = data.facebookProfile || {};
-
-          setFacebookConnectToken(data.facebookConnectToken || "");
-          setFacebookProfileName(facebookProfile.name || "");
-          setName((current) => current || facebookProfile.name || "");
-          setSocialValues((current) => ({
-            ...current,
-            facebook: facebookProfile.name || "Facebook connected",
-          }));
-
-          Alert.alert(
-            "Facebook connected",
-            "Your Facebook account is connected for signup."
-          );
-        } catch (error) {
-          Alert.alert(
-            "Facebook failed",
-            `${error.message || "Could not connect Facebook."}\n\nYou can still create your account without Facebook.`
-          );
-        } finally {
-          finishFacebookConnection();
-        }
-      });
-
-      await Linking.openURL(buildFacebookAuthUrl());
-    } catch (error) {
-      subscription?.remove?.();
-      finishFacebookConnection();
-      Alert.alert(
-        "Facebook failed",
-        `${error.message || "Could not open Facebook."}\n\nYou can still create your account without Facebook.`
-      );
-    }
   }
 
   async function handleChooseProfilePhoto() {
@@ -1445,8 +1278,8 @@ function RegisterScreen() {
             Add socials or an avatar
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Optional. Manual links work now; Facebook can be connected later
-            from the installed app build.
+            Optional. Add public profile links if you want people to recognize
+            you in the community.
           </Text>
           {isLocal
             ? SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
@@ -1472,41 +1305,6 @@ function RegisterScreen() {
                 </View>
               ))
             : null}
-          <View
-            style={[
-              styles.connectPanel,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <View style={styles.connectPanelCopy}>
-              <Text style={[styles.connectPanelTitle, { color: theme.text }]}>
-                Facebook
-              </Text>
-              <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Optional verification for later installed app testing.
-              </Text>
-              {facebookProfileName ? (
-                <Text style={[styles.connectedText, { color: theme.accent }]}>
-                  Connected as {facebookProfileName}
-                </Text>
-              ) : null}
-            </View>
-            <Pressable
-              style={[
-                styles.connectButton,
-                {
-                  borderColor: theme.accent,
-                  opacity: isConnectingFacebook || isAuthLoading ? 0.65 : 1,
-                },
-              ]}
-              disabled={isConnectingFacebook || isAuthLoading}
-              onPress={handleConnectFacebook}
-            >
-              <Text style={[styles.connectButtonText, { color: theme.accent }]}>
-                {isConnectingFacebook ? "Connecting..." : "Connect"}
-              </Text>
-            </Pressable>
-          </View>
           <Text style={[styles.label, { color: theme.text }]}>
             Profile photo
           </Text>

@@ -6,5 +6,14 @@ mobile app.
 Open `index.html` in a browser to preview it locally.
 
 When ready, this folder can be deployed to a static host such as Netlify,
-Vercel, Cloudflare Pages, or GitHub Pages. After hosting, connect the footer
-links to real Privacy Policy and Terms URLs for App Store review.
+Vercel, Cloudflare Pages, or GitHub Pages.
+
+The `_redirects` file exposes clean App Store review URLs:
+
+- `https://summitscene.ca/privacy`
+- `https://summitscene.ca/terms`
+- `https://summitscene.ca/delete-account`
+- `https://summitscene.ca/support`
+- `https://summitscene.ca/safety`
+- `https://summitscene.ca/community-guidelines`
+- `https://summitscene.ca/business`

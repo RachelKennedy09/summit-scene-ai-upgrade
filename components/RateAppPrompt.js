@@ -64,7 +64,7 @@ export default function RateAppPrompt() {
               onPress: () => AsyncStorage.setItem(RATE_STATUS_KEY, "never"),
             },
             {
-              text: "Rate app",
+              text: "Send feedback",
               onPress: async () => {
                 await AsyncStorage.setItem(RATE_STATUS_KEY, "rated");
                 Linking.openURL(

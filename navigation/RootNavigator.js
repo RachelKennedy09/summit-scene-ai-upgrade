@@ -60,6 +60,7 @@ function AuthLoadingScreen({
   onContinueToLogin,
 }) {
   const [showFallbackActions, setShowFallbackActions] = useState(false);
+  const showDebugDetails = typeof __DEV__ !== "undefined" && __DEV__;
 
   useEffect(() => {
     setShowFallbackActions(false);
@@ -77,7 +78,9 @@ function AuthLoadingScreen({
       <Text style={styles.loadingText}>
         Finding what's happening nearby...
       </Text>
-      <Text style={styles.debugText}>{debugMessage}</Text>
+      {showDebugDetails ? (
+        <Text style={styles.debugText}>{debugMessage}</Text>
+      ) : null}
       {showFallbackActions ? (
         <View style={styles.actions}>
           <Pressable style={styles.primaryButton} onPress={onRetry}>

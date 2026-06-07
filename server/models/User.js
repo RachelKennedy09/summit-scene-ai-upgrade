@@ -24,6 +24,8 @@ export const SOCIAL_PROVIDERS = [
   "instagram",
   "tiktok",
   "facebook",
+  "apple",
+  "google",
   "linkedin",
   "website",
 ];

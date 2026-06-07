@@ -14,6 +14,7 @@
       "backgroundColor": "#F5F3EE"
     },
     "plugins": [
+      "expo-apple-authentication",
       [
         "expo-location",
         {
@@ -23,14 +24,21 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Summit Scene lets you choose a profile photo from your camera roll."
+          "photosPermission": "Summit Scene lets you choose profile and event photos from your camera roll."
         }
       ]
     ],
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.rachellauren.summitscene",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Summit Scene uses your location to show events near you. You can also browse by town without sharing location.",
+        "NSPhotoLibraryUsageDescription": "Summit Scene lets you choose profile and event photos from your camera roll."
+      }
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-earth-tone.png",
         "backgroundColor": "#F5F3EE"
@@ -42,7 +50,8 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "package": "com.rachellaurenxx.summitscene"
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"],
+      "package": "com.rachellauren.summitscene"
     },
     "web": {
       "favicon": "./assets/logo-app-full-color-square.png"
@@ -55,3 +64,4 @@
     "owner": "rachellaurenxx"
   }
 }
+

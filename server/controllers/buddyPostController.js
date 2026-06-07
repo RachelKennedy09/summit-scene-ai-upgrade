@@ -19,6 +19,7 @@ import {
   VIBE_TAGS,
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
+import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
@@ -204,10 +205,35 @@ function filterBlockedUsers(posts, blockContext) {
           )
         : [],
       replies: Array.isArray(post.replies)
-        ? post.replies.filter(
-            (reply) =>
-              !isBlockedUser(getUserId(reply.createdBy), blockContext)
-          )
+        ? post.replies
+            .filter(
+              (reply) =>
+                !isBlockedUser(getUserId(reply.createdBy), blockContext)
+            )
+            .map((reply) => ({
+              ...reply,
+              likes: Array.isArray(reply.likes)
+                ? reply.likes.filter(
+                    (user) => !isBlockedUser(getUserId(user), blockContext)
+                  )
+                : [],
+              replies: Array.isArray(reply.replies)
+                ? reply.replies
+                    .filter(
+                      (childReply) =>
+                        !isBlockedUser(getUserId(childReply.createdBy), blockContext)
+                    )
+                    .map((childReply) => ({
+                      ...childReply,
+                      likes: Array.isArray(childReply.likes)
+                        ? childReply.likes.filter(
+                            (user) =>
+                              !isBlockedUser(getUserId(user), blockContext)
+                          )
+                        : [],
+                    }))
+                : [],
+            }))
         : [],
     }));
 }
@@ -365,6 +391,9 @@ function populateBuddyPost(query) {
     .populate("createdBy", USER_POPULATE_FIELDS)
     .populate("interestedUsers", USER_POPULATE_FIELDS)
     .populate("replies.createdBy", USER_POPULATE_FIELDS)
+    .populate("replies.likes", USER_POPULATE_FIELDS)
+    .populate("replies.replies.createdBy", USER_POPULATE_FIELDS)
+    .populate("replies.replies.likes", USER_POPULATE_FIELDS)
     .populate("eventId", "title date time town category categories categoryTags vibeTags imageUrl");
 }
 
@@ -407,6 +436,13 @@ export async function createBuddyPost(req, res) {
         message: "Type, activity text, date, and town are required.",
         missing,
       });
+    }
+
+    const moderationIssue = findContentModerationIssue({
+      activityText: payload.activityText,
+    });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
     }
 
     if (payload.eventId) {
@@ -532,6 +568,11 @@ export async function addBuddyPostReply(req, res) {
       return res.status(400).json({ message: "Reply text is required." });
     }
 
+    const moderationIssue = findContentModerationIssue({ text });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
+
     const post = await BuddyPost.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ message: "Buddy post not found." });
@@ -563,6 +604,99 @@ export async function addBuddyPostReply(req, res) {
   }
 }
 
+export async function addBuddyPostReplyResponse(req, res) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+    if (!text) {
+      return res.status(400).json({ message: "Reply text is required." });
+    }
+
+    const moderationIssue = findContentModerationIssue({ text });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
+
+    const post = await BuddyPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Buddy post not found." });
+    }
+
+    const reply = post.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ message: "Reply not found." });
+    }
+
+    reply.replies.push({
+      text,
+      createdBy: userId,
+    });
+
+    await post.save();
+
+    const populated = await populateBuddyPost(BuddyPost.findById(post._id));
+    return res.status(201).json(populated);
+  } catch (error) {
+    console.error("Error in POST /api/buddy-posts/:id/replies/:replyId/replies:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Buddy reply validation failed.",
+        error: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to add reply.",
+      error: error.message,
+    });
+  }
+}
+
+export async function toggleBuddyPostReplyLike(req, res) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const post = await BuddyPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Buddy post not found." });
+    }
+
+    const reply = post.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ message: "Reply not found." });
+    }
+
+    const alreadyLiked = (reply.likes || []).some(
+      (id) => id.toString() === userId.toString()
+    );
+
+    if (alreadyLiked) {
+      reply.likes = reply.likes.filter((id) => id.toString() !== userId.toString());
+    } else {
+      reply.likes.push(userId);
+    }
+
+    await post.save();
+
+    const populated = await populateBuddyPost(BuddyPost.findById(post._id));
+    return res.json(populated);
+  } catch (error) {
+    console.error("Error in POST /api/buddy-posts/:id/replies/:replyId/likes:", error);
+    return res.status(500).json({
+      message: "Failed to update reply like.",
+      error: error.message,
+    });
+  }
+}
+
 export async function updateBuddyPostReply(req, res) {
   try {
     const userId = req.user?.userId;
@@ -573,6 +707,11 @@ export async function updateBuddyPostReply(req, res) {
     const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
     if (!text) {
       return res.status(400).json({ message: "Reply text is required." });
+    }
+
+    const moderationIssue = findContentModerationIssue({ text });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
     }
 
     const post = await BuddyPost.findById(req.params.id);

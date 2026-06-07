@@ -16,6 +16,7 @@
 
 import CommunityPost from "../models/CommunityPost.js";
 import User from "../models/User.js";
+import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 function getUserId(value) {
   if (!value) return "";
@@ -137,6 +138,11 @@ export async function createCommunityPost(req, res) {
       });
     }
 
+    const moderationIssue = findContentModerationIssue({ title, body });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
+
     // Snapshot the display name from the account
     const displayName =
       req.user?.name || req.user?.email || "SummitScene member";
@@ -250,6 +256,11 @@ export async function updateCommunityPost(req, res) {
       });
     }
 
+    const moderationIssue = findContentModerationIssue({ title, body });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
+    }
+
     // Update fields
     post.title = title;
     post.body = body;
@@ -293,6 +304,11 @@ export async function addCommunityReply(req, res) {
       return res
         .status(400)
         .json({ message: "Reply text (body) is required." });
+    }
+
+    const moderationIssue = findContentModerationIssue({ body });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
     }
 
     const post = await CommunityPost.findById(postId);

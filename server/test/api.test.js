@@ -1169,6 +1169,33 @@ describe("SummitScene API", function () {
       name: testName,
     });
 
+    const replyLikeRes = await request(app)
+      .post(
+        `/api/buddy-posts/${createRes.body._id}/replies/${replyRes.body.replies[0]._id}/likes`
+      )
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(replyLikeRes.status).to.equal(200);
+    expect(replyLikeRes.body.replies[0].likes).to.be.an("array").with.length(1);
+
+    const nestedReplyRes = await request(app)
+      .post(
+        `/api/buddy-posts/${createRes.body._id}/replies/${replyRes.body.replies[0]._id}/replies`
+      )
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        text: "That timing works for me.",
+      });
+
+    expect(nestedReplyRes.status).to.equal(201);
+    expect(nestedReplyRes.body.replies[0].replies).to.be.an("array").with.length(1);
+    expect(nestedReplyRes.body.replies[0].replies[0]).to.include({
+      text: "That timing works for me.",
+    });
+    expect(nestedReplyRes.body.replies[0].replies[0].createdBy).to.include({
+      name: testName,
+    });
+
     const updateReplyRes = await request(app)
       .patch(
         `/api/buddy-posts/${createRes.body._id}/replies/${replyRes.body.replies[0]._id}`

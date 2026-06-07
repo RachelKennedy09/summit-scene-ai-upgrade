@@ -31,9 +31,11 @@ import {
 } from "../../services/eventsApi";
 import {
   createBuddyPostReply,
+  createBuddyPostReplyResponse,
   deleteBuddyPostReply,
   fetchBuddyPosts,
   toggleBuddyPostInterest,
+  toggleBuddyPostReplyLike,
   updateBuddyPostReply,
 } from "../../services/buddyPostsApi";
 import { submitReport } from "../../services/reportsApi";
@@ -467,6 +469,43 @@ export default function EventDetailScreen({ route }) {
       await loadEventBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  };
+
+  const handleSubmitBuddyReplyResponse = async (post, reply, text) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to reply.");
+      return;
+    }
+
+    try {
+      await createBuddyPostReplyResponse(
+        post._id || post.id,
+        reply._id || reply.id,
+        text,
+        token
+      );
+      await loadEventBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not add reply", error.message || "Please try again.");
+    }
+  };
+
+  const handleToggleBuddyReplyLike = async (post, reply) => {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to like comments.");
+      return;
+    }
+
+    try {
+      await toggleBuddyPostReplyLike(
+        post._id || post.id,
+        reply._id || reply.id,
+        token
+      );
+      await loadEventBuddyPosts();
+    } catch (error) {
+      Alert.alert("Could not update like", error.message || "Please try again.");
     }
   };
 
@@ -1310,6 +1349,8 @@ export default function EventDetailScreen({ route }) {
                       onOpenProfile={setProfileUser}
                       onToggleInterested={handleToggleInterested}
                       onSubmitReply={handleSubmitBuddyReply}
+                      onSubmitReplyResponse={handleSubmitBuddyReplyResponse}
+                      onToggleReplyLike={handleToggleBuddyReplyLike}
                       onUpdateReply={handleUpdateBuddyReply}
                       onDeleteReply={handleDeleteBuddyReply}
                       onBlockProfile={handleBlockProfile}

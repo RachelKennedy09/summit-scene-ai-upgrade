@@ -12,6 +12,7 @@ import crypto from "crypto";
 
 import User from "../models/User.js";
 import authMiddleware from "../middleware/auth.js";
+import { findContentModerationIssue } from "../utils/contentModeration.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 import {
   sendEmailChangeConfirmation,
@@ -77,6 +78,99 @@ function includeDevToken(token) {
     : undefined;
 }
 
+async function verifyAppleIdentityToken(identityToken) {
+  if (!identityToken || typeof identityToken !== "string") {
+    throw new Error("Apple identity token is required.");
+  }
+
+  const decoded = jwt.decode(identityToken, { complete: true });
+  const keyId = decoded?.header?.kid;
+  if (!keyId) {
+    throw new Error("Apple identity token is invalid.");
+  }
+
+  const response = await fetch("https://appleid.apple.com/auth/keys");
+  if (!response.ok) {
+    throw new Error("Could not load Apple sign-in keys.");
+  }
+
+  const data = await response.json();
+  const jwk = (data.keys || []).find((key) => key.kid === keyId);
+  if (!jwk) {
+    throw new Error("Apple sign-in key was not found.");
+  }
+
+  const publicKey = crypto.createPublicKey({ key: jwk, format: "jwk" });
+  const audience =
+    process.env.APPLE_BUNDLE_ID ||
+    process.env.EXPO_PUBLIC_APPLE_CLIENT_ID ||
+    "com.rachellauren.summitscene";
+
+  return jwt.verify(identityToken, publicKey, {
+    algorithms: ["RS256"],
+    issuer: "https://appleid.apple.com",
+    audience,
+  });
+}
+
+function normalizeAppleName(fullName = {}) {
+  const parts = [
+    fullName.givenName,
+    fullName.middleName,
+    fullName.familyName,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+
+  return parts.length ? parts.join(" ") : "";
+}
+
+async function verifyGoogleIdentityToken(idToken) {
+  if (!idToken || typeof idToken !== "string") {
+    throw new Error("Google ID token is required.");
+  }
+
+  const decoded = jwt.decode(idToken, { complete: true });
+  const keyId = decoded?.header?.kid;
+  if (!keyId) {
+    throw new Error("Google ID token is invalid.");
+  }
+
+  const response = await fetch("https://www.googleapis.com/oauth2/v3/certs");
+  if (!response.ok) {
+    throw new Error("Could not load Google sign-in keys.");
+  }
+
+  const data = await response.json();
+  const jwk = (data.keys || []).find((key) => key.kid === keyId);
+  if (!jwk) {
+    throw new Error("Google sign-in key was not found.");
+  }
+
+  const audience =
+    process.env.GOOGLE_WEB_CLIENT_ID ||
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  if (!audience) {
+    throw new Error("Google sign-in is not configured on the server.");
+  }
+
+  const payload = jwt.verify(
+    idToken,
+    crypto.createPublicKey({ key: jwk, format: "jwk" }),
+    {
+      algorithms: ["RS256"],
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+      audience,
+    }
+  );
+
+  if (!payload.email_verified) {
+    throw new Error("Google account email is not verified.");
+  }
+
+  return payload;
+}
+
 function validatePasswordStrength(password) {
   const value = String(password || "");
 
@@ -122,30 +216,214 @@ function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
 }
 
-function getVerifiedFacebookSignup(body = {}) {
-  if (!body.facebookConnectToken) {
-    return null;
-  }
+router.post("/apple", async (req, res) => {
+  try {
+    const { identityToken, fullName, acceptedAgeTerms } = req.body || {};
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error("JWT_SECRET is not set in environment variables");
-  }
+    if (acceptedAgeTerms !== true) {
+      return res.status(400).json({
+        message:
+          "You must confirm you are at least 18 years old to create a Summit Scene account.",
+      });
+    }
 
-  const payload = jwt.verify(body.facebookConnectToken, secret);
-  if (payload?.provider !== "facebook" || !payload.providerUserId) {
-    return null;
-  }
+    const appleProfile = await verifyAppleIdentityToken(identityToken);
+    const appleUserId = appleProfile.sub;
+    const email = String(appleProfile.email || "").trim().toLowerCase();
 
-  return {
-    provider: "facebook",
-    handle: payload.name,
-    providerUserId: payload.providerUserId,
-    verified: true,
-    connectedAt: new Date(),
-    profileImageUrl: payload.profileImageUrl || "",
-  };
-}
+    if (!appleUserId) {
+      return res.status(400).json({ message: "Apple account was not found." });
+    }
+
+    let user = await User.findOne({
+      "socialAccounts.provider": "apple",
+      "socialAccounts.providerUserId": appleUserId,
+    });
+
+    if (!user && email) {
+      user = await User.findOne({ email });
+    }
+
+    if (!user) {
+      if (!email) {
+        return res.status(400).json({
+          message:
+            "Apple did not share an email address. Please use email signup.",
+        });
+      }
+
+      const fallbackPassword = crypto.randomBytes(32).toString("hex");
+      const passwordHash = await bcrypt.hash(fallbackPassword, 10);
+      const displayName =
+        normalizeAppleName(fullName) ||
+        email.split("@")[0] ||
+        "Summit Scene member";
+
+      user = await User.create({
+        email,
+        passwordHash,
+        name: normalizePublicName(displayName),
+        role: "local",
+        emailVerified: Boolean(appleProfile.email_verified),
+        socialAccounts: [
+          {
+            provider: "apple",
+            providerUserId: appleUserId,
+            handle: email,
+            verified: true,
+            connectedAt: new Date(),
+          },
+        ],
+      });
+    } else {
+      const accounts = Array.isArray(user.socialAccounts)
+        ? user.socialAccounts
+        : [];
+      const appleAccountIndex = accounts.findIndex(
+        (account) => account.provider === "apple"
+      );
+      const appleAccount = {
+        provider: "apple",
+        providerUserId: appleUserId,
+        handle: email || user.email,
+        verified: true,
+        connectedAt:
+          appleAccountIndex >= 0
+            ? accounts[appleAccountIndex].connectedAt || new Date()
+            : new Date(),
+      };
+
+      if (appleAccountIndex >= 0) {
+        accounts[appleAccountIndex] = {
+          ...accounts[appleAccountIndex],
+          ...appleAccount,
+        };
+      } else {
+        accounts.push(appleAccount);
+      }
+
+      user.socialAccounts = accounts;
+      if (appleProfile.email_verified) {
+        user.emailVerified = true;
+      }
+      await user.save();
+    }
+
+    return res.json({
+      token: createToken(user),
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error in POST /api/auth/apple:", error);
+    return res.status(401).json({
+      message: error.message || "Could not sign in with Apple.",
+    });
+  }
+});
+
+router.post("/google", async (req, res) => {
+  try {
+    const { idToken, acceptedAgeTerms } = req.body || {};
+
+    if (acceptedAgeTerms !== true) {
+      return res.status(400).json({
+        message:
+          "You must confirm you are at least 18 years old to create a Summit Scene account.",
+      });
+    }
+
+    const googleProfile = await verifyGoogleIdentityToken(idToken);
+    const googleUserId = googleProfile.sub;
+    const email = String(googleProfile.email || "").trim().toLowerCase();
+
+    if (!googleUserId || !email) {
+      return res.status(400).json({ message: "Google account was not found." });
+    }
+
+    let user = await User.findOne({
+      "socialAccounts.provider": "google",
+      "socialAccounts.providerUserId": googleUserId,
+    });
+
+    if (!user) {
+      user = await User.findOne({ email });
+    }
+
+    if (!user) {
+      const fallbackPassword = crypto.randomBytes(32).toString("hex");
+      const passwordHash = await bcrypt.hash(fallbackPassword, 10);
+      const displayName =
+        normalizePublicName(googleProfile.name) ||
+        email.split("@")[0] ||
+        "Summit Scene member";
+
+      user = await User.create({
+        email,
+        passwordHash,
+        name: displayName,
+        role: "local",
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        profileImageUrl: googleProfile.picture || "",
+        socialAccounts: [
+          {
+            provider: "google",
+            providerUserId: googleUserId,
+            handle: email,
+            verified: true,
+            connectedAt: new Date(),
+            profileImageUrl: googleProfile.picture || "",
+          },
+        ],
+      });
+    } else {
+      const accounts = Array.isArray(user.socialAccounts)
+        ? user.socialAccounts
+        : [];
+      const googleAccountIndex = accounts.findIndex(
+        (account) => account.provider === "google"
+      );
+      const googleAccount = {
+        provider: "google",
+        providerUserId: googleUserId,
+        handle: email || user.email,
+        verified: true,
+        connectedAt:
+          googleAccountIndex >= 0
+            ? accounts[googleAccountIndex].connectedAt || new Date()
+            : new Date(),
+        profileImageUrl: googleProfile.picture || "",
+      };
+
+      if (googleAccountIndex >= 0) {
+        accounts[googleAccountIndex] = {
+          ...accounts[googleAccountIndex],
+          ...googleAccount,
+        };
+      } else {
+        accounts.push(googleAccount);
+      }
+
+      user.socialAccounts = accounts;
+      user.emailVerified = true;
+      user.emailVerifiedAt = user.emailVerifiedAt || new Date();
+      if (!user.profileImageUrl && googleProfile.picture) {
+        user.profileImageUrl = googleProfile.picture;
+      }
+      await user.save();
+    }
+
+    return res.json({
+      token: createToken(user),
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error in POST /api/auth/google:", error);
+    return res.status(401).json({
+      message: error.message || "Could not sign in with Google.",
+    });
+  }
+});
 
 router.get("/email-availability", async (req, res) => {
   try {
@@ -269,18 +547,14 @@ router.post("/register", async (req, res) => {
       finalRole === "business" ? "pending" : "none";
 
     const profileUpdates = buildProfileUpdates(req.body);
-    const verifiedFacebook = getVerifiedFacebookSignup(req.body);
-
-    if (verifiedFacebook) {
-      profileUpdates.profileImageUrl =
-        verifiedFacebook.profileImageUrl || profileUpdates.profileImageUrl;
-      profileUpdates.avatarKey = null;
-      profileUpdates.socialAccounts = [
-        ...(profileUpdates.socialAccounts || []).filter(
-          (account) => account.provider !== "facebook"
-        ),
-        verifiedFacebook,
-      ];
+    const moderationIssue = findContentModerationIssue({
+      name: normalizedName,
+      bio: profileUpdates.bio,
+      lookingFor: profileUpdates.lookingFor,
+      originallyFrom: profileUpdates.originallyFrom,
+    });
+    if (moderationIssue) {
+      return res.status(400).json({ message: moderationIssue.message });
     }
 
     // Create user document in MongoDB
@@ -655,3 +929,4 @@ router.get("/me", authMiddleware, async (req, res) => {
 });
 
 export default router;
+

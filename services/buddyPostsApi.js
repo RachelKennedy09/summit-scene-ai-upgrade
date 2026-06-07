@@ -190,6 +190,71 @@ export async function createBuddyPostReply(postId, text, token) {
   }
 }
 
+export async function createBuddyPostReplyResponse(postId, replyId, text, token) {
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/buddy-posts/${postId}/replies/${replyId}/replies`,
+      {
+        method: "POST",
+        headers: buildHeaders(token),
+        body: JSON.stringify({ text }),
+      }
+    );
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error || data.message || `Failed to add reply (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeBuddyPostError(
+      error,
+      "Reply request timed out. Check the backend and try again."
+    );
+    console.warn("createBuddyPostReplyResponse issue:", normalizedError.message);
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't add your reply right now. Please try again."
+    );
+  }
+}
+
+export async function toggleBuddyPostReplyLike(postId, replyId, token) {
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/buddy-posts/${postId}/replies/${replyId}/likes`,
+      {
+        method: "POST",
+        headers: buildHeaders(token),
+      }
+    );
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error || data.message || `Failed to update comment like (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeBuddyPostError(
+      error,
+      "Comment like request timed out. Check the backend and try again."
+    );
+    console.warn("toggleBuddyPostReplyLike issue:", normalizedError.message);
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't update that comment like right now. Please try again."
+    );
+  }
+}
+
 export async function updateBuddyPostReply(postId, replyId, text, token) {
   try {
     const res = await fetchWithTimeout(

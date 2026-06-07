@@ -11,6 +11,7 @@
     "seed:community": "node scripts/seedCommunityTestPosts.js",
     "seed:events": "node scripts/seedBusinessEvents.js",
     "seed:event-attendees": "node scripts/seedEventAttendeesDemo.js",
+    "create:app-review-accounts": "node scripts/createAppReviewDemoAccounts.js",
     "reset:demo-data": "npm run seed:events && npm run seed:community && npm run seed:event-attendees",
     "cleanup:test-attendees": "node scripts/cleanupTestAttendees.js",
     "cleanup:generated-tests": "node scripts/cleanupGeneratedTestData.js",
