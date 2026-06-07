@@ -17,6 +17,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  InteractionManager,
   Modal,
   Pressable,
   ScrollView,
@@ -358,6 +359,8 @@ export default function MapScreen({ route }) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const mapRef = useRef(null);
+  const scrollRef = useRef(null);
+  const mapStageYRef = useRef(0);
   const lastFocusedEventIdRef = useRef("");
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -388,12 +391,30 @@ export default function MapScreen({ route }) {
   const [error, setError] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   const [selectedEventGroup, setSelectedEventGroup] = useState(null);
+  const [mapStageY, setMapStageY] = useState(0);
   const focusEventId =
     route?.params?.focusEventId ||
     route?.params?.eventId ||
     getEventIdValue(route?.params?.event);
   const focusEvent = route?.params?.event || null;
   const focusRequestedAt = route?.params?.focusRequestedAt || "";
+
+  const scrollToMapStage = useCallback(() => {
+    const scroll = () => {
+      const y = Math.max(0, mapStageYRef.current - 8);
+
+      scrollRef.current?.scrollTo({
+        y,
+        animated: true,
+      });
+    };
+
+    requestAnimationFrame(scroll);
+    setTimeout(scroll, 150);
+    setTimeout(scroll, 400);
+    setTimeout(scroll, 800);
+    InteractionManager.runAfterInteractions(scroll);
+  }, []);
 
   // Fetch events (same helper as Hub, with sorting, for consistency)
   const loadEvents = useCallback(async () => {
@@ -502,6 +523,15 @@ export default function MapScreen({ route }) {
     useCallback(() => {
       loadEvents();
     }, [loadEvents])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusEventId) return undefined;
+
+      scrollToMapStage();
+      return undefined;
+    }, [focusEventId, focusRequestedAt, scrollToMapStage])
   );
 
   // Filter events for map markers (same logic as Hub date filters)
@@ -700,6 +730,8 @@ export default function MapScreen({ route }) {
   useEffect(() => {
     if (!focusEventId) return;
 
+    scrollToMapStage();
+
     if (focusEvent?.town) {
       setSelectedTown(focusEvent.town);
     }
@@ -712,7 +744,13 @@ export default function MapScreen({ route }) {
     setSelectedEventGroup(null);
     setShouldSpreadMapMarkers(true);
     lastFocusedEventIdRef.current = "";
-  }, [focusEventId, focusEvent?.town, focusRequestedAt]);
+  }, [focusEventId, focusEvent?.town, focusRequestedAt, scrollToMapStage]);
+
+  useEffect(() => {
+    if (!focusEventId || !mapStageY) return;
+
+    scrollToMapStage();
+  }, [focusEventId, focusRequestedAt, mapStageY, scrollToMapStage]);
 
   useEffect(() => {
     if (!focusEventId || loading || error || !mapRef.current) return;
@@ -737,8 +775,16 @@ export default function MapScreen({ route }) {
       },
       500
     );
+    scrollToMapStage();
     setMapActionMessage("Showing this event on the Summit Scene map.");
-  }, [focusEventId, focusRequestedAt, loading, error, markersForVisibleZoom]);
+  }, [
+    focusEventId,
+    focusRequestedAt,
+    loading,
+    error,
+    markersForVisibleZoom,
+    scrollToMapStage,
+  ]);
 
   function handleMapRegionChangeComplete(nextRegion) {
     setMapRegion(nextRegion);
@@ -937,6 +983,7 @@ export default function MapScreen({ route }) {
     >
       <AppLogoHeader />
       <ScrollView
+        ref={scrollRef}
         style={[
           styles.container,
           { paddingBottom: Math.max(24, insets.bottom + 12) },
@@ -1017,7 +1064,14 @@ export default function MapScreen({ route }) {
         ) : null}
 
         {/* Map area */}
-        <View style={styles.mapStage}>
+        <View
+          style={styles.mapStage}
+          onLayout={(layoutEvent) => {
+            const nextMapStageY = layoutEvent.nativeEvent.layout.y;
+            mapStageYRef.current = nextMapStageY;
+            setMapStageY(nextMapStageY);
+          }}
+        >
           <View
             style={[
               styles.mapContainer,

@@ -124,6 +124,8 @@ const postSeeds = [
     communityType: "local-plan",
     activityText:
       "Hiking Tunnel Mountain tomorrow morning.\nLooking for 1-2 people to join at a casual pace.",
+    categoryTags: ["Hiking"],
+    vibeTags: ["Beginner-friendly", "Relaxed pace", "Outdoor"],
     date: dateString(1),
     time: "9:00 AM",
     town: "Banff",
@@ -139,6 +141,8 @@ const postSeeds = [
     communityType: "local-plan",
     activityText:
       "Karaoke at High Rollers tonight.\nWould be great to meet a few people before heading over.",
+    categoryTags: ["Karaoke"],
+    vibeTags: ["Meet new people", "Social", "Indoor"],
     date: dateString(0),
     time: "8:30 PM",
     town: "Banff",
@@ -153,6 +157,9 @@ const postSeeds = [
     communityType: "local-plan",
     activityText:
       "Lake Louise blue runs this Saturday.\nLooking for experienced but relaxed ski or snowboard buddies.",
+    categories: ["Outdoors & Sports", "Inclusive Community"],
+    categoryTags: ["Skiing", "Snowboarding"],
+    vibeTags: ["Outdoor", "Social", "Weather-dependent"],
     date: dateString(5),
     time: "10:00 AM",
     town: "Lake Louise",
@@ -181,6 +188,8 @@ const postSeeds = [
     communityType: "local-plan",
     activityText:
       "Easy Sunday river walk in Canmore.\nBeginner-friendly and mostly just a chance to chat.",
+    categoryTags: ["Walking Groups"],
+    vibeTags: ["Beginner-friendly", "Low-impact", "Relaxed pace"],
     date: dateString(6),
     time: "11:00 AM",
     town: "Canmore",
@@ -195,6 +204,9 @@ const postSeeds = [
     communityType: "new-in-town",
     activityText:
       "New to Banff this week.\nI like hikes, coffee, karaoke, and welcoming LGBTQ+ friendly meetups.",
+    categories: ["Inclusive Community", "Outdoors & Sports"],
+    categoryTags: ["New in Town", "LGBTQ+ Meetups", "Coffee Meetups"],
+    vibeTags: ["Newcomer-friendly", "LGBTQ+ friendly", "Meet new people"],
     date: dateString(0),
     time: "6:00 PM",
     town: "Banff",
@@ -221,6 +233,8 @@ const postSeeds = [
     communityType: "group",
     activityText:
       "Starting a monthly cozy book club in Canmore.\nFirst meetup will be low pressure, tea-friendly, and beginner-friendly.",
+    categoryTags: ["Book Clubs"],
+    vibeTags: ["Quiet", "Solo-friendly", "Low-cost"],
     date: dateString(9),
     time: "7:00 PM",
     town: "Canmore",
@@ -240,6 +254,8 @@ const postSeeds = [
     communityType: "group",
     activityText:
       "Trivia team needs two more people.\nNo need to be a trivia genius, just show up and have fun.",
+    categoryTags: ["Pub Nights"],
+    vibeTags: ["Drop-in", "Good for groups", "Social"],
     date: dateString(3),
     time: "7:30 PM",
     town: "Canmore",
@@ -273,6 +289,8 @@ const postSeeds = [
     communityType: "group",
     activityText:
       "Casual sketch night for people who miss making art.\nBring a notebook, no experience needed.",
+    categoryTags: ["Art Shows", "Creative Workshops"],
+    vibeTags: ["Creative", "No experience needed", "Indoor"],
     date: dateString(8),
     time: "6:30 PM",
     town: "Canmore",
@@ -344,6 +362,8 @@ const postSeeds = [
     communityType: "notice",
     activityText:
       "Found a black toque near the Lake Louise staff bus stop.\nReply with the logo on the front and I can get it back to you.",
+    categoryTags: ["Lost & Found"],
+    vibeTags: ["Free", "Meet new people"],
     date: dateString(0),
     time: "4:30 PM",
     town: "Lake Louise",
@@ -440,6 +460,15 @@ async function addSocialSignals(posts, usersByName) {
       text: "I am free tomorrow morning and happy with a casual pace.",
       createdBy: usersByName.get("Samir Patel")._id,
       createdAt: hoursAgo(1),
+      likes: [usersByName.get("Maya Chen")._id],
+      replies: [
+        {
+          text: "Perfect. I will message you the trailhead spot.",
+          createdBy: usersByName.get("Maya Chen")._id,
+          createdAt: hoursAgo(0.75),
+          likes: [usersByName.get("Samir Patel")._id],
+        },
+      ],
     });
     await tunnel.save();
   }
@@ -453,6 +482,15 @@ async function addSocialSignals(posts, usersByName) {
       text: "I would join. Meeting somewhere public first sounds good.",
       createdBy: usersByName.get("Maya Chen")._id,
       createdAt: hoursAgo(0.5),
+      likes: [usersByName.get("Noah Brooks")._id],
+      replies: [
+        {
+          text: "Good call. Lobby at 8:15?",
+          createdBy: usersByName.get("Noah Brooks")._id,
+          createdAt: hoursAgo(0.35),
+          likes: [usersByName.get("Theo Nguyen")._id],
+        },
+      ],
     });
     await karaoke.save();
   }
@@ -466,6 +504,15 @@ async function addSocialSignals(posts, usersByName) {
       text: "I am interested if the first book is not too intense.",
       createdBy: usersByName.get("Lucia Romero")._id,
       createdAt: hoursAgo(7),
+      likes: [usersByName.get("Avery Morgan")._id, usersByName.get("Theo Nguyen")._id],
+      replies: [
+        {
+          text: "Starting with short stories, so it should be easy to drop in.",
+          createdBy: usersByName.get("Avery Morgan")._id,
+          createdAt: hoursAgo(6),
+          likes: [usersByName.get("Lucia Romero")._id],
+        },
+      ],
     });
     await bookClub.save();
   }
