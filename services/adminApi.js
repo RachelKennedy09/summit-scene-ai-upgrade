@@ -100,3 +100,63 @@ export async function updateBusinessRequest(userId, status, token) {
     );
   }
 }
+
+export async function fetchAdminAccounts(token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/users/admin/admins`, {
+      headers: buildHeaders(token),
+    });
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          data.message ||
+          `Failed to load admin accounts (${res.status})`
+      );
+    }
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    const normalized =
+      error?.name === "AbortError"
+        ? new Error("Admin accounts request timed out. Please try again.")
+        : error;
+
+    throw toUserFriendlyError(
+      normalized,
+      "We couldn't load admin accounts right now. Please try again."
+    );
+  }
+}
+
+export async function updateAdminAccount(email, isAdmin, token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/users/admin/admins`, {
+      method: "PATCH",
+      headers: buildHeaders(token),
+      body: JSON.stringify({ email, isAdmin }),
+    });
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          data.message ||
+          `Failed to update admin account (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalized =
+      error?.name === "AbortError"
+        ? new Error("Admin account update timed out. Please try again.")
+        : error;
+
+    throw toUserFriendlyError(
+      normalized,
+      "We couldn't update admin access right now. Please try again."
+    );
+  }
+}

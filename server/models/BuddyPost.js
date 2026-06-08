@@ -20,6 +20,7 @@ export const BUDDY_POST_TYPES = [
   "skiing",
   "snowboarding",
   "discgolf",
+  "sports",
   "walking",
   "bookclub",
   "art",

@@ -33,6 +33,7 @@ import {
   getEventCategoryFilterOptions,
 } from "../../constants/eventCategories.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
+import { isAdminEmail } from "../utils/adminAccess.js";
 
 const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
@@ -49,16 +50,8 @@ const VALID_WEEKDAYS = [
   "Saturday",
 ];
 
-function isAdminEmail(email) {
-  const adminEmails = String(process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-
-  return Boolean(email) && adminEmails.includes(String(email).toLowerCase());
-}
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
+  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
 
 function getUserId(value) {
   if (!value) return "";
@@ -486,7 +479,7 @@ export async function getAllEvents(req, res) {
       .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     const filteredEvents =
@@ -571,6 +564,7 @@ export async function createEvent(req, res) {
     }
 
     const canHostOfficialEvents =
+      hostUser.isAdmin ||
       isAdminEmail(req.user?.email) ||
       isAdminEmail(hostUser.email) ||
       (hostUser.role === "business" &&
@@ -1151,7 +1145,7 @@ export async function getMyEvents(req, res) {
       .sort({ date: 1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     return res.json(events);
@@ -1163,6 +1157,4 @@ export async function getMyEvents(req, res) {
     });
   }
 }
-
-
 

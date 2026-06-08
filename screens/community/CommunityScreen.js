@@ -104,6 +104,7 @@ const COMMUNITY_SECTIONS = [
   },
 ];
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
+const SECTION_FILTER_OPTIONS = COMMUNITY_SECTIONS.map((section) => section.label);
 
 function getSection(value) {
   return (
@@ -172,6 +173,7 @@ export default function CommunityScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [sectionPickerVisible, setSectionPickerVisible] = useState(false);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -432,21 +434,29 @@ export default function CommunityScreen({ navigation }) {
         <Text style={[styles.sectionNavLabel, { color: theme.textMuted }]}>
           Choose what you want to browse
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sectionTabs}
+        <Pressable
+          style={({ pressed }) => [
+            styles.sectionSelect,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setSectionPickerVisible(true)}
         >
-          {COMMUNITY_SECTIONS.map((section) => (
-            <FilterPill
-              key={section.value}
-              label={section.label}
-              active={communityType === section.value}
-              onPress={() => setCommunityType(section.value)}
-              theme={theme}
-            />
-          ))}
-        </ScrollView>
+          <View style={styles.sectionSelectCopy}>
+            <Text style={[styles.sectionSelectText, { color: theme.text }]}>
+              {activeSection.label}
+            </Text>
+            <Text style={[styles.sectionSelectHint, { color: theme.textMuted }]}>
+              {activeSection.subtitle}
+            </Text>
+          </View>
+          <Text style={[styles.sectionSelectChevron, { color: theme.accent }]}>
+            +
+          </Text>
+        </Pressable>
 
         <View
           style={[
@@ -748,6 +758,23 @@ export default function CommunityScreen({ navigation }) {
       />
 
       <SelectModal
+        visible={sectionPickerVisible}
+        title="Choose what to browse"
+        options={SECTION_FILTER_OPTIONS}
+        selectedValue={activeSection.label}
+        onSelect={(nextLabel) => {
+          const nextSection = COMMUNITY_SECTIONS.find(
+            (section) => section.label === nextLabel
+          );
+          if (nextSection) {
+            setCommunityType(nextSection.value);
+          }
+          setSectionPickerVisible(false);
+        }}
+        onClose={() => setSectionPickerVisible(false)}
+      />
+
+      <SelectModal
         visible={languagePickerVisible}
         title="Filter by language"
         options={LANGUAGE_OPTIONS}
@@ -803,16 +830,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  sectionTabs: {
-    gap: 8,
-    paddingRight: 16,
-    paddingBottom: 14,
-  },
   sectionNavLabel: {
     fontSize: 12,
     fontWeight: "800",
     marginBottom: 8,
     textTransform: "uppercase",
+  },
+  sectionSelect: {
+    minHeight: 58,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sectionSelectCopy: {
+    flex: 1,
+  },
+  sectionSelectText: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  sectionSelectHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  sectionSelectChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontSize: 20,
+    fontWeight: "800",
   },
   sectionLabel: {
     fontSize: 15,

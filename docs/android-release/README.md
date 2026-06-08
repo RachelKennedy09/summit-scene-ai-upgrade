@@ -1,6 +1,6 @@
 # Summit Scene Android Release Notes
 
-Last updated: May 26, 2026
+Last updated: June 8, 2026
 
 ## App Information
 
@@ -47,7 +47,12 @@ Demo credentials:
 
 - Local member: `apple-review-local@summitscene.ca`
 - Organizer: `apple-review-organizer@summitscene.ca`
-- Password for both: `SummitApple2026!`
+- App Review organizer: `reviewer@summitscene.ca`
+- Password for all demo accounts: `SummitApple2026!`
+
+The App Review organizer account can browse populated event/community content, use community features, and create/edit/delete its own event listings. It does not have admin controls.
+
+No special equipment is required. The app can be reviewed on a standard Android device with internet access. Location sharing is optional; reviewers can browse by town without granting location permission.
 
 Account deletion:
 

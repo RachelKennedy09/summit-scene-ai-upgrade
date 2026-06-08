@@ -4,6 +4,7 @@ import {
   SOCIAL_PROVIDERS,
   USER_TYPES,
 } from "../models/User.js";
+import { isAdminEmail } from "./adminAccess.js";
 
 const ARRAY_ITEM_MAX_LENGTH = 40;
 const ARRAY_MAX_ITEMS = 20;
@@ -81,13 +82,8 @@ function normalizeSocialAccounts(value) {
     .filter(Boolean);
 }
 
-function isAdminEmail(email) {
-  const adminEmails = String(process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-
-  return Boolean(email) && adminEmails.includes(String(email).toLowerCase());
+export function isAdminUser(user) {
+  return Boolean(user?.isAdmin) || isAdminEmail(user?.email);
 }
 
 export function buildSafeUser(user) {
@@ -99,7 +95,7 @@ export function buildSafeUser(user) {
     pendingEmail: user.pendingEmail,
     name: user.name,
     role: user.role || "local",
-    isAdmin: isAdminEmail(user.email),
+    isAdmin: isAdminUser(user),
     businessVerificationStatus: user.businessVerificationStatus || "none",
     businessVerificationRequestedAt: user.businessVerificationRequestedAt,
     businessVerifiedAt: user.businessVerifiedAt,
@@ -112,6 +108,7 @@ export function buildSafeUser(user) {
     languages: user.languages || [],
     originallyFrom: user.originallyFrom,
     interests: user.interests || [],
+    businessVibeTags: user.businessVibeTags || [],
     skillLevel: user.skillLevel || {},
     bio: user.bio,
     lookingFor: user.lookingFor,
@@ -164,6 +161,11 @@ export function buildProfileUpdates(body = {}) {
   if (Object.prototype.hasOwnProperty.call(body, "interests")) {
     const interests = normalizeStringArray(body.interests);
     if (interests) updates.interests = interests;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "businessVibeTags")) {
+    const businessVibeTags = normalizeStringArray(body.businessVibeTags);
+    if (businessVibeTags) updates.businessVibeTags = businessVibeTags;
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "skillLevel")) {

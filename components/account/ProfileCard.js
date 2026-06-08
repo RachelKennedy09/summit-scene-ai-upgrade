@@ -96,6 +96,9 @@ export default function ProfileCard({
   const town = user?.town || "";
   const originallyFrom = user?.originallyFrom || "";
   const interests = Array.isArray(user?.interests) ? user.interests : [];
+  const businessVibeTags = Array.isArray(user?.businessVibeTags)
+    ? user.businessVibeTags
+    : [];
   const languages = Array.isArray(user?.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user?.socialAccounts)
     ? user.socialAccounts
@@ -182,7 +185,7 @@ export default function ProfileCard({
       </Section>
 
       {interests.length ? (
-        <Section label="Interests" theme={theme}>
+        <Section label={isBusiness ? "Business tags" : "Interests"} theme={theme}>
           {hasManyInterests ? (
             <Pressable
               style={styles.sectionToggleRow}
@@ -213,6 +216,16 @@ export default function ProfileCard({
                 </Text>
               </Pressable>
             ) : null}
+          </View>
+        </Section>
+      ) : null}
+
+      {isBusiness && businessVibeTags.length ? (
+        <Section label="Business vibe" theme={theme}>
+          <View style={styles.chipRow}>
+            {businessVibeTags.map((tag) => (
+              <Chip key={tag} label={tag} theme={theme} />
+            ))}
           </View>
         </Section>
       ) : null}

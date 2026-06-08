@@ -34,6 +34,7 @@ function getAuthor(post) {
     userType: user.userType,
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
+    businessVibeTags: user.businessVibeTags || [],
     languages: user.languages || [],
     skillLevel: user.skillLevel || {},
     socialAccounts: user.socialAccounts || [],
@@ -52,6 +53,7 @@ function getUserProfile(user, fallbackName = "Member") {
       name: fallbackName,
       role: "local",
       interests: [],
+      businessVibeTags: [],
       languages: [],
       skillLevel: {},
       socialAccounts: [],
@@ -69,6 +71,7 @@ function getUserProfile(user, fallbackName = "Member") {
     userType: user.userType,
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
+    businessVibeTags: user.businessVibeTags || [],
     languages: user.languages || [],
     skillLevel: user.skillLevel || {},
     socialAccounts: user.socialAccounts || [],
@@ -323,6 +326,7 @@ export default function BuddyPostCard({
   const [replyText, setReplyText] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
   const [showAllInterested, setShowAllInterested] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState("");
   const [editingReplyText, setEditingReplyText] = useState("");
@@ -369,6 +373,7 @@ export default function BuddyPostCard({
   const vibeTags = Array.isArray(post.vibeTags) ? post.vibeTags : [];
   const combinedTags = [...vibeTags, ...categoryTags];
   const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
+  const displayTags = showAllTags ? combinedTags : visibleTags;
   const commentCount = getReplyThreadCount(replies);
   const commentsLabel = `${commentCount} comment${commentCount === 1 ? "" : "s"}`;
   const isNewInTown = post.communityType === "new-in-town";
@@ -571,17 +576,26 @@ export default function BuddyPostCard({
         </View>
       ) : null}
 
-      {visibleTags.length ? (
+      {displayTags.length ? (
         <View style={styles.vibeRow}>
-          {visibleTags.map((tag) => (
+          {displayTags.map((tag) => (
             <Chip key={tag} theme={theme}>
               {tag}
             </Chip>
           ))}
           {hiddenCount ? (
-            <Text style={[styles.moreTagsText, { color: theme.textMuted }]}>
-              +{hiddenCount}
-            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.moreTagsButton,
+                { borderColor: theme.accent, backgroundColor: theme.card },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setShowAllTags((current) => !current)}
+            >
+              <Text style={[styles.moreTagsText, { color: theme.accent }]}>
+                {showAllTags ? "Show less" : `+${hiddenCount} more`}
+              </Text>
+            </Pressable>
           ) : null}
         </View>
       ) : null}
@@ -1019,7 +1033,12 @@ export default function BuddyPostCard({
                   )}
                 </View>
                 {childReplies.length ? (
-                  <View style={styles.replyResponsesList}>
+                  <View
+                    style={[
+                      styles.replyResponsesList,
+                      { borderLeftColor: theme.accent },
+                    ]}
+                  >
                     {childReplies.map((childReply) => {
                       const childAuthor =
                         childReply.createdBy && typeof childReply.createdBy === "object"
@@ -1042,6 +1061,14 @@ export default function BuddyPostCard({
                             },
                           ]}
                         >
+                          <Text
+                            style={[
+                              styles.replyResponseContext,
+                              { color: theme.textMuted },
+                            ]}
+                          >
+                            Replying to {replyName}
+                          </Text>
                           <Text style={[styles.replyMeta, { color: theme.textMuted }]}>
                             {childName}
                             {childReply.createdAt
@@ -1057,7 +1084,20 @@ export default function BuddyPostCard({
                   </View>
                 ) : null}
                 {isReplyingToThis ? (
-                  <View style={styles.replyResponseComposer}>
+                  <View
+                    style={[
+                      styles.replyResponseComposer,
+                      { borderLeftColor: theme.accent },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.replyResponseContext,
+                        { color: theme.textMuted },
+                      ]}
+                    >
+                      Replying to {replyName}
+                    </Text>
                     <TextInput
                       style={[
                         styles.replyEditInput,
@@ -1287,10 +1327,15 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 12,
   },
+  moreTagsButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   moreTagsText: {
     fontSize: 12,
-    fontWeight: "700",
-    alignSelf: "center",
+    fontWeight: "800",
   },
   footerRow: {
     marginTop: 14,
@@ -1456,18 +1501,27 @@ const styles = StyleSheet.create({
   replyResponsesList: {
     gap: 6,
     marginTop: 8,
+    marginLeft: 10,
     paddingLeft: 12,
+    borderLeftWidth: 2,
   },
   replyResponseBubble: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
+  },
+  replyResponseContext: {
+    fontSize: 11,
+    fontWeight: "800",
+    marginBottom: 4,
   },
   replyResponseComposer: {
     gap: 8,
     marginTop: 8,
+    marginLeft: 10,
     paddingLeft: 12,
+    borderLeftWidth: 2,
   },
   replyMiniButton: {
     borderWidth: 1,

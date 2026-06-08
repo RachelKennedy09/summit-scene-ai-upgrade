@@ -133,7 +133,6 @@ export default function UserHelpScreen() {
             items={[
               "Edit Profile lets you update your public name, town, languages, interests, photo, bio, and social links.",
               "Saved Events and I'm Going help you keep track of upcoming plans you care about.",
-              "Email verification protects your account and lets password resets go to the correct email address.",
               "Business accounts can manage business profile details, verification, and posted events from Account.",
               "Help & FAQ, Safety, Privacy, Terms, and Community Guidelines are available from Account so public rules are easy to find.",
               "Report a Bug is for app issues. Contact Summit Scene is for support questions or account help.",
@@ -151,11 +150,6 @@ export default function UserHelpScreen() {
         </HelpSection>
 
         <HelpSection title="FAQ" theme={theme}>
-          <Question
-            theme={theme}
-            question="Why do I need to verify my email?"
-            answer="Email verification helps protect accounts and keeps password resets, login changes, and safety messages connected to the right person."
-          />
           <Question
             theme={theme}
             question="Why does the map sometimes show fewer events?"

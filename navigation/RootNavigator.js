@@ -34,6 +34,7 @@ import EditProfileScreen from "../screens/account/EditProfileScreen";
 import ChangeEmailScreen from "../screens/account/ChangeEmailScreen";
 import ChangePasswordScreen from "../screens/account/ChangePasswordScreen";
 import BlockedUsersScreen from "../screens/account/BlockedUsersScreen";
+import AdminAccountsScreen from "../screens/account/AdminAccountsScreen";
 import BusinessHelpScreen from "../screens/account/BusinessHelpScreen";
 import BusinessVerificationScreen from "../screens/account/BusinessVerificationScreen";
 import LegalScreen from "../screens/account/LegalScreen";
@@ -212,6 +213,11 @@ export default function RootNavigator() {
               name="BlockedUsers"
               component={BlockedUsersScreen}
               options={{ title: "Blocked Users" }}
+            />
+            <Stack.Screen
+              name="AdminAccounts"
+              component={AdminAccountsScreen}
+              options={{ title: "Admin Accounts" }}
             />
             <Stack.Screen
               name="SavedEvents"

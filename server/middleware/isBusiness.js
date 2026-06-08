@@ -4,13 +4,7 @@
 //  - Protects official event routes like POST/PUT/DELETE /api/events
 
 import User from "../models/User.js";
-
-function getAdminEmails() {
-  return String(process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
+import { getAdminEmails } from "../utils/adminAccess.js";
 
 export default async function isBusiness(req, res, next) {
   const user = req.user;
@@ -23,7 +17,7 @@ export default async function isBusiness(req, res, next) {
 
   try {
     const fullUser = await User.findById(user.userId).select(
-      "email role businessVerificationStatus"
+      "email isAdmin role businessVerificationStatus"
     );
 
     if (!fullUser) {
@@ -34,6 +28,7 @@ export default async function isBusiness(req, res, next) {
     const tokenEmail = user.email?.toLowerCase();
     const dbEmail = fullUser.email?.toLowerCase();
     if (
+      fullUser.isAdmin ||
       (tokenEmail && adminEmails.includes(tokenEmail)) ||
       (dbEmail && adminEmails.includes(dbEmail))
     ) {

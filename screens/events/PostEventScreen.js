@@ -48,7 +48,6 @@ const API_BASE_URL =
 const AI_REQUEST_TIMEOUT_MS = 15000;
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
-const FORM_CATEGORIES = EVENT_MAIN_CATEGORIES;
 const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const MAX_EVENT_CATEGORIES = 3;
 const SCHEDULE_TYPES = [
@@ -790,7 +789,7 @@ export default function PostEventScreen() {
 
           {/* Categories */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
-            Categories (Required)
+            Main categories (Required)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
             Choose up to 3 broad categories. Use tags below for specifics.
@@ -1593,12 +1592,10 @@ export default function PostEventScreen() {
       />
 
       {/* Category Select Modal (shared) */}
-      <SelectModal
+      <GroupedCategoryModal
         visible={showCategoryModal}
-        title="Select up to 3 main categories"
-        options={FORM_CATEGORIES}
-        optionGroups={FORM_CATEGORY_GROUPS}
-        selectedValue={category}
+        title="Choose main categories"
+        groups={FORM_CATEGORY_GROUPS}
         selectedValues={categories}
         onSelect={toggleCategory}
         onClose={() => setShowCategoryModal(false)}
@@ -1607,7 +1604,7 @@ export default function PostEventScreen() {
 
       <GroupedCategoryModal
         visible={showCategoryTagsModal}
-        title="Select category tags"
+        title="Choose category tags"
         groups={categoryTagGroups}
         selectedValues={categoryTags}
         onSelect={toggleCategoryTag}
@@ -1619,7 +1616,7 @@ export default function PostEventScreen() {
 
       <GroupedCategoryModal
         visible={showVibeTagsModal}
-        title="Select vibe tags"
+        title="Choose vibe tags"
         groups={VIBE_TAG_GROUPS}
         selectedValues={vibeTags}
         onSelect={toggleVibeTag}

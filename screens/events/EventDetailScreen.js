@@ -91,6 +91,10 @@ function getEventHost(event) {
   const socialAccounts = userObj.socialAccounts || [];
   const bio = userObj.bio || "";
   const businessType = userObj.lookingFor || "";
+  const businessTags = Array.isArray(userObj.interests) ? userObj.interests : [];
+  const businessVibeTags = Array.isArray(userObj.businessVibeTags)
+    ? userObj.businessVibeTags
+    : [];
   const businessVerificationStatus =
     userObj.businessVerificationStatus || "none";
 
@@ -107,6 +111,8 @@ function getEventHost(event) {
     socialAccounts,
     bio,
     businessType,
+    businessTags,
+    businessVibeTags,
     businessVerificationStatus,
     role: userObj.role,
     _id: userObj._id || userObj.id || "",
@@ -149,6 +155,7 @@ function getAttendeeProfile(value) {
     userType: value.userType,
     originallyFrom: value.originallyFrom || "",
     interests: value.interests || [],
+    businessVibeTags: value.businessVibeTags || [],
     languages: value.languages || [],
     skillLevel: value.skillLevel || {},
     socialAccounts: value.socialAccounts || [],

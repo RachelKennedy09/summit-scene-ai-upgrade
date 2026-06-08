@@ -22,7 +22,7 @@ import {
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
+  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
 const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
@@ -419,7 +419,6 @@ export async function getBuddyPosts(req, res) {
     });
   }
 }
-
 export async function createBuddyPost(req, res) {
   try {
     const userId = req.user?.userId;
@@ -500,7 +499,6 @@ export async function createBuddyPost(req, res) {
     });
   }
 }
-
 export async function getBuddyPostById(req, res) {
   try {
     const post = await populateBuddyPost(BuddyPost.findById(req.params.id));
@@ -786,4 +784,3 @@ export async function deleteBuddyPostReply(req, res) {
     });
   }
 }
-

@@ -88,7 +88,6 @@ function AccountScreen() {
     deleteAccount,
     isAuthLoading,
     revertToLocalProfile,
-    resendVerificationEmail,
   } = useAuth();
   const navigation = useNavigation();
 
@@ -237,24 +236,6 @@ function AccountScreen() {
     );
   }
 
-  async function handleResendVerificationEmail() {
-    try {
-      const data = await resendVerificationEmail();
-      Alert.alert(
-        "Verification email sent",
-        `${data.message}\n\nPlease check your junk or spam folder if you do not see it in your inbox.`
-      );
-      if (data.emailVerificationToken) {
-        navigation.navigate("VerifyEmail", { token: data.emailVerificationToken });
-      }
-    } catch (error) {
-      Alert.alert(
-        "Could not send verification",
-        error.message || "Please try again."
-      );
-    }
-  }
-
   // Format joined date nicely
   let joinedText = "Unknown";
   if (user.createdAt) {
@@ -294,68 +275,9 @@ function AccountScreen() {
 
         <AccountSection
           title="Login & Security"
-          subtitle="Manage your email verification and password."
+          subtitle="Manage your login email and password."
           theme={theme}
         >
-          <View
-            style={[
-              styles.statusCard,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <View style={styles.statusHeaderRow}>
-              <View style={styles.statusHeaderCopy}>
-                <Text style={[styles.statusTitle, { color: theme.text }]}>
-                  Email verification
-                </Text>
-                <Text style={[styles.statusText, { color: theme.textMuted }]}>
-                  {user.email}
-                  {user.pendingEmail ? `\nPending email: ${user.pendingEmail}` : ""}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.statusPill,
-                  {
-                    backgroundColor: user.emailVerified
-                      ? theme.accentSoft || theme.background
-                      : theme.background,
-                    borderColor: user.emailVerified ? theme.accent : theme.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusPillText,
-                    { color: user.emailVerified ? theme.accent : theme.textMuted },
-                  ]}
-                >
-                  {user.emailVerified ? "Verified" : "Not verified"}
-                </Text>
-              </View>
-            </View>
-            {!user.emailVerified ? (
-              <View style={styles.emailActionRow}>
-                <Pressable
-                  style={[styles.emailButton, { borderColor: theme.accent }]}
-                  onPress={() => navigation.navigate("VerifyEmail")}
-                >
-                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                    Enter verification token
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.emailButton, { borderColor: theme.accent }]}
-                  onPress={handleResendVerificationEmail}
-                >
-                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                    Resend verification email
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
-
           <AccountNavRow
             title="Change email"
             subtitle="Confirm a new email before changing your login."
@@ -494,6 +416,12 @@ function AccountScreen() {
                   ? `${adminCounts.pendingBusinesses} pending`
                   : "Clear"
               }
+            />
+            <AccountNavRow
+              title="Admin accounts"
+              subtitle="Grant or remove admin access for existing app accounts."
+              onPress={() => navigation.navigate("AdminAccounts")}
+              theme={theme}
             />
             <AccountNavRow
               title="Official event tools"

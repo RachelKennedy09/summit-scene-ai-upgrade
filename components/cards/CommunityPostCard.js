@@ -32,6 +32,7 @@ function getPostAuthor(post) {
   const userType = userObj?.userType || "";
   const originallyFrom = userObj?.originallyFrom || "";
   const interests = userObj?.interests || [];
+  const businessVibeTags = userObj?.businessVibeTags || [];
   const languages = userObj?.languages || [];
   const skillLevel = userObj?.skillLevel || {};
   const socialAccounts = userObj?.socialAccounts || [];
@@ -56,6 +57,7 @@ function getPostAuthor(post) {
     userType,
     originallyFrom,
     interests,
+    businessVibeTags,
     languages,
     skillLevel,
     socialAccounts,
@@ -105,13 +107,17 @@ export default function CommunityPostCard({
     userType,
     originallyFrom,
     interests,
+    businessVibeTags,
     languages,
     skillLevel,
     socialAccounts,
     lookingFor,
     instagram,
+    facebook,
     bio,
     website,
+    googleBusinessUrl,
+    phone,
   } = getPostAuthor(post);
 
   const createdDate = post.createdAt ? new Date(post.createdAt) : null;
@@ -305,6 +311,7 @@ export default function CommunityPostCard({
                   userType,
                   originallyFrom,
                   interests,
+                  businessVibeTags,
                   languages,
                   skillLevel,
                   socialAccounts,

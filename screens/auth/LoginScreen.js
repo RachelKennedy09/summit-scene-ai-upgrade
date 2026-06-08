@@ -37,8 +37,14 @@ function getGoogleSignInModule() {
 }
 
 function LoginScreen() {
-  const { login, signInWithApple, signInWithGoogle, isAuthLoading } =
-    useAuth(); // login() talks to backend, isAuthLoading = global auth state
+  const {
+    login,
+    signInWithApple,
+    signInWithGoogle,
+    isAuthLoading,
+    authNoticeMessage,
+    clearAuthNoticeMessage,
+  } = useAuth(); // login() talks to backend, isAuthLoading = global auth state
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -72,6 +78,7 @@ function LoginScreen() {
     }
 
     setErrorMessage("");
+    clearAuthNoticeMessage?.();
     setIsSubmitting(true);
 
     try {
@@ -89,6 +96,7 @@ function LoginScreen() {
   async function handleAppleSignIn() {
     try {
       setErrorMessage("");
+      clearAuthNoticeMessage?.();
       setIsSubmitting(true);
 
       const credential = await AppleAuthentication.signInAsync({
@@ -123,6 +131,7 @@ function LoginScreen() {
   async function handleGoogleSignIn() {
     try {
       setErrorMessage("");
+      clearAuthNoticeMessage?.();
       setIsSubmitting(true);
 
       if (!googleWebClientId) {
@@ -186,6 +195,22 @@ function LoginScreen() {
               Louise.
             </Text>
 
+            {authNoticeMessage ? (
+              <View
+                style={[
+                  styles.noticeBox,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.noticeText, { color: theme.text }]}>
+                  {authNoticeMessage}
+                </Text>
+              </View>
+            ) : null}
+
             {/* EMAIL FIELD */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: theme.text }]}>Email</Text>
@@ -203,6 +228,9 @@ function LoginScreen() {
                   setEmail(value);
                   if (errorMessage) {
                     setErrorMessage("");
+                  }
+                  if (authNoticeMessage) {
+                    clearAuthNoticeMessage?.();
                   }
                 }}
                 placeholder="you@example.com"
@@ -232,6 +260,9 @@ function LoginScreen() {
                   setPassword(value);
                   if (errorMessage) {
                     setErrorMessage("");
+                  }
+                  if (authNoticeMessage) {
+                    clearAuthNoticeMessage?.();
                   }
                 }}
                 placeholder="••••••••"
@@ -350,6 +381,19 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 16,
+  },
+  noticeBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+    textAlign: "center",
   },
   label: {
     marginBottom: 6,

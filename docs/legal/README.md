@@ -1,6 +1,6 @@
 # Summit Scene Legal Drafts
 
-Last updated: May 26, 2026
+Last updated: June 8, 2026
 
 These drafts are working product/legal copy for testing and launch preparation.
 They are not legal advice. Before publishing Summit Scene publicly, have a
@@ -18,7 +18,8 @@ privacy labels, and local compliance language.
 
 2. Terms of Use
    - Should cover account rules, acceptable use, user content, business account
-     authorization, moderation, disclaimers, and limits of responsibility.
+     authorization, minimum age, moderation, disclaimers, and limits of
+     responsibility.
 
 3. Community Guidelines
    - Should cover respectful use, safety, reporting/blocking, prohibited content,
@@ -40,7 +41,8 @@ Data collected may include:
 - Account information: name or business name, email, password hash, role, town,
   profile details, avatar, languages, interests, social links, public business
   phone number, website, Instagram, Facebook, Google Business listing, email
-  verification status, and business verification status.
+  verification status, business verification status, and 18+ account terms
+  confirmation.
 - Public content: event and tour posts, photos, categories, category tags, vibe
   tags, duration, price range, meeting location, booking links, community posts,
   buddy posts, replies, profile information, likes, interests, attendance
@@ -76,6 +78,7 @@ By using Summit Scene, users agree to use the app lawfully, respectfully, and
 honestly.
 
 - Users must provide accurate account information.
+- Users must confirm they are at least 18 years old to create an account.
 - Users must not impersonate another person, business, venue, organization, or
   event organizer.
 - Business and organizer accounts must only be created by people authorized to

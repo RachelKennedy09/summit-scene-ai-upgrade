@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, Pressable, Alert } from "react-native";
 import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
+import { getCategoryAccent } from "../../utils/categoryVisuals";
 
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 const USER_TYPE_OPTIONS = [
@@ -29,6 +30,9 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
         const isSelected = values
           ? values.includes(optionValue)
           : value === optionValue;
+        const optionAccent = values
+          ? getCategoryAccent(optionLabel, theme)
+          : null;
 
         return (
           <Pressable
@@ -37,9 +41,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
               styles.chip,
               {
                 backgroundColor: isSelected
-                  ? theme.accentSoft || theme.card
+                  ? optionAccent?.tint || theme.accentSoft || theme.card
                   : theme.card,
-                borderColor: isSelected ? theme.accent : theme.border,
+                borderColor: isSelected
+                  ? optionAccent?.border || theme.accent
+                  : theme.border,
               },
             ]}
             onPress={() =>
@@ -49,7 +55,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
             <Text
               style={[
                 styles.chipText,
-                { color: isSelected ? theme.accent : theme.textMuted },
+                {
+                  color: isSelected
+                    ? optionAccent?.text || theme.accent
+                    : theme.textMuted,
+                },
               ]}
             >
               {optionLabel}
@@ -89,6 +99,7 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
     <View style={styles.interestGroups}>
       {groups.map((group) => {
         const isOpen = openGroup === group.title;
+        const groupAccent = getCategoryAccent(group.title, theme);
         const selectedCount = group.options.filter((option) =>
           values.includes(option)
         ).length;
@@ -98,26 +109,45 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
             key={group.title}
             style={[
               styles.interestGroup,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedCount ? groupAccent.border : theme.border,
+              },
             ]}
           >
             <Pressable
-              style={styles.interestGroupHeader}
+              style={[
+                styles.interestGroupHeader,
+                { backgroundColor: groupAccent.tint },
+              ]}
               onPress={() => setOpenGroup(isOpen ? null : group.title)}
             >
               <View style={styles.interestGroupCopy}>
-                <Text style={[styles.interestGroupTitle, { color: theme.text }]}>
+                <Text
+                  style={[
+                    styles.interestGroupTitle,
+                    { color: groupAccent.text || theme.text },
+                  ]}
+                >
                   {group.title}
                 </Text>
                 <Text
-                  style={[styles.interestGroupMeta, { color: theme.textMuted }]}
+                  style={[
+                    styles.interestGroupMeta,
+                    { color: selectedCount ? groupAccent.text : theme.textMuted },
+                  ]}
                 >
                   {selectedCount
                     ? `${selectedCount} selected`
                     : "Tap to choose"}
                 </Text>
               </View>
-              <Text style={[styles.interestGroupChevron, { color: theme.accent }]}>
+              <Text
+                style={[
+                  styles.interestGroupChevron,
+                  { color: groupAccent.text || theme.accent },
+                ]}
+              >
                 {isOpen ? "-" : "+"}
               </Text>
             </Pressable>

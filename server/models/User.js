@@ -130,6 +130,14 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Persistent admin access managed from the app.
+    // ADMIN_EMAILS in .env is still supported as a bootstrap/fallback path.
+    isAdmin: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     // Business profiles must be approved before they can publish official events.
     businessVerificationStatus: {
       type: String,
@@ -174,6 +182,12 @@ const userSchema = new mongoose.Schema(
     },
 
     interests: {
+      type: [String],
+      default: [],
+    },
+
+    // Public vibe tags for business / organizer profiles.
+    businessVibeTags: {
       type: [String],
       default: [],
     },
@@ -314,6 +328,7 @@ userSchema.virtual("safeProfile").get(function () {
     emailVerified: Boolean(this.emailVerified),
     pendingEmail: this.pendingEmail,
     role: this.role,
+    isAdmin: Boolean(this.isAdmin),
     businessVerificationStatus: this.businessVerificationStatus || "none",
     hasSeenSafetyTips: Boolean(this.hasSeenSafetyTips),
     avatarKey: this.avatarKey,
@@ -323,6 +338,7 @@ userSchema.virtual("safeProfile").get(function () {
     languages: this.languages,
     originallyFrom: this.originallyFrom,
     interests: this.interests,
+    businessVibeTags: this.businessVibeTags,
     skillLevel: this.skillLevel,
     lookingFor: this.lookingFor,
     instagram: this.instagram,

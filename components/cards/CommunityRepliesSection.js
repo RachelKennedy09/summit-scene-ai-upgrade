@@ -106,6 +106,7 @@ export default function CommunityRepliesSection({
                   userType: replyUserObj.userType || "",
                   originallyFrom: replyUserObj.originallyFrom || "",
                   interests: replyUserObj.interests || [],
+                  businessVibeTags: replyUserObj.businessVibeTags || [],
                   languages: replyUserObj.languages || [],
                   skillLevel: replyUserObj.skillLevel || {},
                   socialAccounts: replyUserObj.socialAccounts || [],

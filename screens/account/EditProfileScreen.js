@@ -20,7 +20,11 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
-import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
+import {
+  PROFILE_INTEREST_GROUPS,
+  VIBE_TAG_GROUPS,
+} from "../../constants/eventCategories";
+import { getCategoryAccent } from "../../utils/categoryVisuals";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -31,6 +35,7 @@ const SOCIAL_PROVIDERS = [
 ];
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
+const MAX_BUSINESS_VIBE_TAGS = 5;
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
@@ -46,6 +51,9 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
         const isSelected = values
           ? values.includes(optionValue)
           : value === optionValue;
+        const optionAccent = values
+          ? getCategoryAccent(optionLabel, theme)
+          : null;
 
         return (
           <Pressable
@@ -54,9 +62,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
               styles.chip,
               {
                 backgroundColor: isSelected
-                  ? theme.accentSoft || theme.card
+                  ? optionAccent?.tint || theme.accentSoft || theme.card
                   : theme.card,
-                borderColor: isSelected ? theme.accent : theme.border,
+                borderColor: isSelected
+                  ? optionAccent?.border || theme.accent
+                  : theme.border,
               },
             ]}
             onPress={() =>
@@ -66,7 +76,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
             <Text
               style={[
                 styles.chipText,
-                { color: isSelected ? theme.accent : theme.textMuted },
+                {
+                  color: isSelected
+                    ? optionAccent?.text || theme.accent
+                    : theme.textMuted,
+                },
               ]}
             >
               {optionLabel}
@@ -85,6 +99,7 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
     <View style={styles.interestGroups}>
       {groups.map((group) => {
         const isOpen = openGroup === group.title;
+        const groupAccent = getCategoryAccent(group.title, theme);
         const selectedCount = group.options.filter((option) =>
           values.includes(option)
         ).length;
@@ -94,26 +109,45 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
             key={group.title}
             style={[
               styles.interestGroup,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedCount ? groupAccent.border : theme.border,
+              },
             ]}
           >
             <Pressable
-              style={styles.interestGroupHeader}
+              style={[
+                styles.interestGroupHeader,
+                { backgroundColor: groupAccent.tint },
+              ]}
               onPress={() => setOpenGroup(isOpen ? null : group.title)}
             >
               <View style={styles.interestGroupCopy}>
-                <Text style={[styles.interestGroupTitle, { color: theme.text }]}>
+                <Text
+                  style={[
+                    styles.interestGroupTitle,
+                    { color: groupAccent.text || theme.text },
+                  ]}
+                >
                   {group.title}
                 </Text>
                 <Text
-                  style={[styles.interestGroupMeta, { color: theme.textMuted }]}
+                  style={[
+                    styles.interestGroupMeta,
+                    { color: selectedCount ? groupAccent.text : theme.textMuted },
+                  ]}
                 >
                   {selectedCount
                     ? `${selectedCount} selected`
                     : "Tap to choose"}
                 </Text>
               </View>
-              <Text style={[styles.interestGroupChevron, { color: theme.accent }]}>
+              <Text
+                style={[
+                  styles.interestGroupChevron,
+                  { color: groupAccent.text || theme.accent },
+                ]}
+              >
                 {isOpen ? "-" : "+"}
               </Text>
             </Pressable>
@@ -163,7 +197,7 @@ function buildSocialAccounts(values, profileImageUrl = "") {
 }
 
 export default function EditProfileScreen({ navigation }) {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, isAuthLoading } = useAuth();
   const { theme } = useTheme();
 
   // Safeguard – if somehow no user
@@ -185,6 +219,9 @@ export default function EditProfileScreen({ navigation }) {
   );
   const [interests, setInterests] = useState(
     Array.isArray(user?.interests) ? user.interests : []
+  );
+  const [businessVibeTags, setBusinessVibeTags] = useState(
+    Array.isArray(user?.businessVibeTags) ? user.businessVibeTags : []
   );
   const [bio, setBio] = useState(user?.bio || "");
   const [lookingFor, setLookingFor] = useState(user?.lookingFor || "");
@@ -261,7 +298,8 @@ export default function EditProfileScreen({ navigation }) {
         userType: isBusiness ? undefined : userType,
         originallyFrom: isBusiness ? undefined : originallyFrom,
         languages: isBusiness ? undefined : languages,
-        interests: isBusiness ? undefined : interests,
+        interests,
+        businessVibeTags: isBusiness ? businessVibeTags : undefined,
         lookingFor: isBusiness ? lookingFor : "",
         instagram: socialValues.instagram || instagram,
         avatarKey: null,
@@ -322,6 +360,24 @@ export default function EditProfileScreen({ navigation }) {
       }
 
       return [...current, interest];
+    });
+  }
+
+  function handleToggleBusinessVibeTag(tag) {
+    setBusinessVibeTags((current) => {
+      if (current.includes(tag)) {
+        return current.filter((item) => item !== tag);
+      }
+
+      if (current.length >= MAX_BUSINESS_VIBE_TAGS) {
+        Alert.alert(
+          "Vibe tag limit",
+          `Choose up to ${MAX_BUSINESS_VIBE_TAGS} vibe tags so your profile stays easy to scan.`
+        );
+        return current;
+      }
+
+      return [...current, tag];
     });
   }
 
@@ -530,6 +586,32 @@ export default function EditProfileScreen({ navigation }) {
                 numberOfLines={3}
                 placeholder="Cafe, hiking guide, tour company, yoga studio..."
                 placeholderTextColor={theme.textMuted}
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Business tags
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Pick the activities, services, or event types people should
+                recognize you for.
+              </Text>
+              <InterestGroupList
+                groups={PROFILE_INTEREST_GROUPS}
+                values={interests}
+                onToggle={handleToggleInterest}
+                theme={theme}
+              />
+              <Text style={[styles.label, { color: theme.text }]}>
+                Business vibe
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Choose up to {MAX_BUSINESS_VIBE_TAGS} tags that describe the
+                feel of your events or experiences.
+              </Text>
+              <InterestGroupList
+                groups={VIBE_TAG_GROUPS}
+                values={businessVibeTags}
+                onToggle={handleToggleBusinessVibeTag}
+                theme={theme}
               />
             </>
           ) : null}

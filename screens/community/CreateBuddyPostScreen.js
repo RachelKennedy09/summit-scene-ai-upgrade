@@ -49,6 +49,7 @@ const BUDDY_TYPES = [
   { label: "Skiing", value: "skiing" },
   { label: "Snowboarding", value: "snowboarding" },
   { label: "Disc golf", value: "discgolf" },
+  { label: "Sports", value: "sports" },
   { label: "Walking", value: "walking" },
   { label: "Book club", value: "bookclub" },
   { label: "Art", value: "art" },

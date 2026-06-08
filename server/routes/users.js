@@ -22,10 +22,14 @@ function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
 }
 
+function normalizeEmail(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
 const router = express.Router();
 
 const BUSINESS_REVIEW_FIELDS =
-  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
+  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio interests businessVibeTags lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
 
 /* -------------------------------------------
    PATCH /api/users/revert-to-local
@@ -127,6 +131,53 @@ router.patch(
   }
 );
 
+router.get("/admin/admins", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const admins = await User.find({ isAdmin: true })
+      .select("name email role isAdmin createdAt")
+      .sort({ email: 1 });
+
+    return res.json(admins.map(buildSafeUser));
+  } catch (error) {
+    console.error("Error loading admins:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while loading admin accounts." });
+  }
+});
+
+router.patch("/admin/admins", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const makeAdmin = req.body?.isAdmin !== false;
+
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ message: "A valid email is required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message:
+          "No account exists with that email yet. Ask them to sign up first.",
+      });
+    }
+
+    user.isAdmin = makeAdmin;
+    await user.save();
+
+    return res.json({
+      message: makeAdmin ? "Admin access granted." : "Admin access removed.",
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error updating admin account:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while updating admin access." });
+  }
+});
+
 router.patch("/me/safety-tips-seen", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -220,7 +271,7 @@ router.get("/me/blocked-users", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).populate(
       "blockedUsers",
-      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
     );
 
     if (!user) {

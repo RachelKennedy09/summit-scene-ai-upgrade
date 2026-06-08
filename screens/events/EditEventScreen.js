@@ -635,6 +635,9 @@ export default function EditEventScreen({ route, navigation }) {
         <Text style={[styles.label, { color: theme.textMuted }]}>
           Main category (Required)
         </Text>
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          Choose the broad category. Use tags below for specifics.
+        </Text>
         <Pressable
           style={[
             styles.selectButton,
@@ -1299,11 +1302,10 @@ export default function EditEventScreen({ route, navigation }) {
       />
 
       {/* Category Select */}
-      <SelectModal
+      <GroupedCategoryModal
         visible={showCategoryModal}
-        title="Select main category"
-        options={FORM_CATEGORIES}
-        optionGroups={FORM_CATEGORY_GROUPS}
+        title="Choose main category"
+        groups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
         onSelect={(value) => {
           setCategory(value);
@@ -1319,7 +1321,7 @@ export default function EditEventScreen({ route, navigation }) {
 
       <GroupedCategoryModal
         visible={showCategoryTagsModal}
-        title="Select category tags"
+        title="Choose category tags"
         groups={categoryTagGroups}
         selectedValues={categoryTags}
         onSelect={toggleCategoryTag}
@@ -1331,7 +1333,7 @@ export default function EditEventScreen({ route, navigation }) {
 
       <GroupedCategoryModal
         visible={showVibeTagsModal}
-        title="Select vibe tags"
+        title="Choose vibe tags"
         groups={VIBE_TAG_GROUPS}
         selectedValues={vibeTags}
         onSelect={toggleVibeTag}

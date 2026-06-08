@@ -1,10 +1,16 @@
 import {
   CATEGORY_ACCENTS,
+  VIBE_TAG_GROUPS,
   getMainCategoryForTag,
 } from "../constants/eventCategories";
 
 export function getCategoryAccent(category, theme = {}) {
-  const mainCategory = getMainCategoryForTag(category) || category || "Other";
+  const vibeGroupTitle =
+    VIBE_TAG_GROUPS.find(
+      (group) => group.title === category || group.options.includes(category)
+    )?.title || "";
+  const mainCategory =
+    getMainCategoryForTag(category) || vibeGroupTitle || category || "Other";
   return (
     CATEGORY_ACCENTS[mainCategory] || {
       tint: theme.accentSoft || theme.card,

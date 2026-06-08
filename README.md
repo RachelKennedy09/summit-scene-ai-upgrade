@@ -187,6 +187,10 @@ SummitApple2026!
 
 - Local member: `apple-review-local@summitscene.ca`
 - Verified organizer: `apple-review-organizer@summitscene.ca`
+- Main admin: `admin@summitscene.ca`
+- App Review organizer: `reviewer@summitscene.ca`
+
+Reviewers do not need special equipment beyond a normal iPhone, iPad, or Android device with internet access. Location sharing and photo library access are optional; users can browse by town without granting location permission.
 
 Full Apple notes: `docs/apple-submission/README.md`
 

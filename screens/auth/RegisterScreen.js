@@ -24,12 +24,16 @@ import { useTheme } from "../../context/ThemeContext";
 
 import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
-import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
+import {
+  PROFILE_INTEREST_GROUPS,
+  VIBE_TAG_GROUPS,
+} from "../../constants/eventCategories";
 import { ORIGIN_CITY_OPTIONS } from "../../constants/originCities";
 import {
   PASSWORD_RULES_TEXT,
   validatePasswordStrength,
 } from "../../utils/passwordPolicy";
+import { getCategoryAccent } from "../../utils/categoryVisuals";
 
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
@@ -100,6 +104,7 @@ const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]
 
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
+const MAX_BUSINESS_VIBE_TAGS = 5;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
 const LANGUAGE_SUGGESTION_LIMIT = 7;
 
@@ -180,6 +185,9 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
         const isSelected = values
           ? values.includes(optionValue)
           : value === optionValue;
+        const optionAccent = values
+          ? getCategoryAccent(optionLabel, theme)
+          : null;
 
         return (
           <Pressable
@@ -188,9 +196,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
               styles.chip,
               {
                 backgroundColor: isSelected
-                  ? theme.accentSoft || theme.card
+                  ? optionAccent?.tint || theme.accentSoft || theme.card
                   : theme.card,
-                borderColor: isSelected ? theme.accent : theme.border,
+                borderColor: isSelected
+                  ? optionAccent?.border || theme.accent
+                  : theme.border,
               },
             ]}
             onPress={() =>
@@ -200,7 +210,11 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
             <Text
               style={[
                 styles.chipText,
-                { color: isSelected ? theme.accent : theme.textMuted },
+                {
+                  color: isSelected
+                    ? optionAccent?.text || theme.accent
+                    : theme.textMuted,
+                },
               ]}
             >
               {optionLabel}
@@ -219,6 +233,7 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
     <View style={styles.interestGroups}>
       {groups.map((group) => {
         const isOpen = openGroup === group.title;
+        const groupAccent = getCategoryAccent(group.title, theme);
         const selectedCount = group.options.filter((option) =>
           values.includes(option)
         ).length;
@@ -228,26 +243,45 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
             key={group.title}
             style={[
               styles.interestGroup,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              {
+                backgroundColor: theme.card,
+                borderColor: selectedCount ? groupAccent.border : theme.border,
+              },
             ]}
           >
             <Pressable
-              style={styles.interestGroupHeader}
+              style={[
+                styles.interestGroupHeader,
+                { backgroundColor: groupAccent.tint },
+              ]}
               onPress={() => setOpenGroup(isOpen ? null : group.title)}
             >
               <View style={styles.interestGroupCopy}>
-                <Text style={[styles.interestGroupTitle, { color: theme.text }]}>
+                <Text
+                  style={[
+                    styles.interestGroupTitle,
+                    { color: groupAccent.text || theme.text },
+                  ]}
+                >
                   {group.title}
                 </Text>
                 <Text
-                  style={[styles.interestGroupMeta, { color: theme.textMuted }]}
+                  style={[
+                    styles.interestGroupMeta,
+                    { color: selectedCount ? groupAccent.text : theme.textMuted },
+                  ]}
                 >
                   {selectedCount
                     ? `${selectedCount} selected`
                     : "Tap to choose"}
                 </Text>
               </View>
-              <Text style={[styles.interestGroupChevron, { color: theme.accent }]}>
+              <Text
+                style={[
+                  styles.interestGroupChevron,
+                  { color: groupAccent.text || theme.accent },
+                ]}
+              >
                 {isOpen ? "-" : "+"}
               </Text>
             </Pressable>
@@ -302,6 +336,7 @@ function SignupProfilePreview({
   originallyFrom,
   languages,
   interests,
+  businessVibeTags = [],
   bio,
   lookingFor,
   profileImageUrl,
@@ -386,14 +421,27 @@ function SignupProfilePreview({
         </Text>
       </View>
 
-      {!isBusiness && interests.length ? (
+      {interests.length ? (
         <View style={styles.previewSection}>
           <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
-            Interests
+            {isBusiness ? "Business tags" : "Interests"}
           </Text>
           <View style={styles.reviewChipRow}>
             {interests.map((interest) => (
               <ReviewChip key={interest} label={interest} theme={theme} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {isBusiness && businessVibeTags.length ? (
+        <View style={styles.previewSection}>
+          <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
+            Business vibe
+          </Text>
+          <View style={styles.reviewChipRow}>
+            {businessVibeTags.map((tag) => (
+              <ReviewChip key={tag} label={tag} theme={theme} />
             ))}
           </View>
         </View>
@@ -469,6 +517,7 @@ function RegisterScreen() {
   });
   const [bio, setBio] = useState("");
   const [lookingFor, setLookingFor] = useState("");
+  const [businessVibeTags, setBusinessVibeTags] = useState([]);
   const [instagram, setInstagram] = useState("");
   const [facebook, setFacebook] = useState("");
   const [website, setWebsite] = useState("");
@@ -513,6 +562,24 @@ function RegisterScreen() {
       }
 
       return [...current, interest];
+    });
+  }
+
+  function handleToggleBusinessVibeTag(tag) {
+    setBusinessVibeTags((current) => {
+      if (current.includes(tag)) {
+        return current.filter((item) => item !== tag);
+      }
+
+      if (current.length >= MAX_BUSINESS_VIBE_TAGS) {
+        Alert.alert(
+          "Vibe tag limit",
+          `Choose up to ${MAX_BUSINESS_VIBE_TAGS} vibe tags so your profile stays easy to scan.`
+        );
+        return current;
+      }
+
+      return [...current, tag];
     });
   }
 
@@ -763,7 +830,8 @@ function RegisterScreen() {
         userType: isLocal ? userType : undefined,
         originallyFrom: isLocal ? originallyFrom : undefined,
         languages: isLocal ? languages : undefined,
-        interests: isLocal ? interests : undefined,
+        interests,
+        businessVibeTags: isBusiness ? businessVibeTags : undefined,
         socialAccounts: isLocal
           ? buildSocialAccounts(socialValues, profileImageUrl)
           : undefined,
@@ -1403,6 +1471,32 @@ function RegisterScreen() {
             multiline
           />
           <Text style={[styles.label, { color: theme.text }]}>
+            Business tags
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Pick the activities, services, or event types people should
+            recognize you for. These show on your public event posting profile.
+          </Text>
+          <InterestGroupList
+            groups={PROFILE_INTEREST_GROUPS}
+            values={interests}
+            onToggle={handleToggleInterest}
+            theme={theme}
+          />
+          <Text style={[styles.label, { color: theme.text }]}>
+            Business vibe
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Choose up to {MAX_BUSINESS_VIBE_TAGS} tags that describe the feel of
+            your events or experiences.
+          </Text>
+          <InterestGroupList
+            groups={VIBE_TAG_GROUPS}
+            values={businessVibeTags}
+            onToggle={handleToggleBusinessVibeTag}
+            theme={theme}
+          />
+          <Text style={[styles.label, { color: theme.text }]}>
             Short description
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1544,6 +1638,7 @@ function RegisterScreen() {
           originallyFrom={originallyFrom}
           languages={languages}
           interests={interests}
+          businessVibeTags={businessVibeTags}
           bio={bio}
           lookingFor={lookingFor}
           profileImageUrl={profileImageUrl}

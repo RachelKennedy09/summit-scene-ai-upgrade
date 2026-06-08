@@ -1,11 +1,5 @@
 import User from "../models/User.js";
-
-function getAdminEmails() {
-  return String(process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
+import { getAdminEmails } from "../utils/adminAccess.js";
 
 export default async function isAdmin(req, res, next) {
   try {
@@ -18,8 +12,11 @@ export default async function isAdmin(req, res, next) {
     }
 
     if (userId) {
-      const user = await User.findById(userId).select("email");
-      if (user?.email && adminEmails.includes(user.email.toLowerCase())) {
+      const user = await User.findById(userId).select("email isAdmin");
+      if (
+        user?.isAdmin ||
+        (user?.email && adminEmails.includes(user.email.toLowerCase()))
+      ) {
         return next();
       }
     }

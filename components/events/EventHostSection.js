@@ -3,7 +3,15 @@
 // This uses avatarKey from the User document to render one of our local avatar PNGs.
 
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, Pressable, Modal } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  Modal,
+  ScrollView,
+} from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 
 import { AVATARS } from "../../assets/avatars/avatarConfig";
@@ -14,6 +22,24 @@ function getAvatarSource(host) {
   if (host?.avatarKey && AVATARS[host.avatarKey]) return AVATARS[host.avatarKey];
   if (host?.profileImageUrl) return { uri: host.profileImageUrl };
   return null;
+}
+
+function ProfileChip({ label, theme }) {
+  return (
+    <View
+      style={[
+        styles.profileChip,
+        {
+          backgroundColor: theme.accentSoft || theme.card,
+          borderColor: theme.border,
+        },
+      ]}
+    >
+      <Text style={[styles.profileChipText, { color: theme.text }]}>
+        {label}
+      </Text>
+    </View>
+  );
 }
 
 export default function EventHostSection({
@@ -33,6 +59,13 @@ export default function EventHostSection({
     (account) => account.provider === "instagram"
   );
   const hostId = host._id || host.id || "";
+  const businessTags = Array.isArray(host.businessTags)
+    ? host.businessTags
+    : [];
+  const businessVibeTags = Array.isArray(host.businessVibeTags)
+    ? host.businessVibeTags
+    : [];
+  const previewTags = [...businessTags, ...businessVibeTags].slice(0, 3);
   const hostEventsLabel =
     host.role === "business"
       ? "View all events from this business"
@@ -83,6 +116,14 @@ export default function EventHostSection({
             <TrustBadgeRow profile={host} theme={theme} compact />
           </View>
         </View>
+
+        {previewTags.length ? (
+          <View style={styles.hostTagRow}>
+            {previewTags.map((tag) => (
+              <ProfileChip key={tag} label={tag} theme={theme} />
+            ))}
+          </View>
+        ) : null}
 
         <Pressable
           style={[styles.hostProfileButton, { borderColor: theme.accent }]}
@@ -145,8 +186,9 @@ export default function EventHostSection({
                 </Pressable>
               </View>
 
-              {/* Top row */}
-              <View style={styles.profileTopRow}>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Top row */}
+                <View style={styles.profileTopRow}>
                 <View
                   style={[
                     styles.profileAvatar,
@@ -180,10 +222,10 @@ export default function EventHostSection({
                   </Text>
                   <TrustBadgeRow profile={host} theme={theme} />
                 </View>
-              </View>
+                </View>
 
-              {/* About / business type */}
-              {host.bio ? (
+                {/* About / business type */}
+                {host.bio ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -199,9 +241,9 @@ export default function EventHostSection({
                     {host.bio}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {host.businessType ? (
+                {host.businessType ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -217,10 +259,46 @@ export default function EventHostSection({
                     {host.businessType}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {/* Instagram */}
-              {host.instagram && !hasConnectedInstagram ? (
+                {businessTags.length ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    What they host
+                  </Text>
+                  <View style={styles.hostTagRow}>
+                    {businessTags.map((tag) => (
+                      <ProfileChip key={tag} label={tag} theme={theme} />
+                    ))}
+                  </View>
+                </View>
+                ) : null}
+
+                {businessVibeTags.length ? (
+                <View style={styles.profileSection}>
+                  <Text
+                    style={[
+                      styles.profileSectionLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Vibe
+                  </Text>
+                  <View style={styles.hostTagRow}>
+                    {businessVibeTags.map((tag) => (
+                      <ProfileChip key={tag} label={tag} theme={theme} />
+                    ))}
+                  </View>
+                </View>
+                ) : null}
+
+                {/* Instagram */}
+                {host.instagram && !hasConnectedInstagram ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -236,9 +314,9 @@ export default function EventHostSection({
                     {host.instagram}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {host.socialAccounts?.length ? (
+                {host.socialAccounts?.length ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -258,9 +336,9 @@ export default function EventHostSection({
                     </Text>
                   ))}
                 </View>
-              ) : null}
+                ) : null}
 
-              {host.facebook ? (
+                {host.facebook ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -276,10 +354,10 @@ export default function EventHostSection({
                     {host.facebook}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {/* Website */}
-              {host.website ? (
+                {/* Website */}
+                {host.website ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -295,9 +373,9 @@ export default function EventHostSection({
                     {host.website}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {host.googleBusinessUrl ? (
+                {host.googleBusinessUrl ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -313,9 +391,9 @@ export default function EventHostSection({
                     {host.googleBusinessUrl}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {host.phone ? (
+                {host.phone ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -331,9 +409,9 @@ export default function EventHostSection({
                     {host.phone}
                   </Text>
                 </View>
-              ) : null}
+                ) : null}
 
-              {onOpenHostEvents ? (
+                {onOpenHostEvents ? (
                 <Pressable
                   style={[
                     styles.profileEventsButton,
@@ -356,9 +434,9 @@ export default function EventHostSection({
                     {hostEventsLabel}
                   </Text>
                 </Pressable>
-              ) : null}
+                ) : null}
 
-              {canReportHost ? (
+                {canReportHost ? (
                 <Pressable
                   style={[styles.reportProfileButton, { borderColor: theme.border }]}
                   onPress={() =>
@@ -374,7 +452,8 @@ export default function EventHostSection({
                     Report Profile
                   </Text>
                 </Pressable>
-              ) : null}
+                ) : null}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -431,6 +510,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  hostTagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 10,
+  },
+  profileChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  profileChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   hostProfileButton: {
     marginTop: 6,
     paddingVertical: 8,
@@ -460,6 +555,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   profileModalCard: {
+    maxHeight: "86%",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,

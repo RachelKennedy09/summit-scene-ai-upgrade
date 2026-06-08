@@ -122,6 +122,9 @@ export default function MemberProfileModal({
   const memberSince = formatMemberSince(user.createdAt);
   const originallyFrom = user.originallyFrom || "";
   const interests = Array.isArray(user.interests) ? user.interests : [];
+  const businessVibeTags = Array.isArray(user.businessVibeTags)
+    ? user.businessVibeTags
+    : [];
   const languages = Array.isArray(user.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user.socialAccounts)
     ? user.socialAccounts
@@ -246,7 +249,10 @@ export default function MemberProfileModal({
             </Section>
 
             {interests.length ? (
-              <Section label="Interests" theme={theme}>
+              <Section
+                label={user.role === "business" ? "Business tags" : "Interests"}
+                theme={theme}
+              >
                 {hasManyInterests ? (
                   <Pressable
                     style={styles.sectionToggleRow}
@@ -295,6 +301,16 @@ export default function MemberProfileModal({
                       </Text>
                     </Pressable>
                   ) : null}
+                </View>
+              </Section>
+            ) : null}
+
+            {user.role === "business" && businessVibeTags.length ? (
+              <Section label="Business vibe" theme={theme}>
+                <View style={styles.chipRow}>
+                  {businessVibeTags.map((tag) => (
+                    <Chip key={tag} label={tag} theme={theme} />
+                  ))}
                 </View>
               </Section>
             ) : null}

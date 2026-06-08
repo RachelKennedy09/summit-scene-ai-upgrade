@@ -89,6 +89,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null); // JWT from the backend
   const [isSessionBootstrapping, setIsSessionBootstrapping] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authNoticeMessage, setAuthNoticeMessage] = useState("");
   const [authDebugMessage, setAuthDebugMessage] = useState(
     "Booting auth session..."
   );
@@ -129,13 +130,14 @@ export function AuthProvider({ children }) {
     };
   }
 
-  async function setLoggedOutState(debugMessage) {
+  async function setLoggedOutState(debugMessage, noticeMessage = "") {
     if (debugMessage) {
       setAuthDebugMessage(debugMessage);
     }
 
     setToken(null);
     setUser(null);
+    setAuthNoticeMessage(noticeMessage);
     await AsyncStorage.removeItem(TOKEN_KEY);
   }
 
@@ -149,6 +151,7 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem(TOKEN_KEY, nextToken);
     setToken(nextToken);
     setUser(normalizedUser);
+    setAuthNoticeMessage("");
 
     return normalizedUser;
   }
@@ -187,14 +190,16 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         console.log("Session restore failed:", response.status, data?.message);
         await setLoggedOutState(
-          `Session restore failed (${response.status}). Clearing saved token.`
+          `Session restore failed (${response.status}). Clearing saved token.`,
+          "You've been logged out. Please log in again."
         );
         return;
       }
       const rawUser = data.user || data;
       if (!rawUser || !rawUser._id) {
         await setLoggedOutState(
-          "Session restore returned no user. Clearing saved token."
+          "Session restore returned no user. Clearing saved token.",
+          "You've been logged out. Please log in again."
         );
         return;
       }
@@ -209,13 +214,14 @@ export function AuthProvider({ children }) {
         error,
         "Session restore timed out."
       );
-      console.error("Error restoring auth session:", normalizedError);
+      console.log("Session restore could not continue:", normalizedError.message);
       const friendlyError = toUserFriendlyError(
         normalizedError,
         "We couldn't restore your session. Please log in again."
       );
       await setLoggedOutState(
-        `Session restore error: ${friendlyError.message}. Clearing token.`
+        `Session restore error: ${friendlyError.message}. Clearing token.`,
+        "You've been logged out. Please log in again."
       );
     } finally {
       setAuthDebugMessage((current) => `${current} Done.`);
@@ -225,6 +231,7 @@ export function AuthProvider({ children }) {
   }
 
   async function retrySessionRestore() {
+    setAuthNoticeMessage("");
     await restoreSession();
   }
 
@@ -232,6 +239,10 @@ export function AuthProvider({ children }) {
     setAuthDebugMessage("Session restore skipped. Opening logged-out app.");
     await setLoggedOutState("Session restore skipped. Opening logged-out app.");
     setIsSessionBootstrapping(false);
+  }
+
+  function clearAuthNoticeMessage() {
+    setAuthNoticeMessage("");
   }
 
   // LOGIN: call backend /api/auth/login, save token and user
@@ -957,9 +968,11 @@ export function AuthProvider({ children }) {
     token,
     isSessionBootstrapping,
     isAuthLoading,
+    authNoticeMessage,
     authDebugMessage,
     retrySessionRestore,
     skipSessionRestore,
+    clearAuthNoticeMessage,
     login,
     register,
     logout,

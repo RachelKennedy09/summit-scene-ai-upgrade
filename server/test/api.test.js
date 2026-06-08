@@ -4,6 +4,7 @@
 import { expect } from "chai";
 import request from "supertest";
 import app from "../index.js";
+import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 
 // Generate unique values so we don't clash if tests run multiple times.
 const testRunId = Date.now();
@@ -23,6 +24,13 @@ let emailVerificationToken = null;
 describe("SummitScene API", function () {
   // give a bit more time for DB connections on first run
   this.timeout(10000);
+
+  it("should include only the main account in default admin access", () => {
+    expect(getAdminEmails()).to.include("admin@summitscene.ca");
+    expect(getAdminEmails()).to.not.include("reviewer@summitscene.ca");
+    expect(isAdminEmail("Admin@SummitScene.ca")).to.equal(true);
+    expect(isAdminEmail("Reviewer@SummitScene.ca")).to.equal(false);
+  });
 
   /* -----------------------------------------
    * AUTH TESTS
@@ -646,11 +654,16 @@ describe("SummitScene API", function () {
       .set("Authorization", `Bearer ${authToken}`)
       .send({
         title,
-        description: "A class that should be found by each category.",
+        description: "A class and sports meetup that should be found by each category.",
         town: "Canmore",
         category: "Wellness",
-        categories: ["Wellness", "Tours & Experiences"],
-        categoryTags: ["Strength Training", "Sober Events", "Yoga Retreats"],
+        categories: ["Wellness", "Tours & Experiences", "Outdoors & Sports"],
+        categoryTags: [
+          "Strength Training",
+          "Sober Events",
+          "Yoga Retreats",
+          "Basketball",
+        ],
         vibeTags: ["Sober-friendly", "Beginner-friendly"],
         duration: "3 hours",
         priceRange: "$60-$90",
@@ -667,11 +680,13 @@ describe("SummitScene API", function () {
     expect(createRes.body.categories).to.deep.equal([
       "Wellness",
       "Tours & Experiences",
+      "Outdoors & Sports",
     ]);
     expect(createRes.body.categoryTags).to.deep.equal([
       "Strength Training",
       "Sober Events",
       "Yoga Retreats",
+      "Basketball",
     ]);
     expect(createRes.body.vibeTags).to.deep.equal([
       "Sober-friendly",
@@ -689,6 +704,15 @@ describe("SummitScene API", function () {
 
     expect(filterRes.status).to.equal(200);
     expect(filterRes.body.some((event) => event.title === title)).to.equal(true);
+
+    const sportsFilterRes = await request(app).get(
+      "/api/events?category=Basketball"
+    );
+
+    expect(sportsFilterRes.status).to.equal(200);
+    expect(sportsFilterRes.body.some((event) => event.title === title)).to.equal(
+      true
+    );
 
     const vibeSearchRes = await request(app).get(
       "/api/events?search=Sober-friendly"
@@ -855,6 +879,28 @@ describe("SummitScene API", function () {
       skillLevel: "beginner",
       groupSizePreference: "any",
     });
+
+    const sportsRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "sports",
+        category: "Soccer",
+        categoryTags: ["Soccer", "Rugby"],
+        activityText: "Looking for people for a casual field sports meetup.",
+        date: "2026-06-17",
+        time: "18:30",
+        town: "Canmore",
+        groupSizePreference: "any",
+      });
+
+    expect(sportsRes.status).to.equal(201);
+    expect(sportsRes.body).to.include({
+      type: "sports",
+      category: "Outdoors & Sports",
+      groupSizePreference: "any",
+    });
+    expect(sportsRes.body.categoryTags).to.deep.equal(["Soccer", "Rugby"]);
 
     const recurringRes = await request(app)
       .post("/api/buddy-posts")
