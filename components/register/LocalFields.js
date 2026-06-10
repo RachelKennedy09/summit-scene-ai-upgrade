@@ -13,11 +13,30 @@ const USER_TYPE_OPTIONS = [
   { value: "visitor", label: "Visiting" },
 ];
 const SOCIAL_PROVIDERS = [
-  { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
-  { provider: "tiktok", label: "TikTok", placeholder: "@yourhandle" },
-  { provider: "facebook", label: "Facebook", placeholder: "Profile link" },
-  { provider: "linkedin", label: "LinkedIn", placeholder: "Profile link" },
-  { provider: "website", label: "Website", placeholder: "https://..." },
+  {
+    provider: "instagram",
+    label: "Instagram",
+    placeholder: "@yourhandle",
+    actionLabel: "Connect Instagram",
+  },
+  {
+    provider: "tiktok",
+    label: "TikTok",
+    placeholder: "@yourhandle",
+    actionLabel: "Connect TikTok",
+  },
+  {
+    provider: "facebook",
+    label: "Facebook",
+    placeholder: "facebook.com/yourprofile",
+    actionLabel: "Connect Facebook",
+  },
+  {
+    provider: "linkedin",
+    label: "LinkedIn",
+    placeholder: "linkedin.com/in/yourprofile",
+    actionLabel: "Connect LinkedIn",
+  },
 ];
 
 function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
@@ -148,6 +167,69 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
                 />
               </View>
             ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SocialConnectFields({ values, onChange, theme }) {
+  return (
+    <View>
+      {SOCIAL_PROVIDERS.map(({ provider, label, placeholder, actionLabel }) => {
+        const value = values[provider] || "";
+        const connected = Boolean(value.trim());
+
+        return (
+          <View
+            key={provider}
+            style={[
+              styles.connectPanel,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.connectPanelCopy}>
+              <Text style={[styles.connectPanelTitle, { color: theme.text }]}>
+                {label}
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                {connected ? "Profile added." : actionLabel}
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: connected ? theme.accent : theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder={placeholder}
+                placeholderTextColor={theme.textMuted}
+                value={value}
+                onChangeText={(nextValue) => onChange(provider, nextValue)}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            <Pressable
+              style={[
+                styles.connectButton,
+                { borderColor: connected ? theme.accent : theme.border },
+              ]}
+              onPress={() => {}}
+              disabled
+            >
+              <Text
+                style={[
+                  styles.connectButtonText,
+                  { color: connected ? theme.accent : theme.textMuted },
+                ]}
+              >
+                {connected ? "Connected" : "Connect"}
+              </Text>
+            </Pressable>
           </View>
         );
       })}
@@ -287,32 +369,15 @@ function LocalFields({
         Connected socials
       </Text>
       <Text style={[styles.helperText, { color: theme.textMuted }]}>
-        Add links people can use to recognize you. These show as unverified
-        until connected through the social platform. Optional at signup.
+        Connect public profiles people can use to recognize you. Optional at
+        signup.
       </Text>
 
-      {SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
-        <View key={provider}>
-          <Text style={[styles.label, { color: theme.text }]}>
-            {label} (optional)
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textMuted}
-            value={socialValues[provider]}
-            onChangeText={(value) => onChangeSocial(provider, value)}
-            autoCapitalize="none"
-          />
-        </View>
-      ))}
+      <SocialConnectFields
+        values={socialValues}
+        onChange={onChangeSocial}
+        theme={theme}
+      />
     </View>
   );
 }
@@ -396,6 +461,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 8,
+  },
+  connectPanel: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  connectPanelCopy: {
+    flex: 1,
+  },
+  connectPanelTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  connectButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  connectButtonText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   input: {
     borderRadius: 8,

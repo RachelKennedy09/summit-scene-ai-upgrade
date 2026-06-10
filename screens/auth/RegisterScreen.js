@@ -36,11 +36,30 @@ import {
 import { getCategoryAccent } from "../../utils/categoryVisuals";
 
 const SOCIAL_PROVIDERS = [
-  { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
-  { provider: "tiktok", label: "TikTok", placeholder: "@yourhandle" },
-  { provider: "facebook", label: "Facebook", placeholder: "Profile link" },
-  { provider: "linkedin", label: "LinkedIn", placeholder: "Profile link" },
-  { provider: "website", label: "Website", placeholder: "https://..." },
+  {
+    provider: "instagram",
+    label: "Instagram",
+    placeholder: "@yourhandle",
+    actionLabel: "Connect Instagram",
+  },
+  {
+    provider: "tiktok",
+    label: "TikTok",
+    placeholder: "@yourhandle",
+    actionLabel: "Connect TikTok",
+  },
+  {
+    provider: "facebook",
+    label: "Facebook",
+    placeholder: "facebook.com/yourprofile",
+    actionLabel: "Connect Facebook",
+  },
+  {
+    provider: "linkedin",
+    label: "LinkedIn",
+    placeholder: "linkedin.com/in/yourprofile",
+    actionLabel: "Connect LinkedIn",
+  },
 ];
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 const USER_TYPE_OPTIONS = [
@@ -157,7 +176,7 @@ function buildSocialAccounts(values, profileImageUrl = "") {
     : profileImageUrl;
 
   return SOCIAL_PROVIDERS.map(({ provider }) => {
-    const value = values[provider]?.trim();
+    const value = normalizeSocialInput(provider, values[provider]);
     if (!value) return null;
 
     const isHandle = value.startsWith("@") || !value.includes(".");
@@ -172,6 +191,82 @@ function buildSocialAccounts(values, profileImageUrl = "") {
       verified: false,
     };
   }).filter(Boolean);
+}
+
+function normalizeSocialInput(provider, value = "") {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+
+  if (provider === "instagram" || provider === "tiktok") {
+    return trimmed.startsWith("@") || trimmed.includes("/")
+      ? trimmed
+      : `@${trimmed}`;
+  }
+
+  return trimmed;
+}
+
+function SocialConnectFields({ values, onChange, theme }) {
+  return (
+    <View>
+      {SOCIAL_PROVIDERS.map(({ provider, label, placeholder, actionLabel }) => {
+        const value = values[provider] || "";
+        const connected = Boolean(value.trim());
+
+        return (
+          <View
+            key={provider}
+            style={[
+              styles.connectPanel,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.connectPanelCopy}>
+              <Text style={[styles.connectPanelTitle, { color: theme.text }]}>
+                {label}
+              </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                {connected ? "Profile added." : actionLabel}
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: connected ? theme.accent : theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder={placeholder}
+                placeholderTextColor={theme.textMuted}
+                value={value}
+                onChangeText={(nextValue) => onChange(provider, nextValue)}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            <Pressable
+              style={[
+                styles.connectButton,
+                { borderColor: connected ? theme.accent : theme.border },
+              ]}
+              onPress={() => {}}
+              disabled
+            >
+              <Text
+                style={[
+                  styles.connectButtonText,
+                  { color: connected ? theme.accent : theme.textMuted },
+                ]}
+              >
+                {connected ? "Connected" : "Connect"}
+              </Text>
+            </Pressable>
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
@@ -456,7 +551,7 @@ function SignupProfilePreview({
         </View>
       ) : null}
 
-      {!isBusiness && socialAccounts.length ? (
+      {socialAccounts.length ? (
         <View style={styles.previewSection}>
           <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
             Social accounts
@@ -512,13 +607,10 @@ function RegisterScreen() {
     tiktok: "",
     facebook: "",
     linkedin: "",
-    website: "",
   });
   const [bio, setBio] = useState("");
   const [lookingFor, setLookingFor] = useState("");
   const [businessVibeTags, setBusinessVibeTags] = useState([]);
-  const [instagram, setInstagram] = useState("");
-  const [facebook, setFacebook] = useState("");
   const [website, setWebsite] = useState("");
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
   const [phone, setPhone] = useState("");
@@ -745,14 +837,13 @@ function RegisterScreen() {
     if (currentStep === "business") {
       const hasProofLink = Boolean(
         website.trim() ||
-          instagram.trim() ||
-          facebook.trim() ||
+          Object.values(socialValues).some((value) => value.trim()) ||
           googleBusinessUrl.trim()
       );
       if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your town, category, short description, and one proof link: website, Instagram, Facebook, or Google Business listing."
+          "Please add your town, category, short description, and one proof link or connected social profile."
         );
         return false;
       }
@@ -784,14 +875,13 @@ function RegisterScreen() {
     if (role === "business") {
       const hasProofLink = Boolean(
         website.trim() ||
-          instagram.trim() ||
-          facebook.trim() ||
+          Object.values(socialValues).some((value) => value.trim()) ||
           googleBusinessUrl.trim()
       );
       if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your business town, category, short description, and one proof link so Summit Scene can review the profile."
+          "Please add your business town, category, short description, and one proof link or connected social profile so Summit Scene can review the profile."
         );
         return;
       }
@@ -819,14 +909,12 @@ function RegisterScreen() {
         languages: isLocal ? languages : undefined,
         interests,
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
-        socialAccounts: isLocal
-          ? buildSocialAccounts(socialValues, profileImageUrl)
-          : undefined,
+        socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
         bio,
         lookingFor: isBusiness ? lookingFor : undefined,
-        instagram: isBusiness ? instagram : socialValues.instagram,
-        facebook: isBusiness ? facebook : undefined,
-        website,
+        instagram: socialValues.instagram,
+        facebook: isBusiness ? socialValues.facebook : undefined,
+        website: isBusiness ? website : undefined,
         googleBusinessUrl: isBusiness ? googleBusinessUrl : undefined,
         phone: isBusiness ? phone : undefined,
         avatarKey: null,
@@ -1337,33 +1425,16 @@ function RegisterScreen() {
             Add socials or an avatar
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Optional. Add public profile links if you want people to recognize
+            Optional. Connect public profiles if you want people to recognize
             you in the community.
           </Text>
-          {isLocal
-            ? SOCIAL_PROVIDERS.map(({ provider, label, placeholder }) => (
-                <View key={provider}>
-                  <Text style={[styles.label, { color: theme.text }]}>
-                    {label}
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.card,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      },
-                    ]}
-                    placeholder={placeholder}
-                    placeholderTextColor={theme.textMuted}
-                    value={socialValues[provider]}
-                    onChangeText={(value) => handleSocialChange(provider, value)}
-                    autoCapitalize="none"
-                  />
-                </View>
-              ))
-            : null}
+          {isLocal ? (
+            <SocialConnectFields
+              values={socialValues}
+              onChange={handleSocialChange}
+              theme={theme}
+            />
+          ) : null}
           <Text style={[styles.label, { color: theme.text }]}>
             Profile photo
           </Text>
@@ -1514,8 +1585,8 @@ function RegisterScreen() {
             Website
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Add at least one proof link: website, Instagram, Facebook, or Google
-            Business listing.
+            Add at least one proof link or connected social profile so Summit
+            Scene can review your business.
           </Text>
           <TextInput
             style={[
@@ -1533,40 +1604,12 @@ function RegisterScreen() {
             autoCapitalize="none"
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Instagram page
+            Connected social profiles
           </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            placeholder="@yourbusiness"
-            placeholderTextColor={theme.textMuted}
-            value={instagram}
-            onChangeText={setInstagram}
-            autoCapitalize="none"
-          />
-          <Text style={[styles.label, { color: theme.text }]}>
-            Facebook page
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            placeholder="https://facebook.com/yourbusiness"
-            placeholderTextColor={theme.textMuted}
-            value={facebook}
-            onChangeText={setFacebook}
-            autoCapitalize="none"
+          <SocialConnectFields
+            values={socialValues}
+            onChange={handleSocialChange}
+            theme={theme}
           />
           <Text style={[styles.label, { color: theme.text }]}>
             Google Business listing
@@ -2001,7 +2044,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
   },
   connectPanelCopy: {
@@ -2017,6 +2060,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    marginTop: 2,
   },
   connectButtonText: {
     fontSize: 12,

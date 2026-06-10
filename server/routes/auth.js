@@ -521,6 +521,17 @@ router.post("/register", async (req, res) => {
         typeof req.body?.bio === "string" && req.body.bio.trim().length > 0;
       const hasTown =
         typeof req.body?.town === "string" && req.body.town.trim().length > 0;
+      const hasSocialProof =
+        Array.isArray(req.body?.socialAccounts) &&
+        req.body.socialAccounts.some(
+          (account) =>
+            account &&
+            typeof account === "object" &&
+            ((typeof account.handle === "string" &&
+              account.handle.trim().length > 0) ||
+              (typeof account.url === "string" &&
+                account.url.trim().length > 0))
+        );
       const hasProofLink =
         (typeof req.body?.website === "string" &&
           req.body.website.trim().length > 0) ||
@@ -529,12 +540,13 @@ router.post("/register", async (req, res) => {
         (typeof req.body?.facebook === "string" &&
           req.body.facebook.trim().length > 0) ||
         (typeof req.body?.googleBusinessUrl === "string" &&
-          req.body.googleBusinessUrl.trim().length > 0);
+          req.body.googleBusinessUrl.trim().length > 0) ||
+        hasSocialProof;
 
       if (!hasTown || !hasBusinessType || !hasDescription || !hasProofLink) {
         return res.status(400).json({
           message:
-            "Business profile requests require a town, category, short description, and one proof link: website, Instagram, Facebook, or Google Business listing.",
+            "Business profile requests require a town, category, short description, and one proof link or connected social profile.",
         });
       }
     }

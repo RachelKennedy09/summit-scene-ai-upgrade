@@ -28,7 +28,7 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     scheme: "summitscene",
-    icon: "./assets/appicon-flat-mountains-1024.png",
+    icon: "./assets/app-icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {
@@ -52,7 +52,7 @@ export default {
     android: {
       versionCode: 1,
       adaptiveIcon: {
-        foregroundImage: "./assets/appicon-flat-mountains-1024.png",
+        foregroundImage: "./assets/app-icon.png",
         backgroundColor: "#F5F3EE",
       },
       edgeToEdgeEnabled: true,
@@ -74,7 +74,7 @@ export default {
       package: "com.rachellauren.summitscene",
     },
     web: {
-      favicon: "./assets/appicon-flat-mountains-1024.png",
+      favicon: "./assets/app-icon.png",
     },
     extra: {
       eas: {
