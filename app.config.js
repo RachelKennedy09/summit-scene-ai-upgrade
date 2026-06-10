@@ -28,7 +28,7 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     scheme: "summitscene",
-    icon: "./assets/logo-app-full-color-square.png",
+    icon: "./assets/appiconsimple-1024.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {
@@ -42,6 +42,7 @@ export default {
       buildNumber: "1",
       supportsTablet: true,
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription:
           "Summit Scene uses your location to show events near you. You can also browse by town without sharing location.",
         NSPhotoLibraryUsageDescription:
@@ -51,7 +52,7 @@ export default {
     android: {
       versionCode: 1,
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon-earth-tone.png",
+        foregroundImage: "./assets/appiconsimple-1024.png",
         backgroundColor: "#F5F3EE",
       },
       edgeToEdgeEnabled: true,
@@ -73,7 +74,7 @@ export default {
       package: "com.rachellauren.summitscene",
     },
     web: {
-      favicon: "./assets/logo-app-full-color-square.png",
+      favicon: "./assets/appiconsimple-1024.png",
     },
     extra: {
       eas: {
