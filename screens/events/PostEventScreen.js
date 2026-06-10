@@ -36,8 +36,6 @@ import AppLogoHeader from "../../components/AppLogoHeader";
 import PageHeader from "../../components/common/PageHeader";
 import {
   EVENT_MAIN_CATEGORIES,
-  MAX_CATEGORY_TAGS,
-  MAX_VIBE_TAGS,
   VIBE_TAG_GROUPS,
   getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
@@ -49,7 +47,6 @@ const AI_REQUEST_TIMEOUT_MS = 15000;
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
-const MAX_EVENT_CATEGORIES = 3;
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
   { value: "recurring", label: "Recurring event" },
@@ -306,14 +303,6 @@ export default function PostEventScreen() {
         return current.filter((item) => item !== nextCategory);
       }
 
-      if (current.length >= MAX_EVENT_CATEGORIES) {
-        Alert.alert(
-          "Category limit",
-          `Choose up to ${MAX_EVENT_CATEGORIES} categories for one event.`
-        );
-        return current;
-      }
-
       return [...current, nextCategory];
     });
   };
@@ -324,14 +313,6 @@ export default function PostEventScreen() {
         return current.filter((item) => item !== nextTag);
       }
 
-      if (current.length >= MAX_CATEGORY_TAGS) {
-        Alert.alert(
-          "Tag limit",
-          `Choose up to ${MAX_CATEGORY_TAGS} category tags for one event.`
-        );
-        return current;
-      }
-
       return [...current, nextTag];
     });
   };
@@ -340,14 +321,6 @@ export default function PostEventScreen() {
     setVibeTags((current) => {
       if (current.includes(nextTag)) {
         return current.filter((item) => item !== nextTag);
-      }
-
-      if (current.length >= MAX_VIBE_TAGS) {
-        Alert.alert(
-          "Vibe tag limit",
-          `Choose up to ${MAX_VIBE_TAGS} vibe tags for one event.`
-        );
-        return current;
       }
 
       return [...current, nextTag];
@@ -792,7 +765,7 @@ export default function PostEventScreen() {
             Main categories (Required)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose up to 3 broad categories. Use tags below for specifics.
+            Choose broad categories. Use tags below for specifics.
           </Text>
           <Pressable
             style={[
@@ -808,7 +781,7 @@ export default function PostEventScreen() {
             <Text style={{ color: category ? theme.text : theme.textMuted }}>
               {categories.length
                 ? categories.join(", ")
-                : "Choose up to 3 main categories"}
+                : "Choose main categories"}
             </Text>
           </Pressable>
 
@@ -840,7 +813,7 @@ export default function PostEventScreen() {
             Vibe tags (Optional)
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose up to {MAX_VIBE_TAGS} tags people can search for.
+            Choose any vibe tags people can search for.
           </Text>
           <Pressable
             style={[

@@ -103,8 +103,6 @@ const BUSINESS_STEPS = ["name", "login", "business", "photo", "review"];
 const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]);
 
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
-const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
-const MAX_BUSINESS_VIBE_TAGS = 5;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
 const LANGUAGE_SUGGESTION_LIMIT = 7;
 
@@ -547,21 +545,6 @@ function RegisterScreen() {
         return current.filter((item) => item !== interest);
       }
 
-      const group = PROFILE_INTEREST_GROUPS.find((item) =>
-        item.options.includes(interest)
-      );
-      const selectedInGroup = group
-        ? current.filter((item) => group.options.includes(item)).length
-        : 0;
-
-      if (selectedInGroup >= MAX_PROFILE_INTERESTS_PER_GROUP) {
-        Alert.alert(
-          "Main interests limit",
-          `Choose up to ${MAX_PROFILE_INTERESTS_PER_GROUP} interests in each category so your profile stays easy to scan.`
-        );
-        return current;
-      }
-
       return [...current, interest];
     });
   }
@@ -570,14 +553,6 @@ function RegisterScreen() {
     setBusinessVibeTags((current) => {
       if (current.includes(tag)) {
         return current.filter((item) => item !== tag);
-      }
-
-      if (current.length >= MAX_BUSINESS_VIBE_TAGS) {
-        Alert.alert(
-          "Vibe tag limit",
-          `Choose up to ${MAX_BUSINESS_VIBE_TAGS} vibe tags so your profile stays easy to scan.`
-        );
-        return current;
       }
 
       return [...current, tag];
@@ -1313,7 +1288,7 @@ function RegisterScreen() {
             Main interests
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Pick optional interests you are comfortable showing on your profile. Choose up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category. These help people find like-minded locals and inclusive events. You can change them at any time.
+            Pick optional interests you are comfortable showing on your profile. These help people find like-minded locals and inclusive events. You can change them at any time.
           </Text>
           <InterestGroupList
             groups={PROFILE_INTEREST_GROUPS}
@@ -1503,7 +1478,7 @@ function RegisterScreen() {
             Business vibe
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose up to {MAX_BUSINESS_VIBE_TAGS} tags that describe the feel of
+            Choose tags that describe the feel of
             your events or experiences.
           </Text>
           <InterestGroupList

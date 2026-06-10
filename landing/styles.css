@@ -61,7 +61,8 @@ a {
 .brand-logo {
   width: 64px;
   height: 64px;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 14px;
   filter: drop-shadow(0 2px 12px rgba(18, 28, 22, 0.56));
 }
 

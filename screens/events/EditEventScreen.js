@@ -32,8 +32,6 @@ import AppButton from "../../components/common/AppButton.js";
 import PageHeader from "../../components/common/PageHeader";
 import {
   EVENT_MAIN_CATEGORIES,
-  MAX_CATEGORY_TAGS,
-  MAX_VIBE_TAGS,
   VIBE_TAG_GROUPS,
   getCategoryTagGroupsForCategories,
   getMainCategoryForTag,
@@ -311,14 +309,6 @@ export default function EditEventScreen({ route, navigation }) {
         return current.filter((item) => item !== nextTag);
       }
 
-      if (current.length >= MAX_VIBE_TAGS) {
-        Alert.alert(
-          "Vibe tag limit",
-          `Choose up to ${MAX_VIBE_TAGS} vibe tags for one event.`
-        );
-        return current;
-      }
-
       return [...current, nextTag];
     });
   };
@@ -327,14 +317,6 @@ export default function EditEventScreen({ route, navigation }) {
     setCategoryTags((current) => {
       if (current.includes(nextTag)) {
         return current.filter((item) => item !== nextTag);
-      }
-
-      if (current.length >= MAX_CATEGORY_TAGS) {
-        Alert.alert(
-          "Tag limit",
-          `Choose up to ${MAX_CATEGORY_TAGS} category tags for one event.`
-        );
-        return current;
       }
 
       return [...current, nextTag];
@@ -677,7 +659,7 @@ export default function EditEventScreen({ route, navigation }) {
           Vibe tags (Optional)
         </Text>
         <Text style={[styles.helperText, { color: theme.textMuted }]}>
-          Choose up to {MAX_VIBE_TAGS} tags people can search for.
+          Choose any vibe tags people can search for.
         </Text>
         <Pressable
           style={[

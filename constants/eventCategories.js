@@ -189,11 +189,9 @@ export const EVENT_CATEGORY_TAGS = EVENT_CATEGORY_GROUPS.flatMap(
 export const EVENT_CATEGORY_VALUES = [
   ...new Set([...EVENT_MAIN_CATEGORIES, ...EVENT_CATEGORY_TAGS]),
 ];
-export const MAX_CATEGORY_TAGS = 8;
 
 export const EVENT_CATEGORIES = ["All", ...EVENT_MAIN_CATEGORIES];
 export const EVENT_CATEGORY_GROUP_ALL_PREFIX = "All ";
-export const MAX_VIBE_TAGS = 5;
 export const VIBE_TAG_GROUPS = [
   {
     title: "Comfort & Pace",

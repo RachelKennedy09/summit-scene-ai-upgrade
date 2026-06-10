@@ -645,7 +645,7 @@ describe("SummitScene API", function () {
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 
-  it("should create an event with up to 3 searchable categories", async () => {
+  it("should create an event with multiple searchable categories", async () => {
     process.env.ADMIN_EMAILS = testEmail;
     const title = `Multi Category Event ${testRunId}`;
 

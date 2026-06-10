@@ -65,7 +65,7 @@ export default function EventHostSection({
   const businessVibeTags = Array.isArray(host.businessVibeTags)
     ? host.businessVibeTags
     : [];
-  const previewTags = [...businessTags, ...businessVibeTags].slice(0, 3);
+  const previewTags = [...businessTags, ...businessVibeTags];
   const hostEventsLabel =
     host.role === "business"
       ? "View all events from this business"

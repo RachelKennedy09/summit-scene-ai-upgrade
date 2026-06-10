@@ -7,7 +7,6 @@ import {
 import { isAdminEmail } from "./adminAccess.js";
 
 const ARRAY_ITEM_MAX_LENGTH = 40;
-const ARRAY_MAX_ITEMS = 20;
 
 function normalizeOptionalString(value) {
   if (typeof value !== "string") return undefined;
@@ -34,7 +33,7 @@ function normalizeStringArray(value) {
     normalized.push(next.slice(0, ARRAY_ITEM_MAX_LENGTH));
   });
 
-  return normalized.slice(0, ARRAY_MAX_ITEMS);
+  return normalized;
 }
 
 function normalizeSkillLevel(value) {

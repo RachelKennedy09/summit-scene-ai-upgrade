@@ -29,8 +29,6 @@ import {
   COMMUNITY_FORM_CATEGORIES,
   EVENT_CATEGORY_GROUPS,
   EVENT_MAIN_CATEGORIES,
-  MAX_CATEGORY_TAGS,
-  MAX_VIBE_TAGS,
   VIBE_TAG_GROUPS,
   VIBE_TAGS,
   getCategoryTagGroupsForCategories,
@@ -67,7 +65,6 @@ const PLAN_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGOR
 const NOTICE_CATEGORY_GROUPS = [
   { title: "Local Notices", options: COMMUNITY_NOTICE_CATEGORIES },
 ];
-const MAX_BUDDY_CATEGORIES = 3;
 const COMMUNITY_TYPES = [
   {
     label: "Make a Plan",
@@ -357,14 +354,14 @@ function normalizeCategories(values) {
   const source = Array.isArray(values) ? values : [values];
   return [
     ...new Set(source.map((item) => normalizeCategory(item)).filter(Boolean)),
-  ].slice(0, MAX_BUDDY_CATEGORIES);
+  ];
 }
 
 function normalizeCategoryTags(values) {
   const source = Array.isArray(values) ? values : [values];
   return [
     ...new Set(source.filter((item) => COMMUNITY_CATEGORY_TAGS.includes(item))),
-  ].slice(0, MAX_CATEGORY_TAGS);
+  ];
 }
 
 function getLegacyCategoryTags(values) {
@@ -376,7 +373,7 @@ function normalizeVibeTags(values) {
   const source = Array.isArray(values) ? values : [values];
   return [
     ...new Set(source.filter((item) => VIBE_TAGS.includes(item))),
-  ].slice(0, MAX_VIBE_TAGS);
+  ];
 }
 
 function getEventCategoryList(event) {
@@ -600,14 +597,6 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         return nextCategories;
       }
 
-      if (current.length >= MAX_BUDDY_CATEGORIES) {
-        Alert.alert(
-          "Category limit",
-          `Choose up to ${MAX_BUDDY_CATEGORIES} categories for one plan.`
-        );
-        return current;
-      }
-
       const nextCategories = [...current, nextCategory];
       const nextPrimaryCategory = nextCategories[0] || "";
       const nextType = getBuddyTypeForEventCategory(nextPrimaryCategory);
@@ -628,14 +617,6 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         return current.filter((item) => item !== nextTag);
       }
 
-      if (current.length >= MAX_CATEGORY_TAGS) {
-        Alert.alert(
-          "Tag limit",
-          `Choose up to ${MAX_CATEGORY_TAGS} category tags.`
-        );
-        return current;
-      }
-
       return [...current, nextTag];
     });
   }
@@ -644,14 +625,6 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     setVibeTags((current) => {
       if (current.includes(nextTag)) {
         return current.filter((item) => item !== nextTag);
-      }
-
-      if (current.length >= MAX_VIBE_TAGS) {
-        Alert.alert(
-          "Vibe tag limit",
-          `Choose up to ${MAX_VIBE_TAGS} vibe tags.`
-        );
-        return current;
       }
 
       return [...current, nextTag];
@@ -1092,7 +1065,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 Vibe tags (Optional)
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Choose up to {MAX_VIBE_TAGS} tags people can search for.
+                Choose any vibe tags people can search for.
               </Text>
               <Pressable
                 style={[

@@ -2,7 +2,7 @@
 // Extra profile fields for LOCAL accounts
 
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { PROFILE_INTEREST_GROUPS } from "../../constants/eventCategories";
 import { getCategoryAccent } from "../../utils/categoryVisuals";
 
@@ -12,7 +12,6 @@ const USER_TYPE_OPTIONS = [
   { value: "seasonal", label: "Seasonal" },
   { value: "visitor", label: "Visiting" },
 ];
-const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
 const SOCIAL_PROVIDERS = [
   { provider: "instagram", label: "Instagram", placeholder: "@yourhandle" },
   { provider: "tiktok", label: "TikTok", placeholder: "@yourhandle" },
@@ -77,18 +76,6 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
   function handleToggleInterest(group, interest) {
     if (values.includes(interest)) {
       onToggle(interest);
-      return;
-    }
-
-    const selectedInGroup = values.filter((item) =>
-      group.options.includes(item)
-    ).length;
-
-    if (selectedInGroup >= MAX_PROFILE_INTERESTS_PER_GROUP) {
-      Alert.alert(
-        "Main interests limit",
-        `Choose up to ${MAX_PROFILE_INTERESTS_PER_GROUP} interests in each category so your profile stays easy to scan.`
-      );
       return;
     }
 
@@ -259,9 +246,8 @@ function LocalFields({
         Main interests (optional)
       </Text>
       <Text style={[styles.helperText, { color: theme.textMuted }]}>
-        Pick up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each category. These
-        show on your profile and help start your Hub with event categories you
-        care about. You can change these at any time.
+        Pick interests to show on your profile and help start your Hub with
+        event categories you care about. You can change these at any time.
       </Text>
       <InterestGroupList
         groups={PROFILE_INTEREST_GROUPS}

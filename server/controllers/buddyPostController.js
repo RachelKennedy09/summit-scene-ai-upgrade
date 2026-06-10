@@ -14,8 +14,6 @@ import { isEventUpcoming } from "../../utils/eventSchedule.js";
 import {
   COMMUNITY_CATEGORY_TAGS,
   EVENT_CATEGORY_GROUPS,
-  MAX_CATEGORY_TAGS,
-  MAX_VIBE_TAGS,
   VIBE_TAGS,
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
@@ -285,10 +283,6 @@ function normalizeBuddyCategories({ category, categories, categoryRequired = fal
     throw new Error("Please choose at least one category.");
   }
 
-  if (normalizedCategories.length > 3) {
-    throw new Error("Choose up to 3 categories.");
-  }
-
   return normalizedCategories;
 }
 
@@ -305,10 +299,6 @@ function normalizeCategoryTags({ categoryTags, category, categories } = {}) {
         .filter(Boolean)
     ),
   ];
-
-  if (normalizedTags.length > MAX_CATEGORY_TAGS) {
-    throw new Error(`Choose up to ${MAX_CATEGORY_TAGS} category tags.`);
-  }
 
   const invalidTag = normalizedTags.find(
     (item) => !COMMUNITY_CATEGORY_TAGS.includes(item)
@@ -330,10 +320,6 @@ function normalizeVibeTags(value) {
         .filter(Boolean)
     ),
   ];
-
-  if (normalizedTags.length > MAX_VIBE_TAGS) {
-    throw new Error(`Choose up to ${MAX_VIBE_TAGS} vibe tags.`);
-  }
 
   const invalidTag = normalizedTags.find((item) => !VIBE_TAGS.includes(item));
   if (invalidTag) {

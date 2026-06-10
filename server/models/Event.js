@@ -13,7 +13,6 @@ import mongoose from "mongoose";
 import {
   EVENT_CATEGORY_TAGS,
   EVENT_CATEGORY_VALUES,
-  MAX_VIBE_TAGS,
   VIBE_TAGS,
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
@@ -115,12 +114,6 @@ const eventSchema = new mongoose.Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= 3;
-        },
-        message: "Choose up to 3 categories.",
-      },
     },
 
     categoryTags: {
@@ -132,12 +125,6 @@ const eventSchema = new mongoose.Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= 8;
-        },
-        message: "Choose up to 8 category tags.",
-      },
     },
 
     vibeTags: {
@@ -149,12 +136,6 @@ const eventSchema = new mongoose.Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= MAX_VIBE_TAGS;
-        },
-        message: `Choose up to ${MAX_VIBE_TAGS} vibe tags.`,
-      },
     },
 
     // -------------------------------------------
@@ -320,7 +301,7 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
   if (Array.isArray(this.categories)) {
     this.categories = [
       ...new Set(this.categories.map(normalizeCategory).filter(Boolean)),
-    ].slice(0, 3);
+    ];
   }
 
   if (!this.categories?.length && this.category) {

@@ -34,8 +34,6 @@ const SOCIAL_PROVIDERS = [
   { provider: "website", label: "Website", placeholder: "https://..." },
 ];
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
-const MAX_PROFILE_INTERESTS_PER_GROUP = 4;
-const MAX_BUSINESS_VIBE_TAGS = 5;
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
@@ -344,21 +342,6 @@ export default function EditProfileScreen({ navigation }) {
         return current.filter((item) => item !== interest);
       }
 
-      const group = PROFILE_INTEREST_GROUPS.find((item) =>
-        item.options.includes(interest)
-      );
-      const selectedInGroup = group
-        ? current.filter((item) => group.options.includes(item)).length
-        : 0;
-
-      if (selectedInGroup >= MAX_PROFILE_INTERESTS_PER_GROUP) {
-        Alert.alert(
-          "Main interests limit",
-          `Choose up to ${MAX_PROFILE_INTERESTS_PER_GROUP} interests in each category so your profile stays easy to scan.`
-        );
-        return current;
-      }
-
       return [...current, interest];
     });
   }
@@ -367,14 +350,6 @@ export default function EditProfileScreen({ navigation }) {
     setBusinessVibeTags((current) => {
       if (current.includes(tag)) {
         return current.filter((item) => item !== tag);
-      }
-
-      if (current.length >= MAX_BUSINESS_VIBE_TAGS) {
-        Alert.alert(
-          "Vibe tag limit",
-          `Choose up to ${MAX_BUSINESS_VIBE_TAGS} vibe tags so your profile stays easy to scan.`
-        );
-        return current;
       }
 
       return [...current, tag];
@@ -551,8 +526,7 @@ export default function EditProfileScreen({ navigation }) {
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
                 Pick optional interests you are comfortable showing on your
-                profile. Choose up to {MAX_PROFILE_INTERESTS_PER_GROUP} in each
-                category. These help your Hub start with events you care about,
+                profile. These help your Hub start with events you care about,
                 and you can change them at any time.
               </Text>
               <InterestGroupList
@@ -604,7 +578,7 @@ export default function EditProfileScreen({ navigation }) {
                 Business vibe
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Choose up to {MAX_BUSINESS_VIBE_TAGS} tags that describe the
+                Choose tags that describe the
                 feel of your events or experiences.
               </Text>
               <InterestGroupList

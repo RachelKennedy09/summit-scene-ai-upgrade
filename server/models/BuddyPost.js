@@ -7,7 +7,6 @@ import {
   COMMUNITY_CATEGORY_TAGS,
   COMMUNITY_FORM_CATEGORIES,
   EVENT_CATEGORY_GROUPS,
-  MAX_VIBE_TAGS,
   VIBE_TAGS,
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
@@ -185,12 +184,6 @@ const buddyPostSchema = new Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= 3;
-        },
-        message: "Choose up to 3 categories.",
-      },
     },
 
     categoryTags: {
@@ -202,12 +195,6 @@ const buddyPostSchema = new Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= 8;
-        },
-        message: "Choose up to 8 category tags.",
-      },
     },
 
     vibeTags: {
@@ -219,12 +206,6 @@ const buddyPostSchema = new Schema(
         },
       ],
       default: undefined,
-      validate: {
-        validator(value) {
-          return !value || value.length <= MAX_VIBE_TAGS;
-        },
-        message: `Choose up to ${MAX_VIBE_TAGS} vibe tags.`,
-      },
     },
 
     communityType: {
@@ -343,7 +324,7 @@ buddyPostSchema.pre("validate", function normalizeLegacyCategories(next) {
   if (Array.isArray(this.categories)) {
     this.categories = [
       ...new Set(this.categories.map(normalizeCategory).filter(Boolean)),
-    ].slice(0, 3);
+    ];
   }
 
   if (!this.categories?.length && this.category) {
