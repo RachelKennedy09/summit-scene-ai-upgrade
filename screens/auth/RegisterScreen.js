@@ -494,6 +494,7 @@ function RegisterScreen() {
   const [emailAvailability, setEmailAvailability] = useState({
     status: "idle",
     message: "",
+    checkedEmail: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [role, setRole] = useState("local");
@@ -663,13 +664,21 @@ function RegisterScreen() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setEmailAvailability({ status: "idle", message: "" });
+      setEmailAvailability({ status: "idle", message: "", checkedEmail: "" });
       return false;
+    }
+
+    if (
+      emailAvailability.status === "available" &&
+      emailAvailability.checkedEmail === normalizedEmail
+    ) {
+      return emailAvailability;
     }
 
     setEmailAvailability({
       status: "checking",
       message: "Checking email...",
+      checkedEmail: normalizedEmail,
     });
 
     try {
@@ -679,6 +688,7 @@ function RegisterScreen() {
         const result = {
           status: "taken",
           message: "This email is already registered. Please log in instead.",
+          checkedEmail: normalizedEmail,
         };
         setEmailAvailability(result);
         return result;
@@ -687,6 +697,7 @@ function RegisterScreen() {
       const result = {
         status: "available",
         message: "Email is available.",
+        checkedEmail: normalizedEmail,
       };
       setEmailAvailability(result);
       return result;
@@ -694,6 +705,7 @@ function RegisterScreen() {
       const result = {
         status: "error",
         message: error.message || "Could not check email right now.",
+        checkedEmail: normalizedEmail,
       };
       setEmailAvailability(result);
       return result;
@@ -1032,7 +1044,11 @@ function RegisterScreen() {
             value={email}
             onChangeText={(value) => {
               setEmail(value);
-              setEmailAvailability({ status: "idle", message: "" });
+              setEmailAvailability({
+                status: "idle",
+                message: "",
+                checkedEmail: "",
+              });
             }}
             onBlur={validateEmailAvailability}
             placeholder="you@example.com"
