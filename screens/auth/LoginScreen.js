@@ -54,7 +54,35 @@ function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAppleAuthAvailability() {
+      if (Platform.OS !== "ios") {
+        return;
+      }
+
+      try {
+        const available = await AppleAuthentication.isAvailableAsync();
+        if (isMounted) {
+          setIsAppleAuthAvailable(Boolean(available));
+        }
+      } catch {
+        if (isMounted) {
+          setIsAppleAuthAvailable(false);
+        }
+      }
+    }
+
+    checkAppleAuthAvailability();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!googleWebClientId) {
@@ -114,6 +142,13 @@ function LoginScreen() {
       setErrorMessage("");
       clearAuthNoticeMessage?.();
       setIsSubmitting(true);
+
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        throw new Error(
+          "Sign in with Apple is not available on this device. Please use email login."
+        );
+      }
 
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -383,7 +418,7 @@ function LoginScreen() {
               }}
             />
 
-            {Platform.OS === "ios" ? (
+            {Platform.OS === "ios" && isAppleAuthAvailable ? (
               <>
                 <Text style={[styles.termsNote, { color: theme.textMuted }]}>
                   By continuing with Apple, you confirm you are 18+ and agree to

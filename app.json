@@ -32,6 +32,7 @@
       "bundleIdentifier": "com.rachellauren.summitscene",
       "buildNumber": "1",
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Summit Scene uses your location to show events near you. You can also browse by town without sharing location.",
