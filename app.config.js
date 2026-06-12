@@ -4,7 +4,6 @@ const googleServicesFile =
 
 const plugins = [
   "expo-apple-authentication",
-  googleServicesFile ? "@react-native-google-signin/google-signin" : null,
   [
     "expo-location",
     {
