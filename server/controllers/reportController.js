@@ -8,6 +8,7 @@ import Report, {
   REPORT_REASONS,
   REPORT_TARGET_TYPES,
 } from "../models/Report.js";
+import { sendModerationReportNotification } from "../services/emailService.js";
 import User from "../models/User.js";
 
 const REPORT_POPULATE_FIELDS =
@@ -63,6 +64,23 @@ export async function createReport(req, res) {
       details,
       reporter,
     });
+
+    User.findById(reporter)
+      .select("name email")
+      .lean()
+      .then((reporterUser) =>
+        sendModerationReportNotification({
+          report,
+          reporter: reporterUser,
+          source: "report",
+        })
+      )
+      .catch((notificationError) => {
+        console.warn(
+          "Moderation report notification failed:",
+          notificationError.message
+        );
+      });
 
     return res.status(201).json({
       message: "Report submitted.",

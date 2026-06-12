@@ -101,6 +101,77 @@ async function sendEmail({ to, subject, text, devLink }) {
   }
 }
 
+function getModerationRecipient() {
+  return (
+    process.env.MODERATION_NOTIFICATION_EMAIL ||
+    process.env.ADMIN_NOTIFICATION_EMAIL ||
+    process.env.SUPPORT_EMAIL ||
+    ""
+  ).trim();
+}
+
+function getReportAdminUrl(reportId) {
+  const adminUrl = process.env.ADMIN_PUBLIC_URL || process.env.APP_PUBLIC_URL;
+  if (!adminUrl || !reportId) {
+    return "";
+  }
+
+  try {
+    const url = new URL("/admin/moderation", adminUrl);
+    url.searchParams.set("reportId", reportId.toString());
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+export async function sendModerationReportNotification({
+  report,
+  reporter,
+  targetUser,
+  source = "report",
+}) {
+  const to = getModerationRecipient();
+  if (!to || !report) {
+    return;
+  }
+
+  const reportId = report._id || report.id;
+  const adminUrl = getReportAdminUrl(reportId);
+  const reporterName = reporter?.name || reporter?.email || "Unknown reporter";
+  const reporterEmail = reporter?.email || "No reporter email";
+  const targetLabel =
+    targetUser?.name || targetUser?.email || report.targetId || "Unknown target";
+  const subject =
+    source === "block"
+      ? "Summit Scene moderation alert: user blocked"
+      : "Summit Scene moderation alert: new report";
+
+  await sendEmail({
+    to,
+    subject,
+    devLink: adminUrl,
+    text: [
+      subject,
+      "",
+      `Report ID: ${reportId || "unknown"}`,
+      `Source: ${source}`,
+      `Target type: ${report.targetType}`,
+      `Target ID: ${report.targetId}`,
+      `Target user: ${targetLabel}`,
+      `Reason: ${report.reason}`,
+      `Reporter: ${reporterName}`,
+      `Reporter email: ${reporterEmail}`,
+      report.details ? `Details: ${report.details}` : "Details: none",
+      adminUrl ? `Admin review link: ${adminUrl}` : "",
+      "",
+      "Review this in the Summit Scene moderation queue.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
+}
+
 export async function sendVerificationEmail({ to, token }) {
   const link = buildUrl("/verify-email.html", token);
   await sendEmail({

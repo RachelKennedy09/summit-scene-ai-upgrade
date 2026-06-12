@@ -70,6 +70,28 @@ function isExpectedAuthFailure(error) {
   );
 }
 
+function toProviderSignInError(error, providerName) {
+  const message = error?.message || "";
+  const lower = message.toLowerCase();
+
+  if (lower.includes("audience") || lower.includes("jwt")) {
+    return new Error(
+      `${providerName} sign-in is configured for the real app bundle and may not work correctly in Expo Go. Please test ${providerName} sign-in in a development build or TestFlight build.`
+    );
+  }
+
+  if (lower.includes("identity token") || lower.includes("id token")) {
+    return new Error(
+      `${providerName} did not return a valid sign-in token. Please try again or use email login.`
+    );
+  }
+
+  return toUserFriendlyError(
+    error,
+    `We couldn't sign you in with ${providerName} right now. Please try again.`
+  );
+}
+
 // Create the context object
 const AuthContext = createContext(null);
 
@@ -638,10 +660,7 @@ export function AuthProvider({ children }) {
         error,
         "Apple sign-in request timed out. Please try again."
       );
-      throw toUserFriendlyError(
-        normalizedError,
-        "We couldn't sign you in with Apple right now. Please try again."
-      );
+      throw toProviderSignInError(normalizedError, "Apple");
     } finally {
       setIsAuthLoading(false);
     }
@@ -679,10 +698,11 @@ export function AuthProvider({ children }) {
       );
     } catch (error) {
       console.error("Error in signInWithGoogle:", error);
-      throw toUserFriendlyError(
+      const normalizedError = normalizeNetworkError(
         error,
-        "We couldn't sign you in with Google right now. Please try email login."
+        "Google sign-in request timed out. Please try again."
       );
+      throw toProviderSignInError(normalizedError, "Google");
     } finally {
       setIsAuthLoading(false);
     }

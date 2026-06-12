@@ -30,10 +30,10 @@ export default function HostEventsScreen({ route }) {
   const isBusinessHost = hostRole === "business";
   const title = isBusinessHost
     ? `Events from ${hostName || "this business"}`
-    : `Events from ${hostName || "this user"}`;
+    : `Events from ${hostName || "this organizer"}`;
   const subtitle = isBusinessHost
     ? "Official listings posted by this business or organizer."
-    : "Listings posted by this Summit Scene member.";
+    : "Public events posted by this organizer.";
 
   const loadEvents = useCallback(async () => {
     if (!hostId) {

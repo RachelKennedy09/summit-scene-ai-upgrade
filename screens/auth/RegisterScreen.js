@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 
 import AppButton from "../../components/common/AppButton";
@@ -577,7 +577,10 @@ function RegisterScreen() {
     isAuthLoading,
   } = useAuth();
   const navigation = useNavigation();
+  const route = useRoute();
   const { theme } = useTheme();
+  const initialRole =
+    route.params?.initialRole === "business" ? "business" : "local";
 
   const [stepIndex, setStepIndex] = useState(0);
   const [name, setName] = useState("");
@@ -590,7 +593,7 @@ function RegisterScreen() {
     checkedEmail: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [role, setRole] = useState("local");
+  const [role, setRole] = useState(initialRole);
   const [town, setTown] = useState("");
   const [userType, setUserType] = useState("local");
   const [originallyFrom, setOriginallyFrom] = useState("");
@@ -1854,6 +1857,13 @@ function RegisterScreen() {
                   Already have an account? Log in
                 </Text>
               </Pressable>
+              <Pressable
+                onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
+              >
+                <Text style={[styles.browseLinkText, { color: theme.accent }]}>
+                  Continue browsing without an account
+                </Text>
+              </Pressable>
               <Pressable onPress={() => navigation.navigate("Legal")}>
                 <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
                   Privacy & Terms
@@ -2262,6 +2272,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: "center",
     fontSize: 14,
+  },
+  browseLinkText: {
+    marginTop: 16,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "800",
   },
   legalLinkText: {
     marginTop: 12,

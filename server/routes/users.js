@@ -15,6 +15,7 @@ import CommunityPost from "../models/CommunityPost.js";
 import Event from "../models/Event.js";
 import EventPreference from "../models/EventPreference.js";
 import Report from "../models/Report.js";
+import { sendModerationReportNotification } from "../services/emailService.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 
@@ -374,7 +375,7 @@ router.post("/:id/block", authMiddleware, async (req, res) => {
 
     const [user, targetUser] = await Promise.all([
       User.findById(userId),
-      User.findById(targetUserId).select("_id"),
+      User.findById(targetUserId).select("_id name email"),
     ]);
 
     if (!user || !targetUser) {
@@ -389,7 +390,7 @@ router.post("/:id/block", authMiddleware, async (req, res) => {
       user.blockedUsers.push(targetUserId);
       await user.save();
 
-      await Report.create({
+      const report = await Report.create({
         targetType: "user",
         targetId: targetUserId,
         parentType: "user",
@@ -397,6 +398,18 @@ router.post("/:id/block", authMiddleware, async (req, res) => {
         reason: "harassment",
         details: "User blocked from the app. Review for abusive behavior.",
         reporter: userId,
+      });
+
+      sendModerationReportNotification({
+        report,
+        reporter: user,
+        targetUser,
+        source: "block",
+      }).catch((notificationError) => {
+        console.warn(
+          "Block moderation notification failed:",
+          notificationError.message
+        );
       });
     }
 

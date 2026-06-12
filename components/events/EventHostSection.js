@@ -69,7 +69,7 @@ export default function EventHostSection({
   const hostEventsLabel =
     host.role === "business"
       ? "View all events from this business"
-      : "View all events from this user";
+      : "View all events from this organizer";
   const canReportHost =
     Boolean(onReport && hostId) &&
     hostId.toString() !== currentUserId?.toString();

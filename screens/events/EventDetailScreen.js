@@ -64,8 +64,7 @@ const REMINDER_OPTIONS = [
   { label: "1 month", value: "1mo" },
 ];
 
-// Helper: derive business host info from event.createdBy (or fallback to event.user)
-  // Block is only showed when the host is a business account.
+// Helper: derive public event host info from event.createdBy (or fallback to event.user).
 function getEventHost(event) {
   if (!event) return null;
 
@@ -77,7 +76,6 @@ function getEventHost(event) {
       : null;
 
   if (!userObj) return null;
-  if (userObj.role !== "business") return null; // only show for business hosts
 
   const name = userObj.name || "Event host";
   const town = userObj.town || event.town || "Rockies local";
@@ -211,6 +209,17 @@ export default function EventDetailScreen({ route }) {
   const activeReminderTime = eventPreference?.reminderTime || "1h";
   const savedReminderEnabled = Boolean(eventPreference?.savedReminderEnabled);
   const goingReminderEnabled = Boolean(eventPreference?.goingReminderEnabled);
+
+  function showAccountRequired(message) {
+    Alert.alert("Account required", message, [
+      { text: "Not now", style: "cancel" },
+      { text: "Log In", onPress: () => navigation.navigate("Login") },
+      {
+        text: "Create Account",
+        onPress: () => navigation.navigate("Register"),
+      },
+    ]);
+  }
 
   const handleEdit = () => {
     // navigate to shared EditEvent form, passing the current event
@@ -347,7 +356,9 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      Alert.alert("Login required", "Please log in before creating a buddy post.");
+      showAccountRequired(
+        "Log in or create an account to create buddy posts and make plans with other people."
+      );
       return;
     }
 
@@ -379,7 +390,9 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      Alert.alert("Login required", "Please log in to mark that you're going.");
+      showAccountRequired(
+        "Log in or create an account to mark that you're going."
+      );
       return;
     }
 
@@ -408,7 +421,7 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      Alert.alert("Login required", "Please log in to save events.");
+      showAccountRequired("Log in or create an account to save events.");
       return;
     }
 
@@ -439,7 +452,7 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      Alert.alert("Login required", "Please log in to set reminders.");
+      showAccountRequired("Log in or create an account to set reminders.");
       return;
     }
 
@@ -466,7 +479,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleToggleInterested = async (post) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to show interest.");
+      showAccountRequired("Log in or create an account to show interest.");
       return;
     }
 
@@ -480,7 +493,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleSubmitBuddyReply = async (post, text) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to reply.");
+      showAccountRequired("Log in or create an account to reply.");
       return;
     }
 
@@ -494,7 +507,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleSubmitBuddyReplyResponse = async (post, reply, text) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to reply.");
+      showAccountRequired("Log in or create an account to reply.");
       return;
     }
 
@@ -513,7 +526,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleToggleBuddyReplyLike = async (post, reply) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to like comments.");
+      showAccountRequired("Log in or create an account to like comments.");
       return;
     }
 
@@ -531,7 +544,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleUpdateBuddyReply = async (post, reply, text) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to edit your reply.");
+      showAccountRequired("Log in or create an account to edit replies.");
       return;
     }
 
@@ -550,7 +563,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleDeleteBuddyReply = (post, reply) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to delete your reply.");
+      showAccountRequired("Log in or create an account to manage replies.");
       return;
     }
 
@@ -577,7 +590,9 @@ export default function EventDetailScreen({ route }) {
 
   const handleReport = (target) => {
     if (!token) {
-      Alert.alert("Login required", "Please log in to submit a report.");
+      showAccountRequired(
+        "Log in or create an account to report content and use safety tools."
+      );
       return;
     }
 

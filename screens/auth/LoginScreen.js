@@ -92,10 +92,11 @@ function LoginScreen() {
     try {
       // Hand off to AuthContext to call /login on backend
       await login({ email, password });
-      // If successful, AuthContext will update user + token
-      // Navigation is handled by RootNavigator based on auth state
+      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
     } catch (error) {
-      setErrorMessage(error.message || "Please try again.");
+      const message = error.message || "Please try again.";
+      setErrorMessage(message);
+      Alert.alert("Login failed", message);
     } finally {
       setIsSubmitting(false);
     }
@@ -129,6 +130,7 @@ function LoginScreen() {
         identityToken: credential.identityToken,
         fullName: credential.fullName,
       });
+      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
     } catch (error) {
       if (error?.code === "ERR_REQUEST_CANCELED") {
         return;
@@ -138,6 +140,7 @@ function LoginScreen() {
         "Apple sign-in failed",
         error.message || "Please try again or use email login."
       );
+      clearAuthNoticeMessage?.();
     } finally {
       setIsSubmitting(false);
     }
@@ -176,6 +179,7 @@ function LoginScreen() {
       }
 
       await signInWithGoogle({ idToken: result.data.idToken });
+      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
     } catch (error) {
       if (error?.code === "SIGN_IN_CANCELLED") {
         return;
@@ -436,6 +440,14 @@ function LoginScreen() {
               </Text>
             </Pressable>
 
+            <Pressable
+              onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
+            >
+              <Text style={[styles.browseLinkText, { color: theme.accent }]}>
+                Continue browsing without an account
+              </Text>
+            </Pressable>
+
             <Pressable onPress={() => navigation.navigate("Legal")}>
               <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
                 Privacy & Terms
@@ -543,6 +555,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: "center",
     fontSize: 14,
+  },
+  browseLinkText: {
+    marginTop: 16,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "800",
   },
   legalLinkText: {
     marginTop: 12,

@@ -12,6 +12,7 @@ import PostEventScreen from "../screens/events/PostEventScreen";
 import MyEventsScreen from "../screens/events/MyEventsScreen";
 import CommunityScreen from "../screens/community/CommunityScreen";
 import AccountScreen from "../screens/account/AccountScreen";
+import AuthGateScreen from "../screens/auth/AuthGateScreen";
 
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -91,19 +92,19 @@ export default function TabNavigator() {
         />
       )}
 
-      {/* Only verified business users see Post Event */}
-      {canUseBusinessTools && (
-        <Tab.Screen
-          name="Post"
-          component={PostEventScreen}
-          options={{ title: "Post" }}
-        />
-      )}
+      <Tab.Screen
+        name="Post"
+        component={canUseBusinessTools ? PostEventScreen : AuthGateScreen}
+        initialParams={
+          canUseBusinessTools ? undefined : { mode: "organizer" }
+        }
+        options={{ title: "Post" }}
+      />
 
-      {/* Community is available to locals, visitors, admins, and businesses. */}
       <Tab.Screen
         name="Community"
-        component={CommunityScreen}
+        component={user ? CommunityScreen : AuthGateScreen}
+        initialParams={user ? undefined : { mode: "community" }}
         options={{ title: "Connect" }}
       />
 

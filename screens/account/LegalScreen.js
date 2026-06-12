@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "May 26, 2026";
+const LAST_UPDATED = "June 12, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -102,6 +102,36 @@ export default function LegalScreen() {
             community guidelines, safety notes, support information, and account
             deletion process. It is not legal advice.
           </LegalText>
+        </LegalSection>
+
+        <LegalSection title="Account Terms & User Safety" theme={theme}>
+          <LegalText theme={theme}>
+            Summit Scene includes user-generated content, including profiles,
+            community posts, event plans, replies, attendance signals, business
+            profiles, and event listings. Users must agree to Summit Scene's
+            account terms before logging in or creating an account.
+          </LegalText>
+          <LegalBullet theme={theme}>
+            Summit Scene has no tolerance for objectionable content or abusive
+            users, including harassment, hate, threats, sexual exploitation,
+            scams, spam, impersonation, misleading events, or content targeting
+            people based on identity or protected characteristics.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Users can report objectionable content from posts, replies, events,
+            event posting profiles, and member profiles by using the in-app
+            Report controls.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Users can block abusive users from member profiles, community
+            posts, and replies. Blocking hides that user's content where
+            supported and creates a moderation signal for Summit Scene review.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Summit Scene reviews safety reports as quickly as possible and aims
+            to act within 24 hours by removing violating content and
+            restricting, suspending, or removing abusive users when warranted.
+          </LegalBullet>
         </LegalSection>
 
         <LegalSection title="Privacy Policy" theme={theme}>
@@ -354,7 +384,8 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Summit Scene reviews objectionable content reports as quickly as
             possible and aims to act within 24 hours by removing violating
-            content and restricting or ejecting abusive users when warranted.
+            content and restricting, suspending, or removing abusive users when
+            warranted.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Summit Scene is an events and community discovery tool. It is not an
@@ -399,6 +430,11 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Use Report or Block if something feels unsafe, misleading, abusive,
             suspicious, or inappropriate.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Reports are reviewed by Summit Scene moderation/admin tools and may
+            result in content removal, account restrictions, account deletion,
+            or other safety action.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Blocking immediately hides the blocked user's content from your

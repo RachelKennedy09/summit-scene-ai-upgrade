@@ -164,17 +164,17 @@ export default function RootNavigator() {
               component={EventDetailScreen}
               options={{ title: "Event Details" }}
             />
+            <Stack.Screen
+              name="HostEvents"
+              component={HostEventsScreen}
+              options={{ title: "Host Events" }}
+            />
             {user ? (
               <>
                 <Stack.Screen
                   name="EditEvent"
                   component={EditEventScreen}
                   options={{ title: "Edit Event" }}
-                />
-                <Stack.Screen
-                  name="HostEvents"
-                  component={HostEventsScreen}
-                  options={{ title: "Host Events" }}
                 />
 
                 {/* Community flow */}
