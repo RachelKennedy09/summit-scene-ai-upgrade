@@ -914,7 +914,7 @@ function RegisterScreen() {
         lookingFor: isBusiness ? lookingFor : undefined,
         instagram: socialValues.instagram,
         facebook: isBusiness ? socialValues.facebook : undefined,
-        website: isBusiness ? website : undefined,
+        website: website || undefined,
         googleBusinessUrl: isBusiness ? googleBusinessUrl : undefined,
         phone: isBusiness ? phone : undefined,
         avatarKey: null,
@@ -1422,18 +1422,39 @@ function RegisterScreen() {
       return (
         <>
           <Text style={[styles.stepTitle, { color: theme.text }]}>
-            Add socials or an avatar
+            Add socials and a profile photo
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
             Optional. Connect public profiles if you want people to recognize
             you in the community.
           </Text>
           {isLocal ? (
-            <SocialConnectFields
-              values={socialValues}
-              onChange={handleSocialChange}
-              theme={theme}
-            />
+            <>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Website (optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="https://your-site.com"
+                placeholderTextColor={theme.textMuted}
+                value={website}
+                onChangeText={setWebsite}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <SocialConnectFields
+                values={socialValues}
+                onChange={handleSocialChange}
+                theme={theme}
+              />
+            </>
           ) : null}
           <Text style={[styles.label, { color: theme.text }]}>
             Profile photo

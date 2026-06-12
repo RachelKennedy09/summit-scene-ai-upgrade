@@ -398,13 +398,13 @@ export default function EditProfileScreen({ navigation }) {
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
         lookingFor: isBusiness ? lookingFor : "",
         instagram: socialValues.instagram || instagram,
+        website,
         avatarKey: null,
         profileImageUrl,
         socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
       };
 
       if (isBusiness) {
-        updates.website = website;
         updates.facebook = socialValues.facebook || facebook;
         updates.googleBusinessUrl = googleBusinessUrl;
         updates.phone = phone;
@@ -715,7 +715,34 @@ export default function EditProfileScreen({ navigation }) {
             placeholderTextColor={theme.textMuted}
           />
 
-          {/* Website – business only */}
+          <Text style={[styles.label, { color: theme.text }]}>
+            Website {isBusiness ? "" : "(optional)"}
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            {isBusiness
+              ? "Add your official website or use a connected social profile below for review."
+              : "Add a personal site, portfolio, blog, or public page if you want it shown on your profile."}
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            value={website}
+            onChangeText={setWebsite}
+            placeholder={
+              isBusiness ? "https://your-business.com" : "https://your-site.com"
+            }
+            placeholderTextColor={theme.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          {/* Social profiles */}
           <Text
             style={[
               styles.label,
@@ -789,27 +816,6 @@ export default function EditProfileScreen({ navigation }) {
 
           {isBusiness && (
             <>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Website
-              </Text>
-              <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Add at least one proof link or connected social profile.
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                value={website}
-                onChangeText={setWebsite}
-                placeholder="https://your-business.com"
-                placeholderTextColor={theme.textMuted}
-                autoCapitalize="none"
-              />
               <Text style={[styles.label, { color: theme.text }]}>
                 Google Business listing
               </Text>

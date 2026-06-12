@@ -645,6 +645,47 @@ describe("SummitScene API", function () {
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 
+  it("should return admin dashboard stats", async () => {
+    process.env.ADMIN_EMAILS = "";
+
+    const nonAdminRes = await request(app)
+      .get("/api/users/admin/dashboard-stats")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(nonAdminRes.status).to.equal(403);
+
+    process.env.ADMIN_EMAILS = testEmail;
+
+    const res = await request(app)
+      .get("/api/users/admin/dashboard-stats")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(res.status).to.equal(200);
+    expect(res.body).to.include.keys([
+      "totalUsers",
+      "newUsersThisWeek",
+      "activeUsersThisWeek",
+      "totalBusinesses",
+      "newBusinessesThisMonth",
+      "totalEventsPosted",
+      "eventsPostedThisWeek",
+      "totalCommunityPosts",
+      "replies",
+      "likes",
+      "locations",
+      "openReports",
+      "pendingBusinesses",
+    ]);
+    expect(res.body.totalUsers).to.be.a("number");
+    expect(res.body.locations).to.include.keys([
+      "banffUsers",
+      "canmoreUsers",
+      "lakeLouiseUsers",
+    ]);
+
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+  });
+
   it("should create an event with multiple searchable categories", async () => {
     process.env.ADMIN_EMAILS = testEmail;
     const title = `Multi Category Event ${testRunId}`;

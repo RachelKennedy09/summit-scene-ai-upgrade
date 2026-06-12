@@ -20,6 +20,10 @@ export function toUserFriendlyErrorMessage(message, fallbackMessage) {
     return "We couldn't reach the server. Check your connection and try again.";
   }
 
+  if (lower.includes("unexpected server response")) {
+    return fallback;
+  }
+
   if (
     lower.includes("timed out") ||
     lower.includes("timeout") ||

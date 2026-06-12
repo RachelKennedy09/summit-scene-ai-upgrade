@@ -144,10 +144,14 @@ export default function RootNavigator() {
         ),
       }}
     >
-      {user ? (
-        // ---------- LOGGED IN STACK ----------
-        user.hasSeenSafetyTips ? (
-          <>
+      {user && !user.hasSeenSafetyTips ? (
+        <Stack.Screen
+          name="SafetyTips"
+          component={SafetyTipsScreen}
+          options={{ headerShown: false }}
+        />
+      ) : (
+        <>
             <Stack.Screen
               name="tabs"
               component={TabNavigator}
@@ -156,74 +160,77 @@ export default function RootNavigator() {
 
             {/* Events flow */}
             <Stack.Screen
-              name="EditEvent"
-              component={EditEventScreen}
-              options={{ title: "Edit Event" }}
-            />
-            <Stack.Screen
               name="EventDetail"
               component={EventDetailScreen}
               options={{ title: "Event Details" }}
             />
-            <Stack.Screen
-              name="HostEvents"
-              component={HostEventsScreen}
-              options={{ title: "Host Events" }}
-            />
+            {user ? (
+              <>
+                <Stack.Screen
+                  name="EditEvent"
+                  component={EditEventScreen}
+                  options={{ title: "Edit Event" }}
+                />
+                <Stack.Screen
+                  name="HostEvents"
+                  component={HostEventsScreen}
+                  options={{ title: "Host Events" }}
+                />
 
-            {/* Community flow */}
-            <Stack.Screen
-              name="CommunityPost"
-              component={CommunityPostScreen}
-              options={{ title: "New Community Post" }}
-            />
-            <Stack.Screen
-              name="EditCommunityPost"
-              component={EditCommunityPostScreen}
-              options={{ title: "Edit Post" }}
-            />
-            <Stack.Screen
-              name="CreateBuddyPost"
-              component={CreateBuddyPostScreen}
-              options={{ title: "Create Buddy Post" }}
-            />
+                {/* Community flow */}
+                <Stack.Screen
+                  name="CommunityPost"
+                  component={CommunityPostScreen}
+                  options={{ title: "New Community Post" }}
+                />
+                <Stack.Screen
+                  name="EditCommunityPost"
+                  component={EditCommunityPostScreen}
+                  options={{ title: "Edit Post" }}
+                />
+                <Stack.Screen
+                  name="CreateBuddyPost"
+                  component={CreateBuddyPostScreen}
+                  options={{ title: "Create Buddy Post" }}
+                />
+              </>
+            ) : null}
 
             {/* Account flow */}
-            <Stack.Screen
-              name="EditProfile"
-              component={EditProfileScreen}
-              options={{ title: "Edit Profile" }}
-            />
-            <Stack.Screen
-              name="ChangeEmail"
-              component={ChangeEmailScreen}
-              options={{ title: "Change Email" }}
-            />
-            <Stack.Screen
-              name="ChangePassword"
-              component={ChangePasswordScreen}
-              options={{ title: "Change Password" }}
-            />
-            <Stack.Screen
-              name="VerifyEmail"
-              component={VerifyEmailScreen}
-              options={{ title: "Verify Email" }}
-            />
-            <Stack.Screen
-              name="BlockedUsers"
-              component={BlockedUsersScreen}
-              options={{ title: "Blocked Users" }}
-            />
-            <Stack.Screen
-              name="AdminAccounts"
-              component={AdminAccountsScreen}
-              options={{ title: "Admin Accounts" }}
-            />
-            <Stack.Screen
-              name="SavedEvents"
-              component={SavedEventsScreen}
-              options={{ title: "Saved Events" }}
-            />
+            {user ? (
+              <>
+                <Stack.Screen
+                  name="EditProfile"
+                  component={EditProfileScreen}
+                  options={{ title: "Edit Profile" }}
+                />
+                <Stack.Screen
+                  name="ChangeEmail"
+                  component={ChangeEmailScreen}
+                  options={{ title: "Change Email" }}
+                />
+                <Stack.Screen
+                  name="ChangePassword"
+                  component={ChangePasswordScreen}
+                  options={{ title: "Change Password" }}
+                />
+                <Stack.Screen
+                  name="BlockedUsers"
+                  component={BlockedUsersScreen}
+                  options={{ title: "Blocked Users" }}
+                />
+                <Stack.Screen
+                  name="AdminAccounts"
+                  component={AdminAccountsScreen}
+                  options={{ title: "Admin Accounts" }}
+                />
+                <Stack.Screen
+                  name="SavedEvents"
+                  component={SavedEventsScreen}
+                  options={{ title: "Saved Events" }}
+                />
+              </>
+            ) : null}
             <Stack.Screen
               name="UserHelp"
               component={UserHelpScreen}
@@ -239,32 +246,25 @@ export default function RootNavigator() {
               component={LegalScreen}
               options={{ title: "Privacy & Terms" }}
             />
-            <Stack.Screen
-              name="ReportBug"
-              component={ReportBugScreen}
-              options={{ title: "Report a Bug" }}
-            />
-            <Stack.Screen
-              name="ModerationQueue"
-              component={ModerationQueueScreen}
-              options={{ title: "Moderation Queue" }}
-            />
-            <Stack.Screen
-              name="BusinessVerification"
-              component={BusinessVerificationScreen}
-              options={{ title: "Business Verification" }}
-            />
-          </>
-        ) : (
-          <Stack.Screen
-            name="SafetyTips"
-            component={SafetyTipsScreen}
-            options={{ headerShown: false }}
-          />
-        )
-      ) : (
-        // ---------- LOGGED OUT STACK ----------
-        <>
+            {user ? (
+              <>
+                <Stack.Screen
+                  name="ReportBug"
+                  component={ReportBugScreen}
+                  options={{ title: "Report a Bug" }}
+                />
+                <Stack.Screen
+                  name="ModerationQueue"
+                  component={ModerationQueueScreen}
+                  options={{ title: "Moderation Queue" }}
+                />
+                <Stack.Screen
+                  name="BusinessVerification"
+                  component={BusinessVerificationScreen}
+                  options={{ title: "Business Verification" }}
+                />
+              </>
+            ) : null}
           <Stack.Screen
             name="Login"
             component={LoginScreen}
@@ -289,11 +289,6 @@ export default function RootNavigator() {
             name="VerifyEmail"
             component={VerifyEmailScreen}
             options={{ title: "Verify Email" }}
-          />
-          <Stack.Screen
-            name="Legal"
-            component={LegalScreen}
-            options={{ title: "Privacy & Terms" }}
           />
         </>
       )}

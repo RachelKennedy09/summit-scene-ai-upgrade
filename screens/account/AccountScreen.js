@@ -15,6 +15,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
@@ -25,8 +26,69 @@ import AppLogoHeader from "../../components/AppLogoHeader";
 import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
-import { fetchBusinessRequests } from "../../services/adminApi";
-import { fetchReports } from "../../services/reportsApi";
+import { fetchAdminDashboardStats } from "../../services/adminApi";
+
+const ANDROID_PACKAGE_NAME = "com.rachellauren.summitscene";
+const IOS_APP_STORE_ID = "";
+const EMPTY_ADMIN_STATS = {
+  totalUsers: 0,
+  newUsersThisWeek: 0,
+  activeUsersThisWeek: 0,
+  totalBusinesses: 0,
+  newBusinessesThisMonth: 0,
+  totalEventsPosted: 0,
+  eventsPostedThisWeek: 0,
+  totalCommunityPosts: 0,
+  replies: 0,
+  likes: 0,
+  locations: {
+    banffUsers: 0,
+    canmoreUsers: 0,
+    lakeLouiseUsers: 0,
+  },
+  openReports: 0,
+  pendingBusinesses: 0,
+};
+const ADMIN_DASHBOARD_GROUPS = [
+  {
+    title: "Users",
+    metrics: [
+      { key: "totalUsers", label: "Total Users" },
+      { key: "newUsersThisWeek", label: "New Users This Week" },
+      { key: "activeUsersThisWeek", label: "Active Users This Week" },
+    ],
+  },
+  {
+    title: "Businesses",
+    metrics: [
+      { key: "totalBusinesses", label: "Total Businesses" },
+      { key: "newBusinessesThisMonth", label: "New Businesses This Month" },
+    ],
+  },
+  {
+    title: "Events",
+    metrics: [
+      { key: "totalEventsPosted", label: "Total Events Posted" },
+      { key: "eventsPostedThisWeek", label: "Events Posted This Week" },
+    ],
+  },
+  {
+    title: "Community",
+    metrics: [
+      { key: "totalCommunityPosts", label: "Total Community Posts" },
+      { key: "replies", label: "Replies" },
+      { key: "likes", label: "Likes" },
+    ],
+  },
+  {
+    title: "Locations",
+    metrics: [
+      { key: "locations.banffUsers", label: "Banff Users" },
+      { key: "locations.canmoreUsers", label: "Canmore Users" },
+      { key: "locations.lakeLouiseUsers", label: "Lake Louise Users" },
+    ],
+  },
+];
 
 function AccountSection({ title, subtitle, children, theme }) {
   return (
@@ -80,6 +142,12 @@ function AccountNavRow({ title, subtitle, onPress, theme, badge, actionLabel = "
   );
 }
 
+function getMetricValue(stats, key) {
+  return key
+    .split(".")
+    .reduce((value, segment) => value?.[segment], stats) ?? 0;
+}
+
 function AccountScreen() {
   const {
     user,
@@ -105,10 +173,7 @@ function AccountScreen() {
 
   const [isReverting, setIsReverting] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [adminCounts, setAdminCounts] = useState({
-    openReports: 0,
-    pendingBusinesses: 0,
-  });
+  const [adminCounts, setAdminCounts] = useState(EMPTY_ADMIN_STATS);
   const [adminCountsLoading, setAdminCountsLoading] = useState(false);
   const [adminCountsError, setAdminCountsError] = useState("");
 
@@ -118,18 +183,19 @@ function AccountScreen() {
     try {
       setAdminCountsLoading(true);
       setAdminCountsError("");
-      const [openReports, pendingBusinesses] = await Promise.all([
-        fetchReports(token, "open"),
-        fetchBusinessRequests(token, "pending"),
-      ]);
+      const stats = await fetchAdminDashboardStats(token);
 
       setAdminCounts({
-        openReports: openReports.length,
-        pendingBusinesses: pendingBusinesses.length,
+        ...EMPTY_ADMIN_STATS,
+        ...stats,
+        locations: {
+          ...EMPTY_ADMIN_STATS.locations,
+          ...(stats.locations || {}),
+        },
       });
     } catch (error) {
       setAdminCountsError(
-        error.message || "Could not load admin tool counts."
+        error.message || "Dashboard stats are temporarily unavailable."
       );
     } finally {
       setAdminCountsLoading(false);
@@ -153,6 +219,33 @@ function AccountScreen() {
     });
   }
 
+  async function handleRateSummitScene() {
+    const androidMarketUrl = `market://details?id=${ANDROID_PACKAGE_NAME}`;
+    const androidWebUrl = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_NAME}`;
+    const iosReviewUrl = IOS_APP_STORE_ID
+      ? `itms-apps://itunes.apple.com/app/id${IOS_APP_STORE_ID}?action=write-review`
+      : "https://apps.apple.com/search?term=Summit%20Scene";
+    const fallbackUrl =
+      Platform.OS === "android"
+        ? androidWebUrl
+        : "https://apps.apple.com/search?term=Summit%20Scene";
+
+    try {
+      await Linking.openURL(
+        Platform.OS === "android" ? androidMarketUrl : iosReviewUrl
+      );
+    } catch (error) {
+      try {
+        await Linking.openURL(fallbackUrl);
+      } catch (fallbackError) {
+        Alert.alert(
+          "Could not open store",
+          "Please search for Summit Scene in the app store to leave a rating."
+        );
+      }
+    }
+  }
+
   // Safeguard: AccountScreen should only show when user != null
   if (!user) {
     return (
@@ -163,8 +256,28 @@ function AccountScreen() {
         <View style={styles.container}>
           <Text style={[styles.title, { color: theme.text }]}>Account</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            You are not logged in. Please log in to view your account.
+            Browse events, maps, and community posts without an account. Log in
+            or sign up to save events, post, reply, report, block, or manage a
+            profile.
           </Text>
+          <AppButton
+            title="Log In"
+            onPress={() => navigation.navigate("Login")}
+            size="lg"
+            style={{ marginTop: 16 }}
+          />
+          <AppButton
+            title="Create Account"
+            onPress={() => navigation.navigate("Register")}
+            variant="outline"
+            size="lg"
+            style={{ marginTop: 10 }}
+          />
+          <Pressable onPress={() => navigation.navigate("Legal")}>
+            <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
+              Privacy, Terms, and Community Guidelines
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -360,34 +473,41 @@ function AccountScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.adminStatsRow}>
-              <View
-                style={[
-                  styles.adminStatCard,
-                  { backgroundColor: theme.background, borderColor: theme.border },
-                ]}
-              >
-                <Text style={[styles.adminStatNumber, { color: theme.text }]}>
-                  {adminCounts.openReports}
+            {ADMIN_DASHBOARD_GROUPS.map((group) => (
+              <View key={group.title} style={styles.adminMetricGroup}>
+                <Text style={[styles.adminMetricGroupTitle, { color: theme.text }]}>
+                  {group.title}
                 </Text>
-                <Text style={[styles.adminStatLabel, { color: theme.textMuted }]}>
-                  Open reports
-                </Text>
+                <View style={styles.adminStatsRow}>
+                  {group.metrics.map((metric) => (
+                    <View
+                      key={metric.key}
+                      style={[
+                        styles.adminStatCard,
+                        {
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.adminStatNumber, { color: theme.text }]}
+                      >
+                        {getMetricValue(adminCounts, metric.key)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.adminStatLabel,
+                          { color: theme.textMuted },
+                        ]}
+                      >
+                        {metric.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-              <View
-                style={[
-                  styles.adminStatCard,
-                  { backgroundColor: theme.background, borderColor: theme.border },
-                ]}
-              >
-                <Text style={[styles.adminStatNumber, { color: theme.text }]}>
-                  {adminCounts.pendingBusinesses}
-                </Text>
-                <Text style={[styles.adminStatLabel, { color: theme.textMuted }]}>
-                  Business requests
-                </Text>
-              </View>
-            </View>
+            ))}
 
             {adminCountsError ? (
               <Text style={[styles.adminError, { color: theme.textMuted }]}>
@@ -480,6 +600,13 @@ function AccountScreen() {
             title="Report a bug"
             subtitle="Send Summit Scene a bug, wrong info report, safety concern, or idea."
             onPress={() => navigation.navigate("ReportBug")}
+            theme={theme}
+          />
+
+          <AccountNavRow
+            title="Rate Summit Scene"
+            subtitle="Leave a rating or review in the app store."
+            onPress={handleRateSummitScene}
             theme={theme}
           />
         </AccountSection>
@@ -764,14 +891,25 @@ const styles = StyleSheet.create({
   },
   adminStatsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
+    marginBottom: 6,
+  },
+  adminMetricGroup: {
     marginBottom: 12,
   },
+  adminMetricGroupTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
   adminStatCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "47%",
     borderWidth: 1,
     borderRadius: 10,
     padding: 10,
+    minHeight: 74,
   },
   adminStatNumber: {
     fontSize: 22,
@@ -785,6 +923,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginBottom: 10,
+  },
+  legalLinkText: {
+    marginTop: 14,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "800",
   },
   verificationHint: {
     fontSize: 12,

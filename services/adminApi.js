@@ -30,6 +30,10 @@ async function readJsonSafely(response) {
   try {
     return JSON.parse(text);
   } catch {
+    if (/^\s*<!doctype|^\s*<html/i.test(text)) {
+      return { message: `Unexpected server response (${response.status})` };
+    }
+
     return { message: text };
   }
 }
@@ -63,6 +67,36 @@ export async function fetchBusinessRequests(token, status = "pending") {
     throw toUserFriendlyError(
       normalized,
       "We couldn't load business requests right now. Please try again."
+    );
+  }
+}
+
+export async function fetchAdminDashboardStats(token) {
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/users/admin/dashboard-stats`,
+      { headers: buildHeaders(token) }
+    );
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error ||
+          data.message ||
+          `Failed to load admin dashboard stats (${res.status})`
+      );
+    }
+
+    return data && typeof data === "object" ? data : {};
+  } catch (error) {
+    const normalized =
+      error?.name === "AbortError"
+        ? new Error("Admin dashboard stats timed out. Please try again.")
+        : error;
+
+    throw toUserFriendlyError(
+      normalized,
+      "Dashboard stats are temporarily unavailable."
     );
   }
 }

@@ -31,6 +31,10 @@ const router = express.Router();
 const BUSINESS_REVIEW_FIELDS =
   "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio interests businessVibeTags lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
 
+function getAggregateCount(result, key = "count") {
+  return Number(result?.[0]?.[key] || 0);
+}
+
 /* -------------------------------------------
    PATCH /api/users/revert-to-local
    AUTH: required
@@ -61,6 +65,160 @@ router.patch("/revert-to-local", authMiddleware, async (req, res) => {
     res
       .status(500)
       .json({ message: "Server error while switching back to community profile." });
+  }
+});
+
+router.get("/admin/dashboard-stats", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      totalUsers,
+      newUsersThisWeek,
+      activeUsersThisWeek,
+      totalBusinesses,
+      newBusinessesThisMonth,
+      totalEventsPosted,
+      eventsPostedThisWeek,
+      totalCommunityPosts,
+      totalBuddyPosts,
+      communityEngagement,
+      buddyEngagement,
+      banffUsers,
+      canmoreUsers,
+      lakeLouiseUsers,
+      openReports,
+      pendingBusinesses,
+    ] = await Promise.all([
+      User.countDocuments({}),
+      User.countDocuments({ createdAt: { $gte: weekStart } }),
+      User.countDocuments({
+        $or: [
+          { lastActiveAt: { $gte: weekStart } },
+          { updatedAt: { $gte: weekStart } },
+        ],
+      }),
+      User.countDocuments({ role: "business" }),
+      User.countDocuments({
+        role: "business",
+        createdAt: { $gte: monthStart },
+      }),
+      Event.countDocuments({}),
+      Event.countDocuments({ createdAt: { $gte: weekStart } }),
+      CommunityPost.countDocuments({}),
+      BuddyPost.countDocuments({}),
+      CommunityPost.aggregate([
+        {
+          $group: {
+            _id: null,
+            replies: { $sum: { $size: { $ifNull: ["$replies", []] } } },
+            likes: { $sum: { $size: { $ifNull: ["$likes", []] } } },
+          },
+        },
+      ]),
+      BuddyPost.aggregate([
+        {
+          $project: {
+            replies: { $ifNull: ["$replies", []] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            topLevelReplies: { $sum: { $size: "$replies" } },
+            nestedReplies: {
+              $sum: {
+                $sum: {
+                  $map: {
+                    input: "$replies",
+                    as: "reply",
+                    in: { $size: { $ifNull: ["$$reply.replies", []] } },
+                  },
+                },
+              },
+            },
+            replyLikes: {
+              $sum: {
+                $sum: {
+                  $map: {
+                    input: "$replies",
+                    as: "reply",
+                    in: { $size: { $ifNull: ["$$reply.likes", []] } },
+                  },
+                },
+              },
+            },
+            nestedReplyLikes: {
+              $sum: {
+                $sum: {
+                  $map: {
+                    input: "$replies",
+                    as: "reply",
+                    in: {
+                      $sum: {
+                        $map: {
+                          input: { $ifNull: ["$$reply.replies", []] },
+                          as: "childReply",
+                          in: {
+                            $size: { $ifNull: ["$$childReply.likes", []] },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ]),
+      User.countDocuments({ town: "Banff" }),
+      User.countDocuments({ town: "Canmore" }),
+      User.countDocuments({ town: { $in: ["Lake Louise", "LL"] } }),
+      Report.countDocuments({ status: "open" }),
+      User.countDocuments({
+        role: "business",
+        businessVerificationStatus: "pending",
+      }),
+    ]);
+
+    const communityReplies = getAggregateCount(communityEngagement, "replies");
+    const communityLikes = getAggregateCount(communityEngagement, "likes");
+    const buddyReplies =
+      getAggregateCount(buddyEngagement, "topLevelReplies") +
+      getAggregateCount(buddyEngagement, "nestedReplies");
+    const buddyLikes =
+      getAggregateCount(buddyEngagement, "replyLikes") +
+      getAggregateCount(buddyEngagement, "nestedReplyLikes");
+
+    return res.json({
+      totalUsers,
+      newUsersThisWeek,
+      activeUsersThisWeek,
+      totalBusinesses,
+      newBusinessesThisMonth,
+      totalEventsPosted,
+      eventsPostedThisWeek,
+      totalCommunityPosts: totalCommunityPosts + totalBuddyPosts,
+      replies: communityReplies + buddyReplies,
+      likes: communityLikes + buddyLikes,
+      locations: {
+        banffUsers,
+        canmoreUsers,
+        lakeLouiseUsers,
+      },
+      openReports,
+      pendingBusinesses,
+      generatedAt: now.toISOString(),
+    });
+  } catch (error) {
+    console.error("Error loading admin dashboard stats:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error while loading admin dashboard stats." });
   }
 });
 
@@ -230,10 +388,20 @@ router.post("/:id/block", authMiddleware, async (req, res) => {
     if (!alreadyBlocked) {
       user.blockedUsers.push(targetUserId);
       await user.save();
+
+      await Report.create({
+        targetType: "user",
+        targetId: targetUserId,
+        parentType: "user",
+        parentId: targetUserId,
+        reason: "harassment",
+        details: "User blocked from the app. Review for abusive behavior.",
+        reporter: userId,
+      });
     }
 
     return res.json({
-      message: "User blocked.",
+      message: "User blocked and reported for moderation review.",
       user: buildSafeUser(user),
     });
   } catch (error) {

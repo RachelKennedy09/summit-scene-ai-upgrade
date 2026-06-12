@@ -53,6 +53,7 @@ function LoginScreen() {
   const [password, setPassword] = useState(""); // user password
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   useEffect(() => {
@@ -71,6 +72,13 @@ function LoginScreen() {
 
   // Runs when user taps "Log In"
   async function handleLogin() {
+    if (!hasAcceptedAgreements) {
+      setErrorMessage(
+        "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
+      );
+      return;
+    }
+
     // Prevent sending empty requests
     if (!email || !password) {
       setErrorMessage("Please enter both email and password.");
@@ -95,6 +103,13 @@ function LoginScreen() {
 
   async function handleAppleSignIn() {
     try {
+      if (!hasAcceptedAgreements) {
+        setErrorMessage(
+          "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
+        );
+        return;
+      }
+
       setErrorMessage("");
       clearAuthNoticeMessage?.();
       setIsSubmitting(true);
@@ -130,6 +145,13 @@ function LoginScreen() {
 
   async function handleGoogleSignIn() {
     try {
+      if (!hasAcceptedAgreements) {
+        setErrorMessage(
+          "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
+        );
+        return;
+      }
+
       setErrorMessage("");
       clearAuthNoticeMessage?.();
       setIsSubmitting(true);
@@ -277,16 +299,80 @@ function LoginScreen() {
               </Text>
             ) : null}
 
+            <View
+              style={[
+                styles.agreementCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Pressable
+                style={styles.agreementRow}
+                onPress={() =>
+                  setHasAcceptedAgreements((current) => !current)
+                }
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    {
+                      borderColor: hasAcceptedAgreements
+                        ? theme.accent
+                        : theme.border,
+                      backgroundColor: hasAcceptedAgreements
+                        ? theme.accent
+                        : theme.background,
+                    },
+                  ]}
+                >
+                  {hasAcceptedAgreements ? (
+                    <Text
+                      style={[
+                        styles.checkboxMark,
+                        {
+                          color:
+                            theme.onAccent ||
+                            theme.textOnAccent ||
+                            "#FFFFFF",
+                        },
+                      ]}
+                    >
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.agreementCopy}>
+                  <Text style={[styles.agreementTitle, { color: theme.text }]}>
+                    I agree to Summit Scene's account terms
+                  </Text>
+                  <Text
+                    style={[styles.agreementText, { color: theme.textMuted }]}
+                  >
+                    I confirm I am at least 18 years old and agree to the
+                    Privacy Policy, Terms of Use, and Community Guidelines,
+                    including no tolerance for objectionable content or abusive
+                    users.
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={() => navigation.navigate("Legal")}>
+                <Text style={[styles.agreementLink, { color: theme.accent }]}>
+                  Read Privacy, Terms, and Community Guidelines
+                </Text>
+              </Pressable>
+            </View>
+
             {/* LOGIN BUTTON */}
             <AppButton
               title={isSubmitting || isAuthLoading ? "Logging in..." : "Log In"}
               onPress={handleLogin}
               loading={isSubmitting || isAuthLoading}
+              disabled={!hasAcceptedAgreements || isSubmitting || isAuthLoading}
               size="lg"
               style={{
                 marginTop: 8,
                 backgroundColor: theme.accent,
                 borderColor: theme.accent,
+                opacity: hasAcceptedAgreements ? 1 : 0.56,
               }}
               textStyle={{
                 color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
@@ -368,10 +454,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 36,
+  },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 80,
+    paddingTop: 48,
+    paddingBottom: 18,
   },
   subtitle: {
     fontSize: 14,
@@ -405,6 +496,49 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
   },
+  agreementCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  agreementRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  checkboxMark: {
+    fontSize: 16,
+    fontWeight: "900",
+    lineHeight: 18,
+  },
+  agreementCopy: {
+    flex: 1,
+  },
+  agreementTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 5,
+  },
+  agreementText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  agreementLink: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
+  },
   linkText: {
     marginTop: 16,
     textAlign: "center",
@@ -412,6 +546,7 @@ const styles = StyleSheet.create({
   },
   legalLinkText: {
     marginTop: 12,
+    marginBottom: 8,
     textAlign: "center",
     fontSize: 12,
     fontWeight: "700",
@@ -449,12 +584,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 28,
-    padding: 18,
+    marginBottom: 18,
+    padding: 10,
   },
   logo: {
-    width: 170,
-    height: 182,
+    width: 154,
+    height: 164,
     opacity: 0.95,
   },
   tagline: {

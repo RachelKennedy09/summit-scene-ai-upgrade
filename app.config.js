@@ -41,6 +41,7 @@ export default {
       bundleIdentifier: "com.rachellauren.summitscene",
       buildNumber: "1",
       supportsTablet: true,
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription:

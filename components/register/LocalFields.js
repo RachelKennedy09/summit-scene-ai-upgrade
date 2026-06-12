@@ -244,6 +244,7 @@ function LocalFields({
   originallyFrom,
   interests,
   socialValues,
+  website,
   bio,
   onChangeTown,
   onChangeUserType,
@@ -251,6 +252,7 @@ function LocalFields({
   onChangeOriginallyFrom,
   onToggleInterest,
   onChangeSocial,
+  onChangeWebsite,
   onChangeBio,
   theme,
 }) {
@@ -358,6 +360,26 @@ function LocalFields({
         numberOfLines={3}
         value={bio}
         onChangeText={onChangeBio}
+      />
+
+      <Text style={[styles.label, { color: theme.text }]}>
+        Website (optional)
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            color: theme.text,
+          },
+        ]}
+        placeholder="https://your-site.com"
+        placeholderTextColor={theme.textMuted}
+        value={website}
+        onChangeText={onChangeWebsite}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
 
       <Text

@@ -290,6 +290,10 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    lastActiveAt: {
+      type: Date,
+    },
+
     // Avatar key used to render one of the 16 preset avatars
     avatarKey: {
       type: String,

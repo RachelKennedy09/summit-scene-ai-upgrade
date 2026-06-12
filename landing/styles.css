@@ -59,10 +59,9 @@ a {
 }
 
 .brand-logo {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 14px;
+  width: 58px;
+  height: 62px;
+  object-fit: contain;
   filter: drop-shadow(0 2px 12px rgba(18, 28, 22, 0.56));
 }
 
@@ -566,8 +565,8 @@ p {
   }
 
   .brand-logo {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 50px;
   }
 
   .nav-links {

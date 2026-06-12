@@ -634,6 +634,9 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
+    user.lastActiveAt = new Date();
+    await user.save();
+
     const token = createToken(user);
 
     res.json({
@@ -932,6 +935,9 @@ router.get("/me", authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
+
+    user.lastActiveAt = new Date();
+    await user.save();
 
     res.json({ user: buildSafeUser(user) });
   } catch (error) {

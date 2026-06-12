@@ -331,6 +331,12 @@ export default function LegalScreen() {
             event details, spam, or content that violates another person's rights.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Summit Scene has no tolerance for objectionable content or abusive
+            users, including harassment, hate, threats, sexual exploitation,
+            scams, spam, impersonation, or content that targets people based on
+            identity or protected characteristics.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Users must not post official business, venue, or organizer content
             unless they are authorized to do so.
           </LegalBullet>
@@ -344,6 +350,11 @@ export default function LegalScreen() {
             Summit Scene can remove content, restrict accounts, reject business
             verification, or report serious issues when needed for safety,
             compliance, or app integrity.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Summit Scene reviews objectionable content reports as quickly as
+            possible and aims to act within 24 hours by removing violating
+            content and restricting or ejecting abusive users when warranted.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Summit Scene is an events and community discovery tool. It is not an
@@ -388,6 +399,11 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Use Report or Block if something feels unsafe, misleading, abusive,
             suspicious, or inappropriate.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Blocking immediately hides the blocked user's content from your
+            feed where supported and also creates a moderation signal for
+            Summit Scene review.
           </LegalBullet>
         </LegalSection>
 
