@@ -36,6 +36,8 @@ import {
   getCategoryTagGroupsForCategories,
   getMainCategoryForTag,
 } from "../../constants/eventCategories";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
+import { isImportedEventListing } from "../../utils/importedEventHost";
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 const FORM_CATEGORIES = EVENT_MAIN_CATEGORIES;
@@ -117,11 +119,12 @@ function withTimeSlotMeta(slot) {
 }
 
 export default function EditEventScreen({ route, navigation }) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { event, onUpdated } = route.params; // event passed from EventDetail/MyEvents
   const submitLockRef = useRef(false);
+  const initialImportedBySummitScene = isImportedEventListing(event);
 
   // ----- INITIAL STATE FROM EXISTING EVENT -----
   const [title, setTitle] = useState(event.title || "");
@@ -187,7 +190,10 @@ export default function EditEventScreen({ route, navigation }) {
   );
 
   const [locationName, setLocationName] = useState(
-    event.locationName || event.location || ""
+    event.locationName ||
+      event.venueName ||
+      (initialImportedBySummitScene ? "" : event.location) ||
+      ""
   );
   const [address, setAddress] = useState(event.address || "");
   const [selectedCoords, setSelectedCoords] = useState(
@@ -203,7 +209,11 @@ export default function EditEventScreen({ route, navigation }) {
     useState(false);
   const [imageUrl, setImageUrl] = useState(event.imageUrl || "");
   const [bookingUrl, setBookingUrl] = useState(event.bookingUrl || "");
+  const [importedBySummitScene, setImportedBySummitScene] = useState(
+    initialImportedBySummitScene
+  );
   const [loading, setLoading] = useState(false);
+  const canMarkImportedBySummitScene = isSummitSceneAdmin(user);
 
   // Picker visibility toggles
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -377,6 +387,18 @@ export default function EditEventScreen({ route, navigation }) {
       return;
     }
 
+    if (
+      canMarkImportedBySummitScene &&
+      importedBySummitScene &&
+      !trimmedLocationName
+    ) {
+      Alert.alert(
+        "Missing business or venue",
+        "Please add the business or venue name so the event shows the right host."
+      );
+      return;
+    }
+
     const slotMissingStart = normalizedTimeSlots.some(
       (slot) => slot.endTime && !slot.startTime
     );
@@ -441,6 +463,8 @@ export default function EditEventScreen({ route, navigation }) {
         address: trimmedAddress,
         imageUrl: trimmedImageUrl || undefined,
         bookingUrl: trimmedBookingUrl || undefined,
+        importedBySummitScene:
+          canMarkImportedBySummitScene && importedBySummitScene,
       };
 
       const updatedEvent = await updateEvent(event._id, payload, token);
@@ -577,6 +601,54 @@ export default function EditEventScreen({ route, navigation }) {
             Keep times, location, and event expectations accurate so people can make safe plans.
           </Text>
         </View>
+
+        {canMarkImportedBySummitScene ? (
+          <Pressable
+            style={[
+              styles.importToggle,
+              {
+                backgroundColor: importedBySummitScene
+                  ? theme.accentSoft || theme.card
+                  : theme.card,
+                borderColor: importedBySummitScene ? theme.accent : theme.border,
+              },
+            ]}
+            onPress={() =>
+              setImportedBySummitScene((currentValue) => !currentValue)
+            }
+          >
+            <View
+              style={[
+                styles.importCheckbox,
+                {
+                  backgroundColor: importedBySummitScene
+                    ? theme.accent
+                    : "transparent",
+                  borderColor: importedBySummitScene
+                    ? theme.accent
+                    : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.importCheckboxText,
+                  { color: theme.onAccent || theme.textOnAccent || "#fff" },
+                ]}
+              >
+                {importedBySummitScene ? "X" : ""}
+              </Text>
+            </View>
+            <View style={styles.importToggleCopy}>
+              <Text style={[styles.importToggleTitle, { color: theme.text }]}>
+                Imported by Summit Scene
+              </Text>
+              <Text style={[styles.importToggleText, { color: theme.textMuted }]}>
+                Use this for real business events added on behalf of the organizer.
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
 
         {/* Title */}
         <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -1529,6 +1601,42 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   safetyReminderText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  importToggle: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  importCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  importCheckboxText: {
+    fontSize: 14,
+    fontWeight: "900",
+    lineHeight: 18,
+  },
+  importToggleCopy: {
+    flex: 1,
+  },
+  importToggleTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginBottom: 3,
+  },
+  importToggleText: {
     fontSize: 12,
     lineHeight: 17,
   },

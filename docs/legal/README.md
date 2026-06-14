@@ -60,7 +60,7 @@ Data collected may include:
 
 Data may be processed by service providers used for hosting, database storage,
 address lookup/geocoding, authentication including Sign in with Apple and
-Google Sign-In, analytics, AI event description generation, email delivery if
+Google Sign-In, analytics, email delivery if
 enabled, support, and app operations.
 External booking links may send users to organizer websites, Instagram, direct
 message options, FareHarbor, Viator, or other third-party services. Those

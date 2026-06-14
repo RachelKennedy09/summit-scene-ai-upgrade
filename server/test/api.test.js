@@ -633,16 +633,119 @@ describe("SummitScene API", function () {
         category: "Live Music",
         date: "2026-12-30",
         time: "18:00",
+        locationName: "Banff Test Venue",
         address: "100 Banff Avenue, Banff, AB",
+        importedBySummitScene: true,
       });
 
     expect(res.status).to.equal(201);
     expect(res.body).to.include({
       title: "Admin Test Event",
       town: "Banff",
+      locationName: "Banff Test Venue",
+      importedBySummitScene: true,
     });
 
     process.env.ADMIN_EMAILS = originalAdminEmails;
+  });
+
+  it("should infer imported host display for admin-created venue events", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+
+    try {
+      const createRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: "Admin Venue Host Event",
+          description: "An admin-added event with a public venue host.",
+          town: "Banff",
+          category: "Live Music",
+          date: "2026-12-30",
+          time: "18:00",
+          locationName: "The Boss Kitchen and Bar",
+          address: "100 Banff Avenue, Banff, AB",
+          importedBySummitScene: false,
+        });
+
+      expect(createRes.status).to.equal(201);
+      expect(createRes.body.importedBySummitScene).to.not.equal(true);
+
+      const detailRes = await request(app).get(`/api/events/${createRes.body._id}`);
+
+      expect(detailRes.status).to.equal(200);
+      expect(detailRes.body).to.include({
+        locationName: "The Boss Kitchen and Bar",
+        importedBySummitScene: true,
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
+  it("should allow an admin to mark a business event as imported", async () => {
+    const businessRes = await request(app).post("/api/auth/register").send({
+      name: `Import Source Business ${testRunId}`,
+      email: `import_source_${testRunId}@example.com`,
+      password: testPassword,
+      role: "business",
+      acceptedAgeTerms: true,
+      town: "Banff",
+      lookingFor: "Local venue",
+      bio: "A local venue with real events for visitors and residents.",
+      website: "https://example.com",
+    });
+
+    expect(businessRes.status).to.be.oneOf([200, 201]);
+
+    try {
+      process.env.ADMIN_EMAILS = testEmail;
+
+      const approveRes = await request(app)
+        .patch(`/api/users/admin/business-requests/${businessRes.body.user._id}`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ status: "verified" });
+
+      expect(approveRes.status).to.equal(200);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+
+    const createRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${businessRes.body.token}`)
+      .send({
+        title: "Business-owned Event",
+        description: "A verified business posted this event.",
+        town: "Banff",
+        category: "Live Music",
+        date: "2026-12-31",
+        time: "19:00",
+        address: "101 Banff Avenue, Banff, AB",
+      });
+
+    expect(createRes.status).to.equal(201);
+    expect(createRes.body.importedBySummitScene).to.not.equal(true);
+
+    try {
+      process.env.ADMIN_EMAILS = testEmail;
+
+      const updateRes = await request(app)
+        .put(`/api/events/${createRes.body._id}`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          locationName: "Banff Music Hall",
+          importedBySummitScene: true,
+        });
+
+      expect(updateRes.status).to.equal(200);
+      expect(updateRes.body).to.include({
+        locationName: "Banff Music Hall",
+        importedBySummitScene: true,
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
   });
 
   it("should return admin dashboard stats", async () => {

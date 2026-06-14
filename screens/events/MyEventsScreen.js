@@ -27,12 +27,13 @@ import {
 } from "../../services/eventsApi";
 import { useTheme } from "../../context/ThemeContext";
 import { getListScheduleLabel, isEventUpcoming } from "../../utils/eventSchedule";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
 
 export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const canUseBusinessTools =
-    user?.isAdmin ||
+    isSummitSceneAdmin(user) ||
     (user?.role === "business" &&
       user?.businessVerificationStatus === "verified");
   const isBusiness =

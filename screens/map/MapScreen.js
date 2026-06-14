@@ -38,6 +38,7 @@ import { useAuth } from "../../context/AuthContext";
 import { requestCurrentLocation } from "../../services/locationService";
 import { useTheme } from "../../context/ThemeContext";
 import MapFilters from "../../components/map/MapFilters";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
 import {
   formatEventTimeLabel,
   getNextOccurrenceDateString,
@@ -365,7 +366,7 @@ export default function MapScreen({ route }) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isBusiness =
-    user?.isAdmin ||
+    isSummitSceneAdmin(user) ||
     user?.role === "business" &&
       user?.businessVerificationStatus === "verified";
   const currentUserId = user?._id || user?.id || "";

@@ -2,7 +2,7 @@
 // Show full details for a single event.
 // - Displays title, category, town, date/time, location, and description
 // - Shows business "host" info (EventHostSection) when available
-// - Gives the event owner edit/delete actions (EventOwnerSection)
+// - Gives the event owner/admin edit/delete actions (EventOwnerSection)
 // - Includes "Open in Maps" deep link for the event location
 
 import React, { useCallback, useState } from "react";
@@ -49,6 +49,11 @@ import {
   isEventUpcoming,
 } from "../../utils/eventSchedule";
 import { getVisibleTags } from "../../utils/categoryVisuals";
+import {
+  getImportedEventHostLabel,
+  isImportedEventListing,
+} from "../../utils/importedEventHost";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
 import { openReportReasonPicker } from "../../utils/reporting";
 
 import EventHostSection from "../../components/events/EventHostSection";
@@ -191,8 +196,9 @@ export default function EventDetailScreen({ route }) {
   const [eventPreference, setEventPreference] = useState(null);
   const [updatingPreference, setUpdatingPreference] = useState(false);
 
-  const host = getEventHost(event);
-  const isOwner = isEventOwner(event, user);
+  const isImportedListing = isImportedEventListing(event);
+  const host = isImportedListing ? null : getEventHost(event);
+  const canManageEvent = isEventOwner(event, user) || isSummitSceneAdmin(user);
   const eventId = event?._id || event?.id || route.params?.eventId;
   const currentUserId = user?._id || user?.id || "";
   const attendees = Array.isArray(event?.attendees) ? event.attendees : [];
@@ -287,6 +293,7 @@ export default function EventDetailScreen({ route }) {
   const town = event?.town || "";
   const locationName = event?.locationName || event?.location || "";
   const address = event?.address || "";
+  const importedHostLabel = getImportedEventHostLabel(event);
   const description = event?.description || "No detailed description added yet.";
   const duration = event?.duration || "";
   const priceRange = event?.priceRange || "";
@@ -820,6 +827,28 @@ export default function EventDetailScreen({ route }) {
 
             {/* Title */}
             <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+
+            {importedHostLabel ? (
+              <Text style={[styles.importedHostText, { color: theme.textMuted }]}>
+                Hosted by {importedHostLabel}
+              </Text>
+            ) : null}
+
+            {isImportedListing ? (
+              <View
+                style={[
+                  styles.importedBadge,
+                  {
+                    backgroundColor: theme.accentSoft || theme.background,
+                    borderColor: theme.accent,
+                  },
+                ]}
+              >
+                <Text style={[styles.importedBadgeText, { color: theme.accent }]}>
+                  Imported by Summit Scene
+                </Text>
+              </View>
+            ) : null}
 
             {visibleEventTags.length ? (
               <View style={styles.vibeRow}>
@@ -1437,7 +1466,7 @@ export default function EventDetailScreen({ route }) {
             </View>
 
             {/* Owner-only actions (edit/delete) */}
-            {isOwner && (
+            {canManageEvent && (
               <EventOwnerSection onEdit={handleEdit} onDelete={handleDelete} />
             )}
           </View>
@@ -1697,6 +1726,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     lineHeight: 28,
+    marginBottom: 10,
+  },
+  importedBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 12,
+  },
+  importedBadgeText: {
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  importedHostText: {
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+    marginTop: -4,
     marginBottom: 10,
   },
   vibeRow: {

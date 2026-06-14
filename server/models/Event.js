@@ -224,6 +224,12 @@ const eventSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Admin-only marker for real business events entered by Summit Scene.
+    importedBySummitScene: {
+      type: Boolean,
+      default: false,
+    },
+
     // -------------------------------------------
     // CREATOR INFO
     // -------------------------------------------

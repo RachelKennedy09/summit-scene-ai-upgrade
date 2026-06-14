@@ -7,6 +7,10 @@ import { useTheme } from "../../context/ThemeContext";
 import TrustBadgeRow from "../common/TrustBadges";
 import { getCardScheduleLabels } from "../../utils/eventSchedule";
 import { getCategoryAccent, getVisibleTags } from "../../utils/categoryVisuals";
+import {
+  getImportedEventHostLabel,
+  isImportedEventListing,
+} from "../../utils/importedEventHost";
 
 function normalizeExternalUrl(value) {
   const trimmed = String(value || "").trim();
@@ -24,6 +28,8 @@ export default function EventCard({ event, onPress }) {
 
   const locationLabel =
     event.locationName || event.location || event.address || "Location TBA";
+  const isImportedListing = isImportedEventListing(event);
+  const importedHostLabel = getImportedEventHostLabel(event);
   const categoryList =
     Array.isArray(event.categories) && event.categories.length
       ? event.categories
@@ -36,9 +42,12 @@ export default function EventCard({ event, onPress }) {
   const combinedTags = [...vibeTags, ...categoryTags];
   const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
   const categoryAccent = getCategoryAccent(categoryList[0], theme);
-  const host = event.createdBy && typeof event.createdBy === "object"
-    ? event.createdBy
-    : null;
+  const host =
+    !isImportedListing &&
+    event.createdBy &&
+    typeof event.createdBy === "object"
+      ? event.createdBy
+      : null;
   const bookingUrl = normalizeExternalUrl(event.bookingUrl);
   const duration = event.duration || "";
   const priceRange = event.priceRange || "";
@@ -107,6 +116,31 @@ export default function EventCard({ event, onPress }) {
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {event.title || "Untitled event"}
         </Text>
+
+        {importedHostLabel ? (
+          <Text
+            style={[styles.importedHostText, { color: theme.textMuted }]}
+            numberOfLines={1}
+          >
+            Hosted by {importedHostLabel}
+          </Text>
+        ) : null}
+
+        {isImportedListing ? (
+          <View
+            style={[
+              styles.importedBadge,
+              {
+                backgroundColor: theme.accentSoft || theme.background,
+                borderColor: theme.accent,
+              },
+            ]}
+          >
+            <Text style={[styles.importedBadgeText, { color: theme.accent }]}>
+              Imported by Summit Scene
+            </Text>
+          </View>
+        ) : null}
 
         {host ? (
           <View style={styles.trustRow}>
@@ -288,6 +322,27 @@ const styles = StyleSheet.create({
   },
   trustRow: {
     marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  importedBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginHorizontal: 16,
+    marginTop: -2,
+    marginBottom: 12,
+  },
+  importedBadgeText: {
+    fontSize: 11,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  importedHostText: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 8,
     paddingHorizontal: 16,
   },
   hostText: {

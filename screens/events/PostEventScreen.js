@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 import { useAuth } from "../../context/AuthContext.js";
 import { createEvent } from "../../services/eventsApi.js";
@@ -39,11 +39,8 @@ import {
   VIBE_TAG_GROUPS,
   getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
-const AI_REQUEST_TIMEOUT_MS = 15000;
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
@@ -66,41 +63,8 @@ const WEEKDAYS = [
   "Saturday",
 ];
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = AI_REQUEST_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-async function readJsonSafely(response) {
-  const text = await response.text();
-  if (!text) return {};
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text };
-  }
-}
-
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function normalizeGeneratedDescription(value) {
-  return String(value || "")
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 function createEmptyTimeSlot() {
@@ -115,10 +79,12 @@ function createEmptyTimeSlot() {
 
 export default function PostEventScreen() {
   const navigation = useNavigation();
-  const { token, logout } = useAuth();
+  const route = useRoute();
+  const { user, token, logout } = useAuth();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const canMarkImportedBySummitScene = isSummitSceneAdmin(user);
 
   // Basic event fields
   const [title, setTitle] = useState("");
@@ -164,10 +130,9 @@ export default function PostEventScreen() {
   // Hero image (optional). Used on EventDetailScreen hero image.
   const [imageUrl, setImageUrl] = useState("");
   const [bookingUrl, setBookingUrl] = useState("");
+  const [importedBySummitScene, setImportedBySummitScene] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [generatingDescription, setGeneratingDescription] = useState(false);
-  const [hasGeneratedDescription, setHasGeneratedDescription] = useState(false);
   const submitLockRef = useRef(false);
 
   // Picker visibility toggles
@@ -185,6 +150,12 @@ export default function PostEventScreen() {
     () => getCategoryTagGroupsForCategories(categories),
     [categories]
   );
+  useEffect(() => {
+    if (canMarkImportedBySummitScene && route.params?.importedBySummitScene) {
+      setImportedBySummitScene(true);
+    }
+  }, [canMarkImportedBySummitScene, route.params?.importedBySummitScene]);
+
   useEffect(() => {
     const trimmedAddress = address.trim();
 
@@ -348,73 +319,6 @@ export default function PostEventScreen() {
     setExtraTimeSlots((current) => current.filter((slot) => slot.id !== slotId));
   };
 
-
-  const handleGenerateDescription = async () => {
-    if (!title.trim()) {
-      Alert.alert("Missing title", "Please enter a title first.");
-      return;
-    }
-
-    setGeneratingDescription(true);
-
-    try {
-      const response = await fetchWithTimeout(
-        `${API_BASE_URL}/api/ai/generate-description`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: title.trim(),
-            town,
-            category,
-            categories,
-            categoryTags,
-            vibeTags,
-            date,
-            scheduleType,
-            isAllDay,
-            recurrence:
-              scheduleType === "recurring"
-                ? {
-                    frequency: recurrenceFrequency,
-                    weekdays: selectedWeekdays,
-                    untilDate: recurrenceUntilDate || undefined,
-                  }
-                : undefined,
-            timeSlots: getNormalizedTimeSlots(),
-            locationName: locationName.trim(),
-            address: address.trim(),
-            notes: description.trim(),
-          }),
-        }
-      );
-
-      const data = await readJsonSafely(response);
-
-      if (!response.ok) {
-        Alert.alert(
-          "Error",
-          data.message || "Failed to generate description."
-        );
-        return;
-      }
-
-      setDescription(normalizeGeneratedDescription(data.description));
-      setHasGeneratedDescription(true);
-    } catch (error) {
-      const message =
-        error?.name === "AbortError"
-          ? "Description generation timed out. Please try again."
-          : error.message || "Something went wrong.";
-      console.warn("Generate description issue:", message);
-      Alert.alert("Error", message);
-    } finally {
-      setGeneratingDescription(false);
-    }
-  };
-
   // Handle form submission and call the backend createEvent API.
   // Includes explicit handling for:
   // - 401 -> expired/invalid token -> force logout
@@ -458,6 +362,18 @@ export default function PostEventScreen() {
       Alert.alert(
         "Missing address",
         "Please add the full street address so the map pin lands in the right place."
+      );
+      return;
+    }
+
+    if (
+      canMarkImportedBySummitScene &&
+      importedBySummitScene &&
+      !trimmedLocationName
+    ) {
+      Alert.alert(
+        "Missing business or venue",
+        "Please add the business or venue name so the event shows the right host."
       );
       return;
     }
@@ -525,6 +441,8 @@ export default function PostEventScreen() {
           address: trimmedAddress,
           imageUrl: trimmedImageUrl || undefined,
           bookingUrl: trimmedBookingUrl || undefined,
+          importedBySummitScene:
+            canMarkImportedBySummitScene && importedBySummitScene,
         },
         token
       );
@@ -570,7 +488,6 @@ export default function PostEventScreen() {
             setDescription("");
             setDuration("");
             setPriceRange("");
-            setHasGeneratedDescription(false);
             setLocationName("");
             setAddress("");
             setDate("");
@@ -596,6 +513,7 @@ export default function PostEventScreen() {
             setShouldShowAddressSuggestions(false);
             setImageUrl("");
             setBookingUrl("");
+            setImportedBySummitScene(false);
 
             navigation.navigate("MyEvents", {
               postedEventId: data?._id,
@@ -716,6 +634,58 @@ export default function PostEventScreen() {
               Use accurate event details, avoid misleading claims, and include a real public location so people know what to expect.
             </Text>
           </View>
+
+          {canMarkImportedBySummitScene ? (
+            <Pressable
+              style={[
+                styles.importToggle,
+                {
+                  backgroundColor: importedBySummitScene
+                    ? theme.accentSoft || theme.background
+                    : theme.background,
+                  borderColor: importedBySummitScene
+                    ? theme.accent
+                    : theme.border,
+                },
+              ]}
+              onPress={() =>
+                setImportedBySummitScene((currentValue) => !currentValue)
+              }
+            >
+              <View
+                style={[
+                  styles.importCheckbox,
+                  {
+                    backgroundColor: importedBySummitScene
+                      ? theme.accent
+                      : "transparent",
+                    borderColor: importedBySummitScene
+                      ? theme.accent
+                      : theme.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.importCheckboxText,
+                    { color: theme.onAccent || theme.textOnAccent || "#fff" },
+                  ]}
+                >
+                  {importedBySummitScene ? "X" : ""}
+                </Text>
+              </View>
+              <View style={styles.importToggleCopy}>
+                <Text style={[styles.importToggleTitle, { color: theme.text }]}>
+                  Imported by Summit Scene
+                </Text>
+                <Text
+                  style={[styles.importToggleText, { color: theme.textMuted }]}
+                >
+                  Use this for real business events you add on behalf of the organizer.
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           {/* Title */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
@@ -1339,31 +1309,6 @@ export default function PostEventScreen() {
           <Text style={[styles.label, { color: theme.textMuted }]}>
             Description (Optional)
           </Text>
-          <View style={styles.aiHelperRow}>
-            <Text style={[styles.aiHelperText, { color: theme.textMuted }]}>
-              Let AI draft a polished starting point from your event details.
-            </Text>
-            <Pressable
-              style={[
-                styles.aiButton,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                  opacity: generatingDescription ? 0.6 : 1,
-                },
-              ]}
-              onPress={handleGenerateDescription}
-              disabled={generatingDescription}
-            >
-              <Text style={[styles.aiButtonText, { color: theme.text }]}>
-                {generatingDescription
-                  ? "Writing description..."
-                  : hasGeneratedDescription || description.trim()
-                    ? "Generate again"
-                    : "Generate with AI"}
-              </Text>
-            </Pressable>
-          </View>
           <TextInput
             style={[
               styles.input,
@@ -1378,22 +1323,9 @@ export default function PostEventScreen() {
             placeholder="Tell people what to expect"
             placeholderTextColor={theme.textMuted}
             value={description}
-            onChangeText={(value) => {
-              setDescription(value);
-              if (hasGeneratedDescription) {
-                setHasGeneratedDescription(false);
-              }
-            }}
+            onChangeText={setDescription}
             multiline
           />
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            You can edit the generated text before posting.
-          </Text>
-          {hasGeneratedDescription ? (
-            <Text style={[styles.generatedStatus, { color: theme.accent }]}>
-              AI draft added to the description field.
-            </Text>
-          ) : null}
 
           <Text style={[styles.label, { color: theme.textMuted }]}>
             Duration (Optional)
@@ -1528,11 +1460,16 @@ export default function PostEventScreen() {
               vibeTags.length ? vibeTags.join(", ") : "",
             ]
               .filter(Boolean)
-              .join(" • ")}
+              .join(" - ")}
           </Text>
           <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
-            {date || "Date"}{isAllDay ? " • All day" : time ? ` • ${time}` : ""}
+            {date || "Date"}{isAllDay ? " - All day" : time ? ` - ${time}` : ""}
           </Text>
+          {canMarkImportedBySummitScene && importedBySummitScene ? (
+            <Text style={[styles.previewImportLabel, { color: theme.accent }]}>
+              Imported by Summit Scene
+            </Text>
+          ) : null}
           {locationName.trim() || address.trim() ? (
             <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
               {locationName.trim() || address.trim()}
@@ -1800,6 +1737,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
+  importToggle: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  importCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  importCheckboxText: {
+    fontSize: 14,
+    fontWeight: "900",
+    lineHeight: 18,
+  },
+  importToggleCopy: {
+    flex: 1,
+  },
+  importToggleTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginBottom: 3,
+  },
+  importToggleText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
   photoPickerButton: {
     alignItems: "center",
     justifyContent: "center",
@@ -1891,30 +1864,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  aiHelperRow: {
-    marginBottom: 10,
-  },
-  aiHelperText: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 8,
-  },
-  aiButton: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  aiButtonText: {
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  generatedStatus: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: -4,
-    marginBottom: 12,
-  },
   textArea: {
     height: 100,
     textAlignVertical: "top",
@@ -1958,5 +1907,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 2,
+  },
+  previewImportLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    marginTop: 8,
+    textTransform: "uppercase",
   },
 });

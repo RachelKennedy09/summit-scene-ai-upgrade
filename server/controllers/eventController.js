@@ -3,7 +3,7 @@
 //  - Listing upcoming events (for Hub + Map)
 //  - Creating new events (business users only)
 //  - Fetching a single event
-//  - Updating and deleting events (owner-only)
+//  - Updating and deleting events (owner or admin)
 //  - Fetching "My Events" for the logged-in business user
 //
 // USED BY ROUTES:
@@ -49,7 +49,7 @@ const VALID_WEEKDAYS = [
 ];
 
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
+  "name email role isAdmin businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
 
 function getUserId(value) {
   if (!value) return "";
@@ -280,6 +280,49 @@ function normalizeCoordinate(value) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function canUseSummitSceneImportFlag(user, tokenUser) {
+  return Boolean(
+    user?.isAdmin || isAdminEmail(user?.email) || isAdminEmail(tokenUser?.email)
+  );
+}
+
+function isSummitSceneAdminCreatedEvent(eventObject) {
+  const creator =
+    eventObject?.createdBy && typeof eventObject.createdBy === "object"
+      ? eventObject.createdBy
+      : null;
+  const creatorName = normalizeRequiredString(creator?.name).toLowerCase();
+  const hasVenueHost = Boolean(
+    normalizeRequiredString(eventObject?.venueName) ||
+      normalizeRequiredString(eventObject?.locationName)
+  );
+  const isSummitSceneCreator =
+    creator?.isAdmin ||
+    isAdminEmail(creator?.email) ||
+    creatorName === "summit scene admin" ||
+    creatorName === "summit scene";
+
+  return hasVenueHost && isSummitSceneCreator;
+}
+
+function decorateEventForResponse(event) {
+  const eventObject =
+    event && typeof event.toObject === "function" ? event.toObject() : event;
+
+  if (!eventObject || typeof eventObject !== "object") {
+    return eventObject;
+  }
+
+  if (!eventObject.importedBySummitScene && isSummitSceneAdminCreatedEvent(eventObject)) {
+    return {
+      ...eventObject,
+      importedBySummitScene: true,
+    };
+  }
+
+  return eventObject;
+}
+
 function parsePositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -493,7 +536,7 @@ export async function getAllEvents(req, res) {
         : filteredEvents;
 
     if (!shouldPaginate) {
-      return res.json(nearMeEvents);
+      return res.json(nearMeEvents.map(decorateEventForResponse));
     }
 
     const totalCount = nearMeEvents.length;
@@ -501,7 +544,7 @@ export async function getAllEvents(req, res) {
     const pagedEvents = nearMeEvents.slice(
       startIndex,
       startIndex + requestedLimit
-    );
+    ).map(decorateEventForResponse);
     const totalPages = Math.max(1, Math.ceil(totalCount / requestedLimit));
 
     return res.json({
@@ -590,6 +633,7 @@ export async function createEvent(req, res) {
       location,
       imageUrl,
       bookingUrl,
+      importedBySummitScene,
     } = rawBody;
 
     const normalizedTitle = normalizeRequiredString(title);
@@ -620,6 +664,12 @@ export async function createEvent(req, res) {
     const normalizedLocationName = normalizeOptionalString(
       locationName ?? location
     );
+    const canMarkImportedBySummitScene = canUseSummitSceneImportFlag(
+      hostUser,
+      req.user
+    );
+    const shouldMarkImportedBySummitScene =
+      canMarkImportedBySummitScene && Boolean(importedBySummitScene);
     const normalizedScheduleType =
       normalizeRequiredString(scheduleType || "single") || "single";
     const normalizedIsAllDay = Boolean(isAllDay);
@@ -639,6 +689,13 @@ export async function createEvent(req, res) {
     if (!["single", "recurring"].includes(normalizedScheduleType)) {
       return res.status(400).json({
         message: "Please choose a valid schedule type.",
+      });
+    }
+
+    if (shouldMarkImportedBySummitScene && !normalizedLocationName) {
+      return res.status(400).json({
+        message:
+          "Please add the business or venue name so the imported event shows the right host.",
       });
     }
 
@@ -729,6 +786,7 @@ export async function createEvent(req, res) {
       longitude: geocodedFields.longitude,
       imageUrl: normalizeOptionalString(imageUrl),
       bookingUrl: normalizeOptionalString(bookingUrl),
+      importedBySummitScene: shouldMarkImportedBySummitScene,
       createdBy: userId,
     });
 
@@ -768,7 +826,7 @@ export async function getEventById(req, res) {
       blockContext
     );
 
-    return res.json(eventObject);
+    return res.json(decorateEventForResponse(eventObject));
   } catch (error) {
     console.error("Error in GET /api/events/:id:", error);
     return res.status(500).json({
@@ -831,7 +889,7 @@ export async function toggleEventAttendance(req, res) {
     );
 
     return res.json({
-      event: populatedObject,
+      event: decorateEventForResponse(populatedObject),
       isGoing: !alreadyGoing,
       attendeesCount: populatedObject.attendees?.length || 0,
     });
@@ -848,11 +906,11 @@ export async function toggleEventAttendance(req, res) {
 // PUT /api/events/:id
 //   Update an existing event.
 //   - Must be logged in.
-//   - Must be the creator (business user who posted it).
+//   - Must be the creator (business user who posted it) or an admin.
 //
 //   1) Find event by ID.
 //   2) If not found -> 404.
-//   3) Check ownership (event.createdBy === userId).
+//   3) Check ownership/admin access.
 //   4) Apply allowed updates from body.
 //   5) Save and return updated event.
 // -------------------------------------------
@@ -867,8 +925,14 @@ export async function updateEvent(req, res) {
       return res.status(404).json({ message: "Event not found." });
     }
 
-    // Check ownership
-    if (!event.createdBy || event.createdBy.toString() !== userId) {
+    const editor = await User.findById(userId).select("email isAdmin");
+    const isOwner = Boolean(
+      event.createdBy && event.createdBy.toString() === userId
+    );
+    const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
+
+    // Check ownership/admin access
+    if (!isOwner && !isAdminEditor) {
       return res
         .status(403)
         .json({ message: "You are not allowed to edit this event." });
@@ -900,6 +964,7 @@ export async function updateEvent(req, res) {
       location,
       imageUrl,
       bookingUrl,
+      importedBySummitScene,
     } = rawBody;
 
     if (title !== undefined) {
@@ -981,6 +1046,17 @@ export async function updateEvent(req, res) {
     }
     if (imageUrl !== undefined) event.imageUrl = normalizeOptionalString(imageUrl);
     if (bookingUrl !== undefined) event.bookingUrl = normalizeOptionalString(bookingUrl);
+    if (importedBySummitScene !== undefined) {
+      if (isAdminEditor) {
+        event.importedBySummitScene = Boolean(importedBySummitScene);
+      }
+    }
+    if (event.importedBySummitScene && !event.locationName) {
+      return res.status(400).json({
+        message:
+          "Please add the business or venue name so the imported event shows the right host.",
+      });
+    }
 
     if (
       recurrence !== undefined ||
@@ -1065,8 +1141,12 @@ export async function updateEvent(req, res) {
     }
 
     const updated = await event.save();
+    const populated = await Event.findById(updated._id).populate(
+      "createdBy",
+      USER_POPULATE_FIELDS
+    );
 
-    return res.json(updated);
+    return res.json(decorateEventForResponse(populated || updated));
   } catch (error) {
     console.error("Error in PUT /api/events/:id:", error);
     return res.status(500).json({
@@ -1080,7 +1160,7 @@ export async function updateEvent(req, res) {
 // DELETE /api/events/:id
 //   Delete an event completely.
 //   - Must be logged in.
-//   - Must be the business user that created it.
+//   - Must be the business user that created it or an admin.
 // -------------------------------------------
 export async function deleteEvent(req, res) {
   try {
@@ -1093,8 +1173,14 @@ export async function deleteEvent(req, res) {
       return res.status(404).json({ message: "Event not found." });
     }
 
-    // Check ownership
-    if (!event.createdBy || event.createdBy.toString() !== userId) {
+    const editor = await User.findById(userId).select("email isAdmin");
+    const isOwner = Boolean(
+      event.createdBy && event.createdBy.toString() === userId
+    );
+    const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
+
+    // Check ownership/admin access
+    if (!isOwner && !isAdminEditor) {
       return res
         .status(403)
         .json({ message: "You are not allowed to delete this event." });
@@ -1134,7 +1220,7 @@ export async function getMyEvents(req, res) {
         "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
-    return res.json(events);
+    return res.json(events.map(decorateEventForResponse));
   } catch (error) {
     console.error("Error in GET /api/events/mine:", error);
     return res.status(500).json({

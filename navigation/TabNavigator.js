@@ -92,14 +92,13 @@ export default function TabNavigator() {
         />
       )}
 
-      <Tab.Screen
-        name="Post"
-        component={canUseBusinessTools ? PostEventScreen : AuthGateScreen}
-        initialParams={
-          canUseBusinessTools ? undefined : { mode: "organizer" }
-        }
-        options={{ title: "Post" }}
-      />
+      {canUseBusinessTools && (
+        <Tab.Screen
+          name="Post"
+          component={PostEventScreen}
+          options={{ title: "Post" }}
+        />
+      )}
 
       <Tab.Screen
         name="Community"

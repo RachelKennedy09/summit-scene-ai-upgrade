@@ -198,8 +198,8 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             Service providers: data may be processed by hosting, database,
             address lookup or geocoding, authentication including Sign in with
-            Apple and Google Sign-In, analytics, AI event description
-            generation, email delivery if enabled, support, and app operations
+            Apple and Google Sign-In, analytics, email delivery if enabled,
+            support, and app operations
             providers when those features are used.
           </LegalBullet>
           <LegalBullet theme={theme}>

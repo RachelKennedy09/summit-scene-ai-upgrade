@@ -11,29 +11,11 @@ Last updated: June 8, 2026
 - Account deletion URL: `https://summitscene.ca/delete-account`
 - Support URL: `https://summitscene.ca/support`
 
-## App Review Demo Accounts
+## App Review Accounts
 
-Create or refresh these accounts against the production backend before submitting:
-
-```bash
-cd server
-npm run create:app-review-accounts
-```
-
-Default demo password: `SummitApple2026!`
-
-- Local member: `apple-review-local@summitscene.ca`
-- Verified organizer: `apple-review-organizer@summitscene.ca`
-- Main admin: `admin@summitscene.ca`
-- App Review organizer: `reviewer@summitscene.ca`
-
-Use the local member to test browsing, saving events, going/interested state, community posts, replies, liking comments, blocking, and reporting.
-
-Use the verified organizer to test official event and tour creation, booking links, price range, duration, meeting location, vibe tags, and organizer profile display.
+Use real production accounts for resubmission review. Do not seed fake local members, fake organizers, or App Review demo users into production.
 
 Use `admin@summitscene.ca` as the main internal admin account. Do not provide this account to App Review unless Apple specifically asks for admin/moderation access.
-
-Use `reviewer@summitscene.ca` for App Review. It is a verified organizer reviewer account, not an admin account. It can test normal user features, business/organizer features, community features, and create/edit/delete its own events without exposing admin controls, real user personal information beyond normal public app content, payment tools, or destructive moderation tools.
 
 No special equipment is required. A standard iPhone or iPad with internet access is enough. Location permission is optional because reviewers can browse by town, and photo library permission is only needed when choosing profile or event photos.
 
@@ -47,14 +29,10 @@ Sign in options:
 - Sign in with Apple on iOS
 - Google Sign-In on Android when the Android build is configured with Firebase/Google OAuth
 
-Demo credentials:
+Review credentials:
 
-- Local member: `apple-review-local@summitscene.ca`
-- Organizer: `apple-review-organizer@summitscene.ca`
-- App Review organizer: `reviewer@summitscene.ca`
-- Password for all demo accounts: `SummitApple2026!`
-
-The App Review organizer account can browse populated event/community content, use community features, and create/edit/delete its own event listings. It does not have admin controls.
+- Provide a real reviewer account in App Store Connect if Apple requires login credentials.
+- Do not provide admin credentials unless Apple specifically asks for moderation/admin access.
 
 No special equipment is required. The app can be reviewed on a standard iPhone or iPad with internet access. Location sharing is optional; reviewers can browse by town without granting location permission.
 
@@ -83,7 +61,7 @@ Organizer and tour content:
 - `EXPO_PUBLIC_API_BASE_URL` in the app must point to the production API.
 - `APPLE_BUNDLE_ID` on the backend should be set to `com.rachellauren.summitscene`.
 - `GOOGLE_WEB_CLIENT_ID` on the backend should match the Google web OAuth client ID used by the Android app.
-- Email delivery can stay disabled while testing if resend usage must be avoided; the demo account script does not send emails.
+- Email delivery can stay disabled while testing if resend usage must be avoided.
 
 ## App Privacy Details Checklist
 

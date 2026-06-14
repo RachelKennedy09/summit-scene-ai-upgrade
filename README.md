@@ -70,6 +70,8 @@ ADMIN_EMAILS=your_admin_email@example.com
 EMAIL_PROVIDER=disabled
 ```
 
+Set the same backend variables in Render for production.
+
 Keep `.env`, `server/.env`, `google-services.json`, API keys, and secrets out of GitHub.
 
 ## Install Dependencies
@@ -161,34 +163,18 @@ cd server
 npm test
 ```
 
-Seed/reset demo data:
+Clean up generated test/demo users from a database:
 
 ```bash
 cd server
-npm run reset:demo-data
-```
-
-Create App Review demo accounts:
-
-```bash
-cd server
-npm run create:app-review-accounts
+npm run cleanup:generated-tests
 ```
 
 If MongoDB Atlas blocks your current IP, add your IP in Atlas Network Access or run the script from an environment that can reach the production database.
 
-## App Review Demo Accounts
+## App Review Accounts
 
-Default password:
-
-```text
-SummitApple2026!
-```
-
-- Local member: `apple-review-local@summitscene.ca`
-- Verified organizer: `apple-review-organizer@summitscene.ca`
-- Main admin: `admin@summitscene.ca`
-- App Review organizer: `reviewer@summitscene.ca`
+Use real production accounts for resubmission review. Keep `admin@summitscene.ca` as the internal admin account and do not provide admin credentials to reviewers unless the store specifically asks for moderation/admin access.
 
 Reviewers do not need special equipment beyond a normal iPhone, iPad, or Android device with internet access. Location sharing and photo library access are optional; users can browse by town without granting location permission.
 

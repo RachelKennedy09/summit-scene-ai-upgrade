@@ -5,6 +5,7 @@
 //  - Mounts all route modules (auth, users, community, events)
 //  - Connects to MongoDB and starts the HTTP server
 
+import "dotenv/config";
 import express from "express"; // Web framework: routing + middleware
 import cors from "cors"; // Allows Expo / web clients on other origins
 import { connectDB } from "./config/db.js"; // MongoDB connection helper
@@ -17,7 +18,6 @@ import communityRoutes from "./routes/community.js";
 import buddyPostRoutes from "./routes/buddyPosts.js";
 import eventPreferenceRoutes from "./routes/eventPreferences.js";
 import reportRoutes from "./routes/reports.js";
-import aiRoutes from "./routes/aiRoutes.js";
 import placesRoutes from "./routes/placesRoutes.js";
 
 // ---------------------------
@@ -77,9 +77,6 @@ app.use("/api/reports", reportRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);
-
-// Ai routes for generating event descriptions
-app.use("/api/ai", aiRoutes);
 
 // Free address autocomplete and place lookup helpers
 app.use("/api/places", placesRoutes);

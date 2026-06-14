@@ -43,14 +43,10 @@ Recommended review text:
 
 Summit Scene is a local events, tours, and community discovery app for Banff, Canmore, Lake Louise, and nearby areas. Users can create accounts with email/password. Android builds also support Google Sign-In when configured.
 
-Demo credentials:
+Review credentials:
 
-- Local member: `apple-review-local@summitscene.ca`
-- Organizer: `apple-review-organizer@summitscene.ca`
-- App Review organizer: `reviewer@summitscene.ca`
-- Password for all demo accounts: `SummitApple2026!`
-
-The App Review organizer account can browse populated event/community content, use community features, and create/edit/delete its own event listings. It does not have admin controls.
+- Provide a real reviewer account in Play Console if Google requires login credentials.
+- Do not provide admin credentials unless Google specifically asks for moderation/admin access.
 
 No special equipment is required. The app can be reviewed on a standard Android device with internet access. Location sharing is optional; reviewers can browse by town without granting location permission.
 

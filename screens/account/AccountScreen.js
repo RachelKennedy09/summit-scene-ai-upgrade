@@ -550,6 +550,17 @@ function AccountScreen() {
               theme={theme}
             />
             <AccountNavRow
+              title="Import real event"
+              subtitle='Post a real business event with the "Imported by Summit Scene" label.'
+              onPress={() =>
+                navigation.navigate("Post", {
+                  importedBySummitScene: true,
+                })
+              }
+              theme={theme}
+              actionLabel="Post"
+            />
+            <AccountNavRow
               title="Admin help"
               subtitle="Use business help as the admin checklist for verification and event support."
               onPress={() => navigation.navigate("BusinessHelp")}

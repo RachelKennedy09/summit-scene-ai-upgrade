@@ -11,6 +11,18 @@ import User from "../models/User.js";
 const GENERATED_TEST_USER_QUERY = {
   $or: [
     { email: /^(testuser|business|blocker|blocked)_\d+@example\.com$/i },
+    { email: /@business-seed\.summitscene\.test$/i },
+    { email: /@community-seed\.summitscene\.test$/i },
+    { email: /@attendee-demo\.summitscene\.test$/i },
+    {
+      email: {
+        $in: [
+          "reviewer@summitscene.ca",
+          "apple-review-local@summitscene.ca",
+          "apple-review-organizer@summitscene.ca",
+        ],
+      },
+    },
     {
       name: /^(Test User|Pending Business|Blocker User|Bloker User|Blocked User)\s*\d*$/i,
     },
