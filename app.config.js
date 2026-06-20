@@ -3,6 +3,7 @@ const googleServicesFile =
   process.env.EXPO_PUBLIC_GOOGLE_SERVICES_JSON;
 
 const plugins = [
+  "expo-notifications",
   "expo-apple-authentication",
   [
     "expo-location",
@@ -67,6 +68,7 @@ export default {
       permissions: [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
       ],
@@ -84,4 +86,3 @@ export default {
     owner: "rachellaurenxx",
   },
 };
-

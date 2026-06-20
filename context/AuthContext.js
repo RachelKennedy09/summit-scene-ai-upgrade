@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toUserFriendlyError } from "../utils/friendlyErrors";
+import { cancelAllEventReminderNotifications } from "../utils/eventReminderNotifications";
 
 // API base URL (Expo public env OR fallback to Render backend)
 const API_BASE_URL =
@@ -160,6 +161,7 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     setAuthNoticeMessage(noticeMessage);
+    await cancelAllEventReminderNotifications();
     await AsyncStorage.removeItem(TOKEN_KEY);
   }
 

@@ -1,6 +1,6 @@
 # Summit Scene Apple Submission Notes
 
-Last updated: June 8, 2026
+Last updated: June 20, 2026
 
 ## App Information
 
@@ -17,7 +17,7 @@ Use real production accounts for resubmission review. Do not seed fake local mem
 
 Use `admin@summitscene.ca` as the main internal admin account. Do not provide this account to App Review unless Apple specifically asks for admin/moderation access.
 
-No special equipment is required. A standard iPhone or iPad with internet access is enough. Location permission is optional because reviewers can browse by town, and photo library permission is only needed when choosing profile or event photos.
+No special equipment is required. A standard iPhone or iPad with internet access is enough. Location permission is optional because reviewers can browse by town, photo library permission is only needed when choosing profile or event photos, and notification permission is only needed for saved-event or going-event reminders.
 
 ## Review Notes to Paste in App Store Connect
 
@@ -34,7 +34,7 @@ Review credentials:
 - Provide a real reviewer account in App Store Connect if Apple requires login credentials.
 - Do not provide admin credentials unless Apple specifically asks for moderation/admin access.
 
-No special equipment is required. The app can be reviewed on a standard iPhone or iPad with internet access. Location sharing is optional; reviewers can browse by town without granting location permission.
+No special equipment is required. The app can be reviewed on a standard iPhone or iPad with internet access. Location sharing is optional; reviewers can browse by town without granting location permission. Notification permission is optional and is used only for saved-event or going-event reminder alerts.
 
 Account deletion:
 
@@ -70,6 +70,7 @@ Use the final App Store Connect answers that match the production build and enab
 - Contact info: email address, optional public business phone number.
 - User content: profile details, event/tour listings, event photos, community posts, replies, likes, groups, reports, and organizer information.
 - Location: optional device location for nearby discovery, plus event and meeting locations entered by users.
+- Notifications: optional permission for saved-event and going-event reminder alerts. The app does not need marketing notifications for review.
 - Identifiers: internal user/account identifiers and authentication tokens.
 - Diagnostics/support: app errors, request logs, support emails, and moderation records.
 - Not tracking: do not mark data as tracking unless a future analytics, ads, or third-party SDK is added that tracks users across apps or websites.

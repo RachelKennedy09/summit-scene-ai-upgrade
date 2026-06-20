@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "June 12, 2026";
+const LAST_UPDATED = "June 20, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -174,6 +174,11 @@ export default function LegalScreen() {
             address lookup/geocoding services to place events on the map.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Notification permission: optional device notifications may be used
+            to send saved-event and going-event reminders at the reminder time
+            you choose. You can turn notifications off in your device settings.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Safety data: reports about fake events, scams, inappropriate
             content, misleading businesses, posts, replies, users, or business
             profiles; blocks; moderation notes; review status; and admin review
@@ -181,8 +186,9 @@ export default function LegalScreen() {
           </LegalBullet>
           <LegalBullet theme={theme}>
             Event preferences: saved events, going status, interest signals,
-            reminder preferences, reminder times, and related notification
-            records may be used to support event planning features.
+            reminder preferences, reminder times, and local notification
+            scheduling records on your device may be used to support event
+            planning features.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Technical and support data: device or app diagnostics, request logs,
@@ -214,7 +220,7 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             To provide accounts, profiles, events, tours, external booking
             links, community posts, maps, replies, saved events, attendance,
-            reminders, and plan features.
+            reminders, optional event notification alerts, and plan features.
           </LegalBullet>
           <LegalBullet theme={theme}>
             To help users discover events and tours through search, towns,
@@ -303,7 +309,14 @@ export default function LegalScreen() {
           <LegalText theme={theme}>
             By creating an account, users consent to the collection and use of
             their information for app functionality. Optional features, such as
-            location and social profile links, should stay optional.
+            location, notifications, and social profile links, should stay
+            optional.
+          </LegalText>
+          <LegalText theme={theme}>
+            Event reminder notifications are optional. Summit Scene may ask for
+            notification permission when you enable saved-event or going-event
+            reminders, and you can disable notifications through your device
+            settings.
           </LegalText>
           <LegalText theme={theme}>
             If Summit Scene later sends marketing emails, newsletters, or

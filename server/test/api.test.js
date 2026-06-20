@@ -21,6 +21,35 @@ let authToken = null;
 let pendingBusinessToken = null;
 let pendingBusinessUserId = null;
 let emailVerificationToken = null;
+let sharedTestEventId = null;
+
+async function ensureSharedTestEvent() {
+  if (sharedTestEventId) return sharedTestEventId;
+
+  process.env.ADMIN_EMAILS = testEmail;
+  try {
+    const createRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title: `Shared Test Event ${testRunId}`,
+        description: "Shared event for attendance and reminder integration tests.",
+        town: "Banff",
+        category: "Live Music",
+        date: "2026-12-30",
+        time: "18:00",
+        locationName: "Banff Test Venue",
+        address: "100 Banff Avenue, Banff, AB",
+        importedBySummitScene: true,
+      });
+
+    expect(createRes.status).to.equal(201);
+    sharedTestEventId = createRes.body._id;
+    return sharedTestEventId;
+  } finally {
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+  }
+}
 
 describe("SummitScene API", function () {
   // give a bit more time for DB connections on first run
@@ -384,11 +413,7 @@ describe("SummitScene API", function () {
   });
 
   it("should let an authenticated user toggle event attendance", async () => {
-    const eventsRes = await request(app).get("/api/events");
-    expect(eventsRes.status).to.equal(200);
-    expect(eventsRes.body).to.be.an("array").that.is.not.empty;
-
-    const eventId = eventsRes.body[0]._id;
+    const eventId = await ensureSharedTestEvent();
     const goingRes = await request(app)
       .post(`/api/events/${eventId}/attendance`)
       .set("Authorization", `Bearer ${authToken}`);
@@ -415,11 +440,7 @@ describe("SummitScene API", function () {
   });
 
   it("should save event preferences and return reminder notifications", async () => {
-    const eventsRes = await request(app).get("/api/events");
-    expect(eventsRes.status).to.equal(200);
-    expect(eventsRes.body).to.be.an("array").that.is.not.empty;
-
-    const eventId = eventsRes.body[0]._id;
+    const eventId = await ensureSharedTestEvent();
 
     const saveRes = await request(app)
       .patch(`/api/event-preferences/${eventId}`)
@@ -485,8 +506,7 @@ describe("SummitScene API", function () {
     const blockedToken = blockedRegister.body.token;
     const blockerId = blockerRegister.body.user._id;
 
-    const eventsRes = await request(app).get("/api/events");
-    const eventId = eventsRes.body[0]._id;
+    const eventId = await ensureSharedTestEvent();
 
     await request(app)
       .post(`/api/events/${eventId}/attendance`)

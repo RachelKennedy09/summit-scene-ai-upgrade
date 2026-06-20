@@ -1,6 +1,6 @@
 # Summit Scene Legal Drafts
 
-Last updated: June 8, 2026
+Last updated: June 20, 2026
 
 These drafts are working product/legal copy for testing and launch preparation.
 They are not legal advice. Before publishing Summit Scene publicly, have a
@@ -50,8 +50,11 @@ Data collected may include:
 - Optional location: device location for nearby event features after permission
   is granted. Event addresses may be sent to address lookup/geocoding services
   to place events on the map.
+- Optional notifications: device notification permission may be requested for
+  saved-event and going-event reminders. Users can disable notifications in
+  device settings.
 - Event preferences: saved events, going status, interest signals, reminder
-  preferences, reminder times, and related notification records.
+  preferences, reminder times, and local notification scheduling records.
 - Safety and moderation data: reports about fake events, scams, inappropriate
   content, misleading businesses, posts, replies, users, or business profiles;
   blocks; moderation notes; review status; and admin review actions.
@@ -62,6 +65,8 @@ Data may be processed by service providers used for hosting, database storage,
 address lookup/geocoding, authentication including Sign in with Apple and
 Google Sign-In, analytics, email delivery if
 enabled, support, and app operations.
+Event reminder notifications are optional and are scheduled by the app on the
+user's device after notification permission is granted.
 External booking links may send users to organizer websites, Instagram, direct
 message options, FareHarbor, Viator, or other third-party services. Those
 services have their own privacy policies and terms.
@@ -105,6 +110,9 @@ honestly.
   availability, refunds, or experiences. Users book and attend third-party
   offerings at their own discretion and should confirm details directly with the
   organizer.
+- Saved-event and going-event reminders are optional convenience features.
+  Notification timing depends on device settings, operating system behavior,
+  timezone, event details, and notification permission.
 
 ## Local Compliance Notice Draft
 
@@ -130,6 +138,8 @@ safety practices, communications, and customer experiences.
 - Keep in-app Privacy & Terms accessible from logged-out and logged-in screens.
 - Keep the in-app account deletion button working.
 - Add email verification before public launch.
+- Confirm notification permission copy and app store privacy/data safety answers
+  match saved-event reminder behavior.
 - Add marketing email opt-in before sending newsletters or promotional emails.
 - Review event posting UI for local permit reminders.
 - Have final policies reviewed by counsel before production launch.

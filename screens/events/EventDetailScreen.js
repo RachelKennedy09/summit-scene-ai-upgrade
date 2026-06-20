@@ -55,6 +55,10 @@ import {
 } from "../../utils/importedEventHost";
 import { isSummitSceneAdmin } from "../../utils/adminAccess";
 import { openReportReasonPicker } from "../../utils/reporting";
+import {
+  cancelEventReminderNotification,
+  updateEventReminderNotification,
+} from "../../utils/eventReminderNotifications";
 
 import EventHostSection from "../../components/events/EventHostSection";
 import EventOwnerSection from "../../components/events/EventOwnerSection";
@@ -65,6 +69,7 @@ import { AVATARS } from "../../assets/avatars/avatarConfig";
 const REMINDER_OPTIONS = [
   { label: "Off", value: "none" },
   { label: "1 hour", value: "1h" },
+  { label: "3 hours", value: "3h" },
   { label: "1 day", value: "1d" },
   { label: "1 month", value: "1mo" },
 ];
@@ -442,6 +447,22 @@ export default function EventDetailScreen({ route }) {
         token
       );
       setEventPreference(preference);
+      if (isSaved) {
+        await cancelEventReminderNotification({ eventId, source: "saved" });
+      } else if (preference.savedReminderEnabled) {
+        const result = await updateEventReminderNotification({
+          event: preference.eventId || event,
+          preference,
+          source: "saved",
+          enabled: true,
+        });
+        if (result.reason === "permission-denied") {
+          Alert.alert(
+            "Notifications off",
+            "Saved event reminders are on in Summit Scene, but phone notifications are not allowed yet."
+          );
+        }
+      }
     } catch (error) {
       Alert.alert("Could not update saved event", error.message || "Please try again.");
     } finally {
@@ -477,6 +498,24 @@ export default function EventDetailScreen({ route }) {
       setUpdatingPreference(true);
       const preference = await updateEventPreference(eventId, updates, token);
       setEventPreference(preference);
+      const notificationResult = await updateEventReminderNotification({
+        event: preference.eventId || event,
+        preference,
+        source,
+        enabled,
+      });
+
+      if (notificationResult.reason === "permission-denied") {
+        Alert.alert(
+          "Notifications off",
+          "Reminder saved, but phone notifications are not allowed yet. Turn on notifications for Summit Scene in your phone settings."
+        );
+      } else if (enabled && notificationResult.reason === "past-reminder-time") {
+        Alert.alert(
+          "Reminder time passed",
+          "This reminder is saved, but the selected notification time has already passed."
+        );
+      }
     } catch (error) {
       Alert.alert("Could not update reminder", error.message || "Please try again.");
     } finally {
@@ -1109,6 +1148,55 @@ export default function EventDetailScreen({ route }) {
                 </Pressable>
               ) : null}
 
+              {eventIsUpcoming && isSaved ? (
+                <View
+                  style={[
+                    styles.inlineReminderPanel,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.reminderTitle, { color: theme.text }]}>
+                    Saved event reminder
+                  </Text>
+                  <View style={styles.reminderOptions}>
+                    {REMINDER_OPTIONS.map((option) => {
+                      const active =
+                        option.value === "none"
+                          ? !savedReminderEnabled
+                          : savedReminderEnabled &&
+                            activeReminderTime === option.value;
+                      return (
+                        <Pressable
+                          key={`saved-main-${option.value}`}
+                          style={[
+                            styles.reminderPill,
+                            {
+                              backgroundColor: active
+                                ? theme.accentSoft || theme.card
+                                : theme.background,
+                              borderColor: active ? theme.accent : theme.border,
+                            },
+                          ]}
+                          onPress={() =>
+                            handleReminderChange("saved", option.value)
+                          }
+                          disabled={updatingPreference}
+                        >
+                          <Text
+                            style={[
+                              styles.reminderPillText,
+                              { color: active ? theme.accent : theme.textMuted },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
               <Text style={[styles.actionPanelHint, { color: theme.textMuted }]}>
                 {!eventIsUpcoming
                   ? attendeesCount
@@ -1300,55 +1388,6 @@ export default function EventDetailScreen({ route }) {
                   </Text>
                 </View>
               )}
-
-              {eventIsUpcoming && isSaved ? (
-                <View
-                  style={[
-                    styles.reminderPanel,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                  ]}
-                >
-                  <Text style={[styles.reminderTitle, { color: theme.text }]}>
-                    Saved event reminder
-                  </Text>
-                  <View style={styles.reminderOptions}>
-                    {REMINDER_OPTIONS.map((option) => {
-                      const active =
-                        option.value === "none"
-                          ? !savedReminderEnabled
-                          : savedReminderEnabled &&
-                            activeReminderTime === option.value;
-                      return (
-                        <Pressable
-                          key={`saved-${option.value}`}
-                          style={[
-                            styles.reminderPill,
-                            {
-                              backgroundColor: active
-                                ? theme.accentSoft || theme.card
-                                : theme.background,
-                              borderColor: active ? theme.accent : theme.border,
-                            },
-                          ]}
-                          onPress={() =>
-                            handleReminderChange("saved", option.value)
-                          }
-                          disabled={updatingPreference}
-                        >
-                          <Text
-                            style={[
-                              styles.reminderPillText,
-                              { color: active ? theme.accent : theme.textMuted },
-                            ]}
-                          >
-                            {option.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
 
               {eventIsUpcoming ? (
                 <Text style={[styles.buddyListTitle, { color: theme.text }]}>

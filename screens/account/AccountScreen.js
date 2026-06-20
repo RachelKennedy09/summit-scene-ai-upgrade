@@ -346,7 +346,7 @@ function AccountScreen() {
   async function handleDeleteAccount() {
     Alert.alert(
       "Delete account?",
-      "This permanently deletes your Summit Scene account. Your posts, replies, saved events, and hosted events will be removed.",
+      "This permanently deletes your Summit Scene account. Your posts, replies, saved events, hosted events, and scheduled event reminders on this device will be removed.",
       [
         { text: "Cancel", style: "cancel" },
         {

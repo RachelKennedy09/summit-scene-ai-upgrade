@@ -176,7 +176,7 @@ If MongoDB Atlas blocks your current IP, add your IP in Atlas Network Access or 
 
 Use real production accounts for resubmission review. Keep `admin@summitscene.ca` as the internal admin account and do not provide admin credentials to reviewers unless the store specifically asks for moderation/admin access.
 
-Reviewers do not need special equipment beyond a normal iPhone, iPad, or Android device with internet access. Location sharing and photo library access are optional; users can browse by town without granting location permission.
+Reviewers do not need special equipment beyond a normal iPhone, iPad, or Android device with internet access. Location sharing and photo library access are optional; users can browse by town without granting location permission. Notification permission is optional and is used only for saved-event or going-event reminder alerts.
 
 Full Apple notes: `docs/apple-submission/README.md`
 

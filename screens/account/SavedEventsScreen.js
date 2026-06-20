@@ -10,6 +10,7 @@ import {
   fetchEventPreferences,
   fetchNotifications,
 } from "../../services/eventPreferencesApi";
+import { syncEventReminderNotifications } from "../../utils/eventReminderNotifications";
 
 function getEventFromPreference(preference) {
   return preference?.eventId && typeof preference.eventId === "object"
@@ -48,6 +49,7 @@ export default function SavedEventsScreen() {
       ]);
       setEventPreferences(preferences);
       setNotifications(reminders);
+      await syncEventReminderNotifications(preferences, user._id || user.id);
     } catch (loadError) {
       setError(loadError.message || "Could not load saved events.");
     } finally {

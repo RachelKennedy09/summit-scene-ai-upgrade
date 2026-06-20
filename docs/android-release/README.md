@@ -1,6 +1,6 @@
 # Summit Scene Android Release Notes
 
-Last updated: June 8, 2026
+Last updated: June 20, 2026
 
 ## App Information
 
@@ -48,7 +48,7 @@ Review credentials:
 - Provide a real reviewer account in Play Console if Google requires login credentials.
 - Do not provide admin credentials unless Google specifically asks for moderation/admin access.
 
-No special equipment is required. The app can be reviewed on a standard Android device with internet access. Location sharing is optional; reviewers can browse by town without granting location permission.
+No special equipment is required. The app can be reviewed on a standard Android device with internet access. Location sharing is optional; reviewers can browse by town without granting location permission. Notification permission is optional and is used only for saved-event or going-event reminder alerts.
 
 Account deletion:
 
@@ -67,6 +67,11 @@ External bookings:
 - Some event/tour listings link to external organizer websites or booking services.
 - Bookings, payments, refunds, cancellations, and support happen outside Summit Scene with the organizer or third-party provider.
 
+Notifications:
+
+- Saved-event and going-event reminders use optional device notification permission.
+- Notifications are not used for advertising or marketing in this release.
+
 ## Android Build Checklist
 
 - Confirm package is `com.rachellauren.summitscene`.
@@ -75,6 +80,7 @@ External bookings:
 - Confirm `google-services.json` is available to EAS but not committed.
 - Confirm Google Play App Signing SHA fingerprints are added to Firebase after Play creates them.
 - Confirm privacy/data safety answers match the production build.
+- Confirm notification permission is disclosed for event reminders in Play Console.
 - Confirm account deletion works in the installed build.
 
 
