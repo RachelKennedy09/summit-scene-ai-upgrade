@@ -25,7 +25,7 @@ export default {
   expo: {
     name: "Summit Scene",
     slug: "summit-scene",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     scheme: "summitscene",
     icon: "./assets/app-icon.png",
