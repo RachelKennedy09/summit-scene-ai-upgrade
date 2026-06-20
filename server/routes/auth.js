@@ -24,6 +24,7 @@ import {
 dotenv.config();
 
 const router = express.Router();
+const DEFAULT_JWT_EXPIRES_IN = "90d";
 
 // ---------------------------
 // HELPER: JWT CREATION
@@ -52,7 +53,7 @@ function createToken(user) {
       // NOTE: We keep the payload minimal. Extra fields can be added later if needed.
     },
     secret,
-    { expiresIn: "1h" }
+    { expiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_JWT_EXPIRES_IN }
   );
 }
 
