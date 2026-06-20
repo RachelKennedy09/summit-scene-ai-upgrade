@@ -156,6 +156,7 @@ function AccountScreen() {
     deleteAccount,
     isAuthLoading,
     revertToLocalProfile,
+    resendVerificationEmail,
   } = useAuth();
   const navigation = useNavigation();
 
@@ -170,9 +171,11 @@ function AccountScreen() {
     isBusiness && businessVerificationStatus === "verified";
   const isBusinessRejected =
     isBusiness && businessVerificationStatus === "rejected";
+  const isEmailVerified = Boolean(user?.emailVerified);
 
   const [isReverting, setIsReverting] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
   const [adminCounts, setAdminCounts] = useState(EMPTY_ADMIN_STATS);
   const [adminCountsLoading, setAdminCountsLoading] = useState(false);
   const [adminCountsError, setAdminCountsError] = useState("");
@@ -322,6 +325,24 @@ function AccountScreen() {
     );
   }
 
+  async function handleResendVerificationEmail() {
+    try {
+      setIsSendingVerification(true);
+      await resendVerificationEmail();
+      Alert.alert(
+        "Verification email sent",
+        "Check your inbox and junk folder for the latest Summit Scene verification link."
+      );
+    } catch (error) {
+      Alert.alert(
+        "Could not send verification email",
+        error.message || "Please try again."
+      );
+    } finally {
+      setIsSendingVerification(false);
+    }
+  }
+
   async function handleDeleteAccount() {
     Alert.alert(
       "Delete account?",
@@ -391,6 +412,49 @@ function AccountScreen() {
           subtitle="Manage your login email and password."
           theme={theme}
         >
+          {!isEmailVerified ? (
+            <View
+              style={[
+                styles.statusCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.statusTitle, { color: theme.text }]}>
+                Verify your email
+              </Text>
+              <Text style={[styles.statusText, { color: theme.textMuted }]}>
+                Your email is not verified yet. Send a new verification link to
+                {user.email ? ` ${user.email}` : " your login email"}.
+              </Text>
+              <View style={styles.emailActionRow}>
+                <Pressable
+                  style={[
+                    styles.emailButton,
+                    { borderColor: theme.accent },
+                    isSendingVerification && styles.buttonDisabled,
+                  ]}
+                  onPress={handleResendVerificationEmail}
+                  disabled={isSendingVerification}
+                >
+                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                    {isSendingVerification ? "Sending..." : "Resend verification link"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.emailButton, { borderColor: theme.border }]}
+                  onPress={() => navigation.navigate("VerifyEmail")}
+                  disabled={isSendingVerification}
+                >
+                  <Text
+                    style={[styles.emailButtonText, { color: theme.textMuted }]}
+                  >
+                    Enter token
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <AccountNavRow
             title="Change email"
             subtitle="Confirm a new email before changing your login."

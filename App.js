@@ -13,6 +13,16 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import RateAppPrompt from "./components/RateAppPrompt";
 import RootNavigator from "./navigation/RootNavigator";
 
+const linking = {
+  prefixes: ["summitscene://"],
+  config: {
+    screens: {
+      VerifyEmail: "verify-email",
+      ResetPassword: "reset-password",
+    },
+  },
+};
+
 // Separate component so we can use the theme hook
 function AppNavigation() {
   const { navTheme, isDark, theme } = useTheme();
@@ -24,7 +34,7 @@ function AppNavigation() {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.background}
       />
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer theme={navTheme} linking={linking}>
         <RateAppPrompt />
         <RootNavigator />
       </NavigationContainer>

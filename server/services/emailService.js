@@ -121,21 +121,6 @@ function getModerationRecipient() {
   ).trim();
 }
 
-function getReportAdminUrl(reportId) {
-  const adminUrl = process.env.ADMIN_PUBLIC_URL || process.env.APP_PUBLIC_URL;
-  if (!adminUrl || !reportId) {
-    return "";
-  }
-
-  try {
-    const url = new URL("/admin/moderation", adminUrl);
-    url.searchParams.set("reportId", reportId.toString());
-    return url.toString();
-  } catch {
-    return "";
-  }
-}
-
 export async function sendModerationReportNotification({
   report,
   reporter,
@@ -148,7 +133,6 @@ export async function sendModerationReportNotification({
   }
 
   const reportId = report._id || report.id;
-  const adminUrl = getReportAdminUrl(reportId);
   const reporterName = reporter?.name || reporter?.email || "Unknown reporter";
   const reporterEmail = reporter?.email || "No reporter email";
   const targetLabel =
@@ -161,7 +145,6 @@ export async function sendModerationReportNotification({
   await sendEmail({
     to,
     subject,
-    devLink: adminUrl,
     text: [
       subject,
       "",
@@ -174,9 +157,9 @@ export async function sendModerationReportNotification({
       `Reporter: ${reporterName}`,
       `Reporter email: ${reporterEmail}`,
       report.details ? `Details: ${report.details}` : "Details: none",
-      adminUrl ? `Admin review link: ${adminUrl}` : "",
       "",
-      "Review this in the Summit Scene moderation queue.",
+      "Review this in the Summit Scene app: Account > Moderation queue.",
+      "Use the report ID above to match this email to the open report.",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -185,12 +168,16 @@ export async function sendModerationReportNotification({
 
 export async function sendVerificationEmail({ to, token }) {
   const link = buildUrl("/verify-email.html", token);
+  const appLink = `summitscene://verify-email?token=${encodeURIComponent(token)}`;
   await sendEmail({
     to,
     subject: "Verify your Summit Scene email",
     devLink: link,
     text: [
-      "Verify your Summit Scene email address:",
+      "Verify your Summit Scene email address in the app:",
+      appLink,
+      "",
+      "If the app link does not open, use this web fallback:",
       link,
       "",
       "This link expires in 24 hours.",

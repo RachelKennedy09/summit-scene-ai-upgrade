@@ -19,10 +19,18 @@
       <p class="eyebrow">Account</p>
       <h1>Verify your email</h1>
       <p id="status-message">
-        Checking your verification link...
+        Open Summit Scene to verify your email.
       </p>
       <p id="status-detail">
-        Keep this page open for a moment.
+        This link works best in the app so your account page refreshes right away.
+      </p>
+      <p>
+        <a id="app-link" class="button primary" href="#">Open Summit Scene</a>
+      </p>
+      <p>
+        <button id="web-verify-button" class="button secondary" type="button">
+          Verify in browser instead
+        </button>
       </p>
       <noscript>
         JavaScript is required to verify your email from this link. Open Summit
@@ -35,6 +43,13 @@
       const token = new URLSearchParams(window.location.search).get("token") || "";
       const statusMessage = document.getElementById("status-message");
       const statusDetail = document.getElementById("status-detail");
+      const appLink = document.getElementById("app-link");
+      const webVerifyButton = document.getElementById("web-verify-button");
+      const appUrl = token
+        ? `summitscene://verify-email?token=${encodeURIComponent(token)}`
+        : "summitscene://verify-email";
+
+      appLink.setAttribute("href", appUrl);
 
       function getApiBaseUrl() {
         if (
@@ -83,7 +98,13 @@
         }
       }
 
-      verifyEmail();
+      webVerifyButton.addEventListener("click", verifyEmail);
+
+      if (token) {
+        window.setTimeout(() => {
+          window.location.href = appUrl;
+        }, 400);
+      }
     </script>
   </body>
 </html>
