@@ -18,11 +18,14 @@ import {
   NativeModules,
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
+
+const REMEMBERED_EMAIL_KEY = "rememberedLoginEmail";
 
 function getGoogleSignInModule() {
   if (!NativeModules.RNGoogleSignin) {
@@ -54,11 +57,24 @@ function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(true);
   const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   useEffect(() => {
     let isMounted = true;
+
+    async function loadRememberedEmail() {
+      try {
+        const savedEmail = await AsyncStorage.getItem(REMEMBERED_EMAIL_KEY);
+        if (isMounted && savedEmail) {
+          setEmail(savedEmail);
+          setRememberEmail(true);
+        }
+      } catch {
+        // Remembered email is optional. Ignore storage errors.
+      }
+    }
 
     async function checkAppleAuthAvailability() {
       if (Platform.OS !== "ios") {
@@ -77,6 +93,7 @@ function LoginScreen() {
       }
     }
 
+    loadRememberedEmail();
     checkAppleAuthAvailability();
 
     return () => {
@@ -119,7 +136,13 @@ function LoginScreen() {
 
     try {
       // Hand off to AuthContext to call /login on backend
-      await login({ email, password });
+      const trimmedEmail = email.trim();
+      await login({ email: trimmedEmail, password });
+      if (rememberEmail) {
+        await AsyncStorage.setItem(REMEMBERED_EMAIL_KEY, trimmedEmail);
+      } else {
+        await AsyncStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
       navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
     } catch (error) {
       const message = error.message || "Please try again.";
@@ -299,8 +322,43 @@ function LoginScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoCorrect={false}
+                autoComplete="email"
+                textContentType="username"
+                inputMode="email"
               />
             </View>
+
+            <Pressable
+              style={styles.rememberRow}
+              onPress={() => setRememberEmail((current) => !current)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  styles.rememberCheckbox,
+                  {
+                    borderColor: rememberEmail ? theme.accent : theme.border,
+                    backgroundColor: rememberEmail
+                      ? theme.accent
+                      : theme.background,
+                  },
+                ]}
+              >
+                {rememberEmail ? (
+                  <Text
+                    style={[
+                      styles.checkboxMark,
+                      { color: theme.onAccent || theme.textOnAccent || "#FFFFFF" },
+                    ]}
+                  >
+                    ✓
+                  </Text>
+                ) : null}
+              </View>
+              <Text style={[styles.rememberText, { color: theme.textMuted }]}>
+                Remember email on this device
+              </Text>
+            </Pressable>
 
             {/* PASSWORD FIELD */}
             <View style={styles.inputGroup}>
@@ -329,6 +387,8 @@ function LoginScreen() {
                 placeholder="••••••••"
                 placeholderTextColor={theme.textMuted}
                 secureTextEntry
+                autoComplete="password"
+                textContentType="password"
               />
             </View>
 
@@ -542,6 +602,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
+  },
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginTop: -6,
+    marginBottom: 16,
+  },
+  rememberCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    marginTop: 0,
+  },
+  rememberText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   agreementCard: {
     borderWidth: 1,

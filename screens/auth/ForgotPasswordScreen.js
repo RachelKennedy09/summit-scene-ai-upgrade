@@ -12,9 +12,15 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit() {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      Alert.alert("Enter your email", "Please enter the email for your account.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await forgotPassword(email);
+      const data = await forgotPassword(normalizedEmail);
       Alert.alert("Check your email", data.message);
       if (data.passwordResetToken) {
         navigation.navigate("ResetPassword", { token: data.passwordResetToken });
@@ -45,9 +51,12 @@ export default function ForgotPasswordScreen({ navigation }) {
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
+          autoComplete="email"
+          textContentType="username"
+          inputMode="email"
         />
         <AppButton
-          title={loading ? "Sending..." : "Send Reset Email"}
+          title={loading ? "Sending..." : "Send Reset Link"}
           onPress={handleSubmit}
           loading={loading}
           size="lg"

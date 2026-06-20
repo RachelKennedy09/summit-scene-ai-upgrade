@@ -187,12 +187,16 @@ export async function sendVerificationEmail({ to, token }) {
 
 export async function sendPasswordResetEmail({ to, token }) {
   const link = buildUrl("/reset-password.html", token);
+  const appLink = `summitscene://reset-password?token=${encodeURIComponent(token)}`;
   await sendEmail({
     to,
     subject: "Reset your Summit Scene password",
     devLink: link,
     text: [
-      "Reset your Summit Scene password:",
+      "Reset your Summit Scene password in the app:",
+      appLink,
+      "",
+      "If the app link does not open, use this web fallback:",
       link,
       "",
       "This link expires in 1 hour. If you did not request this, ignore this email.",

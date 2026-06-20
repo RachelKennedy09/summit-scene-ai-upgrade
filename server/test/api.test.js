@@ -5,6 +5,7 @@ import { expect } from "chai";
 import request from "supertest";
 import app from "../index.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
+import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
 
 // Generate unique values so we don't clash if tests run multiple times.
 const testRunId = Date.now();
@@ -24,6 +25,15 @@ let emailVerificationToken = null;
 describe("SummitScene API", function () {
   // give a bit more time for DB connections on first run
   this.timeout(10000);
+
+  before(async () => {
+    await cleanupGeneratedTestData();
+  });
+
+  after(async () => {
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+    await cleanupGeneratedTestData();
+  });
 
   it("should include only the main account in default admin access", () => {
     expect(getAdminEmails()).to.include("admin@summitscene.ca");

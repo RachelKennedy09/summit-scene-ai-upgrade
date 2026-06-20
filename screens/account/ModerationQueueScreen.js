@@ -85,15 +85,16 @@ export default function ModerationQueueScreen() {
     if (!reportId) return;
 
     const isDeleteUser = action === "delete-user";
+    const deleteUserLabel = getDeleteUserLabel(report);
     Alert.alert(
-      isDeleteUser ? "Delete this user?" : "Delete reported content?",
+      isDeleteUser ? `${deleteUserLabel}?` : "Delete reported content?",
       isDeleteUser
-        ? "This removes the user account and their posts/replies where possible."
+        ? "This permanently removes the account and clears that user's posts, replies, likes, interests, owned events, and blocks across the app."
         : "This removes the reported post or reply and marks the report reviewed.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: isDeleteUser ? "Delete User" : "Delete Content",
+          text: isDeleteUser ? deleteUserLabel : "Delete Content",
           style: "destructive",
           onPress: async () => {
             try {
@@ -137,6 +138,12 @@ export default function ModerationQueueScreen() {
     }
     if (report?.targetType === "event") return "Delete Event";
     return "Delete Content";
+  }
+
+  function getDeleteUserLabel(report) {
+    return report?.targetType === "user"
+      ? "Delete Profile & Posts"
+      : "Delete Author & Posts";
   }
 
   function getReasonLabel(reason) {
@@ -297,7 +304,7 @@ export default function ModerationQueueScreen() {
                   onPress={() => handleReportAction(report, "delete-user")}
                 >
                   <Text style={[styles.dangerButtonText, { color: theme.accentWarm || "#B4513A" }]}>
-                    Delete Reported User
+                    {getDeleteUserLabel(report)}
                   </Text>
                 </Pressable>
                 <Pressable
