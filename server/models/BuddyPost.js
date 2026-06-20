@@ -169,6 +169,11 @@ const buddyPostSchema = new Schema(
       maxlength: 500,
     },
 
+    imageUrl: {
+      type: String,
+      trim: true,
+    },
+
     category: {
       type: String,
       enum: BUDDY_POST_CATEGORIES,
@@ -311,6 +316,12 @@ buddyPostSchema.pre("validate", function normalizeLegacyCategories(next) {
     Markets: "Farmers Markets",
     "Outdoor Yoga": "Yoga",
     "Seasonal & Tourism": "Tours & Experiences",
+    "AI & Tech": "Learning",
+    "Business Workshops": "Learning",
+    "Coding Meetups": "Learning",
+    Finance: "Learning",
+    "Public Speaking": "Learning",
+    "Skill Sharing": "Learning",
   };
   const normalizeCategory = (category) => {
     const normalized = legacyCategoryMap[category] || category;

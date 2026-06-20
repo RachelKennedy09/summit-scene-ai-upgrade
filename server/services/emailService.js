@@ -1,17 +1,28 @@
 import nodemailer from "nodemailer";
 
 const DEFAULT_FROM = "Summit Scene <no-reply@summitscene.ca>";
+const DEFAULT_PUBLIC_APP_URL = "https://summitscene.ca";
 
 function isEmailDeliveryEnabled() {
   return process.env.EMAIL_DELIVERY_ENABLED === "true";
 }
 
 function getAppUrl() {
-  return (
+  const appUrl = (
     process.env.APP_PUBLIC_URL ||
     process.env.EXPO_PUBLIC_APP_URL ||
-    "http://localhost:8081"
+    DEFAULT_PUBLIC_APP_URL
   ).replace(/\/$/, "");
+
+  try {
+    const parsed = new URL(appUrl);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("APP_PUBLIC_URL must start with http:// or https://");
+    }
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return DEFAULT_PUBLIC_APP_URL;
+  }
 }
 
 function buildUrl(path, token) {

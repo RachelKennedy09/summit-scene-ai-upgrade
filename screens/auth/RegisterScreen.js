@@ -1030,10 +1030,10 @@ function RegisterScreen() {
         onPress={() => switchRole("business")}
       >
         <Text style={[styles.businessLinkTitle, { color: theme.text }]}>
-          Business or organizer signup
+          Create a business or organizer account
         </Text>
         <Text style={[styles.businessLinkText, { color: theme.textMuted }]}>
-          Tap here first if this account is for a business, venue, tour guide, tour company, or organizer.
+          Tap here if you are signing up for a business, venue, tour guide, tour company, or event organizer.
         </Text>
       </Pressable>
     ) : (
@@ -1048,10 +1048,10 @@ function RegisterScreen() {
         onPress={() => switchRole("local")}
       >
         <Text style={[styles.businessLinkTitle, { color: theme.text }]}>
-          Business / organizer account
+          Create a community account instead
         </Text>
         <Text style={[styles.businessLinkText, { color: theme.textMuted }]}>
-          Switch back to community signup
+          Tap here if this account is for a person joining the community, not an official event host.
         </Text>
       </Pressable>
     );

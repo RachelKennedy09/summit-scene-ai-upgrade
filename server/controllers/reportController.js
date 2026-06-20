@@ -15,11 +15,7 @@ const REPORT_POPULATE_FIELDS =
   "name email role avatarKey profileImageUrl town userType businessVerificationStatus";
 const REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const MODERATION_ACTIONS = ["delete-content", "delete-user"];
-const LEGACY_REASON_MAP = {
-  harassment: "inappropriate",
-  spam: "scam",
-  unsafe: "scam",
-};
+const LEGACY_REASON_MAP = {};
 
 function normalizeObjectId(value) {
   if (typeof value !== "string") return undefined;

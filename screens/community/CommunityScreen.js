@@ -367,6 +367,7 @@ export default function CommunityScreen({ navigation }) {
     }
 
     openReportReasonPicker({
+      targetType: target?.targetType,
       onSelect: async (reason) => {
         try {
           await submitReport({ ...target, reason }, token);

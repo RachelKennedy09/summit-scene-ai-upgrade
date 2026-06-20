@@ -544,6 +544,14 @@ export default function BuddyPostCard({
         ) : null}
       </View>
 
+      {post.imageUrl ? (
+        <Image
+          source={{ uri: post.imageUrl }}
+          style={styles.postImage}
+          resizeMode="cover"
+        />
+      ) : null}
+
       {planText.details ? (
         <View style={styles.descriptionBlock}>
           <Text
@@ -1245,6 +1253,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "700",
+  },
+  postImage: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    borderRadius: 10,
+    marginBottom: 12,
+    backgroundColor: colors.surfaceMuted,
   },
   descriptionBlock: {
     marginTop: 0,

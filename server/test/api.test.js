@@ -947,6 +947,7 @@ describe("SummitScene API", function () {
         category: "Hiking",
         communityType: "local-plan",
         activityText: "Looking for someone to hike Tunnel Mountain after work.",
+        imageUrl: "data:image/png;base64,dGVzdC1jb25uZWN0LXBob3Rv",
         date: "2026-06-15",
         time: "17:30",
         town: "Banff",
@@ -960,6 +961,7 @@ describe("SummitScene API", function () {
       category: "Outdoors & Sports",
       communityType: "local-plan",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
+      imageUrl: "data:image/png;base64,dGVzdC1jb25uZWN0LXBob3Rv",
       date: "2026-06-15",
       time: "17:30",
       town: "Banff",
@@ -976,7 +978,7 @@ describe("SummitScene API", function () {
     expect(createRes.body.eventId).to.equal(undefined);
 
     const listRes = await request(app)
-      .get("/api/buddy-posts?category=Hiking&town=Banff")
+      .get("/api/buddy-posts?category=Hiking&town=Banff&includeExpired=true")
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(listRes.status).to.equal(200);
@@ -989,11 +991,12 @@ describe("SummitScene API", function () {
       category: "Outdoors & Sports",
       communityType: "local-plan",
       town: "Banff",
+      imageUrl: "data:image/png;base64,dGVzdC1jb25uZWN0LXBob3Rv",
       groupSizePreference: "small-group",
     });
 
     const languageDateRes = await request(app)
-      .get("/api/buddy-posts?language=french&date=2026-06-15")
+      .get("/api/buddy-posts?language=french&date=2026-06-15&includeExpired=true")
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(languageDateRes.status).to.equal(200);

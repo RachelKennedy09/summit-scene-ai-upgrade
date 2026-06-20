@@ -89,7 +89,10 @@ function getBuddyCategoryFilterOptions(category) {
   if (!normalized) return [];
 
   const group = EVENT_CATEGORY_GROUPS.find((item) => item.title === normalized);
-  return group ? [group.title, ...group.options] : [normalized];
+  if (group) return [group.title, ...group.options];
+
+  const mainCategory = getMainCategoryForTag(normalized);
+  return mainCategory ? [normalized, mainCategory] : [normalized];
 }
 
 function escapeRegex(value) {
@@ -346,6 +349,10 @@ function normalizeCreateBody(body = {}) {
   return {
     type: defaults.type || body.type,
     activityText: typeof body.activityText === "string" ? body.activityText.trim() : body.activityText,
+    imageUrl:
+      typeof body.imageUrl === "string" && body.imageUrl.trim()
+        ? body.imageUrl.trim()
+        : undefined,
     category: "category" in defaults ? defaults.category : rawCategories[0],
     categories: "category" in defaults ? undefined : rawCategories,
     categoryTags:

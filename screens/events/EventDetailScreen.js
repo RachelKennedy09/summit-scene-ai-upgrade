@@ -604,6 +604,7 @@ export default function EventDetailScreen({ route }) {
     }
 
     openReportReasonPicker({
+      targetType: target?.targetType,
       onSelect: async (reason) => {
         try {
           await submitReport({ ...target, reason }, token);

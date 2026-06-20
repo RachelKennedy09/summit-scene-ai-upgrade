@@ -18,16 +18,72 @@
     <main id="top" class="legal-main">
       <p class="eyebrow">Account</p>
       <h1>Verify your email</h1>
-      <p>
-        Open Summit Scene, go to Account, tap Enter verification token, and
-        paste this token if it was not filled automatically.
+      <p id="status-message">
+        Checking your verification link...
       </p>
-      <pre id="token" style="white-space: pre-wrap; word-break: break-word;">Loading token...</pre>
+      <p id="status-detail">
+        Keep this page open for a moment.
+      </p>
+      <noscript>
+        JavaScript is required to verify your email from this link. Open Summit
+        Scene, go to Account, tap Enter verification token, and paste the token
+        from this URL.
+      </noscript>
     </main>
 
     <script>
       const token = new URLSearchParams(window.location.search).get("token") || "";
-      document.getElementById("token").textContent = token || "No token found in this link.";
+      const statusMessage = document.getElementById("status-message");
+      const statusDetail = document.getElementById("status-detail");
+
+      function getApiBaseUrl() {
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        ) {
+          return "http://localhost:4000";
+        }
+
+        return "https://summit-scene-backend.onrender.com";
+      }
+
+      async function verifyEmail() {
+        if (!token) {
+          statusMessage.textContent = "No verification token found.";
+          statusDetail.textContent =
+            "Open the latest verification email and use the full link.";
+          return;
+        }
+
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/api/auth/verify-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              data.message ||
+                "This verification link is invalid or expired."
+            );
+          }
+
+          statusMessage.textContent = "Email verified.";
+          statusDetail.textContent =
+            "Your Summit Scene account email is verified. You can return to the app and log in.";
+        } catch (error) {
+          statusMessage.textContent = "Could not verify this email.";
+          statusDetail.textContent =
+            error.message ||
+            "The link may be expired. Open Summit Scene and request a new verification email.";
+        }
+      }
+
+      verifyEmail();
     </script>
   </body>
 </html>

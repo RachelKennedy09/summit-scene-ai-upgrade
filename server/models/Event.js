@@ -293,6 +293,12 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
     Wellness: "Wellness Retreats",
     "Yoga/Fitness": "Yoga",
     "Outdoor Yoga": "Yoga",
+    "AI & Tech": "Learning",
+    "Business Workshops": "Learning",
+    "Coding Meetups": "Learning",
+    Finance: "Learning",
+    "Public Speaking": "Learning",
+    "Skill Sharing": "Learning",
   };
 
   const normalizeCategory = (category) => {

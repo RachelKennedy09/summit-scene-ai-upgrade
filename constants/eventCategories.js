@@ -43,24 +43,23 @@ export const EVENT_CATEGORY_GROUPS = [
     title: "Inclusive Community",
     options: [
       "Allyship",
+      "BIPOC",
       "Inclusive Outdoors",
+      "Indigenous",
       "LGBTQ+ Meetups",
       "Pride Events",
       "Queer Community",
+      "Sensory Friendly",
       "Trans & Non-Binary Inclusive",
+      "Wheelchair Accessible",
     ],
   },
   {
     title: "Learning",
     options: [
-      "AI & Tech",
-      "Business Workshops",
       "Career Events",
-      "Coding Meetups",
-      "Finance",
       "Language Exchange",
-      "Public Speaking",
-      "Skill Sharing",
+      "Employee Workshops",
     ],
   },
   {
@@ -364,6 +363,12 @@ export function getMainCategoryForTag(value) {
 
   const legacyMainCategoryMap = {
     "Learning & Workshops": "Learning",
+    "AI & Tech": "Learning",
+    "Business Workshops": "Learning",
+    "Coding Meetups": "Learning",
+    Finance: "Learning",
+    "Public Speaking": "Learning",
+    "Skill Sharing": "Learning",
     "Outdoors, Sports & Adventure": "Outdoors & Sports",
     "Seasonal & Tourism": "Tours & Experiences",
     "Social & Community": "Community",

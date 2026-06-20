@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +16,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AppLogoHeader from "../../components/AppLogoHeader";
@@ -60,6 +62,7 @@ const BUDDY_TYPES = [
 ];
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
+const BUDDY_POST_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
 const PLAN_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const NOTICE_CATEGORY_GROUPS = [
@@ -434,6 +437,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       : eventBuddy.type || ""
   );
   const [activityText, setActivityText] = useState(eventBuddy.activityText || "");
+  const [imageUrl, setImageUrl] = useState(eventBuddy.imageUrl || "");
   const [town, setTown] = useState(eventBuddy.town || "");
   const [dateObj, setDateObj] = useState(parseDateString(eventBuddy.date));
   const [timeObj, setTimeObj] = useState(new Date());
@@ -734,6 +738,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
 
   async function handleSubmit() {
     const trimmedActivityText = activityText.trim();
+    const trimmedImageUrl = imageUrl.trim();
 
     if (shouldShowCategory && formCopy.categoryRequired && !categories.length) {
       Alert.alert("Missing category", "Please choose at least one category.");
@@ -787,6 +792,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           vibeTags: shouldShowCategory && vibeTags.length ? vibeTags : undefined,
           communityType,
           activityText: trimmedActivityText,
+          imageUrl: trimmedImageUrl || undefined,
           date: formatDateForApi(dateObj),
           time: formCopy.showDateTime ? time || undefined : undefined,
           town,
@@ -819,6 +825,60 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleChoosePostImage() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access to choose a photo from your camera roll."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.base64) {
+        Alert.alert(
+          "Photo not selected",
+          "We could not read that photo. Please try another image."
+        );
+        return;
+      }
+
+      if (asset.base64.length > BUDDY_POST_IMAGE_MAX_BASE64_LENGTH) {
+        Alert.alert(
+          "Photo too large",
+          "Please choose a smaller photo or crop it tighter before saving."
+        );
+        return;
+      }
+
+      const mimeType = asset.mimeType || "image/jpeg";
+      setImageUrl(`data:${mimeType};base64,${asset.base64}`);
+    } catch (error) {
+      Alert.alert(
+        "Could not choose photo",
+        error.message || "Please try again."
+      );
+    }
+  }
+
+  function handleClearPostImage() {
+    setImageUrl("");
   }
 
   return (
@@ -1116,6 +1176,54 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             multiline
             textAlignVertical="top"
           />
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Photo (Optional)
+          </Text>
+          <Pressable
+            style={[
+              styles.photoPickerButton,
+              { backgroundColor: theme.card, borderColor: theme.accent },
+            ]}
+            onPress={handleChoosePostImage}
+          >
+            <Text style={[styles.photoPickerText, { color: theme.accent }]}>
+              Choose from camera roll
+            </Text>
+          </Pressable>
+          {imageUrl.trim() ? (
+            <View
+              style={[
+                styles.previewCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Image
+                source={{ uri: imageUrl.trim() }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+              <View style={styles.photoPreviewFooter}>
+                <Text style={[styles.previewHint, { color: theme.textMuted }]}>
+                  Photo selected
+                </Text>
+                <Pressable
+                  style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                  onPress={handleClearPostImage}
+                >
+                  <Text
+                    style={[styles.smallOutlineButtonText, { color: theme.textMuted }]}
+                  >
+                    Remove
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.helperText, { color: theme.textMuted }]}>
+              Add a photo to help your community post stand out.
+            </Text>
+          )}
 
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {formCopy.showDateTime ? "When and where" : "Where"}
@@ -1616,6 +1724,41 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 112,
+  },
+  photoPickerButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  photoPickerText: {
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  previewCard: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+    marginBottom: 14,
+  },
+  previewImage: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+  },
+  photoPreviewFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  previewHint: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
   },
   selectButton: {
     borderWidth: 1,
