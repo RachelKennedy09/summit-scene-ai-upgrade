@@ -24,8 +24,11 @@ export default function VerifyEmailScreen({ navigation, route }) {
       setLoading(true);
       if (mode === "emailChange") {
         await confirmEmailChange(trimmedToken);
-        Alert.alert("Email changed", "Your new email has been confirmed.");
-        navigation.goBack();
+        Alert.alert(
+          "Email changed",
+          "Your new email has been confirmed. Please log in again with your new email."
+        );
+        navigation.reset({ index: 0, routes: [{ name: "Login" }] });
       } else {
         await verifyEmail(trimmedToken);
         Alert.alert("Email verified", "Your account email is now verified.");
@@ -39,7 +42,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
   }
 
   useEffect(() => {
-    if (autoSubmittedRef.current || mode !== "verify" || !token.trim()) {
+    if (autoSubmittedRef.current || !token.trim()) {
       return;
     }
 
@@ -54,8 +57,10 @@ export default function VerifyEmailScreen({ navigation, route }) {
           {mode === "emailChange" ? "Confirm email change" : "Verify email"}
         </Text>
         <Text style={[styles.copy, { color: theme.textMuted }]}>
-          {token.trim() && mode !== "emailChange"
-            ? "Verifying your email from the link..."
+          {token.trim()
+            ? mode === "emailChange"
+              ? "Confirming your new email from the link..."
+              : "Verifying your email from the link..."
             : "Paste the token from your email if it was not filled automatically. Check your junk or spam folder if you do not see the email."}
         </Text>
         <TextInput
@@ -71,7 +76,15 @@ export default function VerifyEmailScreen({ navigation, route }) {
           autoCorrect={false}
         />
         <AppButton
-          title={loading ? "Verifying..." : "Verify Email"}
+          title={
+            loading
+              ? mode === "emailChange"
+                ? "Confirming..."
+                : "Verifying..."
+              : mode === "emailChange"
+                ? "Confirm Email Change"
+                : "Verify Email"
+          }
           onPress={handleSubmit}
           loading={loading}
           size="lg"

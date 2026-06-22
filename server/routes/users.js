@@ -18,6 +18,7 @@ import Report from "../models/Report.js";
 import { sendModerationReportNotification } from "../services/emailService.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
+import { GENERATED_TEST_USER_QUERY } from "../utils/generatedTestDataCleanup.js";
 
 function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
@@ -34,6 +35,14 @@ const BUSINESS_REVIEW_FIELDS =
 
 function getAggregateCount(result, key = "count") {
   return Number(result?.[0]?.[key] || 0);
+}
+
+const REAL_USER_QUERY = GENERATED_TEST_USER_QUERY.$or?.length
+  ? { $nor: GENERATED_TEST_USER_QUERY.$or }
+  : {};
+
+function realUserQuery(query = {}) {
+  return { ...REAL_USER_QUERY, ...query };
 }
 
 /* -------------------------------------------
@@ -78,6 +87,8 @@ router.get("/admin/dashboard-stats", authMiddleware, isAdmin, async (req, res) =
 
     const [
       totalUsers,
+      totalDatabaseUsers,
+      generatedTestUsers,
       newUsersThisWeek,
       activeUsersThisWeek,
       totalBusinesses,
@@ -94,19 +105,22 @@ router.get("/admin/dashboard-stats", authMiddleware, isAdmin, async (req, res) =
       openReports,
       pendingBusinesses,
     ] = await Promise.all([
+      User.countDocuments(REAL_USER_QUERY),
       User.countDocuments({}),
-      User.countDocuments({ createdAt: { $gte: weekStart } }),
+      User.countDocuments(GENERATED_TEST_USER_QUERY),
+      User.countDocuments(realUserQuery({ createdAt: { $gte: weekStart } })),
       User.countDocuments({
+        ...REAL_USER_QUERY,
         $or: [
           { lastActiveAt: { $gte: weekStart } },
           { updatedAt: { $gte: weekStart } },
         ],
       }),
-      User.countDocuments({ role: "business" }),
-      User.countDocuments({
+      User.countDocuments(realUserQuery({ role: "business" })),
+      User.countDocuments(realUserQuery({
         role: "business",
         createdAt: { $gte: monthStart },
-      }),
+      })),
       Event.countDocuments({}),
       Event.countDocuments({ createdAt: { $gte: weekStart } }),
       CommunityPost.countDocuments({}),
@@ -176,14 +190,14 @@ router.get("/admin/dashboard-stats", authMiddleware, isAdmin, async (req, res) =
           },
         },
       ]),
-      User.countDocuments({ town: "Banff" }),
-      User.countDocuments({ town: "Canmore" }),
-      User.countDocuments({ town: { $in: ["Lake Louise", "LL"] } }),
+      User.countDocuments(realUserQuery({ town: "Banff" })),
+      User.countDocuments(realUserQuery({ town: "Canmore" })),
+      User.countDocuments(realUserQuery({ town: { $in: ["Lake Louise", "LL"] } })),
       Report.countDocuments({ status: "open" }),
-      User.countDocuments({
+      User.countDocuments(realUserQuery({
         role: "business",
         businessVerificationStatus: "pending",
-      }),
+      })),
     ]);
 
     const communityReplies = getAggregateCount(communityEngagement, "replies");
@@ -197,6 +211,8 @@ router.get("/admin/dashboard-stats", authMiddleware, isAdmin, async (req, res) =
 
     return res.json({
       totalUsers,
+      totalDatabaseUsers,
+      generatedTestUsers,
       newUsersThisWeek,
       activeUsersThisWeek,
       totalBusinesses,
@@ -275,7 +291,7 @@ router.patch(
       return res.json({
         message:
           status === "verified"
-            ? "Verified Local approved."
+            ? "Verified Business approved."
             : status === "rejected"
               ? "Organizer profile rejected."
               : "Organizer profile moved back to pending review.",

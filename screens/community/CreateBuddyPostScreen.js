@@ -41,6 +41,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { fetchEventById, fetchEvents } from "../../services/eventsApi";
 import { createBuddyPost } from "../../services/buddyPostsApi";
+import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
 import { getBuddyTypeForEventCategory } from "../../utils/buddyPostPrefill";
 
 const BUDDY_TYPES = [
@@ -813,6 +814,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         },
         token
       );
+      recordConnectEngagementForReviewPrompt();
 
       Alert.alert("Buddy post shared", "Your buddy post is now live.", [
         {

@@ -55,7 +55,12 @@ export default function EventHostSection({
 
   // For this screen, host.avatarKey comes from getEventHost(event) in EventDetailScreen
   const avatarSource = getAvatarSource(host);
-  const hasConnectedInstagram = host.socialAccounts?.some(
+  const visibleSocialAccounts = Array.isArray(host.socialAccounts)
+    ? host.socialAccounts.filter((account) =>
+        ["instagram", "facebook"].includes(account?.provider)
+      )
+    : [];
+  const hasConnectedInstagram = visibleSocialAccounts.some(
     (account) => account.provider === "instagram"
   );
   const hostId = host._id || host.id || "";
@@ -316,7 +321,7 @@ export default function EventHostSection({
                 </View>
                 ) : null}
 
-                {host.socialAccounts?.length ? (
+                {visibleSocialAccounts.length ? (
                 <View style={styles.profileSection}>
                   <Text
                     style={[
@@ -324,17 +329,23 @@ export default function EventHostSection({
                       { color: theme.textMuted },
                     ]}
                   >
-                    Connected socials
+                    Social links
                   </Text>
-                  {host.socialAccounts.map((account) => (
-                    <Text
-                      key={`${account.provider}-${account.handle || account.url}`}
-                      style={[styles.profileLinkText, { color: theme.accent }]}
-                    >
-                      {account.provider}: {account.handle || account.url}{" "}
-                      {account.verified ? "Verified" : "Unverified"}
-                    </Text>
-                  ))}
+                  {visibleSocialAccounts.map((account) => {
+                    const shouldShowSocialStatus =
+                      account.verified || host.role === "business";
+                    return (
+                      <Text
+                        key={`${account.provider}-${account.handle || account.url}`}
+                        style={[styles.profileLinkText, { color: theme.accent }]}
+                      >
+                        {account.provider}: {account.handle || account.url}
+                        {shouldShowSocialStatus
+                          ? ` ${account.verified ? "Verified" : "Unverified"}`
+                          : ""}
+                      </Text>
+                    );
+                  })}
                 </View>
                 ) : null}
 

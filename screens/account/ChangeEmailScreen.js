@@ -5,17 +5,40 @@ import AppButton from "../../components/common/AppButton";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+
 export default function ChangeEmailScreen({ navigation }) {
   const { requestEmailChange } = useAuth();
   const { theme } = useTheme();
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const normalizedEmail = newEmail.trim().toLowerCase();
+  const canSubmit =
+    EMAIL_PATTERN.test(normalizedEmail) && currentPassword.trim().length > 0;
 
   async function handleSubmit() {
+    if (!normalizedEmail) {
+      Alert.alert("Email needed", "Please enter your new email address.");
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      Alert.alert("Check email", "Please enter a valid email address.");
+      return;
+    }
+
+    if (!currentPassword.trim()) {
+      Alert.alert("Password needed", "Please enter your current password.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await requestEmailChange({ newEmail, currentPassword });
+      const data = await requestEmailChange({
+        newEmail: normalizedEmail,
+        currentPassword,
+      });
       Alert.alert("Check your new email", data.message);
       if (data.emailChangeToken) {
         navigation.navigate("VerifyEmail", {
@@ -59,6 +82,7 @@ export default function ChangeEmailScreen({ navigation }) {
           title={loading ? "Sending..." : "Send Confirmation"}
           onPress={handleSubmit}
           loading={loading}
+          disabled={loading || !canSubmit}
           size="lg"
         />
       </View>

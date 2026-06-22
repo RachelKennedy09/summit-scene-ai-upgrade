@@ -15,6 +15,9 @@ const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
 const EVENTS_REQUEST_TIMEOUT_MS = 15000;
+const EVENTS_LIST_REQUEST_TIMEOUT_MS = 30000;
+const EVENTS_LIST_RETRY_ATTEMPTS = 3;
+const EVENTS_LIST_RETRY_DELAY_MS = 1200;
 
 // Build headers helper (optional token)
 function buildHeaders(token) {
@@ -36,6 +39,55 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = EVENTS_REQUEST_TI
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchError(error) {
+  if (error?.name === "AbortError") {
+    return true;
+  }
+
+  const message =
+    typeof error?.message === "string" ? error.message.toLowerCase() : "";
+
+  return (
+    message.includes("aborted") ||
+    message.includes("network request failed") ||
+    message.includes("failed to fetch") ||
+    message.includes("timed out") ||
+    message.includes("timeout")
+  );
+}
+
+async function fetchWithRetry(
+  url,
+  options = {},
+  {
+    timeoutMs = EVENTS_REQUEST_TIMEOUT_MS,
+    attempts = 1,
+    retryDelayMs = EVENTS_LIST_RETRY_DELAY_MS,
+  } = {}
+) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetchWithTimeout(url, options, timeoutMs);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt >= attempts || !isRetryableFetchError(error)) {
+        throw error;
+      }
+
+      await delay(retryDelayMs);
+    }
+  }
+
+  throw lastError;
 }
 
 async function readJsonSafely(response) {
@@ -153,7 +205,10 @@ export async function fetchEvents(options = {}) {
   const expectsPaginatedResponse = Boolean(options.page || options.limit);
 
   try {
-    const res = await fetchWithTimeout(url);
+    const res = await fetchWithRetry(url, {}, {
+      timeoutMs: EVENTS_LIST_REQUEST_TIMEOUT_MS,
+      attempts: EVENTS_LIST_RETRY_ATTEMPTS,
+    });
     const data = await readJsonSafely(res);
 
     if (!res.ok) {

@@ -1,12 +1,12 @@
 import {
   ACTIVITY_SKILL_LEVELS,
   PROFILE_TOWNS,
-  SOCIAL_PROVIDERS,
   USER_TYPES,
 } from "../models/User.js";
 import { isAdminEmail } from "./adminAccess.js";
 
 const ARRAY_ITEM_MAX_LENGTH = 40;
+const MANUAL_SOCIAL_PROVIDERS = ["instagram", "facebook"];
 
 function normalizeOptionalString(value) {
   if (typeof value !== "string") return undefined;
@@ -60,7 +60,7 @@ function normalizeSocialAccounts(value) {
     .map((account) => {
       if (!account || typeof account !== "object") return null;
 
-      const provider = normalizeEnum(account.provider, SOCIAL_PROVIDERS);
+      const provider = normalizeEnum(account.provider, MANUAL_SOCIAL_PROVIDERS);
       if (!provider) return null;
 
       const handle = normalizeOptionalString(account.handle);

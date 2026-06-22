@@ -62,6 +62,10 @@ function getEventStartDateTime(event) {
   const occurrenceDate = getNextOccurrenceDate(event);
   if (!occurrenceDate) return null;
 
+  return buildEventStartDateTime(event, occurrenceDate);
+}
+
+function buildEventStartDateTime(event, occurrenceDate) {
   const date = new Date(occurrenceDate);
   const firstSlot = getNormalizedTimeSlots(event)[0];
   const parsedTime = event?.isAllDay
@@ -72,11 +76,38 @@ function getEventStartDateTime(event) {
   return date;
 }
 
+function findNextRecurringReminderDate(event, offset, fromDate = new Date()) {
+  const cursor = new Date(fromDate);
+
+  for (let attempt = 0; attempt < 370; attempt += 1) {
+    const occurrenceDate = getNextOccurrenceDate(event, cursor);
+    if (!occurrenceDate) return null;
+
+    const eventStart = buildEventStartDateTime(event, occurrenceDate);
+    if (!eventStart) return null;
+
+    const reminderDate = new Date(eventStart.getTime() - offset);
+    if (reminderDate.getTime() > Date.now()) {
+      return reminderDate;
+    }
+
+    cursor.setTime(occurrenceDate.getTime());
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return null;
+}
+
 function getReminderDate(event, reminderTime) {
   const offset = REMINDER_OFFSETS_MS[reminderTime];
-  const eventStart = getEventStartDateTime(event);
-  if (!offset || !eventStart) return null;
+  if (!offset) return null;
 
+  if ((event?.scheduleType || "single") === "recurring") {
+    return findNextRecurringReminderDate(event, offset);
+  }
+
+  const eventStart = getEventStartDateTime(event);
+  if (!eventStart) return null;
   const reminderDate = new Date(eventStart.getTime() - offset);
   return reminderDate.getTime() > Date.now() ? reminderDate : null;
 }

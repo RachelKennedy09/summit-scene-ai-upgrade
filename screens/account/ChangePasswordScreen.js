@@ -14,12 +14,27 @@ export default function ChangePasswordScreen() {
   const { theme } = useTheme();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    confirmNewPassword.length > 0;
 
   async function handleSubmit() {
+    if (!currentPassword) {
+      Alert.alert("Current password needed", "Please enter your current password.");
+      return;
+    }
+
     const passwordError = validatePasswordStrength(newPassword);
     if (passwordError) {
       Alert.alert("Password needs more strength", passwordError);
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert("Passwords do not match", "Please confirm your new password.");
       return;
     }
 
@@ -54,6 +69,14 @@ export default function ChangePasswordScreen() {
           placeholderTextColor={theme.textMuted}
           secureTextEntry
         />
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+          value={confirmNewPassword}
+          onChangeText={setConfirmNewPassword}
+          placeholder="Confirm new password"
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry
+        />
         <Text style={[styles.helperText, { color: theme.textMuted }]}>
           {PASSWORD_RULES_TEXT}
         </Text>
@@ -61,6 +84,7 @@ export default function ChangePasswordScreen() {
           title={loading ? "Saving..." : "Change Password"}
           onPress={handleSubmit}
           loading={loading}
+          disabled={loading || !canSubmit}
           size="lg"
         />
       </View>

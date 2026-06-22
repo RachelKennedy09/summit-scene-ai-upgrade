@@ -40,6 +40,7 @@ import {
 } from "../../services/buddyPostsApi";
 import { submitReport } from "../../services/reportsApi";
 import { colors } from "../../theme/colors";
+import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
 import { openReportReasonPicker } from "../../utils/reporting";
 
 const CATEGORY_GROUPS = getCommunityCategoryGroups({
@@ -257,6 +258,7 @@ export default function CommunityScreen({ navigation }) {
 
     try {
       await toggleBuddyPostInterest(post._id || post.id, token);
+      recordConnectEngagementForReviewPrompt();
       await loadBuddyPosts();
     } catch (error) {
       Alert.alert("Could not update interest", error.message || "Please try again.");
@@ -271,6 +273,7 @@ export default function CommunityScreen({ navigation }) {
 
     try {
       await createBuddyPostReply(post._id || post.id, text, token);
+      recordConnectEngagementForReviewPrompt();
       await loadBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
@@ -290,6 +293,7 @@ export default function CommunityScreen({ navigation }) {
         text,
         token
       );
+      recordConnectEngagementForReviewPrompt();
       await loadBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
@@ -308,6 +312,7 @@ export default function CommunityScreen({ navigation }) {
         reply._id || reply.id,
         token
       );
+      recordConnectEngagementForReviewPrompt();
       await loadBuddyPosts();
     } catch (error) {
       Alert.alert("Could not update like", error.message || "Please try again.");

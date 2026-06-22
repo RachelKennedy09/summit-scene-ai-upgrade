@@ -59,6 +59,7 @@ import {
   cancelEventReminderNotification,
   updateEventReminderNotification,
 } from "../../utils/eventReminderNotifications";
+import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
 
 import EventHostSection from "../../components/events/EventHostSection";
 import EventOwnerSection from "../../components/events/EventOwnerSection";
@@ -531,6 +532,7 @@ export default function EventDetailScreen({ route }) {
 
     try {
       await toggleBuddyPostInterest(post._id || post.id, token);
+      recordConnectEngagementForReviewPrompt();
       await loadEventBuddyPosts();
     } catch (error) {
       Alert.alert("Could not update interest", error.message || "Please try again.");
@@ -545,6 +547,7 @@ export default function EventDetailScreen({ route }) {
 
     try {
       await createBuddyPostReply(post._id || post.id, text, token);
+      recordConnectEngagementForReviewPrompt();
       await loadEventBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
@@ -564,6 +567,7 @@ export default function EventDetailScreen({ route }) {
         text,
         token
       );
+      recordConnectEngagementForReviewPrompt();
       await loadEventBuddyPosts();
     } catch (error) {
       Alert.alert("Could not add reply", error.message || "Please try again.");
@@ -582,6 +586,7 @@ export default function EventDetailScreen({ route }) {
         reply._id || reply.id,
         token
       );
+      recordConnectEngagementForReviewPrompt();
       await loadEventBuddyPosts();
     } catch (error) {
       Alert.alert("Could not update like", error.message || "Please try again.");

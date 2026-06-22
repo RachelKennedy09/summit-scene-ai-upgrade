@@ -16,6 +16,9 @@ import { findContentModerationIssue } from "../utils/contentModeration.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 import {
   sendEmailChangeConfirmation,
+  sendEmailChangedSecurityAlert,
+  sendEmailChangeRequestedSecurityAlert,
+  sendPasswordChangedSecurityAlert,
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "../services/emailService.js";
@@ -25,6 +28,7 @@ dotenv.config();
 
 const router = express.Router();
 const DEFAULT_JWT_EXPIRES_IN = "90d";
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 // ---------------------------
 // HELPER: JWT CREATION
@@ -74,10 +78,98 @@ function addHours(hours) {
 }
 
 function includeDevToken(token) {
-  return ["development", "test"].includes(process.env.NODE_ENV)
+  const nodeEnv = process.env.NODE_ENV || "production";
+  return ["development", "test"].includes(nodeEnv)
     ? token
     : undefined;
 }
+
+const rateLimitBuckets = new Map();
+
+function cleanupRateLimitBucket(key, now) {
+  const bucket = rateLimitBuckets.get(key);
+  if (bucket && bucket.resetAt <= now) {
+    rateLimitBuckets.delete(key);
+  }
+}
+
+function createRateLimiter({
+  windowMs,
+  max,
+  message,
+  keyGenerator,
+}) {
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = keyGenerator(req);
+
+    cleanupRateLimitBucket(key, now);
+
+    const bucket =
+      rateLimitBuckets.get(key) || {
+        count: 0,
+        resetAt: now + windowMs,
+      };
+
+    bucket.count += 1;
+    rateLimitBuckets.set(key, bucket);
+
+    if (bucket.count > max) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((bucket.resetAt - now) / 1000)
+      );
+
+      res.set("Retry-After", String(retryAfterSeconds));
+      return res.status(429).json({ message });
+    }
+
+    return next();
+  };
+}
+
+function getClientIp(req) {
+  const forwardedFor = String(req.headers["x-forwarded-for"] || "");
+  return (
+    forwardedFor.split(",")[0].trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
+
+function normalizeEmail(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function normalizeTokenPrefix(value) {
+  return typeof value === "string" ? value.trim().slice(0, 16) : "";
+}
+
+const sensitiveAccountChangeLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: "Too many account security attempts. Please wait and try again.",
+  keyGenerator: (req) =>
+    [
+      req.route?.path || req.path,
+      getClientIp(req),
+      req.user?.userId || "anonymous",
+      normalizeEmail(req.body?.newEmail),
+    ].join(":"),
+});
+
+const tokenConfirmLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: "Too many confirmation attempts. Please wait and try again.",
+  keyGenerator: (req) =>
+    [
+      req.route?.path || req.path,
+      getClientIp(req),
+      normalizeTokenPrefix(req.body?.token),
+    ].join(":"),
+});
 
 async function verifyAppleIdentityToken(identityToken) {
   if (!identityToken || typeof identityToken !== "string") {
@@ -745,7 +837,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", tokenConfirmLimiter, async (req, res) => {
   try {
     const { token, password } = req.body || {};
     if (!token || !password) {
@@ -775,6 +867,13 @@ router.post("/reset-password", async (req, res) => {
     user.passwordResetExpiresAt = undefined;
     await user.save();
 
+    await sendEmailSafely(() =>
+      sendPasswordChangedSecurityAlert({
+        to: user.email,
+        name: user.name,
+      })
+    );
+
     res.json({ message: "Password reset successful." });
   } catch (error) {
     console.error("Error in POST /api/auth/reset-password:", error);
@@ -782,7 +881,11 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-router.post("/change-password", authMiddleware, async (req, res) => {
+router.post(
+  "/change-password",
+  authMiddleware,
+  sensitiveAccountChangeLimiter,
+  async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {
@@ -815,6 +918,13 @@ router.post("/change-password", authMiddleware, async (req, res) => {
     user.passwordResetExpiresAt = undefined;
     await user.save();
 
+    await sendEmailSafely(() =>
+      sendPasswordChangedSecurityAlert({
+        to: user.email,
+        name: user.name,
+      })
+    );
+
     res.json({ message: "Password changed." });
   } catch (error) {
     console.error("Error in POST /api/auth/change-password:", error);
@@ -822,16 +932,25 @@ router.post("/change-password", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/request-email-change", authMiddleware, async (req, res) => {
+router.post(
+  "/request-email-change",
+  authMiddleware,
+  sensitiveAccountChangeLimiter,
+  async (req, res) => {
   try {
     const { newEmail, currentPassword } = req.body || {};
-    const normalizedEmail =
-      typeof newEmail === "string" ? newEmail.trim().toLowerCase() : "";
+    const normalizedEmail = normalizeEmail(newEmail);
 
     if (!normalizedEmail || !currentPassword) {
       return res
         .status(400)
         .json({ message: "New email and current password are required." });
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid email address." });
     }
 
     const user = await User.findById(req.user.userId);
@@ -865,6 +984,13 @@ router.post("/request-email-change", authMiddleware, async (req, res) => {
     await sendEmailSafely(() =>
       sendEmailChangeConfirmation({ to: normalizedEmail, token: emailChangeToken })
     );
+    await sendEmailSafely(() =>
+      sendEmailChangeRequestedSecurityAlert({
+        to: user.email,
+        name: user.name,
+        newEmail: normalizedEmail,
+      })
+    );
 
     res.json({
       message: "Confirmation email sent to the new address.",
@@ -877,7 +1003,7 @@ router.post("/request-email-change", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/confirm-email-change", async (req, res) => {
+router.post("/confirm-email-change", tokenConfirmLimiter, async (req, res) => {
   try {
     const { token } = req.body || {};
     if (!token) {
@@ -903,16 +1029,28 @@ router.post("/confirm-email-change", async (req, res) => {
       return res.status(409).json({ message: "Email is already registered." });
     }
 
-    user.email = user.pendingEmail;
+    const oldEmail = user.email;
+    const newEmail = user.pendingEmail;
+
+    user.email = newEmail;
     user.pendingEmail = undefined;
     user.emailVerified = true;
     user.emailVerifiedAt = new Date();
     user.pendingEmailVerificationTokenHash = undefined;
     user.pendingEmailVerificationExpiresAt = undefined;
+    user.passwordChangedAt = new Date();
     await user.save();
 
+    await sendEmailSafely(() =>
+      sendEmailChangedSecurityAlert({
+        to: oldEmail,
+        name: user.name,
+        newEmail,
+      })
+    );
+
     res.json({
-      message: "Email changed.",
+      message: "Email changed. Please log in again with your new email.",
       user: buildSafeUser(user),
     });
   } catch (error) {

@@ -42,7 +42,9 @@ function formatDate(value) {
 
 function getVerifiedSocials(user) {
   return (user?.socialAccounts || []).filter(
-    (account) => account?.provider && (account?.handle || account?.url)
+    (account) =>
+      ["instagram", "facebook"].includes(account?.provider) &&
+      (account?.handle || account?.url)
   );
 }
 
@@ -126,7 +128,7 @@ export default function BusinessVerificationScreen() {
       `${actionLabel} business profile?`,
       `${businessUser.name || businessUser.email} will ${
         status === "verified"
-          ? "receive the Verified Local badge and be able to post official events."
+          ? "receive the Verified Business badge and be able to post official events."
           : status === "pending"
           ? "go back into the review queue."
           : "stay blocked from official event posting."
@@ -420,7 +422,7 @@ export default function BusinessVerificationScreen() {
                 </View>
               )}
               <Text style={[styles.checklist, { color: theme.textMuted }]}>
-                Check: social pages/listing are real and local, events make sense, branding matches, and this is not a duplicate account. Approved profiles get the Verified Local badge.
+                Check: social pages/listing are real and local, events make sense, branding matches, and this is not a duplicate account. Approved profiles get the Verified Business badge.
               </Text>
               <View style={styles.actions}>
                 <Pressable

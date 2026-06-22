@@ -307,8 +307,8 @@ describe("SummitScene API", function () {
             profileImageUrl: "https://example.com/social-profile.jpg",
           },
           {
-            provider: "linkedin",
-            url: "https://linkedin.com/in/summit-test",
+            provider: "facebook",
+            url: "https://facebook.com/summittest",
           },
         ],
       });
@@ -796,6 +796,8 @@ describe("SummitScene API", function () {
     expect(res.status).to.equal(200);
     expect(res.body).to.include.keys([
       "totalUsers",
+      "totalDatabaseUsers",
+      "generatedTestUsers",
       "newUsersThisWeek",
       "activeUsersThisWeek",
       "totalBusinesses",
@@ -810,6 +812,8 @@ describe("SummitScene API", function () {
       "pendingBusinesses",
     ]);
     expect(res.body.totalUsers).to.be.a("number");
+    expect(res.body.totalDatabaseUsers).to.be.a("number");
+    expect(res.body.generatedTestUsers).to.be.a("number");
     expect(res.body.locations).to.include.keys([
       "banffUsers",
       "canmoreUsers",

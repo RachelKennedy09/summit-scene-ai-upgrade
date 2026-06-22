@@ -40,25 +40,13 @@ const SOCIAL_PROVIDERS = [
     provider: "instagram",
     label: "Instagram",
     placeholder: "@yourhandle",
-    actionLabel: "Connect Instagram",
-  },
-  {
-    provider: "tiktok",
-    label: "TikTok",
-    placeholder: "@yourhandle",
-    actionLabel: "Connect TikTok",
+    actionLabel: "Add Instagram link",
   },
   {
     provider: "facebook",
     label: "Facebook",
     placeholder: "facebook.com/yourprofile",
-    actionLabel: "Connect Facebook",
-  },
-  {
-    provider: "linkedin",
-    label: "LinkedIn",
-    placeholder: "linkedin.com/in/yourprofile",
-    actionLabel: "Connect LinkedIn",
+    actionLabel: "Add Facebook link",
   },
 ];
 const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
@@ -197,7 +185,7 @@ function normalizeSocialInput(provider, value = "") {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "";
 
-  if (provider === "instagram" || provider === "tiktok") {
+  if (provider === "instagram") {
     return trimmed.startsWith("@") || trimmed.includes("/")
       ? trimmed
       : `@${trimmed}`;
@@ -226,7 +214,7 @@ function SocialConnectFields({ values, onChange, theme }) {
                 {label}
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                {connected ? "Profile added." : actionLabel}
+                {connected ? "Link added." : actionLabel}
               </Text>
               <TextInput
                 style={[
@@ -245,23 +233,6 @@ function SocialConnectFields({ values, onChange, theme }) {
                 autoCorrect={false}
               />
             </View>
-            <Pressable
-              style={[
-                styles.connectButton,
-                { borderColor: connected ? theme.accent : theme.border },
-              ]}
-              onPress={() => {}}
-              disabled
-            >
-              <Text
-                style={[
-                  styles.connectButtonText,
-                  { color: connected ? theme.accent : theme.textMuted },
-                ]}
-              >
-                {connected ? "Connected" : "Connect"}
-              </Text>
-            </Pressable>
           </View>
         );
       })}
@@ -607,9 +578,7 @@ function RegisterScreen() {
   const [interests, setInterests] = useState([]);
   const [socialValues, setSocialValues] = useState({
     instagram: "",
-    tiktok: "",
     facebook: "",
-    linkedin: "",
   });
   const [bio, setBio] = useState("");
   const [lookingFor, setLookingFor] = useState("");
@@ -1628,7 +1597,7 @@ function RegisterScreen() {
             autoCapitalize="none"
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Connected social profiles
+            Social links
           </Text>
           <SocialConnectFields
             values={socialValues}
@@ -2036,7 +2005,8 @@ const styles = StyleSheet.create({
   },
   interestGroupOptions: {
     paddingHorizontal: 12,
-    paddingBottom: 2,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   chip: {
     borderWidth: 1,
@@ -2085,17 +2055,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     marginBottom: 2,
-  },
-  connectButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  connectButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
   },
   connectedText: {
     fontSize: 12,

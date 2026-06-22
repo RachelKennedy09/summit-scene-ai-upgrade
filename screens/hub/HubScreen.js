@@ -5,7 +5,7 @@
 // - Shows events in a FlatList with pull-to-refresh
 // - Navigates to EventDetail when an event card is tapped.
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -104,8 +104,13 @@ export default function HubScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const loadRequestIdRef = useRef(0);
 
   const loadEvents = useCallback(async ({ nextPage = 1, mode = "initial" } = {}) => {
+    const requestId = loadRequestIdRef.current + 1;
+    loadRequestIdRef.current = requestId;
+    const isCurrentRequest = () => loadRequestIdRef.current === requestId;
+
     try {
       if (mode === "refresh") {
         setRefreshing(true);
@@ -139,6 +144,10 @@ export default function HubScreen() {
         );
       }
 
+      if (!isCurrentRequest()) {
+        return;
+      }
+
       setEvents((current) =>
         mode === "loadMore" ? [...current, ...nextEvents] : nextEvents
       );
@@ -149,15 +158,21 @@ export default function HubScreen() {
       setHasMore(Boolean(data.hasMore));
       setTotalCount(Number.isFinite(data.totalCount) ? data.totalCount : 0);
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
+
       setError(
         mode === "loadMore"
           ? "Could not load more events. Try again."
-          : "Could not load events. Pull to refresh to try again."
+          : "Could not load events yet. Pull to refresh or try again in a moment."
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (isCurrentRequest()) {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
   }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
 
@@ -165,6 +180,10 @@ export default function HubScreen() {
   useFocusEffect(
     useCallback(() => {
       loadEvents({ nextPage: 1, mode: "initial" });
+
+      return () => {
+        loadRequestIdRef.current += 1;
+      };
     }, [loadEvents])
   );
 

@@ -483,6 +483,19 @@ export async function getAllEvents(req, res) {
 
     if (searchTerms.length) {
       const searchRegexes = searchTerms.map((term) => new RegExp(escapeRegex(term), "i"));
+      const matchingCreators = await User.find({
+        $or: [
+          { name: { $in: searchRegexes } },
+          { email: { $in: searchRegexes } },
+          { lookingFor: { $in: searchRegexes } },
+          { website: { $in: searchRegexes } },
+          { googleBusinessUrl: { $in: searchRegexes } },
+          { instagram: { $in: searchRegexes } },
+          { facebook: { $in: searchRegexes } },
+        ],
+      }).select("_id");
+      const matchingCreatorIds = matchingCreators.map((user) => user._id);
+
       baseQuery.$and = [
         ...(baseQuery.$and || []),
         {
@@ -498,7 +511,11 @@ export async function getAllEvents(req, res) {
             { vibeTags: { $in: searchRegexes } },
             { town: { $in: searchRegexes } },
             { locationName: { $in: searchRegexes } },
+            { location: { $in: searchRegexes } },
             { address: { $in: searchRegexes } },
+            ...(matchingCreatorIds.length
+              ? [{ createdBy: { $in: matchingCreatorIds } }]
+              : []),
           ],
         },
       ];

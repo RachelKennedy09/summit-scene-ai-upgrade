@@ -17,25 +17,13 @@ const SOCIAL_PROVIDERS = [
     provider: "instagram",
     label: "Instagram",
     placeholder: "@yourhandle",
-    actionLabel: "Connect Instagram",
-  },
-  {
-    provider: "tiktok",
-    label: "TikTok",
-    placeholder: "@yourhandle",
-    actionLabel: "Connect TikTok",
+    actionLabel: "Add Instagram link",
   },
   {
     provider: "facebook",
     label: "Facebook",
     placeholder: "facebook.com/yourprofile",
-    actionLabel: "Connect Facebook",
-  },
-  {
-    provider: "linkedin",
-    label: "LinkedIn",
-    placeholder: "linkedin.com/in/yourprofile",
-    actionLabel: "Connect LinkedIn",
+    actionLabel: "Add Facebook link",
   },
 ];
 
@@ -194,7 +182,7 @@ function SocialConnectFields({ values, onChange, theme }) {
                 {label}
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                {connected ? "Profile added." : actionLabel}
+                {connected ? "Link added." : actionLabel}
               </Text>
               <TextInput
                 style={[
@@ -213,23 +201,6 @@ function SocialConnectFields({ values, onChange, theme }) {
                 autoCorrect={false}
               />
             </View>
-            <Pressable
-              style={[
-                styles.connectButton,
-                { borderColor: connected ? theme.accent : theme.border },
-              ]}
-              onPress={() => {}}
-              disabled
-            >
-              <Text
-                style={[
-                  styles.connectButtonText,
-                  { color: connected ? theme.accent : theme.textMuted },
-                ]}
-              >
-                {connected ? "Connected" : "Connect"}
-              </Text>
-            </Pressable>
           </View>
         );
       })}
@@ -388,10 +359,10 @@ function LocalFields({
           { marginTop: 16, fontWeight: "700", color: theme.text },
         ]}
       >
-        Connected socials
+        Social links
       </Text>
       <Text style={[styles.helperText, { color: theme.textMuted }]}>
-        Connect public profiles people can use to recognize you. Optional at
+        Add public profile links people can use to recognize you. Optional at
         signup.
       </Text>
 
@@ -467,7 +438,8 @@ const styles = StyleSheet.create({
   },
   interestGroupOptions: {
     paddingHorizontal: 12,
-    paddingBottom: 2,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   chip: {
     borderWidth: 1,
@@ -500,17 +472,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     marginBottom: 2,
-  },
-  connectButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  connectButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
   },
   input: {
     borderRadius: 8,

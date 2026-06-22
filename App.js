@@ -18,6 +18,9 @@ import RateAppPrompt from "./components/RateAppPrompt";
 import RootNavigator from "./navigation/RootNavigator";
 
 const navigationRef = createNavigationContainerRef();
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  "https://summit-scene-backend.onrender.com";
 
 const linking = {
   prefixes: ["summitscene://"],
@@ -40,6 +43,24 @@ Notifications.setNotificationHandler({
 // Separate component so we can use the theme hook
 function AppNavigation() {
   const { navTheme, isDark, theme } = useTheme();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    fetch(`${API_BASE_URL}/api/health`, {
+      signal: controller.signal,
+    }).catch(() => {
+      // The Hub event fetch has its own retry path; this only wakes the API early.
+    }).finally(() => {
+      clearTimeout(timeoutId);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(

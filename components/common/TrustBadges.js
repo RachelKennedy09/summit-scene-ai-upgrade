@@ -17,7 +17,7 @@ export function getTrustBadges(profile = {}, { communityType } = {}) {
       key: "business",
       label:
         businessStatus === "verified"
-          ? "Verified Local"
+          ? "Verified Business"
           : businessStatus === "pending"
             ? "New Organizer"
             : "Community Organizer",

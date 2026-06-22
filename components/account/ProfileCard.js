@@ -26,12 +26,6 @@ function getSocialUrl(account) {
   switch (account.provider) {
     case "instagram":
       return `https://instagram.com/${handle}`;
-    case "tiktok":
-      return `https://www.tiktok.com/@${handle}`;
-    case "linkedin":
-      return value.includes("linkedin.com")
-        ? `https://${value.replace(/^https?:\/\//i, "")}`
-        : "";
     case "facebook":
       return value.includes("facebook.com")
         ? `https://${value.replace(/^https?:\/\//i, "")}`
@@ -101,13 +95,15 @@ export default function ProfileCard({
     : [];
   const languages = Array.isArray(user?.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user?.socialAccounts)
-    ? user.socialAccounts
+    ? user.socialAccounts.filter((account) =>
+        ["instagram", "facebook"].includes(account?.provider)
+      )
     : [];
   const businessType = isBusiness ? user?.lookingFor : "";
   const businessStatus = user?.businessVerificationStatus || "none";
   const profileTypeLabel = roleLabel || (isBusiness
     ? businessStatus === "verified"
-      ? "Verified Local"
+      ? "Verified Business"
       : businessStatus === "pending"
         ? "New Organizer"
         : "Community Organizer"
@@ -242,6 +238,7 @@ export default function ProfileCard({
         <Section label="Social accounts" theme={theme}>
           {socialAccounts.map((account) => {
             const url = getSocialUrl(account);
+            const shouldShowSocialStatus = account.verified || isBusiness;
             return (
               <Pressable
                 key={`${account.provider}-${account.handle || account.url}`}
@@ -254,14 +251,16 @@ export default function ProfileCard({
                 <Text style={[styles.linkValue, { color: theme.accent }]}>
                   {getSocialLabel(account)}
                 </Text>
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: account.verified ? theme.accent : theme.textMuted },
-                  ]}
-                >
-                  {account.verified ? "Verified" : "Unverified"}
-                </Text>
+                {shouldShowSocialStatus ? (
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: account.verified ? theme.accent : theme.textMuted },
+                    ]}
+                  >
+                    {account.verified ? "Verified" : "Unverified"}
+                  </Text>
+                ) : null}
               </Pressable>
             );
           })}

@@ -115,7 +115,7 @@ export default function HubFilters({
             Search events
           </Text>
           <Text style={[styles.searchHelper, { color: theme.textMuted }]}>
-            Search events, groups/clubs, town notices, and buddy posts.
+            Search event names, venues, businesses, groups/clubs, town notices, and buddy posts.
           </Text>
           <View style={styles.searchRow}>
             <TextInput
@@ -129,7 +129,7 @@ export default function HubFilters({
               ]}
               value={searchQuery}
               onChangeText={onChangeSearchQuery}
-              placeholder="Search events or buddy posts"
+              placeholder="Event, venue, business, or post"
               placeholderTextColor={theme.textMuted}
               returnKeyType="search"
               autoCapitalize="none"

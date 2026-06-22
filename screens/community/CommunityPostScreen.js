@@ -22,6 +22,7 @@ import DatePickerModal from "../../components/events/DatePickerModal";
 import AppLogoHeader from "../../components/AppLogoHeader";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
 // Board + town options are defined as config arrays,
 // so it’s easy to add more types/towns later without changing the JSX.
 const POST_TYPES = [
@@ -99,6 +100,7 @@ export default function CommunityPostScreen({ navigation }) {
       };
 
       await createCommunityPost(payload, token);
+      recordConnectEngagementForReviewPrompt();
 
       Alert.alert(
         "Post shared!",

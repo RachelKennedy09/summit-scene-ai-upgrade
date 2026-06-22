@@ -207,6 +207,8 @@ export default function EditEventScreen({ route, navigation }) {
   const [addressSuggestionsError, setAddressSuggestionsError] = useState("");
   const [shouldShowAddressSuggestions, setShouldShowAddressSuggestions] =
     useState(false);
+  const [hasSearchedAddressSuggestions, setHasSearchedAddressSuggestions] =
+    useState(false);
   const [imageUrl, setImageUrl] = useState(event.imageUrl || "");
   const [bookingUrl, setBookingUrl] = useState(event.bookingUrl || "");
   const [importedBySummitScene, setImportedBySummitScene] = useState(
@@ -237,6 +239,7 @@ export default function EditEventScreen({ route, navigation }) {
       setAddressSuggestions([]);
       setIsLoadingAddressSuggestions(false);
       setAddressSuggestionsError("");
+      setHasSearchedAddressSuggestions(false);
       return undefined;
     }
 
@@ -249,10 +252,12 @@ export default function EditEventScreen({ route, navigation }) {
 
         if (!isCancelled) {
           setAddressSuggestions(suggestions);
+          setHasSearchedAddressSuggestions(true);
         }
       } catch (error) {
         if (!isCancelled) {
           setAddressSuggestions([]);
+          setHasSearchedAddressSuggestions(true);
           setAddressSuggestionsError(
             error.message || "Could not load address suggestions."
           );
@@ -1133,6 +1138,8 @@ export default function EditEventScreen({ route, navigation }) {
             setShouldShowAddressSuggestions(true);
           }}
           autoCorrect={false}
+          autoCapitalize="words"
+          textContentType="fullStreetAddress"
         />
         {isLoadingAddressSuggestions ? (
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1173,6 +1180,7 @@ export default function EditEventScreen({ route, navigation }) {
                   setShouldShowAddressSuggestions(false);
                   setAddressSuggestions([]);
                   setAddressSuggestionsError("");
+                  setHasSearchedAddressSuggestions(false);
                 }}
               >
                 <Text style={[styles.suggestionTitle, { color: theme.text }]}>
@@ -1186,6 +1194,16 @@ export default function EditEventScreen({ route, navigation }) {
               </Pressable>
             ))}
           </View>
+        ) : null}
+        {shouldShowAddressSuggestions &&
+        hasSearchedAddressSuggestions &&
+        !isLoadingAddressSuggestions &&
+        !addressSuggestionsError &&
+        address.trim().length >= 3 &&
+        addressSuggestions.length === 0 ? (
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            No address suggestions found. Keep typing or enter the full address manually.
+          </Text>
         ) : null}
         {selectedCoords ? (
           <Text style={[styles.helperText, { color: theme.textMuted }]}>

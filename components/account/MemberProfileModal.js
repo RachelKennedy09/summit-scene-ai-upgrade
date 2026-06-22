@@ -39,10 +39,7 @@ function getSocialUrl(account) {
   switch (account.provider) {
     case "instagram":
       return `https://instagram.com/${handle}`;
-    case "tiktok":
-      return `https://www.tiktok.com/@${handle}`;
     case "facebook":
-    case "linkedin":
     case "website":
       return value.includes(".") ? `https://${value.replace(/^https?:\/\//i, "")}` : "";
     default:
@@ -127,7 +124,9 @@ export default function MemberProfileModal({
     : [];
   const languages = Array.isArray(user.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user.socialAccounts)
-    ? user.socialAccounts
+    ? user.socialAccounts.filter((account) =>
+        ["instagram", "facebook"].includes(account?.provider)
+      )
     : [];
   const phone = user.role === "business" ? user.phone || "" : "";
   const businessLinks = user.role === "business"
@@ -333,6 +332,8 @@ export default function MemberProfileModal({
                 {socialAccounts.map((account) => {
                   const value = account.handle || account.url || "";
                   const url = getSocialUrl(account);
+                  const shouldShowSocialStatus =
+                    account.verified || user.role === "business";
                   return (
                     <Pressable
                       key={`${account.provider}-${value}`}
@@ -348,20 +349,22 @@ export default function MemberProfileModal({
                           { color: theme.accent || colors.accent },
                         ]}
                       >
-                        {titleCase(account.provider)}: {value}
+                          {titleCase(account.provider)}: {value}
                       </Text>
-                      <Text
-                        style={[
-                          styles.statusText,
-                          {
-                            color: account.verified
-                              ? theme.accent || colors.accent
-                              : theme.textMuted || colors.textMuted,
-                          },
-                        ]}
-                      >
-                        {account.verified ? "Verified" : "Unverified"}
-                      </Text>
+                      {shouldShowSocialStatus ? (
+                        <Text
+                          style={[
+                            styles.statusText,
+                            {
+                              color: account.verified
+                                ? theme.accent || colors.accent
+                                : theme.textMuted || colors.textMuted,
+                            },
+                          ]}
+                        >
+                          {account.verified ? "Verified" : "Unverified"}
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}

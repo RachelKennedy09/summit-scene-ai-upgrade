@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 
 const DEFAULT_FROM = "Summit Scene <no-reply@summitscene.ca>";
+const DEFAULT_SECURITY_FROM = "Summit Scene <hello@summitscene.ca>";
 const DEFAULT_PUBLIC_APP_URL = "https://summitscene.ca";
 
 function isEmailDeliveryEnabled() {
@@ -31,7 +32,7 @@ function buildUrl(path, token) {
   return url.toString();
 }
 
-async function sendWithResend({ to, subject, text }) {
+async function sendWithResend({ to, subject, text, from }) {
   if (!isEmailDeliveryEnabled()) {
     return false;
   }
@@ -47,7 +48,7 @@ async function sendWithResend({ to, subject, text }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM || DEFAULT_FROM,
+      from: from || process.env.EMAIL_FROM || DEFAULT_FROM,
       to,
       subject,
       text,
@@ -62,7 +63,7 @@ async function sendWithResend({ to, subject, text }) {
   return true;
 }
 
-async function sendWithSmtp({ to, subject, text }) {
+async function sendWithSmtp({ to, subject, text, from }) {
   if (!isEmailDeliveryEnabled()) {
     return false;
   }
@@ -84,7 +85,7 @@ async function sendWithSmtp({ to, subject, text }) {
   });
 
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM || DEFAULT_FROM,
+    from: from || process.env.EMAIL_FROM || DEFAULT_FROM,
     to,
     subject,
     text,
@@ -93,13 +94,13 @@ async function sendWithSmtp({ to, subject, text }) {
   return true;
 }
 
-async function sendEmail({ to, subject, text, devLink }) {
-  const sent = await sendWithResend({ to, subject, text });
+async function sendEmail({ to, subject, text, devLink, from }) {
+  const sent = await sendWithResend({ to, subject, text, from });
   if (sent) {
     return;
   }
 
-  const smtpSent = await sendWithSmtp({ to, subject, text });
+  const smtpSent = await sendWithSmtp({ to, subject, text, from });
   if (smtpSent) {
     return;
   }
@@ -206,15 +207,79 @@ export async function sendPasswordResetEmail({ to, token }) {
 
 export async function sendEmailChangeConfirmation({ to, token }) {
   const link = buildUrl("/verify-email-change.html", token);
+  const appLink = `summitscene://verify-email?token=${encodeURIComponent(
+    token
+  )}&mode=emailChange`;
   await sendEmail({
     to,
     subject: "Confirm your new Summit Scene email",
     devLink: link,
     text: [
-      "Confirm this as your new Summit Scene email address:",
+      "Confirm this as your new Summit Scene email address in the app:",
+      appLink,
+      "",
+      "If the app link does not open, use this web fallback:",
       link,
       "",
       "This link expires in 24 hours.",
+    ].join("\n"),
+  });
+}
+
+export async function sendPasswordChangedSecurityAlert({ to, name }) {
+  if (!to) return;
+
+  await sendEmail({
+    to,
+    from: process.env.SECURITY_EMAIL_FROM || DEFAULT_SECURITY_FROM,
+    subject: "Your Summit Scene password was changed",
+    text: [
+      `Hi ${name || "there"},`,
+      "",
+      "Your Summit Scene password was changed.",
+      "",
+      "If this was you, no action is needed.",
+      "If this was not you, reset your password right away and contact Summit Scene support at hello@summitscene.ca.",
+    ].join("\n"),
+  });
+}
+
+export async function sendEmailChangeRequestedSecurityAlert({
+  to,
+  name,
+  newEmail,
+}) {
+  if (!to) return;
+
+  await sendEmail({
+    to,
+    from: process.env.SECURITY_EMAIL_FROM || DEFAULT_SECURITY_FROM,
+    subject: "Summit Scene email change requested",
+    text: [
+      `Hi ${name || "there"},`,
+      "",
+      `A request was made to change your Summit Scene login email to ${newEmail}.`,
+      "",
+      "If this was you, open the confirmation email sent to the new address.",
+      "If this was not you, change your password right away and contact Summit Scene support at hello@summitscene.ca.",
+    ].join("\n"),
+  });
+}
+
+export async function sendEmailChangedSecurityAlert({ to, name, newEmail }) {
+  if (!to) return;
+
+  await sendEmail({
+    to,
+    from: process.env.SECURITY_EMAIL_FROM || DEFAULT_SECURITY_FROM,
+    subject: "Your Summit Scene email was changed",
+    text: [
+      `Hi ${name || "there"},`,
+      "",
+      `Your Summit Scene login email was changed to ${newEmail}.`,
+      "",
+      "You will need to log in again with your new email.",
+      "If this was not you, contact Summit Scene support at hello@summitscene.ca.",
     ].join("\n"),
   });
 }

@@ -56,7 +56,6 @@ function LoginScreen() {
   const [password, setPassword] = useState(""); // user password
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
-  const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
   const [rememberEmail, setRememberEmail] = useState(true);
   const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
   const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
@@ -117,13 +116,6 @@ function LoginScreen() {
 
   // Runs when user taps "Log In"
   async function handleLogin() {
-    if (!hasAcceptedAgreements) {
-      setErrorMessage(
-        "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
-      );
-      return;
-    }
-
     // Prevent sending empty requests
     if (!email || !password) {
       setErrorMessage("Please enter both email and password.");
@@ -155,13 +147,6 @@ function LoginScreen() {
 
   async function handleAppleSignIn() {
     try {
-      if (!hasAcceptedAgreements) {
-        setErrorMessage(
-          "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
-        );
-        return;
-      }
-
       setErrorMessage("");
       clearAuthNoticeMessage?.();
       setIsSubmitting(true);
@@ -206,13 +191,6 @@ function LoginScreen() {
 
   async function handleGoogleSignIn() {
     try {
-      if (!hasAcceptedAgreements) {
-        setErrorMessage(
-          "Please agree to Summit Scene's Privacy Policy, Terms of Use, and Community Guidelines before logging in."
-        );
-        return;
-      }
-
       setErrorMessage("");
       clearAuthNoticeMessage?.();
       setIsSubmitting(true);
@@ -404,55 +382,14 @@ function LoginScreen() {
                 { backgroundColor: theme.card, borderColor: theme.border },
               ]}
             >
-              <Pressable
-                style={styles.agreementRow}
-                onPress={() =>
-                  setHasAcceptedAgreements((current) => !current)
-                }
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    {
-                      borderColor: hasAcceptedAgreements
-                        ? theme.accent
-                        : theme.border,
-                      backgroundColor: hasAcceptedAgreements
-                        ? theme.accent
-                        : theme.background,
-                    },
-                  ]}
-                >
-                  {hasAcceptedAgreements ? (
-                    <Text
-                      style={[
-                        styles.checkboxMark,
-                        {
-                          color:
-                            theme.onAccent ||
-                            theme.textOnAccent ||
-                            "#FFFFFF",
-                        },
-                      ]}
-                    >
-                      ✓
-                    </Text>
-                  ) : null}
-                </View>
-                <View style={styles.agreementCopy}>
-                  <Text style={[styles.agreementTitle, { color: theme.text }]}>
-                    I agree to Summit Scene's account terms
-                  </Text>
-                  <Text
-                    style={[styles.agreementText, { color: theme.textMuted }]}
-                  >
-                    I confirm I am at least 18 years old and agree to the
-                    Privacy Policy, Terms of Use, and Community Guidelines,
-                    including no tolerance for objectionable content or abusive
-                    users.
-                  </Text>
-                </View>
-              </Pressable>
+              <Text style={[styles.agreementTitle, { color: theme.text }]}>
+                Account terms
+              </Text>
+              <Text style={[styles.agreementText, { color: theme.textMuted }]}>
+                By logging in, you confirm you are at least 18 years old and
+                agree to Summit Scene's Privacy Policy, Terms of Use, and
+                Community Guidelines.
+              </Text>
               <Pressable onPress={() => navigation.navigate("Legal")}>
                 <Text style={[styles.agreementLink, { color: theme.accent }]}>
                   Read Privacy, Terms, and Community Guidelines
@@ -465,13 +402,13 @@ function LoginScreen() {
               title={isSubmitting || isAuthLoading ? "Logging in..." : "Log In"}
               onPress={handleLogin}
               loading={isSubmitting || isAuthLoading}
-              disabled={!hasAcceptedAgreements || isSubmitting || isAuthLoading}
+              disabled={isSubmitting || isAuthLoading}
               size="lg"
               style={{
                 marginTop: 8,
                 backgroundColor: theme.accent,
                 borderColor: theme.accent,
-                opacity: hasAcceptedAgreements ? 1 : 0.56,
+                opacity: isSubmitting || isAuthLoading ? 0.65 : 1,
               }}
               textStyle={{
                 color: theme.onAccent || theme.textOnAccent || "#FFFFFF",

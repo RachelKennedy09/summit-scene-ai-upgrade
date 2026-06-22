@@ -32,6 +32,8 @@ const ANDROID_PACKAGE_NAME = "com.rachellauren.summitscene";
 const IOS_APP_STORE_ID = "";
 const EMPTY_ADMIN_STATS = {
   totalUsers: 0,
+  totalDatabaseUsers: 0,
+  generatedTestUsers: 0,
   newUsersThisWeek: 0,
   activeUsersThisWeek: 0,
   totalBusinesses: 0,
@@ -53,9 +55,16 @@ const ADMIN_DASHBOARD_GROUPS = [
   {
     title: "Users",
     metrics: [
-      { key: "totalUsers", label: "Total Users" },
-      { key: "newUsersThisWeek", label: "New Users This Week" },
-      { key: "activeUsersThisWeek", label: "Active Users This Week" },
+      { key: "totalUsers", label: "Real Users" },
+      { key: "newUsersThisWeek", label: "New Real Users This Week" },
+      { key: "activeUsersThisWeek", label: "Active Real Users This Week" },
+    ],
+  },
+  {
+    title: "Count Audit",
+    metrics: [
+      { key: "totalDatabaseUsers", label: "Database Users" },
+      { key: "generatedTestUsers", label: "Test/Review Accounts" },
     ],
   },
   {
@@ -378,7 +387,7 @@ function AccountScreen() {
   }
 
   const roleLabel = isBusinessVerified
-    ? "Verified Local"
+    ? "Verified Business"
     : isBusinessPending
       ? "New Organizer"
       : isBusinessRejected

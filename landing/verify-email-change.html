@@ -18,16 +18,93 @@
     <main id="top" class="legal-main">
       <p class="eyebrow">Account</p>
       <h1>Confirm your new email</h1>
-      <p>
-        Open Summit Scene and paste this token into the confirm email change
-        screen if it was not filled automatically.
+      <p id="status-message">
+        Open Summit Scene to confirm your new email.
       </p>
-      <pre id="token" style="white-space: pre-wrap; word-break: break-word;">Loading token...</pre>
+      <p id="status-detail">
+        This link works best in the app so your account refreshes right away.
+      </p>
+      <p>
+        <a id="app-link" class="button primary" href="#">Open Summit Scene</a>
+      </p>
+      <p>
+        <button id="web-confirm-button" class="button secondary" type="button">
+          Confirm in browser instead
+        </button>
+      </p>
+      <noscript>
+        JavaScript is required to confirm your new email from this link. Open
+        Summit Scene, go to Account, tap Change email, and use the latest email
+        link again.
+      </noscript>
     </main>
 
     <script>
       const token = new URLSearchParams(window.location.search).get("token") || "";
-      document.getElementById("token").textContent = token || "No token found in this link.";
+      const statusMessage = document.getElementById("status-message");
+      const statusDetail = document.getElementById("status-detail");
+      const appLink = document.getElementById("app-link");
+      const webConfirmButton = document.getElementById("web-confirm-button");
+      const appUrl = token
+        ? `summitscene://verify-email?token=${encodeURIComponent(token)}&mode=emailChange`
+        : "summitscene://verify-email?mode=emailChange";
+
+      appLink.setAttribute("href", appUrl);
+
+      function getApiBaseUrl() {
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        ) {
+          return "http://localhost:4000";
+        }
+
+        return "https://summit-scene-backend.onrender.com";
+      }
+
+      async function confirmEmailChange() {
+        if (!token) {
+          statusMessage.textContent = "No confirmation token found.";
+          statusDetail.textContent =
+            "Open the latest email-change confirmation email and use the full link.";
+          return;
+        }
+
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/api/auth/confirm-email-change`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(
+              data.message ||
+                "This email-change link is invalid or expired."
+            );
+          }
+
+          statusMessage.textContent = "Email changed.";
+          statusDetail.textContent =
+            "Your Summit Scene login email has been updated. Return to the app to continue.";
+        } catch (error) {
+          statusMessage.textContent = "Could not confirm this email change.";
+          statusDetail.textContent =
+            error.message ||
+            "The link may be expired. Open Summit Scene and request a new email change.";
+        }
+      }
+
+      webConfirmButton.addEventListener("click", confirmEmailChange);
+
+      if (token) {
+        window.setTimeout(() => {
+          window.location.href = appUrl;
+        }, 400);
+      }
     </script>
   </body>
 </html>

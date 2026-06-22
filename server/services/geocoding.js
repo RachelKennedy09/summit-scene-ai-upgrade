@@ -30,6 +30,41 @@ function dedupeParts(parts) {
   });
 }
 
+function normalizeSearchQuery(value) {
+  return normalizeAddressPart(value)
+    .replace(/\bco\.\b/gi, "company")
+    .replace(/\bco\b/gi, "company")
+    .replace(/\b&\b/g, " and ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildAutocompleteQueries(query, town) {
+  const normalizedQuery = normalizeSearchQuery(query);
+  const normalizedTown = normalizeAddressPart(town);
+  const simplifiedVenueQuery = normalizedQuery
+    .replace(/\bthe\b/gi, "")
+    .replace(/\band\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const withoutTown = normalizedTown
+    ? normalizedQuery.replace(new RegExp(`\\b${normalizedTown}\\b`, "i"), "").trim()
+    : normalizedQuery;
+  const queries = [
+    [normalizedQuery, normalizedTown, "Alberta", "Canada"],
+    [normalizedQuery, normalizedTown],
+    [normalizedQuery, "Alberta", "Canada"],
+    [simplifiedVenueQuery, normalizedTown, "Alberta", "Canada"],
+    [simplifiedVenueQuery, normalizedTown],
+    [withoutTown, normalizedTown, "Alberta", "Canada"],
+    [normalizedQuery],
+  ]
+    .map((parts) => dedupeParts(parts).join(", "))
+    .filter((value) => value.length >= 3);
+
+  return [...new Set(queries)];
+}
+
 function buildGeocodingQueries(address, town) {
   const normalizedAddress = normalizeAddressPart(address);
   const normalizedTown = normalizeAddressPart(town);
@@ -108,62 +143,80 @@ function parseAutocompleteResult(result) {
 }
 
 export async function autocompleteEventAddresses({ query, town }) {
-  const normalizedQuery = normalizeAddressPart(query);
+  const normalizedQuery = normalizeSearchQuery(query);
   if (!normalizedQuery || normalizedQuery.length < 3) {
     return [];
   }
 
-  const combinedQuery = dedupeParts([
-    normalizedQuery,
-    normalizeAddressPart(town),
-    "Alberta",
-    "Canada",
-  ]).join(", ");
+  const queries = buildAutocompleteQueries(normalizedQuery, town);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEOCODING_TIMEOUT_MS);
 
   try {
-    const params = new URLSearchParams({
-      q: combinedQuery || normalizedQuery,
-      format: "jsonv2",
-      limit: String(AUTOCOMPLETE_LIMIT),
-      countrycodes: "ca",
-      addressdetails: "1",
-    });
+    const suggestions = [];
+    const seen = new Set();
 
-    if (process.env.GEOCODING_EMAIL) {
-      params.set("email", process.env.GEOCODING_EMAIL);
-    }
+    for (const autocompleteQuery of queries) {
+      const params = new URLSearchParams({
+        q: autocompleteQuery,
+        format: "jsonv2",
+        limit: String(AUTOCOMPLETE_LIMIT),
+        countrycodes: "ca",
+        addressdetails: "1",
+      });
 
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-      {
-        headers: {
-          Accept: "application/json",
-          "User-Agent":
-            process.env.GEOCODING_USER_AGENT || DEFAULT_GEOCODER_USER_AGENT,
-        },
-        signal: controller.signal,
+      if (process.env.GEOCODING_EMAIL) {
+        params.set("email", process.env.GEOCODING_EMAIL);
       }
-    );
 
-    const text = await response.text();
-    const data = readJsonSafely(text);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent":
+              process.env.GEOCODING_USER_AGENT || DEFAULT_GEOCODER_USER_AGENT,
+          },
+          signal: controller.signal,
+        }
+      );
 
-    if (!response.ok) {
-      throw new Error(`Autocomplete failed with status ${response.status}.`);
+      const text = await response.text();
+      const data = readJsonSafely(text);
+
+      if (!response.ok) {
+        console.warn("Autocomplete query failed:", {
+          status: response.status,
+          query: autocompleteQuery,
+        });
+        continue;
+      }
+
+      (Array.isArray(data) ? data : [])
+        .map((result) => parseAutocompleteResult(result))
+        .filter(Boolean)
+        .forEach((suggestion) => {
+          const key = `${suggestion.latitude}:${suggestion.longitude}:${suggestion.address}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            suggestions.push(suggestion);
+          }
+        });
+
+      if (suggestions.length >= AUTOCOMPLETE_LIMIT) {
+        break;
+      }
     }
 
-    return (Array.isArray(data) ? data : [])
-      .map((result) => parseAutocompleteResult(result))
-      .filter(Boolean);
+    return suggestions.slice(0, AUTOCOMPLETE_LIMIT);
   } catch (error) {
     if (error?.name === "AbortError") {
       throw new Error("Address suggestions timed out. Please try again.");
     }
 
-    throw error;
+    console.warn("Autocomplete failed:", error.message);
+    return [];
   } finally {
     clearTimeout(timeoutId);
   }

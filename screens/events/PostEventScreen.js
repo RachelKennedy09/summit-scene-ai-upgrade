@@ -39,6 +39,7 @@ import {
   VIBE_TAG_GROUPS,
   getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
+import { recordEventCreatedForReviewPrompt } from "../../utils/appReviewPrompt";
 import { isSummitSceneAdmin } from "../../utils/adminAccess";
 
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
@@ -126,6 +127,8 @@ export default function PostEventScreen() {
   const [addressSuggestionsError, setAddressSuggestionsError] = useState("");
   const [shouldShowAddressSuggestions, setShouldShowAddressSuggestions] =
     useState(false);
+  const [hasSearchedAddressSuggestions, setHasSearchedAddressSuggestions] =
+    useState(false);
 
   // Hero image (optional). Used on EventDetailScreen hero image.
   const [imageUrl, setImageUrl] = useState("");
@@ -163,6 +166,7 @@ export default function PostEventScreen() {
       setAddressSuggestions([]);
       setIsLoadingAddressSuggestions(false);
       setAddressSuggestionsError("");
+      setHasSearchedAddressSuggestions(false);
       return undefined;
     }
 
@@ -175,10 +179,12 @@ export default function PostEventScreen() {
 
         if (!isCancelled) {
           setAddressSuggestions(suggestions);
+          setHasSearchedAddressSuggestions(true);
         }
       } catch (error) {
         if (!isCancelled) {
           setAddressSuggestions([]);
+          setHasSearchedAddressSuggestions(true);
           setAddressSuggestionsError(
             error.message || "Could not load address suggestions."
           );
@@ -479,6 +485,7 @@ export default function PostEventScreen() {
       }
 
       // Success: clear the form and send the user to the My Events tab
+      recordEventCreatedForReviewPrompt();
       Alert.alert("Success", "Your event is live and now appears in My Events.", [
         {
           text: "OK",
@@ -1228,6 +1235,8 @@ export default function PostEventScreen() {
               setShouldShowAddressSuggestions(true);
             }}
             autoCorrect={false}
+            autoCapitalize="words"
+            textContentType="fullStreetAddress"
           />
           {isLoadingAddressSuggestions ? (
             <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1268,6 +1277,7 @@ export default function PostEventScreen() {
                     setShouldShowAddressSuggestions(false);
                     setAddressSuggestions([]);
                     setAddressSuggestionsError("");
+                    setHasSearchedAddressSuggestions(false);
                   }}
                 >
                   <Text style={[styles.suggestionTitle, { color: theme.text }]}>
@@ -1281,6 +1291,16 @@ export default function PostEventScreen() {
                 </Pressable>
               ))}
             </View>
+          ) : null}
+          {shouldShowAddressSuggestions &&
+          hasSearchedAddressSuggestions &&
+          !isLoadingAddressSuggestions &&
+          !addressSuggestionsError &&
+          address.trim().length >= 3 &&
+          addressSuggestions.length === 0 ? (
+            <Text style={[styles.helperText, { color: theme.textMuted }]}>
+              No address suggestions found. Keep typing or enter the full address manually.
+            </Text>
           ) : null}
           {selectedCoords ? (
             <Text style={[styles.helperText, { color: theme.textMuted }]}>

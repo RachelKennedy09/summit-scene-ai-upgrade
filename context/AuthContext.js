@@ -15,7 +15,9 @@ const API_BASE_URL =
 
 // Single place for token key
 const TOKEN_KEY = "authToken";
-const SESSION_RESTORE_TIMEOUT_MS = 10000;
+const SESSION_RESTORE_TIMEOUT_MS = 30000;
+const SESSION_RESTORE_ATTEMPTS = 2;
+const SESSION_RESTORE_RETRY_DELAY_MS = 1200;
 const AUTH_REQUEST_TIMEOUT_MS = 30000;
 
 async function fetchWithTimeout(url, options = {}, timeoutMs) {
@@ -30,6 +32,55 @@ async function fetchWithTimeout(url, options = {}, timeoutMs) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableNetworkError(error) {
+  if (error?.name === "AbortError") {
+    return true;
+  }
+
+  const message =
+    typeof error?.message === "string" ? error.message.toLowerCase() : "";
+
+  return (
+    message.includes("aborted") ||
+    message.includes("network request failed") ||
+    message.includes("failed to fetch") ||
+    message.includes("timed out") ||
+    message.includes("timeout")
+  );
+}
+
+async function fetchWithRetry(
+  url,
+  options = {},
+  {
+    timeoutMs = AUTH_REQUEST_TIMEOUT_MS,
+    attempts = 1,
+    retryDelayMs = SESSION_RESTORE_RETRY_DELAY_MS,
+  } = {}
+) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetchWithTimeout(url, options, timeoutMs);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt >= attempts || !isRetryableNetworkError(error)) {
+        throw error;
+      }
+
+      await delay(retryDelayMs);
+    }
+  }
+
+  throw lastError;
 }
 
 function normalizeNetworkError(error, fallbackMessage) {
@@ -198,7 +249,7 @@ export function AuthProvider({ children }) {
       setAuthDebugMessage(`Calling ${API_BASE_URL}/api/auth/me`);
 
       // Check that the token is still valid and get the current user
-      const response = await fetchWithTimeout(
+      const response = await fetchWithRetry(
         `${API_BASE_URL}/api/auth/me`,
         {
           method: "GET",
@@ -206,7 +257,10 @@ export function AuthProvider({ children }) {
             Authorization: `Bearer ${savedToken}`,
           },
         },
-        SESSION_RESTORE_TIMEOUT_MS
+        {
+          timeoutMs: SESSION_RESTORE_TIMEOUT_MS,
+          attempts: SESSION_RESTORE_ATTEMPTS,
+        }
       );
 
       const data = await readJsonSafely(response);
@@ -967,9 +1021,10 @@ export function AuthProvider({ children }) {
     if (!response.ok) {
       throw new Error(data?.message || "Could not confirm email change.");
     }
-    if (data.user) {
-      setUser(buildUser(data.user));
-    }
+    await setLoggedOutState(
+      "Email changed. Please log in again with your new email.",
+      data?.message || "Email changed. Please log in again with your new email."
+    );
     return data;
   }
 
