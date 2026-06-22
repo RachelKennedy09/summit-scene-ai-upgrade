@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import AppButton from "../../components/common/AppButton";
-import AppLogoHeader from "../../components/AppLogoHeader";
 import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -56,7 +55,6 @@ export default function AuthGateScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <AppLogoHeader />
       <ScrollView contentContainerStyle={styles.content}>
         <PageHeader title={copy.title} subtitle={copy.subtitle} />
 

@@ -48,6 +48,23 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "SummitScene API is healthy" });
 });
 
+app.get("/api/app-version", (req, res) => {
+  res.json({
+    minimumSupportedVersion:
+      process.env.MIN_SUPPORTED_APP_VERSION || "1.0.2",
+    latestVersion: process.env.LATEST_APP_VERSION || "1.0.2",
+    iosStoreUrl:
+      process.env.IOS_APP_STORE_URL ||
+      "https://apps.apple.com/search?term=Summit%20Scene",
+    androidStoreUrl:
+      process.env.ANDROID_PLAY_STORE_URL ||
+      "https://play.google.com/store/apps/details?id=com.rachellauren.summitscene",
+    message:
+      process.env.APP_UPDATE_MESSAGE ||
+      "A newer version of Summit Scene is required to keep using the app.",
+  });
+});
+
 // Simple root route
 app.get("/", (req, res) => {
   res.json({ message: "SummitScene API is running" });

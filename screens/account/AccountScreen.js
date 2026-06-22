@@ -22,7 +22,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { colors } from "../../theme/colors";
 import { useTheme } from "../../context/ThemeContext";
-import AppLogoHeader from "../../components/AppLogoHeader";
 import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
@@ -410,7 +409,6 @@ function AccountScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 24 }}
@@ -642,7 +640,7 @@ function AccountScreen() {
                 })
               }
               theme={theme}
-              actionLabel="Post"
+              actionLabel="Create"
             />
             <AccountNavRow
               title="Admin help"

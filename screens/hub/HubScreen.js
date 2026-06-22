@@ -9,6 +9,7 @@ import React, { useMemo, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   FlatList,
   ActivityIndicator,
@@ -18,8 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
-import AppLogoHeader from "../../components/AppLogoHeader";
-import PageHeader from "../../components/common/PageHeader";
+import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -86,7 +86,7 @@ export default function HubScreen() {
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedTown, setSelectedTown] = useState("All");
-  const [selectedDateFilter, setSelectedDateFilter] = useState("Next 7 days");
+  const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
@@ -233,14 +233,19 @@ export default function HubScreen() {
       return;
     }
 
+    setSelectedTown("All");
     setSelectedCategory("All");
     setSelectedDateFilter("All Dates");
+    setIsNearMeEnabled(false);
+    setNearMeLocation(null);
+    setNearMeMessage("");
     setActiveSearch(trimmedSearch);
   }, [searchQuery]);
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     setActiveSearch("");
+    setSelectedDateFilter("Today");
     setBuddySearchResults([]);
   }, []);
 
@@ -333,7 +338,7 @@ export default function HubScreen() {
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
     setSelectedCategory("All");
-    setSelectedDateFilter("Next 7 days");
+    setSelectedDateFilter("Today");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -366,7 +371,7 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No events available yet. Check back soon, or open Community for local plans, intros, groups, and town notices.";
+      return "No events available yet. Check back soon, or open Community for local plans, intros, groups, jobs, and town notices.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
@@ -458,12 +463,12 @@ export default function HubScreen() {
   const hubSubtitle =
     isShowingInterestFirst
       ? "Your interests appear first while All Categories is selected.\nChoose a category anytime to focus the list."
-      : "Welcome to your Summit Scene Hub\nChoose a town and category to start exploring events near you.";
+      : "Find things to do today.\nChoose a town, category, or wider date range anytime.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||
     selectedCategory !== "All" ||
-    selectedDateFilter !== "Next 7 days" ||
+    selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
     Boolean(activeSearch);
 
@@ -570,7 +575,6 @@ export default function HubScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <FlatList
           data={eventsToShow}
@@ -599,10 +603,17 @@ export default function HubScreen() {
           // HubFilters renders the filter chips + greeting + result summary at the top of the list.
           ListHeaderComponent={
             <>
-              <PageHeader
-                title={`Hello ${displayName}!`}
-                subtitle={hubSubtitle}
-              />
+              <View style={styles.hubHeader}>
+                <Image source={logo} style={styles.hubLogo} resizeMode="contain" />
+                <View style={styles.hubHeaderCopy}>
+                  <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
+                    Hello {displayName}!
+                  </Text>
+                  <Text style={[styles.hubSubtitle, { color: theme.textMuted }]}>
+                    {hubSubtitle}
+                  </Text>
+                </View>
+              </View>
               <HubFilters
                 selectedTown={selectedTown}
                 selectedCategory={selectedCategory}
@@ -690,6 +701,32 @@ const styles = StyleSheet.create({
   emptyContainer: {
     paddingTop: 0,
     paddingBottom: 32,
+  },
+  hubHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  hubLogo: {
+    width: 82,
+    height: 88,
+    flexShrink: 0,
+  },
+  hubHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  hubTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "900",
+    marginBottom: 2,
+  },
+  hubSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   emptyText: {
     marginTop: 6,

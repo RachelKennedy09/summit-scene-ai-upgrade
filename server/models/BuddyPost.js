@@ -26,6 +26,7 @@ export const BUDDY_POST_TYPES = [
   "bingo",
   "trivia",
   "shopping",
+  "job",
   "notice",
   "general",
   "other",
@@ -45,6 +46,7 @@ export const BUDDY_COMMUNITY_TYPES = [
   "local-plan",
   "new-in-town",
   "group",
+  "jobs",
   "notice",
   "update",
 ];

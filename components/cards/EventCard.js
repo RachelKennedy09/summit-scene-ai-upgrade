@@ -295,28 +295,28 @@ const styles = StyleSheet.create({
   },
   categoryPill: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 999,
     maxWidth: "70%",
     borderWidth: 1,
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.7,
   },
   townText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
     textAlign: "right",
     flexShrink: 1,
     paddingTop: 2,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    lineHeight: 24,
+    lineHeight: 27,
     marginBottom: 10,
     paddingHorizontal: 16,
   },
@@ -335,18 +335,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   importedBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "900",
     textTransform: "uppercase",
   },
   importedHostText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 8,
     paddingHorizontal: 16,
   },
   hostText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 5,
   },
@@ -358,20 +358,20 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metaLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 4,
   },
   metaValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
-    lineHeight: 19,
+    lineHeight: 22,
   },
   metaSubvalue: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     marginTop: 2,
   },
   tourMetaRow: {
@@ -389,13 +389,13 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   tourMetaLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "800",
     textTransform: "uppercase",
     marginBottom: 2,
   },
   tourMetaText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   footerRow: {
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   footerCopy: {
     flex: 1,
@@ -427,18 +427,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 5,
   },
   tagChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
   },
   moreTagsText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
   footerCta: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
   },
   footerActions: {
@@ -447,11 +447,13 @@ const styles = StyleSheet.create({
   },
   bookButton: {
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   bookButtonText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "900",
   },
 });

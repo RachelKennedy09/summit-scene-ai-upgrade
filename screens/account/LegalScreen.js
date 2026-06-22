@@ -416,9 +416,9 @@ export default function LegalScreen() {
 
         <LegalSection title="Community Guidelines" theme={theme}>
           <LegalText theme={theme}>
-            Summit Scene is for local events, plans, introductions, groups, town
-            notices, and community discovery around Banff, Canmore, Lake Louise,
-            and nearby areas.
+            Summit Scene is for local events, plans, introductions, groups, job
+            ads, town notices, and community discovery around Banff, Canmore,
+            Lake Louise, and nearby areas.
           </LegalText>
           <LegalText theme={theme}>
             LGBTQ+ people, newcomers, locals, visitors, and allies should be

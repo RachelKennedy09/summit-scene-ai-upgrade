@@ -1,4 +1,4 @@
-const DEFAULT_ADMIN_EMAILS = ["admin@summitscene.ca"];
+const DEFAULT_ADMIN_EMAILS = ["hello@summitscene.ca"];
 
 export function isSummitSceneAdmin(user) {
   if (!user) return false;

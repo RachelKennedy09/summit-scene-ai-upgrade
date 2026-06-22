@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     maxHeight: "82%",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
   },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   groupTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 6,
     textTransform: "uppercase",
@@ -146,29 +146,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 999,
     marginBottom: 6,
+    minHeight: 44,
   },
   optionText: {
-    fontSize: 16,
+    fontSize: 17,
     flex: 1,
     paddingRight: 12,
   },
   check: {
-    fontSize: 16,
+    fontSize: 18,
   },
   cancelButton: {
     marginTop: 12,
     alignSelf: "flex-end",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
   },
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   cancelText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
 });

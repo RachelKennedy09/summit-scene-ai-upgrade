@@ -1,4 +1,4 @@
-const DEFAULT_ADMIN_EMAILS = ["admin@summitscene.ca"];
+const DEFAULT_ADMIN_EMAILS = ["hello@summitscene.ca"];
 
 export function getAdminEmails() {
   const configuredEmails = String(process.env.ADMIN_EMAILS || "")

@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import AppLogoHeader from "../../components/AppLogoHeader";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
@@ -252,7 +251,6 @@ export default function MyEventsScreen({ navigation, route }) {
         edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
-        <AppLogoHeader />
         <View style={[styles.center, styles.screenShell]}>
           <ActivityIndicator size="large" color={theme.accent} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
@@ -269,7 +267,6 @@ export default function MyEventsScreen({ navigation, route }) {
         edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
-        <AppLogoHeader />
         <View style={[styles.center, styles.screenShell]}>
           <Text
             style={[
@@ -299,7 +296,6 @@ export default function MyEventsScreen({ navigation, route }) {
         edges={["top", "left", "right"]}
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
-        <AppLogoHeader />
         <View style={[styles.center, styles.screenShell]}>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             No events yet
@@ -383,7 +379,6 @@ export default function MyEventsScreen({ navigation, route }) {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <FlatList
           data={listData}
@@ -429,7 +424,7 @@ export default function MyEventsScreen({ navigation, route }) {
                       />
                     ) : null}
                     <AppButton
-                      title="Post another"
+                      title="Create another"
                       onPress={() => navigation.navigate("Post")}
                       variant="outline"
                       size="sm"
@@ -437,7 +432,7 @@ export default function MyEventsScreen({ navigation, route }) {
                       style={styles.inlineAction}
                     />
                     <AppButton
-                      title="Go to Hub"
+                      title="Go to Events"
                       onPress={() => navigation.navigate("Hub")}
                       variant="outline"
                       size="sm"
@@ -459,7 +454,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
               {canUseBusinessTools && (
                 <AppButton
-                  title="Post a new event"
+                  title="Create event"
                   onPress={() => navigation.navigate("Post")}
                   variant="primary"
                   size="lg"

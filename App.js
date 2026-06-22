@@ -14,6 +14,7 @@ import * as Notifications from "expo-notifications";
 
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import AppUpdateGate from "./components/AppUpdateGate";
 import RateAppPrompt from "./components/RateAppPrompt";
 import RootNavigator from "./navigation/RootNavigator";
 
@@ -83,10 +84,12 @@ function AppNavigation() {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.background}
       />
-      <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
-        <RateAppPrompt />
-        <RootNavigator />
-      </NavigationContainer>
+      <AppUpdateGate>
+        <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
+          <RateAppPrompt />
+          <RootNavigator />
+        </NavigationContainer>
+      </AppUpdateGate>
     </>
   );
 }

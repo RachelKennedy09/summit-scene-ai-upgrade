@@ -32,7 +32,6 @@ import TimePickerModal from "../../components/events/TimePickerModal.js";
 import SelectModal from "../../components/common/SelectModal";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import AppButton from "../../components/common/AppButton";
-import AppLogoHeader from "../../components/AppLogoHeader";
 import PageHeader from "../../components/common/PageHeader";
 import {
   EVENT_MAIN_CATEGORIES,
@@ -597,7 +596,6 @@ export default function PostEventScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <ScrollView
         style={[styles.scrollView, { backgroundColor: theme.background }]}
         contentContainerStyle={[
@@ -609,7 +607,7 @@ export default function PostEventScreen() {
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         <PageHeader
-          title="Post Official Event"
+          title="Create Official Event"
           subtitle='For hosted events from businesses, venues, and organizers. Fields marked "Required" must be completed before posting.'
         />
 
@@ -1499,7 +1497,7 @@ export default function PostEventScreen() {
 
           {/* Submit button */}
           <AppButton
-            title={loading ? "Posting..." : "Post Event"}
+            title={loading ? "Creating..." : "Create Event"}
             onPress={handleSubmit}
             loading={loading}
             variant="primary"

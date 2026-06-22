@@ -145,7 +145,7 @@ export default function AdminAccountsScreen() {
             ]}
             value={email}
             onChangeText={setEmail}
-            placeholder="admin@summitscene.ca"
+            placeholder="hello@summitscene.ca"
             placeholderTextColor={theme.textMuted}
             autoCapitalize="none"
             keyboardType="email-address"

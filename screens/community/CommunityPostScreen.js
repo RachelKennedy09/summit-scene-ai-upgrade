@@ -19,7 +19,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { createCommunityPost } from "../../services/communityApi";
 import DatePickerModal from "../../components/events/DatePickerModal";
-import AppLogoHeader from "../../components/AppLogoHeader";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
@@ -134,7 +133,6 @@ export default function CommunityPostScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <AppLogoHeader />
           <PageHeader
             title="New Community Post"
             subtitle="Share highway conditions, rides, or find an event buddy. Your account name will appear on this post and its replies."

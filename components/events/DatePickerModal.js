@@ -140,16 +140,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cancelButton: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
+    minHeight: 44,
+    justifyContent: "center",
   },
   cancelText: {
     fontSize: 16,
   },
   confirmButton: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
+    minHeight: 44,
+    justifyContent: "center",
   },
   confirmText: {
     fontSize: 16,

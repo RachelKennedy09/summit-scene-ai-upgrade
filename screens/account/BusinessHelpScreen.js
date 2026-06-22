@@ -65,11 +65,11 @@ export default function BusinessHelpScreen() {
 
         <HelpSection title="Posting events" theme={theme}>
           <HelpText theme={theme}>
-            Use Post Event for official events hosted by your venue, shop,
+            Use Create Event for official events hosted by your venue, shop,
             organization, tour company, guide service, or event series. Choose
             a broad category, then add tags like Food Tours, Guided Hikes,
             Canoe Tours, Wildlife Tours, Photography Tours, Yoga Retreats, or
-            Ski Clinics so users can find it through Hub, Map, filters, and
+            Ski Clinics so users can find it through Events, Map, filters, and
             buddy posts.
           </HelpText>
           <HelpText theme={theme}>

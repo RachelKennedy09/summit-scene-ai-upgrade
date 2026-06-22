@@ -19,7 +19,6 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AppLogoHeader from "../../components/AppLogoHeader";
 import AppButton from "../../components/common/AppButton";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import PageHeader from "../../components/common/PageHeader";
@@ -57,6 +56,7 @@ const BUDDY_TYPES = [
   { label: "Bingo", value: "bingo" },
   { label: "Trivia", value: "trivia" },
   { label: "Shopping", value: "shopping" },
+  { label: "Job", value: "job" },
   { label: "Notice", value: "notice" },
   { label: "General", value: "general" },
   { label: "Other", value: "other" },
@@ -84,6 +84,11 @@ const COMMUNITY_TYPES = [
     label: "Groups",
     value: "group",
     helper: "Repeatable interest groups like book club, hiking, trivia, or art nights.",
+  },
+  {
+    label: "Jobs and Volunteer",
+    value: "jobs",
+    helper: "Local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
   },
   {
     label: "Town Notices",
@@ -189,6 +194,24 @@ const COMMUNITY_FORM_COPY = {
     submitLabel: "Share Group",
     defaultCategory: "",
     defaultType: "general",
+  },
+  jobs: {
+    title: "Post Job or Volunteer Ad",
+    subtitle: "Share a local job, seasonal role, hiring notice, or volunteer opportunity.",
+    showCategory: false,
+    categoryLabel: "",
+    categoryRequired: false,
+    detailsLabel: "Job or volunteer ad",
+    detailsPlaceholder: "Add the role, business or team, location, pay if available, schedule, requirements, and how people should apply.",
+    townLabel: "Town",
+    dateLabel: "Start or apply-by date",
+    timeLabel: "Time",
+    showDateTime: true,
+    showSchedule: false,
+    showGroupSize: false,
+    submitLabel: "Share Job or Volunteer Ad",
+    defaultCategory: "",
+    defaultType: "job",
   },
   notice: {
     title: "Share Town Notice",
@@ -887,7 +910,6 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -917,9 +939,9 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
               Community post
             </Text>
             <Text style={[styles.boundaryNoteText, { color: theme.textMuted }]}>
-              This appears in Find People for plans, groups, intros, and buddy
-              posts. Official hosted events are posted separately by business or
-              organizer profiles.
+              This appears in Connect for plans, groups, intros, jobs, notices,
+              and buddy posts. Official hosted events are posted separately by
+              business or organizer profiles.
             </Text>
           </View>
 

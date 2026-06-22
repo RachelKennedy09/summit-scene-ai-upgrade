@@ -301,7 +301,7 @@ function LocalFields({
         Main interests (optional)
       </Text>
       <Text style={[styles.helperText, { color: theme.textMuted }]}>
-        Pick interests to show on your profile and help start your Hub with
+        Pick interests to show on your profile and help start Events with
         event categories you care about. You can change these at any time.
       </Text>
       <InterestGroupList

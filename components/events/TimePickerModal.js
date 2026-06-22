@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   timeColumnLabel: {
-    fontSize: 12,
+    fontSize: 14,
     marginBottom: 4,
   },
   pickerButtonsRow: {
@@ -278,19 +278,23 @@ const styles = StyleSheet.create({
   },
   pickerSecondaryButton: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
+    minHeight: 44,
+    justifyContent: "center",
   },
   pickerSecondaryText: {
-    fontSize: 14,
+    fontSize: 16,
   },
   pickerPrimaryButton: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
+    minHeight: 44,
+    justifyContent: "center",
   },
   pickerPrimaryText: {
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 16,
   },
 });

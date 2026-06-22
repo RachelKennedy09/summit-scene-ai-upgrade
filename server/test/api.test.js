@@ -65,10 +65,24 @@ describe("SummitScene API", function () {
   });
 
   it("should include only the main account in default admin access", () => {
-    expect(getAdminEmails()).to.include("admin@summitscene.ca");
+    expect(getAdminEmails()).to.include("hello@summitscene.ca");
     expect(getAdminEmails()).to.not.include("reviewer@summitscene.ca");
-    expect(isAdminEmail("Admin@SummitScene.ca")).to.equal(true);
+    expect(isAdminEmail("Hello@SummitScene.ca")).to.equal(true);
     expect(isAdminEmail("Reviewer@SummitScene.ca")).to.equal(false);
+  });
+
+  it("should return app version requirements", async () => {
+    const res = await request(app).get("/api/app-version");
+
+    expect(res.status).to.equal(200);
+    expect(res.body).to.include.keys([
+      "minimumSupportedVersion",
+      "latestVersion",
+      "iosStoreUrl",
+      "androidStoreUrl",
+      "message",
+    ]);
+    expect(res.body.minimumSupportedVersion).to.be.a("string");
   });
 
   /* -----------------------------------------
@@ -841,6 +855,8 @@ describe("SummitScene API", function () {
           "Sober Events",
           "Yoga Retreats",
           "Basketball",
+          "Senior Events",
+          "Youth Events",
         ],
         vibeTags: ["Sober-friendly", "Beginner-friendly"],
         duration: "3 hours",
@@ -865,6 +881,8 @@ describe("SummitScene API", function () {
       "Sober Events",
       "Yoga Retreats",
       "Basketball",
+      "Senior Events",
+      "Youth Events",
     ]);
     expect(createRes.body.vibeTags).to.deep.equal([
       "Sober-friendly",
@@ -892,6 +910,24 @@ describe("SummitScene API", function () {
       true
     );
 
+    const youthFilterRes = await request(app).get(
+      "/api/events?category=Youth%20Events"
+    );
+
+    expect(youthFilterRes.status).to.equal(200);
+    expect(youthFilterRes.body.some((event) => event.title === title)).to.equal(
+      true
+    );
+
+    const seniorSearchRes = await request(app).get(
+      "/api/events?search=senior"
+    );
+
+    expect(seniorSearchRes.status).to.equal(200);
+    expect(seniorSearchRes.body.some((event) => event.title === title)).to.equal(
+      true
+    );
+
     const vibeSearchRes = await request(app).get(
       "/api/events?search=Sober-friendly"
     );
@@ -907,6 +943,15 @@ describe("SummitScene API", function () {
     expect(priceSearchRes.body.some((event) => event.title === title)).to.equal(
       true
     );
+
+    const partialPhraseSearchRes = await request(app).get(
+      "/api/events?search=mountain%20basketball"
+    );
+
+    expect(partialPhraseSearchRes.status).to.equal(200);
+    expect(
+      partialPhraseSearchRes.body.some((event) => event.title === title)
+    ).to.equal(true);
 
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
@@ -1272,6 +1317,36 @@ describe("SummitScene API", function () {
     expect(
       newInTownListRes.body.some((post) => post._id === newInTownRes.body._id)
     ).to.equal(true);
+
+    const jobAdRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "job",
+        category: "Learning",
+        communityType: "jobs",
+        activityText:
+          "Hiring a part-time front desk host in Banff. Evening shifts, local team, email to apply.",
+        date: "2026-07-15",
+        town: "Banff",
+        groupSizePreference: "any",
+      });
+
+    expect(jobAdRes.status).to.equal(201);
+    expect(jobAdRes.body).to.include({
+      type: "job",
+      communityType: "jobs",
+    });
+    expect(jobAdRes.body).to.not.have.property("category");
+
+    const jobListRes = await request(app)
+      .get("/api/buddy-posts?communityType=jobs")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(jobListRes.status).to.equal(200);
+    expect(jobListRes.body.some((post) => post._id === jobAdRes.body._id)).to.equal(
+      true
+    );
 
     const expiredPlanRes = await request(app)
       .post("/api/buddy-posts")

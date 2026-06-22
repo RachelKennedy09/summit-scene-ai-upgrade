@@ -343,6 +343,25 @@ function buildSearchTerms(value) {
 
   const terms = [normalized];
   const lower = normalized.toLowerCase();
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "at",
+    "for",
+    "in",
+    "of",
+    "or",
+    "the",
+    "to",
+    "with",
+  ]);
+
+  normalized
+    .split(/\s+/)
+    .map((term) => term.replace(/^[^\w$]+|[^\w$]+$/g, ""))
+    .filter((term) => term.length >= 2 && !stopWords.has(term.toLowerCase()))
+    .forEach((term) => terms.push(term));
 
   if (lower.includes("book club") || lower.includes("bookclub")) {
     terms.push("Book Club", "Local Clubs");
@@ -487,11 +506,16 @@ export async function getAllEvents(req, res) {
         $or: [
           { name: { $in: searchRegexes } },
           { email: { $in: searchRegexes } },
+          { town: { $in: searchRegexes } },
+          { userType: { $in: searchRegexes } },
+          { bio: { $in: searchRegexes } },
           { lookingFor: { $in: searchRegexes } },
+          { businessVibeTags: { $in: searchRegexes } },
           { website: { $in: searchRegexes } },
           { googleBusinessUrl: { $in: searchRegexes } },
           { instagram: { $in: searchRegexes } },
           { facebook: { $in: searchRegexes } },
+          { phone: { $in: searchRegexes } },
         ],
       }).select("_id");
       const matchingCreatorIds = matchingCreators.map((user) => user._id);

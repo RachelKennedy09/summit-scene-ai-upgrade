@@ -21,7 +21,7 @@ import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
-const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
+const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "jobs", "notice", "update"]);
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
     type: "general",
@@ -31,6 +31,12 @@ const COMMUNITY_TYPE_DEFAULTS = {
   },
   notice: {
     type: "notice",
+    groupSizePreference: "any",
+    scheduleType: "single",
+  },
+  jobs: {
+    type: "job",
+    category: undefined,
     groupSizePreference: "any",
     scheduleType: "single",
   },
@@ -105,6 +111,25 @@ function buildSearchTerms(value) {
 
   const terms = [normalized];
   const lower = normalized.toLowerCase();
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "at",
+    "for",
+    "in",
+    "of",
+    "or",
+    "the",
+    "to",
+    "with",
+  ]);
+
+  normalized
+    .split(/\s+/)
+    .map((term) => term.replace(/^[^\w$]+|[^\w$]+$/g, ""))
+    .filter((term) => term.length >= 2 && !stopWords.has(term.toLowerCase()))
+    .forEach((term) => terms.push(term));
 
   if (lower.includes("book club") || lower.includes("bookclub")) {
     terms.push("Book Club", "bookclub", "Local Clubs");

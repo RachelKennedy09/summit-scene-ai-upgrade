@@ -1074,7 +1074,7 @@ export default function EventDetailScreen({ route }) {
                   onPress={handleInviteFriends}
                 >
                   <Text style={[styles.secondaryActionText, { color: theme.text }]}>
-                    Share
+                    Invite a friend
                   </Text>
                 </Pressable>
               </View>

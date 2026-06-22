@@ -42,25 +42,25 @@ function getSizeStyles(size) {
   switch (size) {
     case "sm":
       return {
-        minHeight: 38,
-        paddingHorizontal: 14,
-        paddingVertical: 9,
-        fontSize: 13,
+        minHeight: 44,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        fontSize: 14,
       };
     case "lg":
       return {
-        minHeight: 52,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        fontSize: 16,
+        minHeight: 58,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        fontSize: 17,
       };
     case "md":
     default:
       return {
-        minHeight: 46,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 15,
+        minHeight: 50,
+        paddingHorizontal: 18,
+        paddingVertical: 13,
+        fontSize: 16,
       };
   }
 }

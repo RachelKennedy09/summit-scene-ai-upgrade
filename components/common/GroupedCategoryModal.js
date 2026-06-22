@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
   },
@@ -369,9 +369,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    paddingVertical: 12,
+    fontSize: 16,
     marginBottom: 12,
+    minHeight: 44,
   },
   modalOptionsScroll: {
     maxHeight: 420,
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
   groupHeader: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     marginBottom: 8,
     flexDirection: "row",
@@ -400,11 +401,11 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   groupTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
   groupCount: {
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
   groupToggle: {
@@ -417,12 +418,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
     marginBottom: 8,
     marginLeft: 8,
     borderWidth: 1,
+    minHeight: 44,
   },
   optionSwatch: {
     width: 12,
@@ -432,7 +434,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   optionText: {
-    fontSize: 15,
+    fontSize: 16,
     flex: 1,
     paddingRight: 12,
   },
@@ -443,24 +445,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   optionCheckMark: {
-    fontSize: 16,
+    fontSize: 18,
   },
   modalCloseButton: {
     marginTop: 8,
     alignSelf: "flex-end",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.97 }, { translateY: 1 }],
   },
   modalCloseText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     paddingVertical: 18,
     textAlign: "center",
   },

@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
-import PageHeader from "../common/PageHeader";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
 function FilterModal({
@@ -141,10 +140,14 @@ export default function MapFilters({
 
   return (
     <>
-      <PageHeader
-        title="Explore by Map"
-        subtitle="See events pinned across Banff, Canmore & Lake Louise."
-      />
+      <View style={styles.compactHeader}>
+        <Text style={[styles.compactTitle, { color: theme.text || theme.textMain }]}>
+          Explore by Map
+        </Text>
+        <Text style={[styles.compactSubtitle, { color: theme.textMuted }]}>
+          Events pinned across Banff, Canmore and Lake Louise.
+        </Text>
+      </View>
 
       {error ? (
         <Text style={[styles.errorText, { color: theme.error || colors.error }]}>
@@ -158,12 +161,6 @@ export default function MapFilters({
           { backgroundColor: theme.card, borderColor: theme.border },
         ]}
       >
-        <Text style={[styles.searchTitle, { color: theme.textMain || theme.text }]}>
-          Search map events
-        </Text>
-        <Text style={[styles.searchHelper, { color: theme.textMuted }]}>
-          Search events by name, category, town, venue, or address.
-        </Text>
         <View style={styles.searchRow}>
           <TextInput
             style={[
@@ -213,11 +210,11 @@ export default function MapFilters({
         ) : null}
       </View>
 
-      <Text style={[styles.filterGroupTitle, { color: theme.textMain || theme.text }]}>
-        Or choose a category
-      </Text>
-
-      <View style={styles.pillRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.pillRow}
+      >
         <Pressable
           style={({ pressed }) => [
             styles.pill,
@@ -229,14 +226,14 @@ export default function MapFilters({
           ]}
           onPress={() => setIsCategoryModalVisible(true)}
         >
-          <Text style={[styles.pillLabel, { color: theme.textMuted }]}>
-            Category
-          </Text>
-          <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedCategory === "All"
-              ? "All Categories"
-              : selectedCategory}
-          </Text>
+          <View style={styles.pillContent}>
+            <Text style={[styles.pillValue, { color: theme.textMain }]}>
+              {selectedCategory === "All" ? "Category" : selectedCategory}
+            </Text>
+            <Text style={[styles.pillIndicator, { color: theme.accent }]}>
+              +
+            </Text>
+          </View>
         </Pressable>
 
         <Pressable
@@ -250,12 +247,14 @@ export default function MapFilters({
           ]}
           onPress={() => setIsTownModalVisible(true)}
         >
-          <Text style={[styles.pillLabel, { color: theme.textMuted }]}>
-            Town
-          </Text>
-          <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedTown === "All" ? "All Towns" : selectedTown}
-          </Text>
+          <View style={styles.pillContent}>
+            <Text style={[styles.pillValue, { color: theme.textMain }]}>
+              {selectedTown === "All" ? "Town" : selectedTown}
+            </Text>
+            <Text style={[styles.pillIndicator, { color: theme.accent }]}>
+              +
+            </Text>
+          </View>
         </Pressable>
 
         <Pressable
@@ -269,14 +268,16 @@ export default function MapFilters({
           ]}
           onPress={() => setIsDateModalVisible(true)}
         >
-          <Text style={[styles.pillLabel, { color: theme.textMuted }]}>
-            Date
-          </Text>
-          <Text style={[styles.pillValue, { color: theme.textMain }]}>
-            {selectedDateFilter}
-          </Text>
+          <View style={styles.pillContent}>
+            <Text style={[styles.pillValue, { color: theme.textMain }]}>
+              {selectedDateFilter}
+            </Text>
+            <Text style={[styles.pillIndicator, { color: theme.accent }]}>
+              +
+            </Text>
+          </View>
         </Pressable>
-      </View>
+      </ScrollView>
 
       <View style={styles.quickActionRow}>
         <Pressable
@@ -394,6 +395,19 @@ export default function MapFilters({
 }
 
 const styles = StyleSheet.create({
+  compactHeader: {
+    marginBottom: 10,
+  },
+  compactTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  compactSubtitle: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
   errorText: {
     marginBottom: 6,
     fontSize: 13,
@@ -401,18 +415,8 @@ const styles = StyleSheet.create({
   searchPanel: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-  },
-  searchTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 3,
-  },
-  searchHelper: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 10,
+    padding: 8,
+    marginBottom: 8,
   },
   searchRow: {
     flexDirection: "row",
@@ -423,18 +427,21 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    minHeight: 44,
   },
   searchButton: {
     borderRadius: 8,
-    paddingHorizontal: 13,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   searchButtonText: {
     color: "#fff",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "900",
   },
   activeSearchRow: {
@@ -446,51 +453,50 @@ const styles = StyleSheet.create({
   },
   activeSearchText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 20,
   },
   clearSearchText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "900",
   },
   searchStatusText: {
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 20,
     marginTop: 6,
   },
-  filterGroupTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    marginTop: 2,
-    marginBottom: 8,
-  },
   pillRow: {
-    gap: 12,
-    marginBottom: 12,
+    gap: 8,
+    paddingBottom: 8,
   },
   pill: {
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderWidth: 1,
+    minHeight: 44,
+    justifyContent: "center",
   },
-  pillLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 2,
+  pillContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
   },
   pillValue: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  pillIndicator: {
+    fontSize: 18,
+    lineHeight: 18,
+    fontWeight: "900",
   },
   quickActionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 6,
   },
   nearMeChip: {
     borderRadius: 999,
@@ -498,25 +504,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderWidth: 1,
     alignSelf: "flex-start",
+    minHeight: 44,
+    justifyContent: "center",
   },
   nearMeChipText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   clearFiltersButton: {
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
+    minHeight: 44,
+    justifyContent: "center",
   },
   clearFiltersText: {
     fontSize: 14,
     fontWeight: "800",
   },
   nearMeMessage: {
-    fontSize: 13,
+    fontSize: 14,
     marginBottom: 8,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   sectionDivider: {
     height: 1,
@@ -526,6 +536,7 @@ const styles = StyleSheet.create({
   },
   filterSummaryText: {
     fontSize: 14,
+    lineHeight: 20,
     marginBottom: 8,
   },
   modalOverlay: {

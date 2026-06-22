@@ -35,14 +35,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "700",
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "800",
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 23,
   },
   rightAccessory: {
     paddingTop: 2,

@@ -155,7 +155,7 @@ export default function ReportBugScreen() {
           <TextInput
             value={steps}
             onChangeText={setSteps}
-            placeholder="Example: Open Hub, choose category, tap filter..."
+            placeholder="Example: Open Events, choose category, tap filter..."
             placeholderTextColor={theme.textMuted}
             multiline
             textAlignVertical="top"

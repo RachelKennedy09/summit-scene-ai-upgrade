@@ -6,15 +6,16 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AppLogoHeader from "../../components/AppLogoHeader";
 import MemberProfileModal from "../../components/account/MemberProfileModal";
 import BuddyPostCard from "../../components/cards/BuddyPostCard";
 import AppButton from "../../components/common/AppButton";
@@ -89,6 +90,18 @@ const COMMUNITY_SECTIONS = [
     supportsDate: true,
   },
   {
+    label: "Jobs and Volunteer",
+    value: "jobs",
+    title: "Jobs and Volunteer",
+    subtitle: "Browse or share local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
+    cta: "Post Job or Volunteer Ad",
+    emptyTitle: "No jobs or volunteer ads yet",
+    emptyText:
+      "Share a local job ad, seasonal role, hiring notice, or volunteer opportunity.",
+    supportsCategory: false,
+    supportsDate: true,
+  },
+  {
     label: "Town Notices",
     value: "notice",
     title: "Town Notices",
@@ -129,34 +142,6 @@ function formatDisplayDate(date) {
   });
 }
 
-function FilterPill({ label, active, onPress, theme }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.filterPill,
-        {
-          backgroundColor: active ? theme.accentSoft || colors.accentSoft : theme.card,
-          borderColor: active ? theme.accent : theme.border,
-        },
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text
-        style={[
-          styles.filterText,
-          {
-            color: active ? theme.text : theme.textMuted,
-            fontWeight: active ? "800" : "600",
-          },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function getId(value) {
   if (!value) return "";
   return typeof value === "string" ? value : value._id || value.id || "";
@@ -172,11 +157,15 @@ export default function CommunityScreen({ navigation }) {
   const [town, setTown] = useState("All");
   const [language, setLanguage] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   const [sectionPickerVisible, setSectionPickerVisible] = useState(false);
+  const [townPickerVisible, setTownPickerVisible] = useState(false);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [profileUser, setProfileUser] = useState(null);
 
@@ -196,13 +185,21 @@ export default function CommunityScreen({ navigation }) {
   const filters = useMemo(
     () => ({
       category: activeCategoryFilter,
-      communityType,
+      communityType: activeSearch ? "" : communityType,
       town: activeTownFilter,
       language,
       date: activeDateFilter,
+      search: activeSearch,
       status: "open",
     }),
-    [activeCategoryFilter, communityType, activeTownFilter, language, activeDateFilter]
+    [
+      activeCategoryFilter,
+      communityType,
+      activeTownFilter,
+      language,
+      activeDateFilter,
+      activeSearch,
+    ]
   );
 
   useEffect(() => {
@@ -219,9 +216,13 @@ export default function CommunityScreen({ navigation }) {
 
   }, [category, communityType, selectedDate]);
 
-  const loadBuddyPosts = useCallback(async () => {
+  const loadBuddyPosts = useCallback(async ({ mode = "initial" } = {}) => {
     try {
-      setLoading(true);
+      if (mode === "refresh") {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
       const data = await fetchBuddyPosts(filters, token);
       setPosts(data);
@@ -229,8 +230,13 @@ export default function CommunityScreen({ navigation }) {
       setError(loadError.message || "Could not load buddy posts.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [filters, token]);
+
+  const handleRefresh = useCallback(() => {
+    loadBuddyPosts({ mode: "refresh" });
+  }, [loadBuddyPosts]);
 
   useFocusEffect(
     useCallback(() => {
@@ -247,8 +253,33 @@ export default function CommunityScreen({ navigation }) {
   const createPostParams = {
     eventBuddy: communityType ? { communityType } : undefined,
   };
-  const pageIntroTitle = activeSection.title;
-  const pageIntroText = activeSection.subtitle;
+  const totalMatches = posts.length;
+  const searchStatus = activeSearch
+    ? loading
+      ? `Searching for "${activeSearch}"...`
+      : totalMatches === 0
+        ? `0 results found for "${activeSearch}". Try a broader word or clear search.`
+        : `${totalMatches} Connect post${totalMatches === 1 ? "" : "s"} found for "${activeSearch}".`
+    : "";
+
+  function handleApplySearch() {
+    const trimmedSearch = searchQuery.trim();
+    if (!trimmedSearch) {
+      setActiveSearch("");
+      return;
+    }
+
+    setCategory("All");
+    setTown("All");
+    setSelectedDate(null);
+    setLanguage("");
+    setActiveSearch(trimmedSearch);
+  }
+
+  function handleClearSearch() {
+    setSearchQuery("");
+    setActiveSearch("");
+  }
 
   async function handleToggleInterested(post) {
     if (!token) {
@@ -426,205 +457,249 @@ export default function CommunityScreen({ navigation }) {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
       >
         <PageHeader
-          title="Community"
-          subtitle="Choose one path: make a plan, meet people, join groups, or browse town notices."
+          title="Connect with the community"
+          subtitle="Make plans, meet people, join groups, browse jobs and volunteer, or check town notices."
         />
 
-        <Text style={[styles.sectionNavLabel, { color: theme.textMuted }]}>
-          Choose what you want to browse
-        </Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.sectionSelect,
+        <View
+          style={[
+            styles.searchPanel,
             {
               backgroundColor: theme.card,
               borderColor: theme.border,
             },
-            pressed && styles.pressed,
           ]}
-          onPress={() => setSectionPickerVisible(true)}
         >
-          <View style={styles.sectionSelectCopy}>
-            <Text style={[styles.sectionSelectText, { color: theme.text }]}>
-              {activeSection.label}
-            </Text>
-            <Text style={[styles.sectionSelectHint, { color: theme.textMuted }]}>
-              {activeSection.subtitle}
-            </Text>
+          <View style={styles.searchRow}>
+            <TextInput
+              style={[
+                styles.searchInput,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+              ]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search Connect posts"
+              placeholderTextColor={theme.textMuted}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={handleApplySearch}
+            />
+            <Pressable
+              style={({ pressed }) => [
+                styles.searchButton,
+                { backgroundColor: theme.accent },
+                pressed && styles.pressed,
+              ]}
+              onPress={handleApplySearch}
+            >
+              <Text style={styles.searchButtonText}>Search</Text>
+            </Pressable>
           </View>
-          <Text style={[styles.sectionSelectChevron, { color: theme.accent }]}>
-            +
-          </Text>
-        </Pressable>
-
-        <View
-          style={[
-            styles.ctaPanel,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <Text style={[styles.ctaTitle, { color: theme.text }]}>
-            {pageIntroTitle}
-          </Text>
-          <Text style={[styles.ctaText, { color: theme.textMuted }]}>
-            {pageIntroText}
-          </Text>
-          <AppButton
-            title={activeSection.cta}
-            onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
-            variant="primary"
-            size="md"
-            style={styles.ctaButton}
-          />
-        </View>
-
-        <View
-          style={[
-            styles.safetyTip,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <Text style={[styles.safetyTipText, { color: theme.textMuted }]}>
-            Safety tip: meet new people thoughtfully. Choose public places,
-            check profiles, and use report or block if needed.
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.filtersCard,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <Text style={[styles.sectionLabel, { color: theme.text }]}>
-            Filters
-          </Text>
-
-          {sectionSupportsCategory ? (
-            <>
-              <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-                {activeSection.categoryLabel || "Category"}
+          {activeSearch ? (
+            <View style={styles.activeSearchRow}>
+              <Text style={[styles.activeSearchText, { color: theme.textMuted }]}>
+                Searching for "{activeSearch}"
               </Text>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.categorySelect,
-                  {
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                  },
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => setCategoryPickerVisible(true)}
-              >
-                <Text style={[styles.categorySelectText, { color: theme.text }]}>
-                  {categorySelectLabel}
+              <Pressable onPress={handleClearSearch}>
+                <Text style={[styles.clearSearchText, { color: theme.accent }]}>
+                  Clear
                 </Text>
               </Pressable>
-            </>
+            </View>
           ) : null}
+          {searchStatus ? (
+            <Text style={[styles.searchStatusText, { color: theme.textMuted }]}>
+              {searchStatus}
+            </Text>
+          ) : null}
+        </View>
 
-          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-            Town
-          </Text>
-          <View style={styles.townFilters}>
-            {TOWN_FILTERS.map((option) => (
-              <FilterPill
-                key={option}
-                label={option}
-                active={town === option}
-                onPress={() => setTown(option)}
-                theme={theme}
-              />
-            ))}
-          </View>
-
-          <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-            Language
-          </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipRow}
+        >
           <Pressable
             style={({ pressed }) => [
-              styles.categorySelect,
+              styles.selectorChip,
               {
-                backgroundColor: theme.background,
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setSectionPickerVisible(true)}
+          >
+            <View style={styles.selectorContent}>
+              <Text style={[styles.selectorChipText, { color: theme.text }]}>
+                {activeSection.label}
+              </Text>
+              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                +
+              </Text>
+            </View>
+          </Pressable>
+
+          {sectionSupportsCategory ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.selectorChip,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setCategoryPickerVisible(true)}
+            >
+              <View style={styles.selectorContent}>
+                <Text style={[styles.selectorChipText, { color: theme.text }]}>
+                  {categorySelectLabel}
+                </Text>
+                <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                  +
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.selectorChip,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setTownPickerVisible(true)}
+          >
+            <View style={styles.selectorContent}>
+              <Text
+                style={[
+                  styles.selectorChipText,
+                  { color: town === "All" ? theme.textMuted : theme.text },
+                ]}
+              >
+                {town === "All" ? "Town" : town}
+              </Text>
+              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                +
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.selectorChip,
+              {
+                backgroundColor: theme.card,
                 borderColor: theme.border,
               },
               pressed && styles.pressed,
             ]}
             onPress={() => setLanguagePickerVisible(true)}
           >
-            <Text
-              style={[
-                styles.categorySelectText,
-                { color: language ? theme.text : theme.textMuted },
-              ]}
-            >
-              {language || "Any language"}
-            </Text>
+            <View style={styles.selectorContent}>
+              <Text
+                style={[
+                  styles.selectorChipText,
+                  { color: language ? theme.text : theme.textMuted },
+                ]}
+              >
+                {language || "Language"}
+              </Text>
+              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                +
+              </Text>
+            </View>
           </Pressable>
 
           {sectionSupportsDate ? (
-            <>
-              <Text style={[styles.inlineLabel, { color: theme.textMuted }]}>
-                Date
-              </Text>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.dateButton,
-                  {
-                    backgroundColor: theme.background,
-                    borderColor: theme.border,
-                  },
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => setDatePickerVisible(true)}
-              >
-                <Text style={[styles.dateButtonText, { color: theme.text }]}>
-                  {selectedDate ? formatDisplayDate(selectedDate) : "Any date"}
-                </Text>
-              </Pressable>
-            </>
-          ) : null}
-
-          {category !== "All" || town !== "All" || language || selectedDate ? (
             <Pressable
               style={({ pressed }) => [
-                styles.clearFiltersButton,
+                styles.selectorChip,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
                 pressed && styles.pressed,
               ]}
-              onPress={() => {
-                setCategory("All");
-                setTown("All");
-                setSelectedDate(null);
-                setLanguage("");
-              }}
+              onPress={() => setDatePickerVisible(true)}
             >
-              <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
-                Clear filters
-              </Text>
+              <View style={styles.selectorContent}>
+                <Text
+                  style={[
+                    styles.selectorChipText,
+                    { color: selectedDate ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {selectedDate ? formatDisplayDate(selectedDate) : "Date"}
+                </Text>
+                <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                  +
+                </Text>
+              </View>
             </Pressable>
           ) : null}
-        </View>
+        </ScrollView>
+
+        {category !== "All" || town !== "All" || language || selectedDate || activeSearch ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.clearFiltersButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => {
+              setCategory("All");
+              setTown("All");
+              setSelectedDate(null);
+              setLanguage("");
+              setSearchQuery("");
+              setActiveSearch("");
+            }}
+          >
+            <Text style={[styles.clearFiltersText, { color: theme.accent }]}>
+              Clear filters
+            </Text>
+          </Pressable>
+        ) : null}
+
+        <AppButton
+          title={activeSection.cta}
+          onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+          variant="primary"
+          size="md"
+          style={styles.compactCtaButton}
+        />
 
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryText, { color: theme.textMuted }]}>
             {loading
               ? "Loading community posts..."
+              : activeSearch && posts.length === 0
+              ? `No Connect posts match "${activeSearch}" yet.`
+              : activeSearch
+              ? `${posts.length} matching Connect post${posts.length === 1 ? "" : "s"}`
               : posts.length === 0
               ? `No open ${activeFilterLabel.toLowerCase()} posts yet.`
               : `${posts.length} open ${activeFilterLabel.toLowerCase()} post${
@@ -636,7 +711,7 @@ export default function CommunityScreen({ navigation }) {
               styles.refreshButton,
               pressed && styles.pressed,
             ]}
-            onPress={loadBuddyPosts}
+            onPress={() => loadBuddyPosts()}
           >
             <Text style={[styles.refreshText, { color: theme.accent }]}>
               Refresh
@@ -671,7 +746,7 @@ export default function CommunityScreen({ navigation }) {
             </Text>
             <AppButton
               title="Try Again"
-              onPress={loadBuddyPosts}
+              onPress={() => loadBuddyPosts()}
               variant="outline"
               size="sm"
               style={styles.emptyButton}
@@ -690,10 +765,12 @@ export default function CommunityScreen({ navigation }) {
             ]}
           >
             <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              {activeSection.emptyTitle}
+              {activeSearch ? "No search results" : activeSection.emptyTitle}
             </Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              {activeSection.emptyText}
+              {activeSearch
+                ? `No Connect posts match "${activeSearch}". Try a broader word or clear search.`
+                : activeSection.emptyText}
             </Text>
             <AppButton
               title={activeSection.cta}
@@ -781,6 +858,18 @@ export default function CommunityScreen({ navigation }) {
       />
 
       <SelectModal
+        visible={townPickerVisible}
+        title="Filter by town"
+        options={TOWN_FILTERS}
+        selectedValue={town}
+        onSelect={(nextTown) => {
+          setTown(nextTown);
+          setTownPickerVisible(false);
+        }}
+        onClose={() => setTownPickerVisible(false)}
+      />
+
+      <SelectModal
         visible={languagePickerVisible}
         title="Filter by language"
         options={LANGUAGE_OPTIONS}
@@ -806,143 +895,99 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 36,
   },
-  ctaPanel: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 18,
-  },
-  ctaTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  ctaText: {
-    fontSize: 14,
-    lineHeight: 20,
+  compactCtaButton: {
+    borderRadius: 8,
     marginBottom: 12,
   },
-  ctaButton: {
-    borderRadius: 8,
-  },
-  safetyTip: {
+  searchPanel: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  safetyTipText: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  sectionNavLabel: {
-    fontSize: 12,
-    fontWeight: "800",
+    padding: 8,
     marginBottom: 8,
-    textTransform: "uppercase",
   },
-  sectionSelect: {
-    minHeight: 58,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 14,
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-  },
-  sectionSelectCopy: {
-    flex: 1,
-  },
-  sectionSelectText: {
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  sectionSelectHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-  },
-  sectionSelectChevron: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    textAlign: "center",
-    textAlignVertical: "center",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  sectionLabel: {
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  categorySelect: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  categorySelectText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  townFilters: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
-    marginBottom: 12,
   },
-  filtersCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  inlineLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  input: {
+  searchInput: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
+    fontSize: 16,
+    minHeight: 44,
   },
-  dateButton: {
-    borderWidth: 1,
+  searchButton: {
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    marginBottom: 12,
+    minHeight: 44,
+    justifyContent: "center",
   },
-  dateButtonText: {
+  searchButtonText: {
+    color: "#fff",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "900",
+  },
+  activeSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 10,
+  },
+  activeSearchText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  searchStatusText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+  },
+  filterChipRow: {
+    gap: 8,
+    paddingBottom: 8,
+  },
+  selectorChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  selectorContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  selectorChipText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  selectorIndicator: {
+    fontSize: 18,
+    lineHeight: 18,
+    fontWeight: "900",
   },
   clearFiltersButton: {
     alignSelf: "flex-start",
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
     paddingVertical: 8,
-    marginTop: -2,
+    marginBottom: 8,
   },
   clearFiltersText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
-  },
-  filterPill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  filterText: {
-    fontSize: 13,
   },
   summaryRow: {
     flexDirection: "row",
@@ -952,17 +997,17 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     marginRight: 12,
   },
   refreshText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   refreshButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   pressed: {
     opacity: 0.82,
@@ -975,7 +1020,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   loadingText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   emptyState: {
     borderWidth: 1,

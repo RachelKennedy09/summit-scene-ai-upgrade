@@ -20,6 +20,7 @@ import {
   InteractionManager,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   useWindowDimensions,
 } from "react-native";
@@ -27,7 +28,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
-import AppLogoHeader from "../../components/AppLogoHeader";
 import EventMap from "../../components/map/EventMap";
 
 import {
@@ -169,6 +169,31 @@ function normalizeSearchText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function getSearchTerms(searchTerm) {
+  const normalizedSearch = normalizeSearchText(searchTerm);
+  if (!normalizedSearch) return [];
+
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "at",
+    "for",
+    "in",
+    "of",
+    "or",
+    "the",
+    "to",
+    "with",
+  ]);
+  const splitTerms = normalizedSearch
+    .split(/\s+/)
+    .map((term) => term.replace(/^[^\w$]+|[^\w$]+$/g, ""))
+    .filter((term) => term.length >= 2 && !stopWords.has(term));
+
+  return [...new Set([normalizedSearch, ...splitTerms])];
+}
+
 function getEventCategoryList(event) {
   return Array.isArray(event?.categories) && event.categories.length
     ? event.categories
@@ -178,12 +203,20 @@ function getEventCategoryList(event) {
 }
 
 function eventMatchesSearch(event, searchTerm) {
-  const normalizedSearch = normalizeSearchText(searchTerm);
-  if (!normalizedSearch) return true;
+  const searchTerms = getSearchTerms(searchTerm);
+  if (!searchTerms.length) return true;
+
+  const host =
+    event?.createdBy && typeof event.createdBy === "object"
+      ? event.createdBy
+      : {};
 
   const searchableText = [
     event?.title,
     event?.description,
+    event?.duration,
+    event?.priceRange,
+    event?.bookingUrl,
     event?.category,
     ...getEventCategoryList(event),
     ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
@@ -192,12 +225,24 @@ function eventMatchesSearch(event, searchTerm) {
     event?.locationName,
     event?.location,
     event?.address,
+    host?.name,
+    host?.email,
+    host?.town,
+    host?.userType,
+    host?.bio,
+    host?.lookingFor,
+    host?.instagram,
+    host?.facebook,
+    host?.website,
+    host?.googleBusinessUrl,
+    host?.phone,
+    ...(Array.isArray(host?.businessVibeTags) ? host.businessVibeTags : []),
   ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  return searchableText.includes(normalizedSearch);
+  return searchTerms.some((term) => searchableText.includes(term));
 }
 
 function getSpreadOffset(index, total) {
@@ -389,6 +434,7 @@ export default function MapScreen({ route }) {
   // Data + status state
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   const [selectedEventGroup, setSelectedEventGroup] = useState(null);
@@ -418,9 +464,13 @@ export default function MapScreen({ route }) {
   }, []);
 
   // Fetch events (same helper as Hub, with sorting, for consistency)
-  const loadEvents = useCallback(async () => {
+  const loadEvents = useCallback(async ({ mode = "initial" } = {}) => {
     try {
-      setLoading(true);
+      if (mode === "refresh") {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
 
       const data = await fetchEventsFromApi();
@@ -430,8 +480,13 @@ export default function MapScreen({ route }) {
       setError("Could not load events for the map.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    loadEvents({ mode: "refresh" });
+  }, [loadEvents]);
 
   const handleToggleNearMe = useCallback(async () => {
     if (nearMeLoading) return;
@@ -982,7 +1037,6 @@ export default function MapScreen({ route }) {
       edges={["top", "left", "right"]}
       style={[styles.safeArea, { backgroundColor: theme.background }]}
     >
-      <AppLogoHeader />
       <ScrollView
         ref={scrollRef}
         style={[
@@ -994,6 +1048,14 @@ export default function MapScreen({ route }) {
           { paddingBottom: Math.max(96, tabBarHeight + insets.bottom + 24) },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
       >
         {/* Filters header and summary (reused logic from Hub in a shared MapFilters component) */}
         <MapFilters
@@ -1103,7 +1165,7 @@ export default function MapScreen({ route }) {
                     { borderColor: theme.accent },
                     pressed && styles.pressed,
                   ]}
-                  onPress={loadEvents}
+                  onPress={() => loadEvents()}
                 >
                   <Text style={[styles.retryText, { color: theme.accent }]}>
                     Try again
@@ -1155,7 +1217,7 @@ export default function MapScreen({ route }) {
                       ]}
                       onPress={handleCreateBusinessEvent}
                     >
-                      <Text style={styles.emptyActionText}>Post Event</Text>
+                      <Text style={styles.emptyActionText}>Create Event</Text>
                     </Pressable>
                   </View>
                 ) : (

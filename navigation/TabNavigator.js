@@ -1,6 +1,6 @@
 // navigation/TabNavigator.js
 // Bottom tab navigation for the app — Hub, Map, Community, Account
-// Businesses also get a "Post Event" tab
+// Verified businesses also get a Create tab for official events.
 
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -80,7 +80,7 @@ export default function TabNavigator() {
       })}
     >
       {/* Everyone gets Hub and Map */}
-      <Tab.Screen name="Hub" component={HubScreen} options={{ title: "Hub" }} />
+      <Tab.Screen name="Hub" component={HubScreen} options={{ title: "Events" }} />
 
       <Tab.Screen name="Map" component={MapScreen} options={{ title: "Map" }} />
 
@@ -96,7 +96,7 @@ export default function TabNavigator() {
         <Tab.Screen
           name="Post"
           component={PostEventScreen}
-          options={{ title: "Post" }}
+          options={{ title: "Create" }}
         />
       )}
 

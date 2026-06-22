@@ -201,6 +201,8 @@ function getCommunityTypeLabel(value) {
       return "New in Town";
     case "group":
       return "Group";
+    case "jobs":
+      return "Jobs and Volunteer";
     case "notice":
       return "Town Notice";
     case "update":
@@ -213,6 +215,7 @@ function getCommunityTypeLabel(value) {
 
 function getActivityLabel(post) {
   if (post.communityType === "new-in-town") return "";
+  if (post.communityType === "jobs") return "Job or Volunteer Ad";
   if (post.communityType === "notice") return "Town Notice";
   if (post.communityType === "update") return "Town Notice";
   const categories =
@@ -1230,11 +1233,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   authorName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "800",
   },
   authorMeta: {
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
   authorBadgeRow: {
@@ -1250,8 +1253,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   planMeta: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: "700",
   },
   postImage: {
@@ -1266,8 +1269,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   activityText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 23,
   },
   preferenceRow: {
     flexDirection: "row",
@@ -1285,16 +1288,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingVertical: 8,
   },
   preferenceLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "800",
     marginBottom: 2,
     textTransform: "uppercase",
   },
   preferenceValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   linkedEventBlock: {
@@ -1310,46 +1313,48 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkedEventLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
     marginBottom: 2,
     textTransform: "uppercase",
   },
   linkedEventTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "900",
   },
   linkedEventMeta: {
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
   linkedEventButton: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   linkedEventButtonText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "800",
   },
   chip: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 14,
   },
   moreTagsButton: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   moreTagsText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "800",
   },
   footerRow: {
@@ -1363,38 +1368,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   interestButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   profileButton: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   profileButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     marginLeft: "auto",
   },
   reportLink: {
     alignSelf: "flex-start",
     marginTop: 8,
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   textButtonHitArea: {
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
   },
   reportText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
   },
   interestedBlock: {
@@ -1408,11 +1417,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   interestedTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   interestedToggle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "800",
   },
   interestedList: {
