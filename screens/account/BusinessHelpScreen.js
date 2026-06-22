@@ -156,7 +156,7 @@ export default function BusinessHelpScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Email hello@summitscene.ca
+            Email Support
           </Text>
         </Pressable>
       </ScrollView>

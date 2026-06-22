@@ -560,7 +560,7 @@ export default function LegalScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Contact hello@summitscene.ca
+            Email Support
           </Text>
         </Pressable>
       </ScrollView>

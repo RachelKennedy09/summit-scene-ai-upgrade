@@ -197,7 +197,7 @@ export default function UserHelpScreen() {
           onPress={handleEmail}
         >
           <Text style={[styles.contactText, { color: theme.accent }]}>
-            Contact Summit Scene
+            Email Support
           </Text>
         </Pressable>
       </ScrollView>

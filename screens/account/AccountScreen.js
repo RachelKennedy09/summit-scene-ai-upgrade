@@ -231,6 +231,17 @@ function AccountScreen() {
     });
   }
 
+  function handleEmailSupport() {
+    Linking.openURL(
+      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Support"
+    ).catch(() => {
+      Alert.alert(
+        "Could not open email",
+        "Please email hello@summitscene.ca for Summit Scene support."
+      );
+    });
+  }
+
   async function handleRateSummitScene() {
     const androidMarketUrl = `market://details?id=${ANDROID_PACKAGE_NAME}`;
     const androidWebUrl = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_NAME}`;
@@ -684,6 +695,13 @@ function AccountScreen() {
             title="Report a bug"
             subtitle="Send Summit Scene a bug, wrong info report, safety concern, or idea."
             onPress={() => navigation.navigate("ReportBug")}
+            theme={theme}
+          />
+
+          <AccountNavRow
+            title="Email support"
+            subtitle="Contact hello@summitscene.ca for account, app, or business help."
+            onPress={handleEmailSupport}
             theme={theme}
           />
 

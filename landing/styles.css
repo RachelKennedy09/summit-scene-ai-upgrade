@@ -423,8 +423,10 @@ p {
 .contact-email-link {
   display: inline-flex;
   margin-left: 14px;
-  color: var(--green);
-  font-weight: 850;
+}
+
+.support-email-button {
+  margin: 8px 0 22px;
 }
 
 .social-links {
