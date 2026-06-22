@@ -260,6 +260,10 @@ export const VIBE_TAG_GROUPS = [
       "Strength training",
     ],
   },
+  {
+    title: "Other",
+    options: ["Other"],
+  },
 ];
 export const VIBE_TAGS = VIBE_TAG_GROUPS.flatMap((group) => group.options);
 
@@ -388,9 +392,10 @@ export function getMainCategoryForTag(value) {
 export function getCategoryTagGroupsForCategories(categories = []) {
   const selected = Array.isArray(categories) ? categories : [categories];
   const selectedSet = new Set(selected.filter(Boolean));
-  const groups = selectedSet.size
-    ? EVENT_CATEGORY_GROUPS.filter((group) => selectedSet.has(group.title))
-    : EVENT_CATEGORY_GROUPS;
+  const shouldShowAllTags = !selectedSet.size || selectedSet.has("Other");
+  const groups = shouldShowAllTags
+    ? EVENT_CATEGORY_GROUPS
+    : EVENT_CATEGORY_GROUPS.filter((group) => selectedSet.has(group.title));
 
   return groups
     .filter((group) => group.title !== "Other")

@@ -17,6 +17,7 @@ import {
   ScrollView,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -25,6 +26,7 @@ import { useTheme } from "../../context/ThemeContext";
 import AppButton from "../../components/common/AppButton";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import {
+  EVENT_CATEGORY_GROUPS,
   PROFILE_INTEREST_GROUPS,
   VIBE_TAG_GROUPS,
 } from "../../constants/eventCategories";
@@ -49,7 +51,7 @@ const SOCIAL_PROVIDERS = [
     actionLabel: "Add Facebook link",
   },
 ];
-const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
@@ -106,7 +108,14 @@ const LOCAL_STEPS = [
   "social",
   "review",
 ];
-const BUSINESS_STEPS = ["name", "login", "business", "photo", "review"];
+const BUSINESS_STEPS = [
+  "name",
+  "login",
+  "business",
+  "businessSocial",
+  "photo",
+  "review",
+];
 const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]);
 
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
@@ -290,7 +299,13 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
   );
 }
 
-function InterestGroupList({ groups, values, onToggle, theme }) {
+function InterestGroupList({
+  groups,
+  values,
+  onToggle,
+  theme,
+  includeGroupTitleOption = false,
+}) {
   const [openGroup, setOpenGroup] = useState(null);
 
   return (
@@ -298,7 +313,10 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
       {groups.map((group) => {
         const isOpen = openGroup === group.title;
         const groupAccent = getCategoryAccent(group.title, theme);
-        const selectedCount = group.options.filter((option) =>
+        const options = includeGroupTitleOption
+          ? Array.from(new Set([group.title, ...group.options]))
+          : group.options;
+        const selectedCount = options.filter((option) =>
           values.includes(option)
         ).length;
 
@@ -352,7 +370,7 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
             {isOpen ? (
               <View style={styles.interestGroupOptions}>
                 <ChipGroup
-                  options={group.options}
+                  options={options}
                   values={values}
                   onToggle={onToggle}
                   theme={theme}
@@ -402,7 +420,6 @@ function SignupProfilePreview({
   interests,
   businessVibeTags = [],
   bio,
-  lookingFor,
   profileImageUrl,
   socialValues,
 }) {
@@ -468,9 +485,6 @@ function SignupProfilePreview({
             theme={theme}
           />
         ) : null}
-        {isBusiness && lookingFor ? (
-          <ReviewChip label={lookingFor} theme={theme} />
-        ) : null}
       </View>
 
       <View style={styles.previewSection}>
@@ -488,7 +502,7 @@ function SignupProfilePreview({
       {interests.length ? (
         <View style={styles.previewSection}>
           <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
-            {isBusiness ? "Business tags" : "Interests"}
+            {isBusiness ? "Business categories and tags" : "Interests"}
           </Text>
           <View style={styles.reviewChipRow}>
             {interests.map((interest) => (
@@ -581,7 +595,6 @@ function RegisterScreen() {
     facebook: "",
   });
   const [bio, setBio] = useState("");
-  const [lookingFor, setLookingFor] = useState("");
   const [businessVibeTags, setBusinessVibeTags] = useState([]);
   const [website, setWebsite] = useState("");
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
@@ -807,15 +820,25 @@ function RegisterScreen() {
     }
 
     if (currentStep === "business") {
+      if (!town.trim() || !interests.length || !bio.trim()) {
+        Alert.alert(
+          "Business profile info needed",
+          "Please add your town, business categories or tags, and short description."
+        );
+        return false;
+      }
+    }
+
+    if (currentStep === "businessSocial") {
       const hasProofLink = Boolean(
         website.trim() ||
           Object.values(socialValues).some((value) => value.trim()) ||
           googleBusinessUrl.trim()
       );
-      if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
+      if (!hasProofLink) {
         Alert.alert(
-          "Business verification info needed",
-          "Please add your town, category, short description, and one proof link or connected social profile."
+          "Proof link needed",
+          "Please add one website, social link, or Google Business listing so Summit Scene can review your business."
         );
         return false;
       }
@@ -850,10 +873,10 @@ function RegisterScreen() {
           Object.values(socialValues).some((value) => value.trim()) ||
           googleBusinessUrl.trim()
       );
-      if (!town.trim() || !lookingFor.trim() || !bio.trim() || !hasProofLink) {
+      if (!town.trim() || !interests.length || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your business town, category, short description, and one proof link or connected social profile so Summit Scene can review the profile."
+          "Please add your business town, business categories or tags, short description, and one proof link or connected social profile so Summit Scene can review the profile."
         );
         return;
       }
@@ -883,7 +906,7 @@ function RegisterScreen() {
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
         socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
         bio,
-        lookingFor: isBusiness ? lookingFor : undefined,
+        lookingFor: undefined,
         instagram: socialValues.instagram,
         facebook: isBusiness ? socialValues.facebook : undefined,
         website: website || undefined,
@@ -1390,7 +1413,7 @@ function RegisterScreen() {
       );
     }
 
-    if (currentStep === "social" || currentStep === "photo") {
+    if (currentStep === "social") {
       return (
         <>
           <Text style={[styles.stepTitle, { color: theme.text }]}>
@@ -1400,40 +1423,89 @@ function RegisterScreen() {
             Optional. Connect public profiles if you want people to recognize
             you in the community.
           </Text>
-          {isLocal ? (
-            <>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Website (optional)
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                placeholder="https://your-site.com"
-                placeholderTextColor={theme.textMuted}
-                value={website}
-                onChangeText={setWebsite}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <SocialConnectFields
-                values={socialValues}
-                onChange={handleSocialChange}
-                theme={theme}
-              />
-            </>
-          ) : null}
+          <Text style={[styles.label, { color: theme.text }]}>
+            Website (optional)
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder="https://your-site.com"
+            placeholderTextColor={theme.textMuted}
+            value={website}
+            onChangeText={setWebsite}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <SocialConnectFields
+            values={socialValues}
+            onChange={handleSocialChange}
+            theme={theme}
+          />
           <Text style={[styles.label, { color: theme.text }]}>
             Profile photo
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
             Choose a photo from your phone. You can skip this and add one later
             from Edit Profile.
+          </Text>
+          <Pressable
+            style={[
+              styles.photoPickerButton,
+              { backgroundColor: theme.card, borderColor: theme.accent },
+            ]}
+            onPress={handleChooseProfilePhoto}
+          >
+            <Text style={[styles.photoPickerText, { color: theme.accent }]}>
+              Choose from camera roll
+            </Text>
+          </Pressable>
+          {profileImageUrl ? (
+            <View
+              style={[
+                styles.photoPreviewCard,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              <Image source={{ uri: profileImageUrl }} style={styles.photoPreview} />
+              <View style={styles.photoPreviewCopy}>
+                <Text style={[styles.photoPreviewTitle, { color: theme.text }]}>
+                  Profile photo selected
+                </Text>
+                <Pressable
+                  style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                  onPress={handleClearProfilePhoto}
+                >
+                  <Text
+                    style={[styles.smallOutlineText, { color: theme.textMuted }]}
+                  >
+                    Remove
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+        </>
+      );
+    }
+
+    if (currentStep === "photo") {
+      return (
+        <>
+          <Text style={[styles.stepTitle, { color: theme.text }]}>
+            Add your profile photo
+          </Text>
+          <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
+            Optional. Choose a photo from your phone. You can skip this and add
+            one later from Edit Profile.
+          </Text>
+          <Text style={[styles.label, { color: theme.text }]}>
+            Profile photo
           </Text>
           <Pressable
             style={[
@@ -1482,61 +1554,32 @@ function RegisterScreen() {
             Tell us about the business
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            To post official business events, provide a business name, contact
-            email, town, category, short description, and one public proof link. Tour guides and tour companies can use this for tours, clinics, retreats, and guided experiences.
+            Add the public profile details people will see on Summit Scene.
+            Tour guides and tour companies can use this for tours, clinics,
+            retreats, and guided experiences.
           </Text>
           <Text style={[styles.label, { color: theme.text }]}>
             Where is it located?
           </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            placeholder="Banff, Canmore, Lake Louise..."
-            placeholderTextColor={theme.textMuted}
+          <ChipGroup
+            options={TOWN_OPTIONS}
             value={town}
-            onChangeText={setTown}
+            onChange={setTown}
+            theme={theme}
           />
           <Text style={[styles.label, { color: theme.text }]}>
-            Business category
+            Business categories and tags
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            A short label for what you are, like cafe, ski hill, market,
-            wellness studio, tour guide, tour company, live music venue, or community organizer.
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.textAreaSmall,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            placeholder="Cafe, hiking guide, tour company, yoga studio..."
-            placeholderTextColor={theme.textMuted}
-            value={lookingFor}
-            onChangeText={setLookingFor}
-            multiline
-          />
-          <Text style={[styles.label, { color: theme.text }]}>
-            Business tags
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Pick the activities, services, or event types people should
-            recognize you for. These show on your public event posting profile.
+            Pick categories people should recognize your business for. These
+            show on your public profile.
           </Text>
           <InterestGroupList
-            groups={PROFILE_INTEREST_GROUPS}
+            groups={EVENT_CATEGORY_GROUPS}
             values={interests}
             onToggle={handleToggleInterest}
             theme={theme}
+            includeGroupTitleOption
           />
           <Text style={[styles.label, { color: theme.text }]}>
             Business vibe
@@ -1574,6 +1617,21 @@ function RegisterScreen() {
             multiline
             numberOfLines={4}
           />
+        </>
+      );
+    }
+
+    if (currentStep === "businessSocial") {
+      return (
+        <>
+          <Text style={[styles.stepTitle, { color: theme.text }]}>
+            Add your socials
+          </Text>
+          <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
+            Add at least one proof link so Summit Scene can review your
+            business. These can be your website, Instagram, Facebook, or Google
+            Business listing.
+          </Text>
           <Text style={[styles.label, { color: theme.text }]}>
             Website
           </Text>
@@ -1667,7 +1725,6 @@ function RegisterScreen() {
           interests={interests}
           businessVibeTags={businessVibeTags}
           bio={bio}
-          lookingFor={lookingFor}
           profileImageUrl={profileImageUrl}
           socialValues={socialValues}
         />
@@ -1736,113 +1793,118 @@ function RegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      edges={["top", "left", "right"]}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1 }}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.inner}>
-              <View style={styles.logoContainer}>
-                <Image source={Logo} style={styles.logo} resizeMode="contain" />
-                <Text style={[styles.tagline, { color: theme.textMuted }]}>
-                  Your Rocky Mountain Social & Events Hub
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.inner}>
+                <View style={styles.logoContainer}>
+                  <Image source={Logo} style={styles.logo} resizeMode="contain" />
+                  <Text style={[styles.tagline, { color: theme.textMuted }]}>
+                    Your Rocky Mountain Social & Events Hub
+                  </Text>
+                </View>
+
+                <Text style={[styles.progressText, { color: theme.textMuted }]}>
+                  {progressText}
                 </Text>
-              </View>
-
-              <Text style={[styles.progressText, { color: theme.textMuted }]}>
-                {progressText}
-              </Text>
-              <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: theme.accent,
-                      width: `${((stepIndex + 1) / steps.length) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-
-              {renderStep()}
-
-              <View style={styles.buttonRow}>
-                {stepIndex > 0 ? (
-                  <AppButton
-                    title="Back"
-                    onPress={goBack}
-                    disabled={isSubmitting || isAuthLoading}
-                    variant="outline"
-                    style={styles.flexButton}
+                <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: theme.accent,
+                        width: `${((stepIndex + 1) / steps.length) * 100}%`,
+                      },
+                    ]}
                   />
-                ) : null}
-                {OPTIONAL_STEPS.has(currentStep) ? (
-                  <AppButton
-                    title="Skip"
-                    onPress={skipStep}
-                    disabled={isSubmitting || isAuthLoading}
-                    variant="outline"
-                    style={styles.flexButton}
-                  />
-                ) : null}
-                <AppButton
-                  title={
-                    isFinalStep
-                      ? isSubmitting || isAuthLoading
-                        ? "Creating account..."
-                        : "Create Account"
-                      : "Next"
-                  }
-                  onPress={goNext}
-                  disabled={
-                    isSubmitting ||
-                    isAuthLoading ||
-                    (isFinalStep && !hasAcceptedAgreements)
-                  }
-                  loading={isFinalStep && (isSubmitting || isAuthLoading)}
-                  size="lg"
-                  style={[
-                    styles.flexButton,
-                    {
-                      backgroundColor: theme.accent,
-                      borderColor: theme.accent,
-                      opacity:
-                        isFinalStep && !hasAcceptedAgreements ? 0.56 : 1,
-                    },
-                  ]}
-                  textStyle={{
-                    color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
-                  }}
-                />
-              </View>
+                </View>
 
-              <Pressable onPress={() => navigation.navigate("Login")}>
-                <Text style={[styles.linkText, { color: theme.accent }]}>
-                  Already have an account? Log in
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
-              >
-                <Text style={[styles.browseLinkText, { color: theme.accent }]}>
-                  Continue browsing without an account
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => navigation.navigate("Legal")}>
-                <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
-                  Privacy & Terms
-                </Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+                {renderStep()}
+
+                <View style={styles.buttonRow}>
+                  {stepIndex > 0 ? (
+                    <AppButton
+                      title="Back"
+                      onPress={goBack}
+                      disabled={isSubmitting || isAuthLoading}
+                      variant="outline"
+                      style={styles.flexButton}
+                    />
+                  ) : null}
+                  {OPTIONAL_STEPS.has(currentStep) ? (
+                    <AppButton
+                      title="Skip"
+                      onPress={skipStep}
+                      disabled={isSubmitting || isAuthLoading}
+                      variant="outline"
+                      style={styles.flexButton}
+                    />
+                  ) : null}
+                  <AppButton
+                    title={
+                      isFinalStep
+                        ? isSubmitting || isAuthLoading
+                          ? "Creating account..."
+                          : "Create Account"
+                        : "Next"
+                    }
+                    onPress={goNext}
+                    disabled={
+                      isSubmitting ||
+                      isAuthLoading ||
+                      (isFinalStep && !hasAcceptedAgreements)
+                    }
+                    loading={isFinalStep && (isSubmitting || isAuthLoading)}
+                    size="lg"
+                    style={[
+                      styles.flexButton,
+                      {
+                        backgroundColor: theme.accent,
+                        borderColor: theme.accent,
+                        opacity:
+                          isFinalStep && !hasAcceptedAgreements ? 0.56 : 1,
+                      },
+                    ]}
+                    textStyle={{
+                      color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
+                    }}
+                  />
+                </View>
+
+                <Pressable onPress={() => navigation.navigate("Login")}>
+                  <Text style={[styles.linkText, { color: theme.accent }]}>
+                    Already have an account? Log in
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
+                >
+                  <Text style={[styles.browseLinkText, { color: theme.accent }]}>
+                    Continue browsing without an account
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => navigation.navigate("Legal")}>
+                  <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
+                    Privacy & Terms
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -1854,7 +1916,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 72,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   inner: {

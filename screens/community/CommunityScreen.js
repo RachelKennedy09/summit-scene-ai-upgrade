@@ -533,33 +533,8 @@ export default function CommunityScreen({ navigation }) {
           ) : null}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterChipRow}
-        >
-          <Pressable
-            style={({ pressed }) => [
-              styles.selectorChip,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setSectionPickerVisible(true)}
-          >
-            <View style={styles.selectorContent}>
-              <Text style={[styles.selectorChipText, { color: theme.text }]}>
-                {activeSection.label}
-              </Text>
-              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
-                +
-              </Text>
-            </View>
-          </Pressable>
-
-          {sectionSupportsCategory ? (
+        <View style={styles.filterChipGroup}>
+          <View style={styles.filterChipRow}>
             <Pressable
               style={({ pressed }) => [
                 styles.selectorChip,
@@ -569,72 +544,43 @@ export default function CommunityScreen({ navigation }) {
                 },
                 pressed && styles.pressed,
               ]}
-              onPress={() => setCategoryPickerVisible(true)}
+              onPress={() => setSectionPickerVisible(true)}
             >
               <View style={styles.selectorContent}>
                 <Text style={[styles.selectorChipText, { color: theme.text }]}>
-                  {categorySelectLabel}
+                  {activeSection.label}
                 </Text>
                 <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
                   +
                 </Text>
               </View>
             </Pressable>
-          ) : null}
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.selectorChip,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setTownPickerVisible(true)}
-          >
-            <View style={styles.selectorContent}>
-              <Text
-                style={[
-                  styles.selectorChipText,
-                  { color: town === "All" ? theme.textMuted : theme.text },
+            {sectionSupportsCategory ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.selectorChip,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                  pressed && styles.pressed,
                 ]}
+                onPress={() => setCategoryPickerVisible(true)}
               >
-                {town === "All" ? "Town" : town}
-              </Text>
-              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
-                +
-              </Text>
-            </View>
-          </Pressable>
+                <View style={styles.selectorContent}>
+                  <Text style={[styles.selectorChipText, { color: theme.text }]}>
+                    {categorySelectLabel}
+                  </Text>
+                  <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                    +
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+          </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.selectorChip,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setLanguagePickerVisible(true)}
-          >
-            <View style={styles.selectorContent}>
-              <Text
-                style={[
-                  styles.selectorChipText,
-                  { color: language ? theme.text : theme.textMuted },
-                ]}
-              >
-                {language || "Language"}
-              </Text>
-              <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
-                +
-              </Text>
-            </View>
-          </Pressable>
-
-          {sectionSupportsDate ? (
+          <View style={styles.filterChipRow}>
             <Pressable
               style={({ pressed }) => [
                 styles.selectorChip,
@@ -644,24 +590,78 @@ export default function CommunityScreen({ navigation }) {
                 },
                 pressed && styles.pressed,
               ]}
-              onPress={() => setDatePickerVisible(true)}
+              onPress={() => setTownPickerVisible(true)}
             >
               <View style={styles.selectorContent}>
                 <Text
                   style={[
                     styles.selectorChipText,
-                    { color: selectedDate ? theme.text : theme.textMuted },
+                    { color: town === "All" ? theme.textMuted : theme.text },
                   ]}
                 >
-                  {selectedDate ? formatDisplayDate(selectedDate) : "Date"}
+                  {town === "All" ? "Town" : town}
                 </Text>
                 <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
                   +
                 </Text>
               </View>
             </Pressable>
-          ) : null}
-        </ScrollView>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.selectorChip,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setLanguagePickerVisible(true)}
+            >
+              <View style={styles.selectorContent}>
+                <Text
+                  style={[
+                    styles.selectorChipText,
+                    { color: language ? theme.text : theme.textMuted },
+                  ]}
+                >
+                  {language || "Language"}
+                </Text>
+                <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                  +
+                </Text>
+              </View>
+            </Pressable>
+
+            {sectionSupportsDate ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.selectorChip,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                  },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setDatePickerVisible(true)}
+              >
+                <View style={styles.selectorContent}>
+                  <Text
+                    style={[
+                      styles.selectorChipText,
+                      { color: selectedDate ? theme.text : theme.textMuted },
+                    ]}
+                  >
+                    {selectedDate ? formatDisplayDate(selectedDate) : "Date"}
+                  </Text>
+                  <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
+                    +
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
 
         {category !== "All" || town !== "All" || language || selectedDate || activeSearch ? (
           <Pressable
@@ -952,17 +952,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 6,
   },
-  filterChipRow: {
+  filterChipGroup: {
     gap: 8,
-    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  filterChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   selectorChip: {
+    flexShrink: 1,
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 10,
     minHeight: 44,
     justifyContent: "center",
+    maxWidth: "100%",
   },
   selectorContent: {
     flexDirection: "row",
@@ -970,7 +977,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorChipText: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: "800",
   },

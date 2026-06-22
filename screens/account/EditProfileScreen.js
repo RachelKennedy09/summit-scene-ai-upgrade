@@ -21,6 +21,7 @@ import { useTheme } from "../../context/ThemeContext";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import {
+  EVENT_CATEGORY_GROUPS,
   PROFILE_INTEREST_GROUPS,
   VIBE_TAG_GROUPS,
 } from "../../constants/eventCategories";
@@ -97,7 +98,13 @@ function ChipGroup({ options, value, values, onChange, onToggle, theme }) {
   );
 }
 
-function InterestGroupList({ groups, values, onToggle, theme }) {
+function InterestGroupList({
+  groups,
+  values,
+  onToggle,
+  theme,
+  includeGroupTitleOption = false,
+}) {
   const [openGroup, setOpenGroup] = useState(null);
 
   return (
@@ -105,7 +112,10 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
       {groups.map((group) => {
         const isOpen = openGroup === group.title;
         const groupAccent = getCategoryAccent(group.title, theme);
-        const selectedCount = group.options.filter((option) =>
+        const options = includeGroupTitleOption
+          ? Array.from(new Set([group.title, ...group.options]))
+          : group.options;
+        const selectedCount = options.filter((option) =>
           values.includes(option)
         ).length;
 
@@ -159,7 +169,7 @@ function InterestGroupList({ groups, values, onToggle, theme }) {
             {isOpen ? (
               <View style={styles.interestGroupOptions}>
                 <ChipGroup
-                  options={group.options}
+                  options={options}
                   values={values}
                   onToggle={onToggle}
                   theme={theme}
@@ -288,7 +298,6 @@ export default function EditProfileScreen({ navigation }) {
     Array.isArray(user?.businessVibeTags) ? user.businessVibeTags : []
   );
   const [bio, setBio] = useState(user?.bio || "");
-  const [lookingFor, setLookingFor] = useState(user?.lookingFor || "");
   const instagram = user?.instagram || "";
   const facebook = user?.facebook || "";
   const [website, setWebsite] = useState(user?.website || "");
@@ -337,10 +346,10 @@ export default function EditProfileScreen({ navigation }) {
             Object.values(socialValues).some((value) => value.trim()) ||
             googleBusinessUrl.trim()
         );
-        if (!name.trim() || !town.trim() || !lookingFor.trim() || !bio.trim()) {
+        if (!name.trim() || !town.trim() || !interests.length || !bio.trim()) {
           Alert.alert(
             "Business verification info needed",
-            "Please add business name, town, category, and a short description."
+            "Please add business name, town, business categories or tags, and a short description."
           );
           return;
         }
@@ -367,7 +376,7 @@ export default function EditProfileScreen({ navigation }) {
         languages: isBusiness ? undefined : languages,
         interests,
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
-        lookingFor: isBusiness ? lookingFor : "",
+        lookingFor: isBusiness ? undefined : "",
         instagram: socialValues.instagram || instagram,
         website,
         avatarKey: null,
@@ -517,19 +526,11 @@ export default function EditProfileScreen({ navigation }) {
               <Text style={[styles.label, { color: theme.text }]}>
                 Where is your business located?
               </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
+              <ChipGroup
+                options={TOWN_OPTIONS}
                 value={town}
-                onChangeText={setTown}
-                placeholder="Banff, Canmore, Lake Louise..."
-                placeholderTextColor={theme.textMuted}
+                onChange={setTown}
+                theme={theme}
               />
             </>
           ) : (
@@ -611,37 +612,18 @@ export default function EditProfileScreen({ navigation }) {
           {isBusiness ? (
             <>
               <Text style={[styles.label, { color: theme.text }]}>
-                Business category
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.multiline,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                value={lookingFor}
-                onChangeText={setLookingFor}
-                multiline
-                numberOfLines={3}
-                placeholder="Cafe, hiking guide, tour company, yoga studio..."
-                placeholderTextColor={theme.textMuted}
-              />
-              <Text style={[styles.label, { color: theme.text }]}>
-                Business tags
+                Business categories and tags
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Pick the activities, services, or event types people should
-                recognize you for.
+                Pick categories people should recognize your business for.
+                These show on your public profile.
               </Text>
               <InterestGroupList
-                groups={PROFILE_INTEREST_GROUPS}
+                groups={EVENT_CATEGORY_GROUPS}
                 values={interests}
                 onToggle={handleToggleInterest}
                 theme={theme}
+                includeGroupTitleOption
               />
               <Text style={[styles.label, { color: theme.text }]}>
                 Business vibe

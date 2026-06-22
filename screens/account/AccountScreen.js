@@ -276,7 +276,7 @@ function AccountScreen() {
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.container}>
-          <Text style={[styles.title, { color: theme.text }]}>Account</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Hello User!</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
             Log in or create an account to connect with the community, save and
             share events, post events or buddy posts, reply, report, block, or

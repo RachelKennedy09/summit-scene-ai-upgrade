@@ -6,6 +6,7 @@ import request from "supertest";
 import app from "../index.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
+import { getCategoryTagGroupsForCategories } from "../../constants/eventCategories.js";
 
 // Generate unique values so we don't clash if tests run multiple times.
 const testRunId = Date.now();
@@ -83,6 +84,16 @@ describe("SummitScene API", function () {
       "message",
     ]);
     expect(res.body.minimumSupportedVersion).to.be.a("string");
+  });
+
+  it("should show all category tag groups when Other is selected", () => {
+    const groups = getCategoryTagGroupsForCategories(["Other"]);
+    const groupTitles = groups.map((group) => group.title);
+
+    expect(groupTitles).to.include("Community");
+    expect(groupTitles).to.include("Outdoors & Sports");
+    expect(groupTitles).to.not.include("Other");
+    expect(groups.some((group) => group.options.includes("Youth Events"))).to.equal(true);
   });
 
   /* -----------------------------------------
@@ -566,6 +577,30 @@ describe("SummitScene API", function () {
 
     pendingBusinessToken = res.body.token;
     pendingBusinessUserId = res.body.user._id;
+  });
+
+  it("should accept business profile categories without the old category text field", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Category Business ${testRunId}`,
+      email: `business_categories_${testRunId}@example.com`,
+      password: testPassword,
+      role: "business",
+      acceptedAgeTerms: true,
+      town: "Canmore",
+      interests: ["Food & Drink", "Restaurant Specials"],
+      businessVibeTags: ["Social", "Other"],
+      bio: "A real local business using selected categories and tags.",
+      website: "https://example.com",
+    });
+
+    expect(res.status).to.be.oneOf([200, 201]);
+    expect(res.body.user).to.include({
+      role: "business",
+      businessVerificationStatus: "pending",
+      town: "Canmore",
+    });
+    expect(res.body.user.interests).to.include("Food & Drink");
+    expect(res.body.user.interests).to.include("Restaurant Specials");
   });
 
   it("should NOT allow a pending business profile to create an event", async () => {

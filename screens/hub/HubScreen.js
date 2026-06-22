@@ -20,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
+import { AVATARS } from "../../assets/avatars/avatarConfig";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -77,7 +78,14 @@ export default function HubScreen() {
   const navigation = useNavigation();
 
   // Friendly greeting in the Hub header
-  const displayName = user?.name || user?.email || "there";
+  const displayName = user?.name || user?.email || "User";
+  const avatarSource =
+    user?.avatarKey && AVATARS[user.avatarKey]
+      ? AVATARS[user.avatarKey]
+      : user?.profileImageUrl || user?.avatarUrl
+        ? { uri: user.profileImageUrl || user.avatarUrl }
+        : null;
+  const avatarInitial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
   const userInterestCategories = useMemo(
     () => getUserInterestCategories(user),
     [user?.interests]
@@ -603,9 +611,20 @@ export default function HubScreen() {
           // HubFilters renders the filter chips + greeting + result summary at the top of the list.
           ListHeaderComponent={
             <>
-              <View style={styles.hubHeader}>
+              <View style={styles.logoHeader}>
                 <Image source={logo} style={styles.hubLogo} resizeMode="contain" />
-                <View style={styles.hubHeaderCopy}>
+              </View>
+              <View style={styles.greetingHeader}>
+                <View style={[styles.profileAvatar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  {avatarSource ? (
+                    <Image source={avatarSource} style={styles.profileAvatarImage} />
+                  ) : (
+                    <Text style={[styles.profileAvatarInitial, { color: theme.text }]}>
+                      {avatarInitial}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.greetingCopy}>
                   <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
                     Hello {displayName}!
                   </Text>
@@ -702,19 +721,41 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 32,
   },
-  hubHeader: {
+  logoHeader: {
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  greetingHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginTop: 6,
     marginBottom: 12,
   },
   hubLogo: {
-    width: 82,
-    height: 88,
+    width: 136,
+    height: 146,
+  },
+  profileAvatar: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     flexShrink: 0,
   },
-  hubHeaderCopy: {
+  profileAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  profileAvatarInitial: {
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: "900",
+  },
+  greetingCopy: {
     flex: 1,
     minWidth: 0,
   },

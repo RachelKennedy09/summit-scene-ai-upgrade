@@ -607,9 +607,15 @@ router.post("/register", async (req, res) => {
     // If something weird is sent, we fall back to "local"
 
     if (finalRole === "business") {
-      const hasBusinessType =
+      const hasLegacyBusinessType =
         typeof req.body?.lookingFor === "string" &&
         req.body.lookingFor.trim().length > 0;
+      const hasBusinessCategories =
+        Array.isArray(req.body?.interests) &&
+        req.body.interests.some(
+          (interest) =>
+            typeof interest === "string" && interest.trim().length > 0
+        );
       const hasDescription =
         typeof req.body?.bio === "string" && req.body.bio.trim().length > 0;
       const hasTown =
@@ -636,10 +642,15 @@ router.post("/register", async (req, res) => {
           req.body.googleBusinessUrl.trim().length > 0) ||
         hasSocialProof;
 
-      if (!hasTown || !hasBusinessType || !hasDescription || !hasProofLink) {
+      if (
+        !hasTown ||
+        (!hasBusinessCategories && !hasLegacyBusinessType) ||
+        !hasDescription ||
+        !hasProofLink
+      ) {
         return res.status(400).json({
           message:
-            "Business profile requests require a town, category, short description, and one proof link or connected social profile.",
+            "Business profile requests require a town, business categories or tags, short description, and one proof link or connected social profile.",
         });
       }
     }
