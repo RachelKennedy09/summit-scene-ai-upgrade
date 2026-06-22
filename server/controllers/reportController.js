@@ -12,7 +12,7 @@ import { sendModerationReportNotification } from "../services/emailService.js";
 import User from "../models/User.js";
 
 const REPORT_POPULATE_FIELDS =
-  "name email role avatarKey profileImageUrl town userType businessVerificationStatus";
+  "name email role avatarKey profileImageUrl town towns userType businessVerificationStatus";
 const REPORT_STATUSES = ["open", "reviewed", "dismissed"];
 const MODERATION_ACTIONS = ["delete-content", "delete-user"];
 const LEGACY_REASON_MAP = {};
@@ -359,4 +359,3 @@ export async function applyReportAction(req, res) {
     });
   }
 }
-

@@ -19,18 +19,18 @@
       <p class="eyebrow">Account</p>
       <h1>Confirm your new email</h1>
       <p id="status-message">
-        Open Summit Scene to confirm your new email.
+        Confirm your new Summit Scene email from this secure link.
       </p>
       <p id="status-detail">
-        This link works best in the app so your account refreshes right away.
+        This works on your phone or laptop. After it confirms, log in with your new email.
       </p>
       <p>
-        <a id="app-link" class="button primary" href="#">Open Summit Scene</a>
-      </p>
-      <p>
-        <button id="web-confirm-button" class="button secondary" type="button">
-          Confirm in browser instead
+        <button id="web-confirm-button" class="button primary" type="button">
+          Confirm new email
         </button>
+      </p>
+      <p>
+        <a id="app-link" class="button secondary" href="#">Open Summit Scene</a>
       </p>
       <noscript>
         JavaScript is required to confirm your new email from this link. Open
@@ -89,7 +89,7 @@
 
           statusMessage.textContent = "Email changed.";
           statusDetail.textContent =
-            "Your Summit Scene login email has been updated. Return to the app to continue.";
+            "Your Summit Scene login email has been updated. Return to the app and log in with your new email.";
         } catch (error) {
           statusMessage.textContent = "Could not confirm this email change.";
           statusDetail.textContent =
@@ -99,12 +99,6 @@
       }
 
       webConfirmButton.addEventListener("click", confirmEmailChange);
-
-      if (token) {
-        window.setTimeout(() => {
-          window.location.href = appUrl;
-        }, 400);
-      }
     </script>
   </body>
 </html>

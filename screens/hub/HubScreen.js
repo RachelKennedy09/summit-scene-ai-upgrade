@@ -469,9 +469,7 @@ export default function HubScreen() {
   }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
 
   const hubSubtitle =
-    isShowingInterestFirst
-      ? "Your interests appear first while All Categories is selected.\nChoose a category anytime to focus the list."
-      : "Find things to do today.\nChoose a town, category, or wider date range anytime.";
+    "Todays events are shown by default. Choose a category, town, and/or date to focus the list. Switch to Connect to browse the community.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||

@@ -442,34 +442,22 @@ function AccountScreen() {
               </Text>
               <Text style={[styles.statusText, { color: theme.textMuted }]}>
                 Your email is not verified yet. Send a new verification link to
-                {user.email ? ` ${user.email}` : " your login email"}.
+                {user.email ? ` ${user.email}` : " your login email"}. Open it on
+                your phone or in a browser to verify.
               </Text>
-              <View style={styles.emailActionRow}>
-                <Pressable
-                  style={[
-                    styles.emailButton,
-                    { borderColor: theme.accent },
-                    isSendingVerification && styles.buttonDisabled,
-                  ]}
-                  onPress={handleResendVerificationEmail}
-                  disabled={isSendingVerification}
-                >
-                  <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                    {isSendingVerification ? "Sending..." : "Resend verification link"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.emailButton, { borderColor: theme.border }]}
-                  onPress={() => navigation.navigate("VerifyEmail")}
-                  disabled={isSendingVerification}
-                >
-                  <Text
-                    style={[styles.emailButtonText, { color: theme.textMuted }]}
-                  >
-                    Enter token
-                  </Text>
-                </Pressable>
-              </View>
+              <Pressable
+                style={[
+                  styles.emailButton,
+                  { borderColor: theme.accent },
+                  isSendingVerification && styles.buttonDisabled,
+                ]}
+                onPress={handleResendVerificationEmail}
+                disabled={isSendingVerification}
+              >
+                <Text style={[styles.emailButtonText, { color: theme.accent }]}>
+                  {isSendingVerification ? "Sending..." : "Resend verification link"}
+                </Text>
+              </Pressable>
             </View>
           ) : null}
 

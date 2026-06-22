@@ -31,7 +31,7 @@ function normalizeEmail(value = "") {
 const router = express.Router();
 
 const BUSINESS_REVIEW_FIELDS =
-  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town userType bio interests businessVibeTags lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
+  "name email role businessVerificationStatus businessVerificationRequestedAt businessVerifiedAt avatarKey profileImageUrl town towns userType bio interests businessVibeTags lookingFor instagram facebook website googleBusinessUrl phone socialAccounts createdAt";
 
 function getAggregateCount(result, key = "count") {
   return Number(result?.[0]?.[key] || 0);
@@ -468,7 +468,7 @@ router.get("/me/blocked-users", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).populate(
       "blockedUsers",
-      "name role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+      "name role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
     );
 
     if (!user) {
@@ -561,7 +561,7 @@ router.delete("/me", authMiddleware, async (req, res) => {
    PATCH /api/users/me
    AUTH: required (must be logged in)
    - Update the logged-in user's profile fields:
-     name, town, userType, languages, interests, skillLevel, socialAccounts,
+     name, town, towns, userType, languages, interests, skillLevel, socialAccounts,
      bio, lookingFor, instagram, website, phone, avatarKey
    - Only updates fields that are provided and of the correct type.
    - Trims strings before saving.
@@ -649,4 +649,3 @@ router.patch("/me", authMiddleware, async (req, res) => {
 });
 
 export default router;
-

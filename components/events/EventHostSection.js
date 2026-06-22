@@ -17,11 +17,20 @@ import { useTheme } from "../../context/ThemeContext";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 import TrustBadgeRow from "../common/TrustBadges";
 
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
 // Helper: map avatarKey -> local avatar image, then fall back to social photo.
 function getAvatarSource(host) {
   if (host?.avatarKey && AVATARS[host.avatarKey]) return AVATARS[host.avatarKey];
   if (host?.profileImageUrl) return { uri: host.profileImageUrl };
   return null;
+}
+
+function getProfileTownLabel(profile) {
+  const towns = Array.isArray(profile?.towns) ? profile.towns : [];
+  if (towns.length) return towns.join(", ");
+  if (profile?.town === "All") return PROFILE_TOWN_OPTIONS.join(", ");
+  return profile?.town || "";
 }
 
 function ProfileChip({ label, theme }) {
@@ -70,6 +79,7 @@ export default function EventHostSection({
   const businessVibeTags = Array.isArray(host.businessVibeTags)
     ? host.businessVibeTags
     : [];
+  const townLabel = getProfileTownLabel(host);
   const previewTags = [...businessTags, ...businessVibeTags];
   const hostEventsLabel =
     host.role === "business"
@@ -111,7 +121,7 @@ export default function EventHostSection({
               {host.name}
             </Text>
             <Text style={[styles.hostTown, { color: theme.textMuted }]}>
-              {host.town}
+              {townLabel}
             </Text>
             {host.businessType ? (
               <Text style={[styles.hostMeta, { color: theme.textMuted }]}>
@@ -223,7 +233,7 @@ export default function EventHostSection({
                   <Text
                     style={[styles.profileTown, { color: theme.textMuted }]}
                   >
-                    {host.town || "Rockies business"}
+                    {townLabel || "Rockies business"}
                   </Text>
                   <TrustBadgeRow profile={host} theme={theme} />
                 </View>

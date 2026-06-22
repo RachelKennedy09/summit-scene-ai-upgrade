@@ -30,6 +30,15 @@ function formatMemberSince(value) {
   });
 }
 
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
+function getProfileTownLabels(user) {
+  const towns = Array.isArray(user?.towns) ? user.towns : [];
+  if (towns.length) return towns;
+  if (user?.town === "All") return PROFILE_TOWN_OPTIONS;
+  return user?.town ? [user.town === "LL" ? "Lake Louise" : user.town] : [];
+}
+
 function getSocialUrl(account) {
   const value = account.url || account.handle || "";
   if (!value) return "";
@@ -115,7 +124,7 @@ export default function MemberProfileModal({
   );
   const canShowSafetyActions = Boolean(userId) && !isOwnProfile && (onReport || onBlock);
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "M";
-  const town = user.town || "";
+  const townLabels = getProfileTownLabels(user);
   const memberSince = formatMemberSince(user.createdAt);
   const originallyFrom = user.originallyFrom || "";
   const interests = Array.isArray(user.interests) ? user.interests : [];
@@ -222,7 +231,9 @@ export default function MemberProfileModal({
             </View>
 
             <View style={styles.chipRow}>
-              {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
+              {townLabels.map((townLabel) => (
+                <Chip key={townLabel} label={townLabel} theme={theme} />
+              ))}
               {memberSince ? (
                 <Chip label={`Member since ${memberSince}`} theme={theme} />
               ) : null}

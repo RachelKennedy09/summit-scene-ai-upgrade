@@ -20,7 +20,7 @@ import {
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 
 const USER_POPULATE_FIELDS =
-  "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
+  "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
 const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "jobs", "notice", "update"]);
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
@@ -89,7 +89,6 @@ function buildListFilter(query = {}) {
 
   return filter;
 }
-
 function getBuddyCategoryFilterOptions(category) {
   const normalized = typeof category === "string" ? category.trim() : "";
   if (!normalized) return [];
@@ -100,7 +99,6 @@ function getBuddyCategoryFilterOptions(category) {
   const mainCategory = getMainCategoryForTag(normalized);
   return mainCategory ? [normalized, mainCategory] : [normalized];
 }
-
 function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

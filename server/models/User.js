@@ -163,6 +163,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    towns: {
+      type: [String],
+      enum: PROFILE_TOWNS,
+      default: [],
+    },
+
     // Social profile type. Separate from role, which controls permissions.
     userType: {
       type: String,
@@ -338,6 +344,7 @@ userSchema.virtual("safeProfile").get(function () {
     avatarKey: this.avatarKey,
     profileImageUrl: this.profileImageUrl,
     town: this.town,
+    towns: this.towns,
     userType: this.userType,
     languages: this.languages,
     originallyFrom: this.originallyFrom,

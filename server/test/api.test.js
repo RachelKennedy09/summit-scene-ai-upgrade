@@ -603,6 +603,47 @@ describe("SummitScene API", function () {
     expect(res.body.user.interests).to.include("Restaurant Specials");
   });
 
+  it("should accept multiple business profile towns", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Multi Town Business ${testRunId}`,
+      email: `multi_town_business_${testRunId}@example.com`,
+      password: testPassword,
+      role: "business",
+      acceptedAgeTerms: true,
+      town: "Banff",
+      towns: ["Banff", "Canmore", "Lake Louise"],
+      interests: ["Food & Drink"],
+      bio: "A real local business serving multiple mountain towns.",
+      website: "https://example.com",
+    });
+
+    expect(res.status).to.be.oneOf([200, 201]);
+    expect(res.body.user.town).to.equal("Banff");
+    expect(res.body.user.towns).to.deep.equal([
+      "Banff",
+      "Canmore",
+      "Lake Louise",
+    ]);
+  });
+
+  it("should return a clear validation error for overly long business descriptions", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      name: `Long Bio Business ${testRunId}`,
+      email: `long_bio_business_${testRunId}@example.com`,
+      password: testPassword,
+      role: "business",
+      acceptedAgeTerms: true,
+      town: "Banff",
+      interests: ["Food & Drink"],
+      bio: "A".repeat(301),
+      website: "https://example.com",
+    });
+
+    expect(res.status).to.equal(400);
+    expect(res.body.message).to.be.a("string");
+    expect(res.body.message).to.not.equal("Server error during registration.");
+  });
+
   it("should NOT allow a pending business profile to create an event", async () => {
     const res = await request(app)
       .post("/api/events")

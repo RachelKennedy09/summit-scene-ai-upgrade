@@ -190,6 +190,7 @@ export function AuthProvider({ children }) {
       userType: rawUser?.userType ?? "local",
       languages: Array.isArray(rawUser?.languages) ? rawUser.languages : [],
       originallyFrom: rawUser?.originallyFrom ?? "",
+      towns: Array.isArray(rawUser?.towns) ? rawUser.towns : [],
       interests: Array.isArray(rawUser?.interests) ? rawUser.interests : [],
       skillLevel: rawUser?.skillLevel ?? {},
       socialAccounts: Array.isArray(rawUser?.socialAccounts)
@@ -383,6 +384,7 @@ export function AuthProvider({ children }) {
     password,
     role,
     town,
+    towns,
     userType,
     languages,
     originallyFrom,
@@ -416,6 +418,7 @@ export function AuthProvider({ children }) {
             password,
             role,
             town: town || undefined,
+            towns: Array.isArray(towns) ? towns : undefined,
             userType: userType || undefined,
             languages: Array.isArray(languages) ? languages : undefined,
             originallyFrom: originallyFrom || undefined,

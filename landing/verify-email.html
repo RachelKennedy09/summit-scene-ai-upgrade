@@ -19,23 +19,22 @@
       <p class="eyebrow">Account</p>
       <h1>Verify your email</h1>
       <p id="status-message">
-        Open Summit Scene to verify your email.
+        Verify your Summit Scene email from this secure link.
       </p>
       <p id="status-detail">
-        This link works best in the app so your account page refreshes right away.
+        This works on your phone or laptop. After it verifies, return to the app.
       </p>
       <p>
-        <a id="app-link" class="button primary" href="#">Open Summit Scene</a>
-      </p>
-      <p>
-        <button id="web-verify-button" class="button secondary" type="button">
-          Verify in browser instead
+        <button id="web-verify-button" class="button primary" type="button">
+          Verify email
         </button>
+      </p>
+      <p>
+        <a id="app-link" class="button secondary" href="#">Open Summit Scene</a>
       </p>
       <noscript>
         JavaScript is required to verify your email from this link. Open Summit
-        Scene, go to Account, tap Enter verification token, and paste the token
-        from this URL.
+        Scene and request a new verification link if this page does not work.
       </noscript>
     </main>
 
@@ -64,7 +63,7 @@
 
       async function verifyEmail() {
         if (!token) {
-          statusMessage.textContent = "No verification token found.";
+          statusMessage.textContent = "No verification link details found.";
           statusDetail.textContent =
             "Open the latest verification email and use the full link.";
           return;
@@ -89,7 +88,7 @@
 
           statusMessage.textContent = "Email verified.";
           statusDetail.textContent =
-            "Your Summit Scene account email is verified. You can return to the app and log in.";
+            "Your Summit Scene account email is verified. Open Summit Scene and refresh your account page if needed.";
         } catch (error) {
           statusMessage.textContent = "Could not verify this email.";
           statusDetail.textContent =
@@ -99,12 +98,6 @@
       }
 
       webVerifyButton.addEventListener("click", verifyEmail);
-
-      if (token) {
-        window.setTimeout(() => {
-          window.location.href = appUrl;
-        }, 400);
-      }
     </script>
   </body>
 </html>

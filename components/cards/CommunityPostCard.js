@@ -11,6 +11,15 @@ import { AVATARS } from "../../assets/avatars/avatarConfig";
 import TrustBadgeRow from "../common/TrustBadges";
 import CommunityRepliesSection from "./CommunityRepliesSection";
 
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
+function getProfileTownLabel(profile) {
+  const towns = Array.isArray(profile?.towns) ? profile.towns : [];
+  if (towns.length) return towns.join(", ");
+  if (profile?.town === "All") return PROFILE_TOWN_OPTIONS.join(", ");
+  return profile?.town || "";
+}
+
 // ----- Helpers -----
 // Derive author identity info from post.user + top-level post fields.
 // Normalizes older posts that may not have full user objects.
@@ -28,7 +37,9 @@ function getPostAuthor(post) {
   const avatarKey = userObj?.avatarKey || post.avatarKey || null;
   const profileImageUrl = userObj?.profileImageUrl || post.profileImageUrl || "";
 
-  const town = userObj?.town || post.town || "";
+  const town =
+    getProfileTownLabel(userObj) ||
+    (post.town === "All" ? PROFILE_TOWN_OPTIONS.join(", ") : post.town || "");
   const userType = userObj?.userType || "";
   const originallyFrom = userObj?.originallyFrom || "";
   const interests = userObj?.interests || [];
@@ -54,6 +65,7 @@ function getPostAuthor(post) {
     avatarKey,
     profileImageUrl,
     town,
+    towns: userObj?.towns || [],
     userType,
     originallyFrom,
     interests,

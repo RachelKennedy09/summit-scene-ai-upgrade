@@ -19,6 +19,15 @@ import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 import TrustBadgeRow from "../common/TrustBadges";
 
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
+function getProfileTownLabel(profile) {
+  const towns = Array.isArray(profile?.towns) ? profile.towns : [];
+  if (towns.length) return towns.join(", ");
+  if (profile?.town === "All") return PROFILE_TOWN_OPTIONS.join(", ");
+  return profile?.town || "";
+}
+
 // Map avatarKey -> local image source for replies
 function getAvatarSource(avatarKey, profileImageUrl) {
   if (avatarKey && AVATARS[avatarKey]) return AVATARS[avatarKey];
@@ -90,7 +99,7 @@ export default function CommunityRepliesSection({
               replyAvatarKey,
               replyProfileImageUrl
             );
-            const replyTown = replyUserObj?.town || "";
+            const replyTown = getProfileTownLabel(replyUserObj);
             const replyRole = replyUserObj?.role || "local";
             const replyUserId = replyUserObj?._id || replyUserObj?.id || "";
             const isOwnReply =
@@ -103,6 +112,7 @@ export default function CommunityRepliesSection({
                   id: replyUserId,
                   role: replyRole,
                   town: replyTown,
+                  towns: replyUserObj.towns || [],
                   userType: replyUserObj.userType || "",
                   originallyFrom: replyUserObj.originallyFrom || "",
                   interests: replyUserObj.interests || [],

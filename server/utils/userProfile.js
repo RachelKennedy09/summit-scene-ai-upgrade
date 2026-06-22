@@ -36,6 +36,13 @@ function normalizeStringArray(value) {
   return normalized;
 }
 
+function normalizeTownArray(value) {
+  const towns = normalizeStringArray(value);
+  if (!towns) return undefined;
+
+  return towns.filter((town) => PROFILE_TOWNS.includes(town) && town !== "All");
+}
+
 function normalizeSkillLevel(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
@@ -103,6 +110,7 @@ export function buildSafeUser(user) {
     avatarKey: user.avatarKey,
     profileImageUrl: user.profileImageUrl,
     town: user.town,
+    towns: user.towns || [],
     userType: user.userType || "local",
     languages: user.languages || [],
     originallyFrom: user.originallyFrom,
@@ -145,6 +153,11 @@ export function buildProfileUpdates(body = {}) {
   if (typeof body.town === "string") {
     const town = normalizeEnum(body.town, PROFILE_TOWNS);
     if (town) updates.town = town;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "towns")) {
+    const towns = normalizeTownArray(body.towns);
+    if (towns) updates.towns = towns;
   }
 
   if (typeof body.userType === "string") {

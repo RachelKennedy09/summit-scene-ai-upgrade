@@ -67,6 +67,14 @@ function Section({ label, children, theme }) {
 }
 
 const INTEREST_PREVIEW_COUNT = 4;
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
+function getProfileTownLabels(user) {
+  const towns = Array.isArray(user?.towns) ? user.towns : [];
+  if (towns.length) return towns;
+  if (user?.town === "All") return PROFILE_TOWN_OPTIONS;
+  return user?.town ? [user.town === "LL" ? "Lake Louise" : user.town] : [];
+}
 
 export default function ProfileCard({
   theme,
@@ -87,7 +95,7 @@ export default function ProfileCard({
 
   const displayName = user?.name || "SummitScene member";
   const initial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
-  const town = user?.town || "";
+  const townLabels = getProfileTownLabels(user);
   const originallyFrom = user?.originallyFrom || "";
   const interests = Array.isArray(user?.interests) ? user.interests : [];
   const businessVibeTags = Array.isArray(user?.businessVibeTags)
@@ -163,7 +171,9 @@ export default function ProfileCard({
       </View>
 
       <View style={styles.chipRow}>
-        {town ? <Chip label={town === "LL" ? "Lake Louise" : town} theme={theme} /> : null}
+        {townLabels.map((townLabel) => (
+          <Chip key={townLabel} label={townLabel} theme={theme} />
+        ))}
         {originallyFrom ? (
           <Chip label={`Originally from ${originallyFrom}`} theme={theme} />
         ) : null}

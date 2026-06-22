@@ -175,13 +175,15 @@ export async function sendVerificationEmail({ to, token }) {
     subject: "Verify your Summit Scene email",
     devLink: link,
     text: [
-      "Verify your Summit Scene email address in the app:",
-      appLink,
-      "",
-      "If the app link does not open, use this web fallback:",
+      "Verify your Summit Scene email address:",
       link,
       "",
+      "This secure link opens a Summit Scene verification page. On your phone, you can open the app from there. On a laptop, you can verify in the browser.",
+      "",
       "This link expires in 24 hours.",
+      "",
+      "Direct app link:",
+      appLink,
     ].join("\n"),
   });
 }
@@ -215,13 +217,15 @@ export async function sendEmailChangeConfirmation({ to, token }) {
     subject: "Confirm your new Summit Scene email",
     devLink: link,
     text: [
-      "Confirm this as your new Summit Scene email address in the app:",
-      appLink,
-      "",
-      "If the app link does not open, use this web fallback:",
+      "Confirm this as your new Summit Scene email address:",
       link,
       "",
+      "This secure link opens a Summit Scene confirmation page. On your phone, you can open the app from there. On a laptop, you can confirm in the browser.",
+      "",
       "This link expires in 24 hours.",
+      "",
+      "Direct app link:",
+      appLink,
     ].join("\n"),
   });
 }

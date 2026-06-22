@@ -619,7 +619,11 @@ router.post("/register", async (req, res) => {
       const hasDescription =
         typeof req.body?.bio === "string" && req.body.bio.trim().length > 0;
       const hasTown =
-        typeof req.body?.town === "string" && req.body.town.trim().length > 0;
+        (typeof req.body?.town === "string" && req.body.town.trim().length > 0) ||
+        (Array.isArray(req.body?.towns) &&
+          req.body.towns.some(
+            (town) => typeof town === "string" && town.trim().length > 0
+          ));
       const hasSocialProof =
         Array.isArray(req.body?.socialAccounts) &&
         req.body.socialAccounts.some(
@@ -700,6 +704,15 @@ router.post("/register", async (req, res) => {
     console.error("Error in POST /api/auth/register:", error);
     if (error?.code === 11000 && error?.keyPattern?.email) {
       return res.status(409).json({ message: "Email is already registered." });
+    }
+
+    if (error?.name === "ValidationError") {
+      const firstError = Object.values(error.errors || {})[0];
+      return res.status(400).json({
+        message:
+          firstError?.message ||
+          "Some profile details are too long or invalid. Please review your information and try again.",
+      });
     }
 
     res.status(500).json({ message: "Server error during registration." });

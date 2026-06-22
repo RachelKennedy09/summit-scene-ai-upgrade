@@ -49,7 +49,7 @@ const VALID_WEEKDAYS = [
 ];
 
 const USER_POPULATE_FIELDS =
-  "name email role isAdmin businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
+  "name email role isAdmin businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
 
 function getUserId(value) {
   if (!value) return "";
@@ -549,7 +549,7 @@ export async function getAllEvents(req, res) {
       .sort({ date: 1, createdAt: -1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     const filteredEvents =
@@ -1258,7 +1258,7 @@ export async function getMyEvents(req, res) {
       .sort({ date: 1 })
       .populate(
         "createdBy",
-        "name email role businessVerificationStatus avatarKey profileImageUrl town userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
+        "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
 
     return res.json(events.map(decorateEventForResponse));
@@ -1270,4 +1270,3 @@ export async function getMyEvents(req, res) {
     });
   }
 }
-

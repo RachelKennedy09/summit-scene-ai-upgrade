@@ -16,6 +16,7 @@ import {
   Keyboard,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -51,7 +52,7 @@ const SOCIAL_PROVIDERS = [
     actionLabel: "Add Facebook link",
   },
 ];
-const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
+const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
@@ -98,6 +99,7 @@ const LANGUAGE_OPTIONS = [
   "Vietnamese",
 ];
 const LOCAL_STEPS = [
+  "accountType",
   "name",
   "login",
   "userType",
@@ -109,6 +111,7 @@ const LOCAL_STEPS = [
   "review",
 ];
 const BUSINESS_STEPS = [
+  "accountType",
   "name",
   "login",
   "business",
@@ -119,6 +122,7 @@ const BUSINESS_STEPS = [
 const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]);
 
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
+const BIO_MAX_LENGTH = 300;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
 const LANGUAGE_SUGGESTION_LIMIT = 7;
 
@@ -165,6 +169,20 @@ function getLanguageSuggestions(query, selectedLanguages = []) {
 
 function cleanLanguageValue(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
+}
+
+function getCharacterCountColor(value, limit, theme) {
+  return String(value || "").length > limit ? "#D14343" : theme.textMuted;
+}
+
+function getProfileTownLabels({ role, town, towns = [] }) {
+  if (role === "business") {
+    const selectedTowns = Array.isArray(towns) ? towns : [];
+    if (selectedTowns.length) return selectedTowns;
+    if (town === "All") return TOWN_OPTIONS;
+  }
+
+  return town && town !== "All" ? [town === "LL" ? "Lake Louise" : town] : [];
 }
 
 function buildSocialAccounts(values, profileImageUrl = "") {
@@ -414,6 +432,7 @@ function SignupProfilePreview({
   name,
   email,
   town,
+  towns = [],
   userType,
   originallyFrom,
   languages,
@@ -430,6 +449,7 @@ function SignupProfilePreview({
   const socialAccounts = Object.entries(socialValues || {})
     .filter(([, value]) => value?.trim())
     .map(([provider, value]) => `${titleCase(provider)}: ${value.trim()}`);
+  const townLabels = getProfileTownLabels({ role, town, towns });
 
   return (
     <View
@@ -469,7 +489,9 @@ function SignupProfilePreview({
       </View>
 
       <View style={styles.reviewChipRow}>
-        {town ? <ReviewChip label={town} theme={theme} /> : null}
+        {townLabels.map((townLabel) => (
+          <ReviewChip key={townLabel} label={townLabel} theme={theme} />
+        ))}
         {!isBusiness && userType ? (
           <ReviewChip
             label={
@@ -580,6 +602,7 @@ function RegisterScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [role, setRole] = useState(initialRole);
   const [town, setTown] = useState("");
+  const [businessTowns, setBusinessTowns] = useState([]);
   const [userType, setUserType] = useState("local");
   const [originallyFrom, setOriginallyFrom] = useState("");
   const [originCitySuggestions, setOriginCitySuggestions] = useState([]);
@@ -623,6 +646,16 @@ function RegisterScreen() {
       }
 
       return [...current, interest];
+    });
+  }
+
+  function handleToggleBusinessTown(nextTown) {
+    setBusinessTowns((current) => {
+      if (current.includes(nextTown)) {
+        return current.filter((item) => item !== nextTown);
+      }
+
+      return [...current, nextTown];
     });
   }
 
@@ -820,10 +853,18 @@ function RegisterScreen() {
     }
 
     if (currentStep === "business") {
-      if (!town.trim() || !interests.length || !bio.trim()) {
+      if (bio.trim().length > BIO_MAX_LENGTH) {
+        Alert.alert(
+          "Description too long",
+          `Please keep your short description under ${BIO_MAX_LENGTH} characters.`
+        );
+        return false;
+      }
+
+      if (!businessTowns.length || !interests.length || !bio.trim()) {
         Alert.alert(
           "Business profile info needed",
-          "Please add your town, business categories or tags, and short description."
+          "Please choose at least one town, add business categories or tags, and add a short description."
         );
         return false;
       }
@@ -873,10 +914,18 @@ function RegisterScreen() {
           Object.values(socialValues).some((value) => value.trim()) ||
           googleBusinessUrl.trim()
       );
-      if (!town.trim() || !interests.length || !bio.trim() || !hasProofLink) {
+      if (bio.trim().length > BIO_MAX_LENGTH) {
+        Alert.alert(
+          "Description too long",
+          `Please keep your short description under ${BIO_MAX_LENGTH} characters.`
+        );
+        return;
+      }
+
+      if (!businessTowns.length || !interests.length || !bio.trim() || !hasProofLink) {
         Alert.alert(
           "Business verification info needed",
-          "Please add your business town, business categories or tags, short description, and one proof link or connected social profile so Summit Scene can review the profile."
+          "Please choose at least one business town, add business categories or tags, a short description, and one proof link or connected social profile so Summit Scene can review the profile."
         );
         return;
       }
@@ -898,7 +947,8 @@ function RegisterScreen() {
         email,
         password,
         role,
-        town,
+        town: isBusiness ? businessTowns[0] : town,
+        towns: isBusiness ? businessTowns : undefined,
         userType: isLocal ? userType : undefined,
         originallyFrom: isLocal ? originallyFrom : undefined,
         languages: isLocal ? languages : undefined,
@@ -949,9 +999,9 @@ function RegisterScreen() {
     setStepIndex((current) => Math.min(current + 1, steps.length - 1));
   }
 
-  function switchRole(nextRole) {
+  function chooseAccountType(nextRole) {
     setRole(nextRole);
-    setStepIndex(0);
+    setStepIndex(1);
     setHasAcceptedAgreements(false);
   }
 
@@ -1009,47 +1059,69 @@ function RegisterScreen() {
     setProfileImageUrl("");
   }
 
-  function renderBusinessLink() {
-    return isLocal ? (
-      <Pressable
-        style={[
-          styles.businessLinkBox,
-          {
-            borderColor: theme.accent,
-            backgroundColor: theme.accentSoft || theme.card,
-          },
-        ]}
-        onPress={() => switchRole("business")}
-      >
-        <Text style={[styles.businessLinkTitle, { color: theme.text }]}>
-          Create a business or organizer account
+  function renderAccountTypeChoice() {
+    return (
+      <>
+        <Text style={[styles.stepTitle, { color: theme.text }]}>
+          Create your account
         </Text>
-        <Text style={[styles.businessLinkText, { color: theme.textMuted }]}>
-          Tap here if you are signing up for a business, venue, tour guide, tour company, or event organizer.
+        <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
+          Choose the account type that matches how you will use Summit Scene.
         </Text>
-      </Pressable>
-    ) : (
-      <Pressable
-        style={[
-          styles.businessLinkBox,
-          {
-            borderColor: theme.accent,
-            backgroundColor: theme.accentSoft || theme.card,
-          },
-        ]}
-        onPress={() => switchRole("local")}
-      >
-        <Text style={[styles.businessLinkTitle, { color: theme.text }]}>
-          Create a community account instead
-        </Text>
-        <Text style={[styles.businessLinkText, { color: theme.textMuted }]}>
-          Tap here if this account is for a person joining the community, not an official event host.
-        </Text>
-      </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.accountChoiceCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.accent,
+            },
+            pressed && styles.pressedCard,
+          ]}
+          onPress={() => chooseAccountType("local")}
+        >
+          <Text style={[styles.accountChoiceTitle, { color: theme.text }]}>
+            User account
+          </Text>
+          <Text style={[styles.accountChoiceText, { color: theme.textMuted }]}>
+            For individuals looking for local events, community plans, groups,
+            and ways to connect with people around Banff, Canmore, and Lake
+            Louise.
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.accountChoiceCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+            pressed && styles.pressedCard,
+          ]}
+          onPress={() => chooseAccountType("business")}
+        >
+          <Text style={[styles.accountChoiceTitle, { color: theme.text }]}>
+            Business account
+          </Text>
+          <Text style={[styles.accountChoiceText, { color: theme.textMuted }]}>
+            For businesses, venues, tour guides, tour companies, and organizers
+            in Banff, Canmore, or Lake Louise that will post official events.
+          </Text>
+          <Text style={[styles.accountChoiceNote, { color: theme.textMuted }]}>
+            Event posting becomes available after Summit Scene verifies the
+            business account.
+          </Text>
+        </Pressable>
+      </>
     );
   }
 
   function renderStep() {
+    if (currentStep === "accountType") {
+      return renderAccountTypeChoice();
+    }
+
     if (currentStep === "name") {
       return (
         <>
@@ -1061,7 +1133,6 @@ function RegisterScreen() {
               ? "This is the public business or organizer name people will see on your event posts and profile."
               : "This is what people will see on posts, replies, and profiles."}
           </Text>
-          {renderBusinessLink()}
           <TextInput
             style={[
               styles.input,
@@ -1171,7 +1242,6 @@ function RegisterScreen() {
               Passwords do not match.
             </Text>
           ) : null}
-          {renderBusinessLink()}
         </>
       );
     }
@@ -1408,7 +1478,16 @@ function RegisterScreen() {
             placeholderTextColor={theme.textMuted}
             multiline
             numberOfLines={4}
+            maxLength={BIO_MAX_LENGTH}
           />
+          <Text
+            style={[
+              styles.characterCountText,
+              { color: getCharacterCountColor(bio, BIO_MAX_LENGTH, theme) },
+            ]}
+          >
+            {bio.length} / {BIO_MAX_LENGTH} characters
+          </Text>
         </>
       );
     }
@@ -1558,16 +1637,19 @@ function RegisterScreen() {
             Tour guides and tour companies can use this for tours, clinics,
             retreats, and guided experiences.
           </Text>
-          <Text style={[styles.label, { color: theme.text }]}>
+          <Text style={[styles.label, styles.businessSectionLabel, { color: theme.text }]}>
             Where is it located?
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Choose every town your business serves.
           </Text>
           <ChipGroup
             options={TOWN_OPTIONS}
-            value={town}
-            onChange={setTown}
+            values={businessTowns}
+            onToggle={handleToggleBusinessTown}
             theme={theme}
           />
-          <Text style={[styles.label, { color: theme.text }]}>
+          <Text style={[styles.label, styles.businessSectionLabel, { color: theme.text }]}>
             Business categories and tags
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1581,7 +1663,7 @@ function RegisterScreen() {
             theme={theme}
             includeGroupTitleOption
           />
-          <Text style={[styles.label, { color: theme.text }]}>
+          <Text style={[styles.label, styles.businessSectionLabel, { color: theme.text }]}>
             Business vibe
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1594,7 +1676,7 @@ function RegisterScreen() {
             onToggle={handleToggleBusinessVibeTag}
             theme={theme}
           />
-          <Text style={[styles.label, { color: theme.text }]}>
+          <Text style={[styles.label, styles.businessSectionLabel, { color: theme.text }]}>
             Short description
           </Text>
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
@@ -1616,7 +1698,16 @@ function RegisterScreen() {
             onChangeText={setBio}
             multiline
             numberOfLines={4}
+            maxLength={BIO_MAX_LENGTH}
           />
+          <Text
+            style={[
+              styles.characterCountText,
+              { color: getCharacterCountColor(bio, BIO_MAX_LENGTH, theme) },
+            ]}
+          >
+            {bio.length} / {BIO_MAX_LENGTH} characters
+          </Text>
         </>
       );
     }
@@ -1719,6 +1810,7 @@ function RegisterScreen() {
           name={name}
           email={email}
           town={town}
+          towns={businessTowns}
           userType={userType}
           originallyFrom={originallyFrom}
           languages={languages}
@@ -1832,55 +1924,57 @@ function RegisterScreen() {
 
                 {renderStep()}
 
-                <View style={styles.buttonRow}>
-                  {stepIndex > 0 ? (
+                {currentStep !== "accountType" ? (
+                  <View style={styles.buttonRow}>
+                    {stepIndex > 0 ? (
+                      <AppButton
+                        title="Back"
+                        onPress={goBack}
+                        disabled={isSubmitting || isAuthLoading}
+                        variant="outline"
+                        style={styles.flexButton}
+                      />
+                    ) : null}
+                    {OPTIONAL_STEPS.has(currentStep) ? (
+                      <AppButton
+                        title="Skip"
+                        onPress={skipStep}
+                        disabled={isSubmitting || isAuthLoading}
+                        variant="outline"
+                        style={styles.flexButton}
+                      />
+                    ) : null}
                     <AppButton
-                      title="Back"
-                      onPress={goBack}
-                      disabled={isSubmitting || isAuthLoading}
-                      variant="outline"
-                      style={styles.flexButton}
+                      title={
+                        isFinalStep
+                          ? isSubmitting || isAuthLoading
+                            ? "Creating account..."
+                            : "Create Account"
+                          : "Next"
+                      }
+                      onPress={goNext}
+                      disabled={
+                        isSubmitting ||
+                        isAuthLoading ||
+                        (isFinalStep && !hasAcceptedAgreements)
+                      }
+                      loading={false}
+                      size="lg"
+                      style={[
+                        styles.flexButton,
+                        {
+                          backgroundColor: theme.accent,
+                          borderColor: theme.accent,
+                          opacity:
+                            isFinalStep && !hasAcceptedAgreements ? 0.56 : 1,
+                        },
+                      ]}
+                      textStyle={{
+                        color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
+                      }}
                     />
-                  ) : null}
-                  {OPTIONAL_STEPS.has(currentStep) ? (
-                    <AppButton
-                      title="Skip"
-                      onPress={skipStep}
-                      disabled={isSubmitting || isAuthLoading}
-                      variant="outline"
-                      style={styles.flexButton}
-                    />
-                  ) : null}
-                  <AppButton
-                    title={
-                      isFinalStep
-                        ? isSubmitting || isAuthLoading
-                          ? "Creating account..."
-                          : "Create Account"
-                        : "Next"
-                    }
-                    onPress={goNext}
-                    disabled={
-                      isSubmitting ||
-                      isAuthLoading ||
-                      (isFinalStep && !hasAcceptedAgreements)
-                    }
-                    loading={isFinalStep && (isSubmitting || isAuthLoading)}
-                    size="lg"
-                    style={[
-                      styles.flexButton,
-                      {
-                        backgroundColor: theme.accent,
-                        borderColor: theme.accent,
-                        opacity:
-                          isFinalStep && !hasAcceptedAgreements ? 0.56 : 1,
-                      },
-                    ]}
-                    textStyle={{
-                      color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
-                    }}
-                  />
-                </View>
+                  </View>
+                ) : null}
 
                 <Pressable onPress={() => navigation.navigate("Login")}>
                   <Text style={[styles.linkText, { color: theme.accent }]}>
@@ -1901,6 +1995,29 @@ function RegisterScreen() {
                 </Pressable>
               </View>
             </ScrollView>
+            {isFinalStep && (isSubmitting || isAuthLoading) ? (
+              <View
+                style={[
+                  styles.savingOverlay,
+                  { backgroundColor: `${theme.background}E6` },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.savingCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <ActivityIndicator size="large" color={theme.accent} />
+                  <Text style={[styles.savingTitle, { color: theme.text }]}>
+                    Creating account...
+                  </Text>
+                  <Text style={[styles.savingText, { color: theme.textMuted }]}>
+                    Saving your profile.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -1972,6 +2089,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  businessSectionLabel: {
+    marginTop: 18,
+  },
   input: {
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -1982,6 +2102,13 @@ const styles = StyleSheet.create({
   validationText: {
     fontSize: 12,
     fontWeight: "700",
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  characterCountText: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "right",
     marginTop: -8,
     marginBottom: 12,
   },
@@ -2030,6 +2157,7 @@ const styles = StyleSheet.create({
   },
   interestGroups: {
     gap: 10,
+    marginBottom: 4,
   },
   interestGroup: {
     borderWidth: 1,
@@ -2080,21 +2208,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-  businessLinkBox: {
+  accountChoiceCard: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 4,
-    marginBottom: 16,
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 12,
   },
-  businessLinkTitle: {
+  accountChoiceTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
+  accountChoiceText: {
     fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 3,
+    lineHeight: 20,
   },
-  businessLinkText: {
-    fontSize: 12,
-    lineHeight: 17,
+  accountChoiceNote: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  pressedCard: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   helperText: {
     fontSize: 12,
@@ -2288,6 +2426,33 @@ const styles = StyleSheet.create({
   },
   flexButton: {
     flex: 1,
+  },
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  savingCard: {
+    width: "100%",
+    maxWidth: 320,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 22,
+    alignItems: "center",
+  },
+  savingTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+    marginTop: 14,
+    textAlign: "center",
+  },
+  savingText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+    textAlign: "center",
   },
   linkText: {
     marginTop: 16,

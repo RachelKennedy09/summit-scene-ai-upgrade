@@ -12,10 +12,19 @@ import TrustBadgeRow from "../common/TrustBadges";
 import { colors } from "../../theme/colors";
 import { getVisibleTags } from "../../utils/categoryVisuals";
 
+const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
+
 function titleCase(value) {
   return String(value || "")
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getProfileTownLabel(profile) {
+  const towns = Array.isArray(profile?.towns) ? profile.towns : [];
+  if (towns.length) return towns.join(", ");
+  if (profile?.town === "All") return PROFILE_TOWN_OPTIONS.join(", ");
+  return profile?.town || "";
 }
 
 function getAuthor(post) {
@@ -31,6 +40,7 @@ function getAuthor(post) {
     avatarKey: user.avatarKey,
     profileImageUrl: user.profileImageUrl || "",
     town: user.town,
+    towns: user.towns || [],
     userType: user.userType,
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
@@ -68,6 +78,7 @@ function getUserProfile(user, fallbackName = "Member") {
     avatarKey: user.avatarKey,
     profileImageUrl: user.profileImageUrl || "",
     town: user.town,
+    towns: user.towns || [],
     userType: user.userType,
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
@@ -351,7 +362,7 @@ export default function BuddyPostCard({
   const postedAgoText = formatPostedAgo(post.createdAt);
   const recurrenceText = getRecurrenceLabel(post);
   const activityLabel = getActivityLabel(post);
-  const townLabel = post.town || author.town || "";
+  const townLabel = post.town || getProfileTownLabel(author);
   const skillLabel = hasSkill ? titleCase(post.skillLevel) : "";
   const groupSizeLabel = shouldShowGroupSize(post)
     ? getGroupSizeLabel(post.groupSizePreference)
@@ -505,7 +516,7 @@ export default function BuddyPostCard({
               {author.name}
             </Text>
             <Text style={[styles.authorMeta, { color: theme.textMuted }]}>
-              {[author.town, titleCase(author.userType)].filter(Boolean).join(" | ") ||
+              {[getProfileTownLabel(author), titleCase(author.userType)].filter(Boolean).join(" | ") ||
                 "Community member"}
             </Text>
             {postedAgoText ? (

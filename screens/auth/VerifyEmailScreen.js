@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "../../components/common/AppButton";
 import { useAuth } from "../../context/AuthContext";
@@ -8,7 +8,7 @@ import { useTheme } from "../../context/ThemeContext";
 export default function VerifyEmailScreen({ navigation, route }) {
   const { verifyEmail, confirmEmailChange } = useAuth();
   const { theme } = useTheme();
-  const [token, setToken] = useState(route?.params?.token || "");
+  const [token] = useState(route?.params?.token || "");
   const mode = route?.params?.mode || "verify";
   const [loading, setLoading] = useState(false);
   const autoSubmittedRef = useRef(false);
@@ -16,7 +16,10 @@ export default function VerifyEmailScreen({ navigation, route }) {
   async function handleSubmit() {
     const trimmedToken = token.trim();
     if (!trimmedToken) {
-      Alert.alert("Verification token needed", "Please enter the token from your email.");
+      Alert.alert(
+        "Verification link needed",
+        "Open the latest verification link from your email."
+      );
       return;
     }
 
@@ -61,34 +64,26 @@ export default function VerifyEmailScreen({ navigation, route }) {
             ? mode === "emailChange"
               ? "Confirming your new email from the link..."
               : "Verifying your email from the link..."
-            : "Paste the token from your email if it was not filled automatically. Check your junk or spam folder if you do not see the email."}
+            : mode === "emailChange"
+              ? "Open the latest email-change confirmation link from your inbox. It works from your phone or a browser."
+              : "Open the latest verification link from your inbox. It works from your phone or a browser."}
         </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.card, borderColor: theme.border, color: theme.text },
-          ]}
-          value={token}
-          onChangeText={setToken}
-          placeholder="Verification token"
-          placeholderTextColor={theme.textMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <AppButton
-          title={
-            loading
-              ? mode === "emailChange"
-                ? "Confirming..."
-                : "Verifying..."
-              : mode === "emailChange"
-                ? "Confirm Email Change"
-                : "Verify Email"
-          }
-          onPress={handleSubmit}
-          loading={loading}
-          size="lg"
-        />
+        {token.trim() ? (
+          <AppButton
+            title={
+              loading
+                ? mode === "emailChange"
+                  ? "Confirming..."
+                  : "Verifying..."
+                : mode === "emailChange"
+                  ? "Confirm Email Change"
+                  : "Verify Email"
+            }
+            onPress={handleSubmit}
+            loading={loading}
+            size="lg"
+          />
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -99,5 +94,4 @@ const styles = StyleSheet.create({
   inner: { padding: 20, gap: 14 },
   title: { fontSize: 24, fontWeight: "900" },
   copy: { fontSize: 14, lineHeight: 20 },
-  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11 },
 });

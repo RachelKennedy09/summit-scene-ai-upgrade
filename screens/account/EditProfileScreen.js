@@ -42,7 +42,8 @@ const SOCIAL_PROVIDERS = [
   },
 ];
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
-const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise", "All"];
+const BIO_MAX_LENGTH = 300;
+const TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 const USER_TYPE_OPTIONS = [
   { value: "local", label: "Local" },
   { value: "seasonal", label: "Seasonal" },
@@ -286,6 +287,15 @@ export default function EditProfileScreen({ navigation }) {
   // Pre-fill fields from current user
   const [name, setName] = useState(user?.name || "");
   const [town, setTown] = useState(user?.town || "");
+  const [businessTowns, setBusinessTowns] = useState(() => {
+    if (Array.isArray(user?.towns) && user.towns.length) {
+      return user.towns.filter((item) => TOWN_OPTIONS.includes(item));
+    }
+    if (user?.town === "All") {
+      return TOWN_OPTIONS;
+    }
+    return user?.town && TOWN_OPTIONS.includes(user.town) ? [user.town] : [];
+  });
   const [userType, setUserType] = useState(user?.userType || "local");
   const [originallyFrom, setOriginallyFrom] = useState(user?.originallyFrom || "");
   const [languagesText, setLanguagesText] = useState(
@@ -346,10 +356,18 @@ export default function EditProfileScreen({ navigation }) {
             Object.values(socialValues).some((value) => value.trim()) ||
             googleBusinessUrl.trim()
         );
-        if (!name.trim() || !town.trim() || !interests.length || !bio.trim()) {
+        if (bio.trim().length > BIO_MAX_LENGTH) {
+          Alert.alert(
+            "Description too long",
+            `Please keep your short description under ${BIO_MAX_LENGTH} characters.`
+          );
+          return;
+        }
+
+        if (!name.trim() || !businessTowns.length || !interests.length || !bio.trim()) {
           Alert.alert(
             "Business verification info needed",
-            "Please add business name, town, business categories or tags, and a short description."
+            "Please add business name, at least one town, business categories or tags, and a short description."
           );
           return;
         }
@@ -369,7 +387,8 @@ export default function EditProfileScreen({ navigation }) {
 
       const updates = {
         name,
-        town,
+        town: isBusiness ? businessTowns[0] : town,
+        towns: isBusiness ? businessTowns : undefined,
         bio,
         userType: isBusiness ? undefined : userType,
         originallyFrom: isBusiness ? undefined : originallyFrom,
@@ -421,6 +440,16 @@ export default function EditProfileScreen({ navigation }) {
       }
 
       return [...current, interest];
+    });
+  }
+
+  function handleToggleBusinessTown(nextTown) {
+    setBusinessTowns((current) => {
+      if (current.includes(nextTown)) {
+        return current.filter((item) => item !== nextTown);
+      }
+
+      return [...current, nextTown];
     });
   }
 
@@ -526,10 +555,13 @@ export default function EditProfileScreen({ navigation }) {
               <Text style={[styles.label, { color: theme.text }]}>
                 Where is your business located?
               </Text>
+              <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                Choose every town your business serves.
+              </Text>
               <ChipGroup
                 options={TOWN_OPTIONS}
-                value={town}
-                onChange={setTown}
+                values={businessTowns}
+                onToggle={handleToggleBusinessTown}
                 theme={theme}
               />
             </>
@@ -666,6 +698,7 @@ export default function EditProfileScreen({ navigation }) {
                 : "A little about you or what you like doing around town..."
             }
             placeholderTextColor={theme.textMuted}
+            maxLength={BIO_MAX_LENGTH}
           />
 
           <Text style={[styles.label, { color: theme.text }]}>
