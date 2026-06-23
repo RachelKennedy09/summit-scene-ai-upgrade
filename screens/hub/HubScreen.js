@@ -379,7 +379,7 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No events available yet. Check back soon, or open Connect for local plans, intros, groups, jobs, and town notices.";
+      return "No events available yet. Check back soon, or open Connect for local plans, intros, groups, jobs, and community notices.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {

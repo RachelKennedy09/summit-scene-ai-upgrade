@@ -67,6 +67,9 @@ import BuddyPostCard from "../../components/cards/BuddyPostCard";
 import MemberProfileModal from "../../components/account/MemberProfileModal";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 
+const APP_STORE_DOWNLOAD_URL =
+  "https://apps.apple.com/app/summit-scene/id6777819596";
+
 const REMINDER_OPTIONS = [
   { label: "Off", value: "none" },
   { label: "1 hour", value: "1h" },
@@ -697,6 +700,7 @@ export default function EventDetailScreen({ route }) {
       town ? `Town: ${town}` : "",
       "",
       "Found on Summit Scene.",
+      `Download Summit Scene to browse more events: ${APP_STORE_DOWNLOAD_URL}`,
     ]
       .filter(Boolean)
       .join("\n");

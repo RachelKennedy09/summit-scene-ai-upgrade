@@ -17,6 +17,10 @@
 import CommunityPost from "../models/CommunityPost.js";
 import User from "../models/User.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
+import {
+  createAppNotification,
+  getActorName,
+} from "../services/notificationService.js";
 
 function getUserId(value) {
   if (!value) return "";
@@ -333,6 +337,20 @@ export async function addCommunityReply(req, res) {
 
     await post.save();
 
+    const actorName = await getActorName(userId);
+    const newReply = post.replies[post.replies.length - 1];
+    await createAppNotification({
+      recipientId: post.user,
+      actorId: userId,
+      type: "community-post-reply",
+      title: "New comment on your post",
+      message: `${actorName} commented on your post.`,
+      communityPostId: post._id,
+      replyId: newReply?._id?.toString(),
+      data: { screen: "community-post" },
+      sendPush: true,
+    });
+
     // Populate replies.user with avatarKey and profile info
     await post.populate(
       "replies.user",
@@ -390,6 +408,20 @@ export async function toggleLike(req, res) {
     }
 
     await post.save();
+
+    if (!hasLiked) {
+      const actorName = await getActorName(userId);
+      await createAppNotification({
+        recipientId: post.user,
+        actorId: userId,
+        type: "community-post-like",
+        title: "Someone liked your post",
+        message: `${actorName} liked your post.`,
+        communityPostId: post._id,
+        data: { screen: "community-post" },
+        sendPush: false,
+      });
+    }
 
     return res.json({
       message: hasLiked ? "Like removed" : "Post liked",

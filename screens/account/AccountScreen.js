@@ -26,6 +26,7 @@ import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { fetchAdminDashboardStats } from "../../services/adminApi";
+import { fetchNotifications } from "../../services/notificationsApi";
 
 const ANDROID_PACKAGE_NAME = "com.rachellauren.summitscene";
 const IOS_APP_STORE_ID = "";
@@ -187,6 +188,7 @@ function AccountScreen() {
   const [adminCounts, setAdminCounts] = useState(EMPTY_ADMIN_STATS);
   const [adminCountsLoading, setAdminCountsLoading] = useState(false);
   const [adminCountsError, setAdminCountsError] = useState("");
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const loadAdminCounts = useCallback(async () => {
     if (!user?.isAdmin || !token) return;
@@ -213,10 +215,22 @@ function AccountScreen() {
     }
   }, [token, user?.isAdmin]);
 
+  const loadNotificationCount = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const data = await fetchNotifications(token);
+      setUnreadNotifications(data.unreadCount || 0);
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, [token]);
+
   useFocusEffect(
     useCallback(() => {
       loadAdminCounts();
-    }, [loadAdminCounts])
+      loadNotificationCount();
+    }, [loadAdminCounts, loadNotificationCount])
   );
 
   function handleEmailSummitScene() {
@@ -657,6 +671,18 @@ function AccountScreen() {
           subtitle="Safety tools, help, and ways to contact Summit Scene."
           theme={theme}
         >
+          <AccountNavRow
+            title="Notifications"
+            subtitle="See comments, replies, likes, and interest on your posts."
+            onPress={() => navigation.navigate("Notifications")}
+            theme={theme}
+            badge={
+              unreadNotifications
+                ? `${unreadNotifications} unread`
+                : undefined
+            }
+          />
+
           <AccountNavRow
             title="Blocked users"
             subtitle="Manage people hidden from posts, replies, and attendee lists."

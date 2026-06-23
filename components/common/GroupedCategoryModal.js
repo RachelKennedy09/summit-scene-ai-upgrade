@@ -16,7 +16,9 @@ function normalizeCategoryLabel(categoryLabel) {
     categoryLabel === "All Categories" ||
     categoryLabel === "All categories" ||
     categoryLabel === "All Notice Types" ||
-    categoryLabel === "All notice types"
+    categoryLabel === "All notice types" ||
+    categoryLabel === "All Info Types" ||
+    categoryLabel === "All info types"
   )
     ? "All"
     : categoryLabel;

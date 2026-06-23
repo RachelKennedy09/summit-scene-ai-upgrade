@@ -188,6 +188,12 @@ const buddyPostSchema = new Schema(
       maxlength: 160,
     },
 
+    websiteUrl: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+
     applyByDate: {
       type: String,
       match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],

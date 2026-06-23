@@ -74,7 +74,7 @@ export default function UserHelpScreen() {
           <HelpList
             theme={theme}
             items={[
-              "Use Search events to look across events plus community posts like groups/clubs, job ads, town notices, and buddy posts.",
+              "Use Search events to look across events plus community posts like groups/clubs, job ads, community notices, and buddy posts.",
               "Use Category when you want a specific type of event, such as music, markets, wellness, sports, food, nightlife, arts, or community activities.",
               "Use Town to focus on Banff, Canmore, Lake Louise, or all towns.",
               "Use Date to switch from today or upcoming dates to All Dates when you want to plan farther ahead.",
@@ -117,7 +117,7 @@ export default function UserHelpScreen() {
               "New in Town is for introductions from people who recently moved, arrived for a season, or want to meet locals.",
               "Groups are for repeat interests like book clubs, trivia, yoga, outdoor days, art nights, sports, or hobby meetups.",
               "Jobs and Volunteer is for local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
-              "Town Notices are for practical updates like ride shares, gear swaps, garage sales, road blocks, lost and found, and local notices.",
+              "Community Notices & Info is for practical updates, programs, courses, organization links, booking info, ride shares, gear swaps, garage sales, road blocks, lost and found, and local notices.",
               "Use post replies and interest buttons to connect inside the app before moving to any outside contact.",
               "Open a profile before meeting someone so you can review their public name, interests, town, and shared socials.",
             ]}
@@ -158,8 +158,8 @@ export default function UserHelpScreen() {
           />
           <Question
             theme={theme}
-            question="What is the difference between Local Plans, New in Town, Groups, and Town Notices?"
-            answer="Local Plans are for specific meetups, New in Town is for introductions, Groups are for repeat interests, Jobs and Volunteer is for local hiring and volunteer posts, and Town Notices are for practical local updates like gear swaps, garage sales, road blocks, ride shares, and lost and found."
+            question="What is the difference between Local Plans, New in Town, Groups, and Community Notices & Info?"
+            answer="Local Plans are for specific meetups, New in Town is for introductions, Groups are for repeat interests, Jobs and Volunteer is for local hiring and volunteer posts, and Community Notices & Info is for practical local updates, programs, courses, organization links, booking info, gear swaps, garage sales, ride shares, and lost and found."
           />
           <Question
             theme={theme}

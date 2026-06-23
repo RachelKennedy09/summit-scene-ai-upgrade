@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import {
   Image,
+  Linking,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -212,9 +214,9 @@ function getCommunityTypeLabel(value) {
     case "jobs":
       return "Jobs and Volunteer";
     case "notice":
-      return "Town Notice";
+      return "Community Notice";
     case "update":
-      return "Town Notice";
+      return "Community Notice";
     case "local-plan":
     default:
       return "Plan";
@@ -224,8 +226,8 @@ function getCommunityTypeLabel(value) {
 function getActivityLabel(post) {
   if (post.communityType === "new-in-town") return "";
   if (post.communityType === "jobs") return "Job or Volunteer Ad";
-  if (post.communityType === "notice") return "Town Notice";
-  if (post.communityType === "update") return "Town Notice";
+  if (post.communityType === "notice") return "Community Notice";
+  if (post.communityType === "update") return "Community Notice";
   const categories =
     Array.isArray(post.categories) && post.categories.length
       ? post.categories
@@ -259,6 +261,12 @@ function getGroupSizeLabel(value) {
 
 function shouldShowGroupSize(post) {
   return post.communityType === "local-plan" || post.communityType === "group";
+}
+
+function normalizeUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 function splitActivityText(value) {
@@ -362,6 +370,8 @@ export default function BuddyPostCard({
   const recurrenceText = getRecurrenceLabel(post);
   const activityLabel = getActivityLabel(post);
   const isJobPost = post.communityType === "jobs";
+  const isNoticePost = post.communityType === "notice" || post.communityType === "update";
+  const websiteUrl = normalizeUrl(post.websiteUrl);
   const townLabel = post.town || getProfileTownLabel(author);
   const skillLabel = hasSkill ? titleCase(post.skillLevel) : "";
   const groupSizeLabel = shouldShowGroupSize(post)
@@ -378,9 +388,13 @@ export default function BuddyPostCard({
         post.expiresAt ? `Open until ${formatDate(post.expiresAt)}` : "",
       ]
     : [];
+  const noticeMetaItems = isNoticePost
+    ? [post.businessName, post.locationName]
+    : [];
   const metaItems = [
     townLabel,
     ...jobMetaItems,
+    ...noticeMetaItems,
     skillLabel,
     isJobPost ? "" : recurrenceText || dateText,
     activityLabel,
@@ -491,6 +505,13 @@ export default function BuddyPostCard({
     }
   }
 
+  function handleOpenWebsite() {
+    if (!websiteUrl) return;
+    Linking.openURL(websiteUrl).catch(() => {
+      Alert.alert("Could not open link", "Please try again.");
+    });
+  }
+
   return (
     <View
       style={[
@@ -592,6 +613,21 @@ export default function BuddyPostCard({
             {planText.details}
           </Text>
         </View>
+      ) : null}
+
+      {websiteUrl ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.websiteButton,
+            { borderColor: theme.accent, backgroundColor: theme.card },
+            pressed && styles.pressed,
+          ]}
+          onPress={handleOpenWebsite}
+        >
+          <Text style={[styles.websiteButtonText, { color: theme.accent }]}>
+            Open website or booking link
+          </Text>
+        </Pressable>
       ) : null}
 
       {groupSizeLabel ? (
@@ -1339,6 +1375,20 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 8,
     marginTop: 10,
+  },
+  websiteButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  websiteButtonText: {
+    fontSize: 14,
+    fontWeight: "900",
   },
   vibeRow: {
     flexDirection: "row",

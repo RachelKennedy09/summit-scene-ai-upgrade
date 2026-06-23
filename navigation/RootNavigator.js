@@ -42,6 +42,7 @@ import LegalScreen from "../screens/account/LegalScreen";
 import ModerationQueueScreen from "../screens/account/ModerationQueueScreen";
 import ReportBugScreen from "../screens/account/ReportBugScreen";
 import SavedEventsScreen from "../screens/account/SavedEventsScreen";
+import NotificationsScreen from "../screens/account/NotificationsScreen";
 import UserHelpScreen from "../screens/account/UserHelpScreen";
 
 import LoginScreen from "../screens/auth/LoginScreen";
@@ -73,6 +74,7 @@ function getFallbackTab(routeName) {
       "BlockedUsers",
       "AdminAccounts",
       "SavedEvents",
+      "Notifications",
       "UserHelp",
       "BusinessHelp",
       "Legal",
@@ -294,6 +296,11 @@ export default function RootNavigator() {
                   name="SavedEvents"
                   component={SavedEventsScreen}
                   options={{ title: "Saved Events" }}
+                />
+                <Stack.Screen
+                  name="Notifications"
+                  component={NotificationsScreen}
+                  options={{ title: "Notifications" }}
                 />
               </>
             ) : null}

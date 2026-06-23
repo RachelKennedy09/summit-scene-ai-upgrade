@@ -68,7 +68,7 @@ const BUDDY_POST_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
 const PLAN_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const NOTICE_CATEGORY_GROUPS = [
-  { title: "Local Notices", options: COMMUNITY_NOTICE_CATEGORIES },
+  { title: "Community Notices & Info", options: COMMUNITY_NOTICE_CATEGORIES },
 ];
 const COMMUNITY_TYPES = [
   {
@@ -92,9 +92,9 @@ const COMMUNITY_TYPES = [
     helper: "Local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
   },
   {
-    label: "Town Notices",
+    label: "Community Notices & Info",
     value: "notice",
-    helper: "Garage sales, gear swaps, ride shares, road blocks, lost and found, free stuff, or practical town notices.",
+    helper: "Programs, courses, organization links, online booking info, practical notices, gear swaps, ride shares, lost and found, or free stuff.",
   },
 ];
 const SKILL_LEVELS = [
@@ -215,16 +215,16 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "job",
   },
   notice: {
-    title: "Share Town Notice",
-    subtitle: "Post a useful notice like a garage sale, gear swap, ride share, lost and found, free stuff, or a practical town heads-up.",
+    title: "Share Community Notice or Info",
+    subtitle: "Post a useful notice, program, course, organization link, online booking option, garage sale, gear swap, ride share, lost and found, or community heads-up.",
     showCategory: true,
-    categoryLabel: "Notice type",
+    categoryLabel: "Notice or info type",
     categoryRequired: false,
     categoryGroups: NOTICE_CATEGORY_GROUPS,
-    detailsLabel: "Notice",
-    detailsPlaceholder: "What are you sharing? Add the location area, timing, and what people should know.",
+    detailsLabel: "Notice or program details",
+    detailsPlaceholder: "What are you sharing? Add dates, who it is for, how to register or book, location details, and what people should know.",
     townLabel: "Applies to",
-    dateLabel: "Date",
+    dateLabel: "Date or start date",
     timeLabel: "Time",
     showDateTime: true,
     showSchedule: false,
@@ -479,6 +479,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const [imageUrl, setImageUrl] = useState(eventBuddy.imageUrl || "");
   const [businessName, setBusinessName] = useState(eventBuddy.businessName || "");
   const [locationName, setLocationName] = useState(eventBuddy.locationName || "");
+  const [websiteUrl, setWebsiteUrl] = useState(eventBuddy.websiteUrl || "");
   const [importedBySummitScene, setImportedBySummitScene] = useState(
     Boolean(eventBuddy.importedBySummitScene)
   );
@@ -541,6 +542,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const formCopy =
     COMMUNITY_FORM_COPY[communityType] || COMMUNITY_FORM_COPY["local-plan"];
   const isJobPost = communityType === "jobs";
+  const isNoticePost = communityType === "notice";
+  const showsOrganizationFields = isJobPost || isNoticePost;
   const canMarkImportedBySummitScene = isJobPost && isSummitSceneAdmin(user);
   const maxJobExpiryDate = useMemo(() => addDays(new Date(), 31), []);
   const showTimeField = formCopy.showDateTime && Boolean(formCopy.timeLabel);
@@ -885,8 +888,9 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           communityType,
           activityText: trimmedActivityText,
           imageUrl: trimmedImageUrl || undefined,
-          businessName: isJobPost ? businessName.trim() || undefined : undefined,
-          locationName: isJobPost ? locationName.trim() || undefined : undefined,
+          businessName: showsOrganizationFields ? businessName.trim() || undefined : undefined,
+          locationName: showsOrganizationFields ? locationName.trim() || undefined : undefined,
+          websiteUrl: showsOrganizationFields ? websiteUrl.trim() || undefined : undefined,
           applyByDate: isJobPost ? applyByDate || undefined : undefined,
           expiresAt: isJobPost ? formatDateForApi(dateObj) : undefined,
           importedBySummitScene: canMarkImportedBySummitScene
@@ -1193,7 +1197,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                     (formCopy.categoryRequired
                       ? "Choose a main category"
                       : formCopy.categoryLabel === "Notice type"
-                        ? "Choose a notice type if helpful"
+                        ? "Choose a notice or info type if helpful"
                         : "Choose a focus if helpful")}
                 </Text>
               </Pressable>
@@ -1260,7 +1264,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             </>
           ) : null}
 
-          {isJobPost ? (
+          {showsOrganizationFields ? (
             <>
               {canMarkImportedBySummitScene ? (
                 <Pressable
@@ -1335,14 +1339,14 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                     color: theme.text,
                   },
                 ]}
-                placeholder="Business, organization, or team name"
+                placeholder="Business, organization, school, program, or team name"
                 placeholderTextColor={theme.textMuted}
                 value={businessName}
                 onChangeText={setBusinessName}
               />
 
               <Text style={[styles.label, { color: theme.textMuted }]}>
-                Location or workplace (Optional)
+                {isJobPost ? "Location or workplace" : "Location or program area"} (Optional)
               </Text>
               <TextInput
                 style={[
@@ -1353,10 +1357,34 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                     color: theme.text,
                   },
                 ]}
-                placeholder="Example: Downtown Banff, remote, or multiple locations"
+                placeholder={
+                  isJobPost
+                    ? "Example: Downtown Banff, remote, or multiple locations"
+                    : "Example: Banff, online, school name, or multiple locations"
+                }
                 placeholderTextColor={theme.textMuted}
                 value={locationName}
                 onChangeText={setLocationName}
+              />
+
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Website or booking link (Optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="https://organization.ca/program"
+                placeholderTextColor={theme.textMuted}
+                value={websiteUrl}
+                onChangeText={setWebsiteUrl}
+                autoCapitalize="none"
+                keyboardType="url"
               />
             </>
           ) : null}

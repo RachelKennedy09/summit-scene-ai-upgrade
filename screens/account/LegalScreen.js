@@ -175,8 +175,9 @@ export default function LegalScreen() {
           </LegalBullet>
           <LegalBullet theme={theme}>
             Notification permission: optional device notifications may be used
-            to send saved-event and going-event reminders at the reminder time
-            you choose. You can turn notifications off in your device settings.
+            to send saved-event and going-event reminders, and to alert you
+            about comments or replies on your posts. You can turn notifications
+            off in your device settings.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Safety data: reports about fake events, scams, inappropriate
@@ -189,6 +190,11 @@ export default function LegalScreen() {
             reminder preferences, reminder times, and local notification
             scheduling records on your device may be used to support event
             planning features.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            Notification records: Summit Scene may store in-app notification
+            records and device push tokens so users can see comments, replies,
+            likes, and interest on their own posts.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Technical and support data: device or app diagnostics, request logs,
@@ -220,7 +226,7 @@ export default function LegalScreen() {
           <LegalBullet theme={theme}>
             To provide accounts, profiles, events, tours, external booking
             links, community posts, maps, replies, saved events, attendance,
-            reminders, optional event notification alerts, and plan features.
+            reminders, optional notification alerts, and plan features.
           </LegalBullet>
           <LegalBullet theme={theme}>
             To help users discover events and tours through search, towns,
@@ -313,10 +319,10 @@ export default function LegalScreen() {
             optional.
           </LegalText>
           <LegalText theme={theme}>
-            Event reminder notifications are optional. Summit Scene may ask for
-            notification permission when you enable saved-event or going-event
-            reminders, and you can disable notifications through your device
-            settings.
+            Event reminder and post activity notifications are optional. Summit
+            Scene may ask for notification permission when you enable reminders
+            or notification alerts, and you can disable notifications through
+            your device settings.
           </LegalText>
           <LegalText theme={theme}>
             If Summit Scene later sends marketing emails, newsletters, or
@@ -417,7 +423,7 @@ export default function LegalScreen() {
         <LegalSection title="Community Guidelines" theme={theme}>
           <LegalText theme={theme}>
             Summit Scene is for local events, plans, introductions, groups, job
-            ads, town notices, and community discovery around Banff, Canmore,
+            ads, community notices, and community discovery around Banff, Canmore,
             Lake Louise, and nearby areas.
           </LegalText>
           <LegalText theme={theme}>

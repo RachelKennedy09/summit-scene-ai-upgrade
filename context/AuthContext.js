@@ -7,6 +7,10 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toUserFriendlyError } from "../utils/friendlyErrors";
 import { cancelAllEventReminderNotifications } from "../utils/eventReminderNotifications";
+import {
+  registerDeviceForPushNotifications,
+  unregisterDeviceForPushNotifications,
+} from "../utils/pushNotifications";
 
 // API base URL (Expo public env OR fallback to Render backend)
 const API_BASE_URL =
@@ -209,6 +213,14 @@ export function AuthProvider({ children }) {
       setAuthDebugMessage(debugMessage);
     }
 
+    if (token) {
+      try {
+        await unregisterDeviceForPushNotifications(token);
+      } catch (error) {
+        console.log("Push notification unregister skipped:", error.message);
+      }
+    }
+
     setToken(null);
     setUser(null);
     setAuthNoticeMessage(noticeMessage);
@@ -227,6 +239,10 @@ export function AuthProvider({ children }) {
     setToken(nextToken);
     setUser(normalizedUser);
     setAuthNoticeMessage("");
+
+    registerDeviceForPushNotifications(nextToken).catch((error) => {
+      console.log("Push notification registration skipped:", error.message);
+    });
 
     return normalizedUser;
   }

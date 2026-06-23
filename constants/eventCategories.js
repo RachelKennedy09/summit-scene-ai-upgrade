@@ -310,18 +310,24 @@ export const PROFILE_INTEREST_OPTIONS = PROFILE_INTEREST_GROUPS.flatMap(
 
 export const COMMUNITY_NOTICE_CATEGORIES = [
   "Community Notice",
+  "Community Program",
+  "Course / Class",
   "Free Stuff",
   "Garage Sale",
   "Gear Sale / Swap",
+  "Indigenous Programs",
+  "Organization Info",
+  "Online Booking",
   "Lost & Found",
   "Ride Share",
   "Volunteer Help",
+  "Workshop",
 ];
 
 export const COMMUNITY_CATEGORY_GROUPS = [
   ...EVENT_CATEGORY_GROUPS,
   {
-    title: "Local Notices",
+    title: "Community Notices & Info",
     options: COMMUNITY_NOTICE_CATEGORIES,
   },
 ];

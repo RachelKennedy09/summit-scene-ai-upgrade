@@ -15,6 +15,8 @@ import CommunityPost from "../models/CommunityPost.js";
 import Event from "../models/Event.js";
 import EventPreference from "../models/EventPreference.js";
 import Report from "../models/Report.js";
+import AppNotification from "../models/AppNotification.js";
+import PushToken from "../models/PushToken.js";
 import { sendModerationReportNotification } from "../services/emailService.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
@@ -544,6 +546,10 @@ router.delete("/me", authMiddleware, async (req, res) => {
           { parentType: "event", parentId: { $in: ownedEventIds } },
         ],
       }),
+      AppNotification.deleteMany({
+        $or: [{ recipient: userId }, { actor: userId }],
+      }),
+      PushToken.deleteMany({ user: userId }),
     ]);
 
     await User.deleteOne({ _id: userId });

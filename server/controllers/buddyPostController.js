@@ -20,6 +20,10 @@ import {
 } from "../../constants/eventCategories.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 import { isAdminEmail } from "../utils/adminAccess.js";
+import {
+  createAppNotification,
+  getActorName,
+} from "../services/notificationService.js";
 
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
@@ -88,6 +92,7 @@ function buildListFilter(query = {}) {
       { town: { $in: searchRegexes } },
       { businessName: { $in: searchRegexes } },
       { locationName: { $in: searchRegexes } },
+      { websiteUrl: { $in: searchRegexes } },
     ];
   }
 
@@ -418,6 +423,10 @@ function normalizeCreateBody(body = {}) {
       typeof body.locationName === "string" && body.locationName.trim()
         ? body.locationName.trim()
         : undefined,
+    websiteUrl:
+      typeof body.websiteUrl === "string" && body.websiteUrl.trim()
+        ? body.websiteUrl.trim()
+        : undefined,
     applyByDate: isDateString(body.applyByDate) ? body.applyByDate : undefined,
     expiresAt: isDateString(body.expiresAt) ? body.expiresAt : undefined,
     importedBySummitScene: Boolean(body.importedBySummitScene),
@@ -667,6 +676,7 @@ export async function updateBuddyPost(req, res) {
       "imageUrl",
       "businessName",
       "locationName",
+      "websiteUrl",
       "applyByDate",
       "expiresAt",
       "importedBySummitScene",
@@ -773,6 +783,20 @@ export async function toggleBuddyPostInterest(req, res) {
 
     await post.save();
 
+    if (!alreadyInterested) {
+      const actorName = await getActorName(userId);
+      await createAppNotification({
+        recipientId: post.createdBy,
+        actorId: userId,
+        type: "buddy-post-interest",
+        title: "Someone is interested",
+        message: `${actorName} is interested in your post.`,
+        buddyPostId: post._id,
+        data: { screen: "buddy-post" },
+        sendPush: false,
+      });
+    }
+
     const populated = await populateBuddyPost(BuddyPost.findById(post._id));
     return res.json(populated);
   } catch (error) {
@@ -812,6 +836,20 @@ export async function addBuddyPostReply(req, res) {
     });
 
     await post.save();
+
+    const actorName = await getActorName(userId);
+    const newReply = post.replies[post.replies.length - 1];
+    await createAppNotification({
+      recipientId: post.createdBy,
+      actorId: userId,
+      type: "buddy-post-reply",
+      title: "New comment on your post",
+      message: `${actorName} commented on your post.`,
+      buddyPostId: post._id,
+      replyId: newReply?._id?.toString(),
+      data: { screen: "buddy-post" },
+      sendPush: true,
+    });
 
     const populated = await populateBuddyPost(BuddyPost.findById(post._id));
     return res.status(201).json(populated);
@@ -866,6 +904,36 @@ export async function addBuddyPostReplyResponse(req, res) {
 
     await post.save();
 
+    const actorName = await getActorName(userId);
+    const childReply = reply.replies[reply.replies.length - 1];
+    const notifyRecipients = [
+      reply.createdBy,
+      post.createdBy,
+    ].filter(
+      (recipientId, index, recipients) =>
+        recipientId &&
+        recipientId.toString() !== userId.toString() &&
+        recipients.findIndex(
+          (item) => item?.toString() === recipientId.toString()
+        ) === index
+    );
+
+    await Promise.all(
+      notifyRecipients.map((recipientId) =>
+        createAppNotification({
+          recipientId,
+          actorId: userId,
+          type: "buddy-reply-response",
+          title: "New reply",
+          message: `${actorName} replied in a comment thread.`,
+          buddyPostId: post._id,
+          replyId: childReply?._id?.toString() || reply._id?.toString(),
+          data: { screen: "buddy-post" },
+          sendPush: true,
+        })
+      )
+    );
+
     const populated = await populateBuddyPost(BuddyPost.findById(post._id));
     return res.status(201).json(populated);
   } catch (error) {
@@ -913,6 +981,21 @@ export async function toggleBuddyPostReplyLike(req, res) {
     }
 
     await post.save();
+
+    if (!alreadyLiked) {
+      const actorName = await getActorName(userId);
+      await createAppNotification({
+        recipientId: reply.createdBy,
+        actorId: userId,
+        type: "buddy-reply-like",
+        title: "Someone liked your comment",
+        message: `${actorName} liked your comment.`,
+        buddyPostId: post._id,
+        replyId: reply._id?.toString(),
+        data: { screen: "buddy-post" },
+        sendPush: false,
+      });
+    }
 
     const populated = await populateBuddyPost(BuddyPost.findById(post._id));
     return res.json(populated);

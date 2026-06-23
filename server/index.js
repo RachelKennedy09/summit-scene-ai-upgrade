@@ -19,6 +19,7 @@ import buddyPostRoutes from "./routes/buddyPosts.js";
 import eventPreferenceRoutes from "./routes/eventPreferences.js";
 import reportRoutes from "./routes/reports.js";
 import placesRoutes from "./routes/placesRoutes.js";
+import notificationRoutes from "./routes/notifications.js";
 
 // ---------------------------
 // APP SETUP
@@ -91,6 +92,9 @@ app.use("/api/buddy-posts", buddyPostRoutes);
 
 // Event preferences: saved events, reminder settings, in-app reminders
 app.use("/api/event-preferences", eventPreferenceRoutes);
+
+// User notifications: in-app alerts and push-token registration
+app.use("/api/notifications", notificationRoutes);
 
 // Report routes: safety reports for posts, replies, events, and users
 app.use("/api/reports", reportRoutes);

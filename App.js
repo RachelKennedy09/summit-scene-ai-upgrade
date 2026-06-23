@@ -70,6 +70,15 @@ function AppNavigation() {
           response.notification.request.content.data?.eventId || "";
         if (eventId && navigationRef.isReady()) {
           navigationRef.navigate("EventDetail", { eventId });
+          return;
+        }
+
+        const buddyPostId =
+          response.notification.request.content.data?.buddyPostId || "";
+        const communityPostId =
+          response.notification.request.content.data?.communityPostId || "";
+        if ((buddyPostId || communityPostId) && navigationRef.isReady()) {
+          navigationRef.navigate("Notifications");
         }
       }
     );

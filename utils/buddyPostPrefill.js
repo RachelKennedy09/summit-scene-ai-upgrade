@@ -130,7 +130,13 @@ const EVENT_CATEGORY_TO_BUDDY_TYPE = {
   "Lost & Found": "notice",
   "Ride Share": "notice",
   "Community Notice": "notice",
+  "Community Program": "notice",
+  "Course / Class": "notice",
+  "Indigenous Programs": "notice",
+  "Organization Info": "notice",
+  "Online Booking": "notice",
   "Volunteer Help": "notice",
+  "Workshop": "notice",
 };
 
 function normalizeTown(town, userTown) {

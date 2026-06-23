@@ -35,6 +35,7 @@ import {
   createBuddyPostReplyResponse,
   deleteBuddyPost,
   deleteBuddyPostReply,
+  fetchBuddyPostById,
   fetchBuddyPosts,
   toggleBuddyPostInterest,
   toggleBuddyPostReplyLike,
@@ -51,7 +52,7 @@ const CATEGORY_GROUPS = getCommunityCategoryGroups({
   allLabel: "All Categories",
 });
 const NOTICE_CATEGORY_GROUPS = [
-  { title: "Local Notices", options: ["All Notice Types", ...COMMUNITY_NOTICE_CATEGORIES] },
+  { title: "Community Notices & Info", options: ["All Info Types", ...COMMUNITY_NOTICE_CATEGORIES] },
 ];
 const COMMUNITY_SECTIONS = [
   {
@@ -116,16 +117,16 @@ const COMMUNITY_SECTIONS = [
     supportsDate: true,
   },
   {
-    label: "Town Notices",
+    label: "Community Notices & Info",
     value: "notice",
-    title: "Town Notices",
-    subtitle: "Share garage sales, gear swaps, ride shares, road blocks, free stuff, lost and found, or practical town notices.",
-    cta: "Share Notice",
-    emptyTitle: "No town notices yet",
+    title: "Community Notices & Info",
+    subtitle: "Share local programs, courses, organization links, booking info, practical notices, gear swaps, ride shares, lost and found, and helpful community updates.",
+    cta: "Share Notice or Info",
+    emptyTitle: "No community notices or info yet",
     emptyText:
-      "Share a garage sale, gear swap, ride share, lost and found item, free stuff, or practical local notice.",
+      "Share a program, course, organization link, booking info, garage sale, gear swap, ride share, lost and found item, free stuff, or practical local notice.",
     categoryLabel: "Notice type",
-    categoryAllLabel: "All Notice Types",
+    categoryAllLabel: "All Info Types",
     categoryGroups: NOTICE_CATEGORY_GROUPS,
     supportsCategory: true,
     supportsDate: true,
@@ -217,6 +218,45 @@ export default function CommunityScreen({ navigation, route }) {
     setCommunityEventsError("");
     setError("");
   }, [route?.params?.resetToHomeAt]);
+
+  useEffect(() => {
+    const buddyPostId = route?.params?.openBuddyPostId;
+    if (!buddyPostId || !token) {
+      return;
+    }
+
+    let isMounted = true;
+    async function loadLinkedPost() {
+      try {
+        setLoading(true);
+        setError("");
+        const post = await fetchBuddyPostById(buddyPostId, token);
+        if (!isMounted) return;
+
+        setCommunityType(post.communityType || "local-plan");
+        setCategory("All");
+        setTown("All");
+        setSelectedDate(null);
+        setSearchQuery("");
+        setActiveSearch("");
+        setPosts([post]);
+        navigation.setParams({ openBuddyPostId: undefined });
+      } catch (loadError) {
+        if (!isMounted) return;
+        setError(loadError.message || "Could not load that community post.");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadLinkedPost();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigation, route?.params?.openBuddyPostId, token]);
 
   const filters = useMemo(
     () => ({
