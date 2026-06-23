@@ -1295,7 +1295,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionPill: {
-    maxWidth: 140,
+    maxWidth: 178,
+    flexShrink: 0,
     alignItems: "flex-end",
   },
   authorRow: {
@@ -1458,6 +1459,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
+    lineHeight: 18,
   },
   moreTagsButton: {
     borderWidth: 1,

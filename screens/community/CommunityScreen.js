@@ -1264,7 +1264,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorChip: {
-    flexShrink: 1,
+    flex: 1,
+    minWidth: "46%",
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 14,
@@ -1276,11 +1277,13 @@ const styles = StyleSheet.create({
   selectorContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   selectorChipText: {
-    flexShrink: 1,
+    flex: 1,
     fontSize: 14,
+    lineHeight: 18,
     fontWeight: "800",
   },
   selectorIndicator: {

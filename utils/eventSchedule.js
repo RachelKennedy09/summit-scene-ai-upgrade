@@ -112,6 +112,8 @@ export function formatEventTimeLabel(event) {
 
 export function getRecurrenceLabel(event) {
   const frequency = event?.recurrence?.frequency;
+  const startDate = getScheduleStartDate(event);
+  const startWeekday = startDate ? WEEKDAY_ORDER[startDate.getDay()] : "";
   const weekdays = Array.isArray(event?.recurrence?.weekdays)
     ? event.recurrence.weekdays
     : [];
@@ -124,7 +126,7 @@ export function getRecurrenceLabel(event) {
   }
 
   if (frequency === "weekly") {
-    return "Weekly";
+    return startWeekday ? `Every ${startWeekday}` : "Weekly";
   }
 
   if (frequency === "biweekly") {

@@ -1210,7 +1210,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 Category tags (Optional)
               </Text>
               <Text style={[styles.helperText, { color: theme.textMuted }]}>
-                Add searchable specifics like Coffee, Sober Events, Strength Training, or Book Clubs.
+                Add searchable specifics like Bingo, Trivia, Game Nights, Coffee, or Book Clubs.
               </Text>
               <Pressable
                 style={[

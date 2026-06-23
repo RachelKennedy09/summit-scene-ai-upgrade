@@ -5,7 +5,7 @@
 // - Shows events in a FlatList with pull-to-refresh
 // - Navigates to EventDetail when an event card is tapped.
 
-import React, { useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
@@ -76,6 +76,7 @@ export default function HubScreen() {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
 
   // Friendly greeting in the Hub header
   const displayName = user?.name || user?.email || "User";
@@ -184,16 +185,16 @@ export default function HubScreen() {
     }
   }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
 
-  // Reload on focus so newly posted events appear when the user returns to the Hub.
-  useFocusEffect(
-    useCallback(() => {
-      loadEvents({ nextPage: 1, mode: "initial" });
+  // Reload when the Hub is focused and whenever filters/search change.
+  useEffect(() => {
+    if (!isFocused) return undefined;
 
-      return () => {
-        loadRequestIdRef.current += 1;
-      };
-    }, [loadEvents])
-  );
+    loadEvents({ nextPage: 1, mode: "initial" });
+
+    return () => {
+      loadRequestIdRef.current += 1;
+    };
+  }, [isFocused, loadEvents]);
 
   const handleRefresh = () => {
     loadEvents({ nextPage: 1, mode: "refresh" });
