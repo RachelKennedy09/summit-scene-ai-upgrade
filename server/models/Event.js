@@ -16,6 +16,10 @@ import {
   VIBE_TAGS,
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
+import {
+  COMMUNITY_EVENT_TAGS,
+  EVENT_AUDIENCE_OPTIONS,
+} from "../../constants/eventAudience.js";
 
 const timeSlotSchema = new mongoose.Schema(
   {
@@ -133,6 +137,24 @@ const eventSchema = new mongoose.Schema(
           type: String,
           trim: true,
           enum: VIBE_TAGS,
+        },
+      ],
+      default: undefined,
+    },
+
+    audience: {
+      type: String,
+      trim: true,
+      enum: EVENT_AUDIENCE_OPTIONS,
+      default: "Everyone welcome",
+    },
+
+    communityTags: {
+      type: [
+        {
+          type: String,
+          trim: true,
+          enum: COMMUNITY_EVENT_TAGS,
         },
       ],
       default: undefined,

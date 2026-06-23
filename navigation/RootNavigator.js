@@ -25,6 +25,7 @@ import TabNavigator from "./TabNavigator";
 import EventDetailScreen from "../screens/events/EventDetailScreen";
 import EditEventScreen from "../screens/events/EditEventScreen";
 import HostEventsScreen from "../screens/events/HostEventsScreen";
+import PostEventScreen from "../screens/events/PostEventScreen";
 
 import CommunityPostScreen from "../screens/community/CommunityPostScreen";
 import EditCommunityPostScreen from "../screens/community/EditCommunityPostScreen";
@@ -175,6 +176,11 @@ export default function RootNavigator() {
                   name="EditEvent"
                   component={EditEventScreen}
                   options={{ title: "Edit Event" }}
+                />
+                <Stack.Screen
+                  name="Post"
+                  component={PostEventScreen}
+                  options={{ title: "Create Event" }}
                 />
 
                 {/* Community flow */}

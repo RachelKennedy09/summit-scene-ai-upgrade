@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import MemberProfileModal from "../../components/account/MemberProfileModal";
 import BuddyPostCard from "../../components/cards/BuddyPostCard";
+import EventCard from "../../components/cards/EventCard";
 import AppButton from "../../components/common/AppButton";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import SelectModal from "../../components/common/SelectModal";
@@ -27,7 +28,6 @@ import {
   COMMUNITY_NOTICE_CATEGORIES,
   getCommunityCategoryGroups,
 } from "../../constants/eventCategories";
-import { LANGUAGE_OPTIONS } from "../../constants/languages";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
@@ -39,6 +39,7 @@ import {
   toggleBuddyPostReplyLike,
   updateBuddyPostReply,
 } from "../../services/buddyPostsApi";
+import { fetchEvents as fetchEventsFromApi } from "../../services/eventsApi";
 import { submitReport } from "../../services/reportsApi";
 import { colors } from "../../theme/colors";
 import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
@@ -52,6 +53,18 @@ const NOTICE_CATEGORY_GROUPS = [
   { title: "Local Notices", options: ["All Notice Types", ...COMMUNITY_NOTICE_CATEGORIES] },
 ];
 const COMMUNITY_SECTIONS = [
+  {
+    label: "Community Events",
+    value: "community-events",
+    title: "Community Events",
+    subtitle:
+      "Local support, free community meals, resident and worker focused events, and programs where visitors are still welcome.",
+    emptyTitle: "No community-focused events yet",
+    emptyText: "Community-focused events will show here when they are listed.",
+    supportsCategory: false,
+    supportsDate: true,
+    isEventSection: true,
+  },
   {
     label: "Make a Plan",
     value: "local-plan",
@@ -90,9 +103,9 @@ const COMMUNITY_SECTIONS = [
     supportsDate: true,
   },
   {
-    label: "Jobs and Volunteer",
+    label: "Jobs and Volunteer Work",
     value: "jobs",
-    title: "Jobs and Volunteer",
+    title: "Jobs and Volunteer Work",
     subtitle: "Browse or share local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
     cta: "Post Job or Volunteer Ad",
     emptyTitle: "No jobs or volunteer ads yet",
@@ -118,7 +131,11 @@ const COMMUNITY_SECTIONS = [
   },
 ];
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
-const SECTION_FILTER_OPTIONS = COMMUNITY_SECTIONS.map((section) => section.label);
+const HOME_SECTION_LABEL = "Choose how to connect";
+const SECTION_FILTER_OPTIONS = [
+  HOME_SECTION_LABEL,
+  ...COMMUNITY_SECTIONS.map((section) => section.label),
+];
 
 function getSection(value) {
   return (
@@ -152,10 +169,9 @@ export default function CommunityScreen({ navigation }) {
   const { theme } = useTheme();
 
   const [posts, setPosts] = useState([]);
-  const [communityType, setCommunityType] = useState(COMMUNITY_SECTIONS[0].value);
+  const [communityType, setCommunityType] = useState("home");
   const [category, setCategory] = useState("All");
   const [town, setTown] = useState("All");
-  const [language, setLanguage] = useState("");
   const [selectedDate, setSelectedDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -163,16 +179,20 @@ export default function CommunityScreen({ navigation }) {
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   const [sectionPickerVisible, setSectionPickerVisible] = useState(false);
   const [townPickerVisible, setTownPickerVisible] = useState(false);
-  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [communityEvents, setCommunityEvents] = useState([]);
+  const [loadingCommunityEvents, setLoadingCommunityEvents] = useState(false);
+  const [communityEventsError, setCommunityEventsError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [profileUser, setProfileUser] = useState(null);
 
-  const activeSection = getSection(communityType);
+  const isCommunityHome = communityType === "home";
+  const activeSection = isCommunityHome ? COMMUNITY_SECTIONS[0] : getSection(communityType);
   const categoryAllLabel = activeSection.categoryAllLabel || "All Categories";
   const sectionSupportsCategory = Boolean(activeSection.supportsCategory);
   const sectionSupportsDate = Boolean(activeSection.supportsDate);
+  const isCommunityEventsSection = Boolean(activeSection.isEventSection);
   const categoryGroups = activeSection.categoryGroups || CATEGORY_GROUPS;
   const activeTownFilter = town === "All" ? "" : town;
   const activeCategoryFilter =
@@ -187,7 +207,6 @@ export default function CommunityScreen({ navigation }) {
       category: activeCategoryFilter,
       communityType: activeSearch ? "" : communityType,
       town: activeTownFilter,
-      language,
       date: activeDateFilter,
       search: activeSearch,
       status: "open",
@@ -196,7 +215,6 @@ export default function CommunityScreen({ navigation }) {
       activeCategoryFilter,
       communityType,
       activeTownFilter,
-      language,
       activeDateFilter,
       activeSearch,
     ]
@@ -234,14 +252,54 @@ export default function CommunityScreen({ navigation }) {
     }
   }, [filters, token]);
 
+  const loadCommunityEvents = useCallback(async () => {
+    try {
+      setLoadingCommunityEvents(true);
+      setCommunityEventsError("");
+      const data = await fetchEventsFromApi({
+        communityOnly: true,
+        town: activeTownFilter,
+        search: activeSearch,
+        dateFilter: activeDateFilter,
+        limit: 5,
+      });
+      const events = Array.isArray(data?.events)
+        ? data.events
+        : Array.isArray(data)
+          ? data
+          : [];
+      setCommunityEvents(events.slice(0, 5));
+    } catch (error) {
+      setCommunityEventsError(
+        error.message || "Could not load community events."
+      );
+    } finally {
+      setLoadingCommunityEvents(false);
+    }
+  }, [activeDateFilter, activeSearch, activeTownFilter]);
+
   const handleRefresh = useCallback(() => {
+    if (isCommunityHome) {
+      return;
+    }
+    if (isCommunityEventsSection) {
+      loadCommunityEvents();
+      return;
+    }
     loadBuddyPosts({ mode: "refresh" });
-  }, [loadBuddyPosts]);
+  }, [isCommunityEventsSection, isCommunityHome, loadBuddyPosts, loadCommunityEvents]);
 
   useFocusEffect(
     useCallback(() => {
+      if (isCommunityHome) {
+        return;
+      }
+      if (isCommunityEventsSection) {
+        loadCommunityEvents();
+        return;
+      }
       loadBuddyPosts();
-    }, [loadBuddyPosts])
+    }, [isCommunityEventsSection, isCommunityHome, loadBuddyPosts, loadCommunityEvents])
   );
 
   const categorySelectLabel = category === "All" ? categoryAllLabel : category;
@@ -253,13 +311,17 @@ export default function CommunityScreen({ navigation }) {
   const createPostParams = {
     eventBuddy: communityType ? { communityType } : undefined,
   };
-  const totalMatches = posts.length;
+  const totalMatches = isCommunityEventsSection
+    ? communityEvents.length
+    : posts.length;
   const searchStatus = activeSearch
-    ? loading
+    ? loading || loadingCommunityEvents
       ? `Searching for "${activeSearch}"...`
       : totalMatches === 0
         ? `0 results found for "${activeSearch}". Try a broader word or clear search.`
-        : `${totalMatches} Connect post${totalMatches === 1 ? "" : "s"} found for "${activeSearch}".`
+        : `${totalMatches} ${
+            isCommunityEventsSection ? "community event" : "community post"
+          }${totalMatches === 1 ? "" : "s"} found for "${activeSearch}".`
     : "";
 
   function handleApplySearch() {
@@ -272,13 +334,23 @@ export default function CommunityScreen({ navigation }) {
     setCategory("All");
     setTown("All");
     setSelectedDate(null);
-    setLanguage("");
     setActiveSearch(trimmedSearch);
   }
 
   function handleClearSearch() {
     setSearchQuery("");
     setActiveSearch("");
+  }
+
+  function handleChooseSection(nextValue) {
+    setCommunityType(nextValue);
+    setCategory("All");
+    setTown("All");
+    setSelectedDate(null);
+    setSearchQuery("");
+    setActiveSearch("");
+    setError("");
+    setCommunityEventsError("");
   }
 
   async function handleToggleInterested(post) {
@@ -471,9 +543,55 @@ export default function CommunityScreen({ navigation }) {
         }
       >
         <PageHeader
-          title="Connect with the community"
-          subtitle="Make plans, meet people, join groups, browse jobs and volunteer, or check town notices."
+          title="Choose how to connect"
+          subtitle={isCommunityHome ? "" : activeSection.subtitle}
         />
+
+        {isCommunityHome ? (
+          <View style={styles.connectHome}>
+            <View style={styles.connectGrid}>
+              {COMMUNITY_SECTIONS.map((section) => (
+                <Pressable
+                  key={section.value}
+                  style={({ pressed }) => [
+                    styles.connectOption,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => handleChooseSection(section.value)}
+                >
+                  <Text style={[styles.connectOptionTitle, { color: theme.text }]}>
+                    {section.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.connectOptionText,
+                      { color: theme.textMuted },
+                    ]}
+                    numberOfLines={3}
+                  >
+                    {section.subtitle}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <>
+        <Pressable
+          style={({ pressed }) => [
+            styles.allOptionsButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => handleChooseSection("home")}
+        >
+          <Text style={[styles.allOptionsText, { color: theme.accent }]}>
+            All community options
+          </Text>
+        </Pressable>
 
         <View
           style={[
@@ -496,7 +614,11 @@ export default function CommunityScreen({ navigation }) {
               ]}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search Connect posts"
+              placeholder={
+                isCommunityEventsSection
+                  ? "Search community events"
+                  : "Search community posts"
+              }
               placeholderTextColor={theme.textMuted}
               returnKeyType="search"
               autoCapitalize="none"
@@ -607,32 +729,6 @@ export default function CommunityScreen({ navigation }) {
               </View>
             </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.selectorChip,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-                pressed && styles.pressed,
-              ]}
-              onPress={() => setLanguagePickerVisible(true)}
-            >
-              <View style={styles.selectorContent}>
-                <Text
-                  style={[
-                    styles.selectorChipText,
-                    { color: language ? theme.text : theme.textMuted },
-                  ]}
-                >
-                  {language || "Language"}
-                </Text>
-                <Text style={[styles.selectorIndicator, { color: theme.accent }]}>
-                  +
-                </Text>
-              </View>
-            </Pressable>
-
             {sectionSupportsDate ? (
               <Pressable
                 style={({ pressed }) => [
@@ -663,7 +759,7 @@ export default function CommunityScreen({ navigation }) {
           </View>
         </View>
 
-        {category !== "All" || town !== "All" || language || selectedDate || activeSearch ? (
+        {category !== "All" || town !== "All" || selectedDate || activeSearch ? (
           <Pressable
             style={({ pressed }) => [
               styles.clearFiltersButton,
@@ -673,7 +769,6 @@ export default function CommunityScreen({ navigation }) {
               setCategory("All");
               setTown("All");
               setSelectedDate(null);
-              setLanguage("");
               setSearchQuery("");
               setActiveSearch("");
             }}
@@ -684,22 +779,34 @@ export default function CommunityScreen({ navigation }) {
           </Pressable>
         ) : null}
 
-        <AppButton
-          title={activeSection.cta}
-          onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
-          variant="primary"
-          size="md"
-          style={styles.compactCtaButton}
-        />
+        {!isCommunityEventsSection ? (
+          <AppButton
+            title={activeSection.cta}
+            onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+            variant="primary"
+            size="md"
+            style={styles.compactCtaButton}
+          />
+        ) : null}
 
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryText, { color: theme.textMuted }]}>
-            {loading
+            {isCommunityEventsSection
+              ? loadingCommunityEvents
+                ? "Loading community events..."
+                : activeSearch && communityEvents.length === 0
+                ? `No community events match "${activeSearch}" yet.`
+                : communityEvents.length === 0
+                ? "No community-focused events yet."
+                : `${communityEvents.length} community-focused event${
+                    communityEvents.length === 1 ? "" : "s"
+                  }`
+              : loading
               ? "Loading community posts..."
               : activeSearch && posts.length === 0
-              ? `No Connect posts match "${activeSearch}" yet.`
+              ? `No community posts match "${activeSearch}" yet.`
               : activeSearch
-              ? `${posts.length} matching Connect post${posts.length === 1 ? "" : "s"}`
+              ? `${posts.length} matching community post${posts.length === 1 ? "" : "s"}`
               : posts.length === 0
               ? `No open ${activeFilterLabel.toLowerCase()} posts yet.`
               : `${posts.length} open ${activeFilterLabel.toLowerCase()} post${
@@ -711,7 +818,9 @@ export default function CommunityScreen({ navigation }) {
               styles.refreshButton,
               pressed && styles.pressed,
             ]}
-            onPress={() => loadBuddyPosts()}
+            onPress={() =>
+              isCommunityEventsSection ? loadCommunityEvents() : loadBuddyPosts()
+            }
           >
             <Text style={[styles.refreshText, { color: theme.accent }]}>
               Refresh
@@ -719,16 +828,44 @@ export default function CommunityScreen({ navigation }) {
           </Pressable>
         </View>
 
-        {loading ? (
+        {loading || loadingCommunityEvents ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.accent} />
               <Text style={[styles.loadingText, { color: theme.textMuted }]}>
-              Loading community posts...
+              {isCommunityEventsSection
+                ? "Loading community events..."
+                : "Loading community posts..."}
             </Text>
           </View>
         ) : null}
 
-        {error ? (
+        {isCommunityEventsSection && communityEventsError ? (
+          <View
+            style={[
+              styles.emptyState,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              Could not load community events
+            </Text>
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+              {communityEventsError}
+            </Text>
+            <AppButton
+              title="Try Again"
+              onPress={loadCommunityEvents}
+              variant="outline"
+              size="sm"
+              style={styles.emptyButton}
+            />
+          </View>
+        ) : null}
+
+        {!isCommunityEventsSection && error ? (
           <View
             style={[
               styles.emptyState,
@@ -754,7 +891,29 @@ export default function CommunityScreen({ navigation }) {
           </View>
         ) : null}
 
-        {!loading && !error && posts.length === 0 ? (
+        {isCommunityEventsSection &&
+        !loadingCommunityEvents &&
+        !communityEventsError &&
+        communityEvents.length === 0 ? (
+          <View
+            style={[
+              styles.emptyState,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+              {activeSection.emptyTitle}
+            </Text>
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+              {activeSection.emptyText}
+            </Text>
+          </View>
+        ) : null}
+
+        {!isCommunityEventsSection && !loading && !error && posts.length === 0 ? (
           <View
             style={[
               styles.emptyState,
@@ -769,7 +928,7 @@ export default function CommunityScreen({ navigation }) {
             </Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>
               {activeSearch
-                ? `No Connect posts match "${activeSearch}". Try a broader word or clear search.`
+                ? `No community posts match "${activeSearch}". Try a broader word or clear search.`
                 : activeSection.emptyText}
             </Text>
             <AppButton
@@ -782,7 +941,26 @@ export default function CommunityScreen({ navigation }) {
           </View>
         ) : null}
 
-        {!error && posts.length ? (
+        {isCommunityEventsSection &&
+        !communityEventsError &&
+        communityEvents.length ? (
+          <View style={styles.feed}>
+            {communityEvents.map((event) => (
+              <EventCard
+                key={event._id || event.id}
+                event={event}
+                onPress={() =>
+                  navigation.navigate("EventDetail", {
+                    event,
+                    eventId: event._id || event.id,
+                  })
+                }
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {!isCommunityEventsSection && !error && posts.length ? (
           <View style={styles.feed}>
             {posts.map((post) => (
               <BuddyPostCard
@@ -804,6 +982,8 @@ export default function CommunityScreen({ navigation }) {
             ))}
           </View>
         ) : null}
+          </>
+        )}
       </ScrollView>
 
       <MemberProfileModal
@@ -844,13 +1024,18 @@ export default function CommunityScreen({ navigation }) {
         visible={sectionPickerVisible}
         title="Choose what to browse"
         options={SECTION_FILTER_OPTIONS}
-        selectedValue={activeSection.label}
+        selectedValue={isCommunityHome ? HOME_SECTION_LABEL : activeSection.label}
         onSelect={(nextLabel) => {
+          if (nextLabel === HOME_SECTION_LABEL) {
+            handleChooseSection("home");
+            setSectionPickerVisible(false);
+            return;
+          }
           const nextSection = COMMUNITY_SECTIONS.find(
             (section) => section.label === nextLabel
           );
           if (nextSection) {
-            setCommunityType(nextSection.value);
+            handleChooseSection(nextSection.value);
           }
           setSectionPickerVisible(false);
         }}
@@ -869,17 +1054,6 @@ export default function CommunityScreen({ navigation }) {
         onClose={() => setTownPickerVisible(false)}
       />
 
-      <SelectModal
-        visible={languagePickerVisible}
-        title="Filter by language"
-        options={LANGUAGE_OPTIONS}
-        selectedValue={language || "Any language"}
-        onSelect={(nextLanguage) => {
-          setLanguage(nextLanguage === "Any language" ? "" : nextLanguage);
-          setLanguagePickerVisible(false);
-        }}
-        onClose={() => setLanguagePickerVisible(false)}
-      />
     </SafeAreaView>
   );
 }
@@ -898,6 +1072,40 @@ const styles = StyleSheet.create({
   compactCtaButton: {
     borderRadius: 8,
     marginBottom: 12,
+  },
+  connectHome: {
+    paddingBottom: 8,
+  },
+  connectGrid: {
+    gap: 10,
+  },
+  connectOption: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    minHeight: 96,
+    justifyContent: "center",
+  },
+  connectOptionTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 22,
+    marginBottom: 5,
+  },
+  connectOptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  allOptionsButton: {
+    alignSelf: "flex-start",
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  allOptionsText: {
+    fontSize: 14,
+    fontWeight: "900",
   },
   searchPanel: {
     borderWidth: 1,

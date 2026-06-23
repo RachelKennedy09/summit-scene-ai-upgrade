@@ -5,7 +5,7 @@ import EventPreference, {
 import { isEventUpcoming } from "../../utils/eventSchedule.js";
 
 const EVENT_POPULATE_FIELDS =
-  "title town category date time endTime scheduleType recurrence locationName address imageUrl createdBy attendees";
+  "title town category date time endTime scheduleType isAllDay recurrence timeSlots locationName address imageUrl createdBy attendees";
 
 function getUserId(req) {
   return req.user?.userId;

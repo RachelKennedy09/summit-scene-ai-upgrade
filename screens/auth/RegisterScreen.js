@@ -25,6 +25,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 
 import AppButton from "../../components/common/AppButton";
+import SelectModal from "../../components/common/SelectModal";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import {
   EVENT_CATEGORY_GROUPS,
@@ -58,46 +59,6 @@ const USER_TYPE_OPTIONS = [
   { value: "seasonal", label: "Seasonal" },
   { value: "visitor", label: "Visiting" },
 ];
-const LANGUAGE_OPTIONS = [
-  "Afrikaans",
-  "American Sign Language",
-  "Arabic",
-  "Bengali",
-  "Cantonese",
-  "Croatian",
-  "Czech",
-  "Danish",
-  "Dutch",
-  "English",
-  "Farsi",
-  "Filipino",
-  "Finnish",
-  "French",
-  "German",
-  "Greek",
-  "Hebrew",
-  "Hindi",
-  "Hungarian",
-  "Indonesian",
-  "Italian",
-  "Japanese",
-  "Korean",
-  "Mandarin",
-  "Norwegian",
-  "Polish",
-  "Portuguese",
-  "Punjabi",
-  "Romanian",
-  "Russian",
-  "Spanish",
-  "Swedish",
-  "Tagalog",
-  "Tamil",
-  "Thai",
-  "Turkish",
-  "Ukrainian",
-  "Vietnamese",
-];
 const LOCAL_STEPS = [
   "accountType",
   "name",
@@ -124,7 +85,6 @@ const OPTIONAL_STEPS = new Set(["origin", "interests", "bio", "social", "photo"]
 const PROFILE_PHOTO_MAX_BASE64_LENGTH = 2200000;
 const BIO_MAX_LENGTH = 300;
 const ORIGIN_CITY_SUGGESTION_LIMIT = 7;
-const LANGUAGE_SUGGESTION_LIMIT = 7;
 
 function normalizeSearchText(value = "") {
   return String(value).trim().toLowerCase();
@@ -146,29 +106,6 @@ function isKnownOriginCity(value) {
   return ORIGIN_CITY_OPTIONS.some(
     (city) => city.toLowerCase() === normalizedValue
   );
-}
-
-function getLanguageSuggestions(query, selectedLanguages = []) {
-  const normalizedQuery = normalizeSearchText(query);
-  if (normalizedQuery.length < 1) {
-    return [];
-  }
-
-  const selectedSet = new Set(
-    selectedLanguages.map((language) => language.toLowerCase())
-  );
-
-  return LANGUAGE_OPTIONS.filter((language) => {
-    const normalizedLanguage = language.toLowerCase();
-    return (
-      !selectedSet.has(normalizedLanguage) &&
-      normalizedLanguage.includes(normalizedQuery)
-    );
-  }).slice(0, LANGUAGE_SUGGESTION_LIMIT);
-}
-
-function cleanLanguageValue(value = "") {
-  return String(value).trim().replace(/\s+/g, " ");
 }
 
 function getCharacterCountColor(value, limit, theme) {
@@ -435,7 +372,6 @@ function SignupProfilePreview({
   towns = [],
   userType,
   originallyFrom,
-  languages,
   interests,
   businessVibeTags = [],
   bio,
@@ -547,17 +483,6 @@ function SignupProfilePreview({
         </View>
       ) : null}
 
-      {!isBusiness && languages.length ? (
-        <View style={styles.previewSection}>
-          <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
-            Languages
-          </Text>
-          <Text style={[styles.previewValue, { color: theme.text }]}>
-            {languages.join(", ")}
-          </Text>
-        </View>
-      ) : null}
-
       {socialAccounts.length ? (
         <View style={styles.previewSection}>
           <Text style={[styles.previewLabel, { color: theme.textMuted }]}>
@@ -608,10 +533,6 @@ function RegisterScreen() {
   const [originCitySuggestions, setOriginCitySuggestions] = useState([]);
   const [showOriginCitySuggestions, setShowOriginCitySuggestions] =
     useState(false);
-  const [languages, setLanguages] = useState([]);
-  const [languageQuery, setLanguageQuery] = useState("");
-  const [languageSuggestions, setLanguageSuggestions] = useState([]);
-  const [showLanguageSuggestions, setShowLanguageSuggestions] = useState(false);
   const [interests, setInterests] = useState([]);
   const [socialValues, setSocialValues] = useState({
     instagram: "",
@@ -624,7 +545,6 @@ function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
-  const languageInputRef = useRef(null);
 
   const isLocal = role === "local";
   const isBusiness = role === "business";
@@ -688,51 +608,6 @@ function RegisterScreen() {
     setOriginCitySuggestions([]);
     setShowOriginCitySuggestions(false);
     Keyboard.dismiss();
-  }
-
-  function handleLanguageQueryChange(value) {
-    setLanguageQuery(value);
-    const suggestions = getLanguageSuggestions(value, languages);
-    setLanguageSuggestions(suggestions);
-    setShowLanguageSuggestions(suggestions.length > 0);
-  }
-
-  function handleSelectLanguage(language) {
-    setLanguages((current) =>
-      current.includes(language) ? current : [...current, language]
-    );
-    setLanguageQuery("");
-    setLanguageSuggestions([]);
-    setShowLanguageSuggestions(false);
-    setTimeout(() => languageInputRef.current?.focus(), 0);
-  }
-
-  function handleAddTypedLanguage() {
-    const nextLanguage = cleanLanguageValue(languageQuery);
-    if (!nextLanguage) {
-      return;
-    }
-
-    setLanguages((current) => {
-      const alreadyAdded = current.some(
-        (language) => language.toLowerCase() === nextLanguage.toLowerCase()
-      );
-      return alreadyAdded ? current : [...current, nextLanguage];
-    });
-    setLanguageQuery("");
-    setLanguageSuggestions([]);
-    setShowLanguageSuggestions(false);
-    setTimeout(() => languageInputRef.current?.focus(), 0);
-  }
-
-  function handleRemoveLanguage(language) {
-    setLanguages((current) => {
-      const nextLanguages = current.filter((item) => item !== language);
-      const suggestions = getLanguageSuggestions(languageQuery, nextLanguages);
-      setLanguageSuggestions(suggestions);
-      setShowLanguageSuggestions(suggestions.length > 0);
-      return nextLanguages;
-    });
   }
 
   function townQuestion() {
@@ -951,7 +826,6 @@ function RegisterScreen() {
         towns: isBusiness ? businessTowns : undefined,
         userType: isLocal ? userType : undefined,
         originallyFrom: isLocal ? originallyFrom : undefined,
-        languages: isLocal ? languages : undefined,
         interests,
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
         socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
@@ -1341,95 +1215,6 @@ function RegisterScreen() {
               ))}
             </View>
           ) : null}
-          <Text style={[styles.label, { color: theme.text }]}>
-            Languages spoken
-          </Text>
-          <TextInput
-            ref={languageInputRef}
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={languageQuery}
-            onChangeText={handleLanguageQueryChange}
-            onFocus={() => {
-              const suggestions = getLanguageSuggestions(
-                languageQuery,
-                languages
-              );
-              setLanguageSuggestions(suggestions);
-              setShowLanguageSuggestions(suggestions.length > 0);
-            }}
-            onSubmitEditing={handleAddTypedLanguage}
-            placeholder="Start typing a language..."
-            placeholderTextColor={theme.textMuted}
-            returnKeyType="done"
-          />
-          {cleanLanguageValue(languageQuery) ? (
-            <Pressable
-              style={[
-                styles.addTypedLanguageButton,
-                { borderColor: theme.border, backgroundColor: theme.card },
-              ]}
-              onPress={handleAddTypedLanguage}
-            >
-              <Text
-                style={[styles.addTypedLanguageText, { color: theme.accent }]}
-              >
-                Add "{cleanLanguageValue(languageQuery)}"
-              </Text>
-            </Pressable>
-          ) : null}
-          {showLanguageSuggestions ? (
-            <View
-              style={[
-                styles.originSuggestionsCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              {languageSuggestions.map((language) => (
-                <Pressable
-                  key={language}
-                  style={[
-                    styles.originSuggestionRow,
-                    { borderBottomColor: theme.border },
-                  ]}
-                  onPress={() => handleSelectLanguage(language)}
-                >
-                  <Text
-                    style={[styles.originSuggestionText, { color: theme.text }]}
-                  >
-                    {language}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          {languages.length ? (
-            <View style={styles.chipRow}>
-              {languages.map((language) => (
-                <Pressable
-                  key={language}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: theme.accentSoft || theme.card,
-                      borderColor: theme.accent,
-                    },
-                  ]}
-                  onPress={() => handleRemoveLanguage(language)}
-                >
-                  <Text style={[styles.chipText, { color: theme.accent }]}>
-                    {language} x
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
         </>
       );
     }
@@ -1448,6 +1233,7 @@ function RegisterScreen() {
             values={interests}
             onToggle={handleToggleInterest}
             theme={theme}
+            includeGroupTitleOption
           />
         </>
       );
@@ -1499,7 +1285,7 @@ function RegisterScreen() {
             Add socials and a profile photo
           </Text>
           <Text style={[styles.stepSubtitle, { color: theme.textMuted }]}>
-            Optional. Connect public profiles if you want people to recognize
+            Optional. Add public profiles if you want people to recognize
             you in the community.
           </Text>
           <Text style={[styles.label, { color: theme.text }]}>
@@ -1813,7 +1599,6 @@ function RegisterScreen() {
           towns={businessTowns}
           userType={userType}
           originallyFrom={originallyFrom}
-          languages={languages}
           interests={interests}
           businessVibeTags={businessVibeTags}
           bio={bio}
@@ -1976,18 +1761,22 @@ function RegisterScreen() {
                   </View>
                 ) : null}
 
-                <Pressable onPress={() => navigation.navigate("Login")}>
-                  <Text style={[styles.linkText, { color: theme.accent }]}>
-                    Already have an account? Log in
-                  </Text>
-                </Pressable>
-                <Pressable
+                <AppButton
+                  title="Log In"
+                  onPress={() => navigation.navigate("Login")}
+                  disabled={isSubmitting || isAuthLoading}
+                  variant="outline"
+                  size="lg"
+                  style={styles.secondaryAuthButton}
+                />
+                <AppButton
+                  title="Continue browsing without an account"
                   onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
-                >
-                  <Text style={[styles.browseLinkText, { color: theme.accent }]}>
-                    Continue browsing without an account
-                  </Text>
-                </Pressable>
+                  disabled={isSubmitting || isAuthLoading}
+                  variant="soft"
+                  size="lg"
+                  style={styles.secondaryAuthButton}
+                />
                 <Pressable onPress={() => navigation.navigate("Legal")}>
                   <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
                     Privacy & Terms
@@ -2099,6 +1888,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 14,
   },
+  pickerButton: {
+    minHeight: 48,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  pickerButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  pickerButtonIcon: {
+    fontSize: 20,
+    fontWeight: "900",
+  },
   validationText: {
     fontSize: 12,
     fontWeight: "700",
@@ -2127,19 +1937,6 @@ const styles = StyleSheet.create({
   originSuggestionText: {
     fontSize: 14,
     fontWeight: "700",
-  },
-  addTypedLanguageButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: -8,
-    marginBottom: 12,
-  },
-  addTypedLanguageText: {
-    fontSize: 13,
-    fontWeight: "800",
   },
   textArea: {
     minHeight: 92,
@@ -2464,6 +2261,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     fontWeight: "800",
+  },
+  secondaryAuthButton: {
+    marginTop: 12,
   },
   legalLinkText: {
     marginTop: 12,

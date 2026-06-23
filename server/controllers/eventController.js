@@ -19,6 +19,7 @@ import EventPreference from "../models/EventPreference.js";
 import User from "../models/User.js";
 import { geocodeEventAddress } from "../services/geocoding.js";
 import {
+  getNextOccurrenceDate,
   getNextOccurrenceDateString,
   isEventUpcoming,
 } from "../../utils/eventSchedule.js";
@@ -26,10 +27,15 @@ import { getEventDistanceKm } from "../../utils/proximity.js";
 import {
   EVENT_CATEGORY_TAGS,
   EVENT_CATEGORY_VALUES,
+  COMMUNITY_SUPPORT_CATEGORIES,
   VIBE_TAGS,
   getMainCategoryForTag,
   getEventCategoryFilterOptions,
 } from "../../constants/eventCategories.js";
+import {
+  COMMUNITY_EVENT_TAGS,
+  EVENT_AUDIENCE_OPTIONS,
+} from "../../constants/eventAudience.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 import { isAdminEmail } from "../utils/adminAccess.js";
 
@@ -166,6 +172,36 @@ function normalizeVibeTags(value) {
   const invalidTag = normalizedTags.find((item) => !VIBE_TAGS.includes(item));
   if (invalidTag) {
     throw new Error(`"${invalidTag}" is not a valid vibe tag.`);
+  }
+
+  return normalizedTags;
+}
+
+function normalizeEventAudience(value) {
+  const normalized = normalizeRequiredString(value || "Everyone welcome");
+  if (!EVENT_AUDIENCE_OPTIONS.includes(normalized)) {
+    throw new Error(`"${normalized}" is not a valid event audience.`);
+  }
+
+  return normalized;
+}
+
+function normalizeCommunityTags(value) {
+  if (!Array.isArray(value)) return [];
+
+  const normalizedTags = [
+    ...new Set(
+      value
+        .map((item) => normalizeRequiredString(item))
+        .filter(Boolean)
+    ),
+  ];
+
+  const invalidTag = normalizedTags.find(
+    (item) => !COMMUNITY_EVENT_TAGS.includes(item)
+  );
+  if (invalidTag) {
+    throw new Error(`"${invalidTag}" is not a valid community event tag.`);
   }
 
   return normalizedTags;
@@ -386,7 +422,13 @@ function buildDateFilterRange(dateFilter) {
   const rangeStart = new Date(todayStart);
   const rangeEnd = new Date(todayStart);
 
-  if (normalizedFilter === "Today") {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedFilter)) {
+    const [year, month, day] = normalizedFilter.split("-").map(Number);
+    rangeStart.setFullYear(year, month - 1, day);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd.setTime(rangeStart.getTime());
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+  } else if (normalizedFilter === "Today") {
     rangeEnd.setDate(rangeEnd.getDate() + 1);
   } else if (normalizedFilter === "Tomorrow") {
     rangeStart.setDate(rangeStart.getDate() + 1);
@@ -414,18 +456,12 @@ function matchesDateFilter(event, dateFilter) {
   const range = buildDateFilterRange(dateFilter);
   if (!range) return true;
 
-  const effectiveDate = getNextOccurrenceDateString(event) || event?.date;
-  if (!effectiveDate || typeof effectiveDate !== "string") {
-    return false;
-  }
-
-  const [year, month, day] = effectiveDate.split("-").map(Number);
-  if (!year || !month || !day) {
-    return false;
-  }
-
-  const eventDay = new Date(year, month - 1, day);
-  return eventDay >= range.start && eventDay < range.end;
+  const nextOccurrence = getNextOccurrenceDate(event, range.start);
+  return Boolean(
+    nextOccurrence &&
+      nextOccurrence >= range.start &&
+      nextOccurrence < range.end
+  );
 }
 
 // -------------------------------------------
@@ -442,6 +478,8 @@ export async function getAllEvents(req, res) {
     const normalizedTown = normalizeRequiredString(req.query?.town);
     const normalizedCategory = normalizeRequiredString(req.query?.category);
     const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
+    const normalizedAudience = normalizeRequiredString(req.query?.audience);
+    const communityOnly = String(req.query?.communityOnly || "") === "true";
     const searchTerms = buildSearchTerms(req.query?.search);
     const requestedPage = parsePositiveInt(req.query?.page, 1);
     const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), 50);
@@ -500,6 +538,32 @@ export async function getAllEvents(req, res) {
       ];
     }
 
+    if (communityOnly) {
+      const communityCategoryOptions =
+        getEventCategoryFilterOptions("Community") || [
+          "Community",
+          ...COMMUNITY_SUPPORT_CATEGORIES,
+        ];
+
+      baseQuery.$and = [
+        ...(baseQuery.$and || []),
+        {
+          $or: [
+            { audience: "Community-focused" },
+            { category: { $in: communityCategoryOptions } },
+            { categories: { $in: communityCategoryOptions } },
+            { categoryTags: { $in: communityCategoryOptions } },
+            { communityTags: { $in: COMMUNITY_EVENT_TAGS } },
+          ],
+        },
+      ];
+    } else if (normalizedAudience) {
+      if (!EVENT_AUDIENCE_OPTIONS.includes(normalizedAudience)) {
+        return res.status(400).json({ message: "Invalid event audience." });
+      }
+      baseQuery.audience = normalizedAudience;
+    }
+
     if (searchTerms.length) {
       const searchRegexes = searchTerms.map((term) => new RegExp(escapeRegex(term), "i"));
       const matchingCreators = await User.find({
@@ -533,6 +597,8 @@ export async function getAllEvents(req, res) {
             { categories: { $in: searchRegexes } },
             { categoryTags: { $in: searchRegexes } },
             { vibeTags: { $in: searchRegexes } },
+            { audience: { $in: searchRegexes } },
+            { communityTags: { $in: searchRegexes } },
             { town: { $in: searchRegexes } },
             { locationName: { $in: searchRegexes } },
             { location: { $in: searchRegexes } },
@@ -660,6 +726,8 @@ export async function createEvent(req, res) {
       categories,
       categoryTags,
       vibeTags,
+      audience,
+      communityTags,
       date,
       time,
       endTime,
@@ -688,6 +756,8 @@ export async function createEvent(req, res) {
     }
     let normalizedVibeTags;
     let normalizedCategoryTags;
+    let normalizedAudience;
+    let normalizedCommunityTags;
     try {
       normalizedVibeTags = normalizeVibeTags(vibeTags);
     } catch (error) {
@@ -699,6 +769,12 @@ export async function createEvent(req, res) {
         category,
         categories,
       });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+    try {
+      normalizedAudience = normalizeEventAudience(audience);
+      normalizedCommunityTags = normalizeCommunityTags(communityTags);
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -810,6 +886,8 @@ export async function createEvent(req, res) {
       categories: normalizedCategories,
       categoryTags: normalizedCategoryTags,
       vibeTags: normalizedVibeTags,
+      audience: normalizedAudience,
+      communityTags: normalizedCommunityTags,
       date: normalizedDate,
       time: legacyTimeFields.time,
       endTime: legacyTimeFields.endTime,
@@ -991,6 +1069,8 @@ export async function updateEvent(req, res) {
       categories,
       categoryTags,
       vibeTags,
+      audience,
+      communityTags,
       date,
       time,
       endTime,
@@ -1059,6 +1139,20 @@ export async function updateEvent(req, res) {
     if (vibeTags !== undefined) {
       try {
         event.vibeTags = normalizeVibeTags(vibeTags);
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+    if (audience !== undefined) {
+      try {
+        event.audience = normalizeEventAudience(audience);
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+    if (communityTags !== undefined) {
+      try {
+        event.communityTags = normalizeCommunityTags(communityTags);
       } catch (error) {
         return res.status(400).json({ message: error.message });
       }

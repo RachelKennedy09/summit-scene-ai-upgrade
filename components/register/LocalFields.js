@@ -211,7 +211,6 @@ function SocialConnectFields({ values, onChange, theme }) {
 function LocalFields({
   town,
   userType,
-  languagesText,
   originallyFrom,
   interests,
   socialValues,
@@ -219,7 +218,6 @@ function LocalFields({
   bio,
   onChangeTown,
   onChangeUserType,
-  onChangeLanguagesText,
   onChangeOriginallyFrom,
   onToggleInterest,
   onChangeSocial,
@@ -277,24 +275,6 @@ function LocalFields({
         placeholderTextColor={theme.textMuted}
         value={originallyFrom}
         onChangeText={onChangeOriginallyFrom}
-      />
-
-      <Text style={[styles.label, { color: theme.text }]}>
-        Languages spoken (optional)
-      </Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-            color: theme.text,
-          },
-        ]}
-        placeholder="English, French, Spanish..."
-        placeholderTextColor={theme.textMuted}
-        value={languagesText}
-        onChangeText={onChangeLanguagesText}
       />
 
       <Text style={[styles.label, { color: theme.text }]}>

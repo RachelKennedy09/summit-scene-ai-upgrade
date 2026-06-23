@@ -1,3 +1,18 @@
+export const COMMUNITY_SUPPORT_CATEGORIES = [
+  "Local support",
+  "Free community meal",
+  "Resident / worker focused",
+  "Youth",
+  "Seniors",
+  "Families",
+  "Newcomers",
+  "Volunteer",
+  "Local fundraiser",
+  "Language exchange",
+  "Indigenous & BIPOC",
+  "Accessibility",
+];
+
 export const EVENT_CATEGORY_GROUPS = [
   {
     title: "Arts & Creativity",
@@ -137,6 +152,7 @@ export const EVENT_CATEGORY_GROUPS = [
   {
     title: "Community",
     options: [
+      ...COMMUNITY_SUPPORT_CATEGORIES,
       "Book Clubs",
       "Coffee Meetups",
       "Community Gatherings",

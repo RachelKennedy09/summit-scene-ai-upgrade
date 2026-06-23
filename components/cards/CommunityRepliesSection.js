@@ -117,7 +117,6 @@ export default function CommunityRepliesSection({
                   originallyFrom: replyUserObj.originallyFrom || "",
                   interests: replyUserObj.interests || [],
                   businessVibeTags: replyUserObj.businessVibeTags || [],
-                  languages: replyUserObj.languages || [],
                   skillLevel: replyUserObj.skillLevel || {},
                   socialAccounts: replyUserObj.socialAccounts || [],
                   avatarKey: replyAvatarKey,

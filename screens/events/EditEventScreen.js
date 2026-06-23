@@ -36,6 +36,7 @@ import {
   getCategoryTagGroupsForCategories,
   getMainCategoryForTag,
 } from "../../constants/eventCategories";
+import { EVENT_AUDIENCE_OPTIONS } from "../../constants/eventAudience";
 import { isSummitSceneAdmin } from "../../utils/adminAccess";
 import { isImportedEventListing } from "../../utils/importedEventHost";
 
@@ -61,7 +62,6 @@ const WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
-
 // ---- helpers for time parsing/formatting ----
 // Professor note: the backend stores times as strings like "7:00 PM".
 // These helpers convert between that string format and JS Date objects
@@ -140,14 +140,23 @@ export default function EditEventScreen({ route, navigation }) {
       : FORM_CATEGORIES[0]
   );
   const [categoryTags, setCategoryTags] = useState(
-    Array.isArray(event.categoryTags)
-      ? event.categoryTags
-      : event.category && !FORM_CATEGORIES.includes(event.category)
-        ? [event.category]
-        : []
+    [
+      ...new Set([
+        ...(Array.isArray(event.categoryTags) ? event.categoryTags : []),
+        ...(Array.isArray(event.communityTags) ? event.communityTags : []),
+        ...(event.category && !FORM_CATEGORIES.includes(event.category)
+          ? [event.category]
+          : []),
+      ]),
+    ]
   );
   const [vibeTags, setVibeTags] = useState(
     Array.isArray(event.vibeTags) ? event.vibeTags : []
+  );
+  const [audience, setAudience] = useState(
+    event.audience && EVENT_AUDIENCE_OPTIONS.includes(event.audience)
+      ? event.audience
+      : "Everyone welcome"
   );
 
   // Date state
@@ -227,6 +236,7 @@ export default function EditEventScreen({ route, navigation }) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
   const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
+  const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
   const categoryTagGroups = useMemo(
     () => getCategoryTagGroupsForCategories([category]),
@@ -448,6 +458,8 @@ export default function EditEventScreen({ route, navigation }) {
         categories: [category],
         categoryTags,
         vibeTags,
+        audience,
+        communityTags: [],
         date,
         time: normalizedTimeSlots[0]?.startTime || undefined,
         endTime: normalizedTimeSlots[0]?.endTime || undefined,
@@ -752,6 +764,24 @@ export default function EditEventScreen({ route, navigation }) {
             ]}
           >
             {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          Who is this event for?
+        </Text>
+        <Text style={[styles.helperText, { color: theme.textMuted }]}>
+          Choose how this event should be framed for locals, workers, and visitors.
+        </Text>
+        <Pressable
+          style={[
+            styles.selectButton,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+          onPress={() => setShowAudienceModal(true)}
+        >
+          <Text style={[styles.selectButtonText, { color: theme.text }]}>
+            {audience}
           </Text>
         </Pressable>
 
@@ -1413,6 +1443,18 @@ export default function EditEventScreen({ route, navigation }) {
         closeLabel="Done"
         searchable
         searchPlaceholder="Search vibe tags"
+      />
+
+      <SelectModal
+        visible={showAudienceModal}
+        title="Who is this event for?"
+        options={EVENT_AUDIENCE_OPTIONS}
+        selectedValue={audience}
+        onSelect={(value) => {
+          setAudience(value);
+          setShowAudienceModal(false);
+        }}
+        onClose={() => setShowAudienceModal(false)}
       />
 
       <SelectModal

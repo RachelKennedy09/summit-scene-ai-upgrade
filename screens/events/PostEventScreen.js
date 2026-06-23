@@ -38,6 +38,7 @@ import {
   VIBE_TAG_GROUPS,
   getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
+import { EVENT_AUDIENCE_OPTIONS } from "../../constants/eventAudience";
 import { recordEventCreatedForReviewPrompt } from "../../utils/appReviewPrompt";
 import { isSummitSceneAdmin } from "../../utils/adminAccess";
 
@@ -62,7 +63,6 @@ const WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
-
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -96,6 +96,7 @@ export default function PostEventScreen() {
   const category = categories[0] || "";
   const [categoryTags, setCategoryTags] = useState([]);
   const [vibeTags, setVibeTags] = useState([]);
+  const [audience, setAudience] = useState("Everyone welcome");
 
   // Date + Time state
   const [dateObj, setDateObj] = useState(new Date()); // Date object for picker
@@ -147,6 +148,7 @@ export default function PostEventScreen() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
   const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
+  const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
   const categoryTagGroups = useMemo(
     () => getCategoryTagGroupsForCategories(categories),
@@ -426,6 +428,8 @@ export default function PostEventScreen() {
           categories,
           categoryTags,
           vibeTags,
+          audience,
+          communityTags: [],
           date,
           time: normalizedTimeSlots[0]?.startTime || undefined,
           endTime: normalizedTimeSlots[0]?.endTime || undefined,
@@ -503,6 +507,7 @@ export default function PostEventScreen() {
             setCategories([]);
             setCategoryTags([]);
             setVibeTags([]);
+            setAudience("Everyone welcome");
             setDateObj(new Date());
             setTimeObj(new Date());
             setEndTimeObj(new Date());
@@ -521,9 +526,13 @@ export default function PostEventScreen() {
             setBookingUrl("");
             setImportedBySummitScene(false);
 
-            navigation.navigate("MyEvents", {
-              postedEventId: data?._id,
-              successMessage: "Your event is live and now appears in My Events.",
+            navigation.navigate("tabs", {
+              screen: "MyEvents",
+              params: {
+                postedEventId: data?._id,
+                successMessage:
+                  "Your event is live and now appears in Manage events.",
+              },
             });
           },
         },
@@ -805,6 +814,29 @@ export default function PostEventScreen() {
               {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
             </Text>
           </Pressable>
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Who is this event for?
+          </Text>
+          <Text style={[styles.helperText, { color: theme.textMuted }]}>
+            Choose how this event should be framed for locals, workers, and visitors.
+          </Text>
+          <Pressable
+            style={[
+              styles.selectButton,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={() => setShowAudienceModal(true)}
+          >
+            <Text style={{ color: audience ? theme.text : theme.textMuted }}>
+              {audience || "Everyone welcome"}
+            </Text>
+          </Pressable>
+
         </View>
 
         <View
@@ -1552,6 +1584,18 @@ export default function PostEventScreen() {
         closeLabel="Done"
         searchable
         searchPlaceholder="Search vibe tags"
+      />
+
+      <SelectModal
+        visible={showAudienceModal}
+        title="Who is this event for?"
+        options={EVENT_AUDIENCE_OPTIONS}
+        selectedValue={audience}
+        onSelect={(value) => {
+          setAudience(value);
+          setShowAudienceModal(false);
+        }}
+        onClose={() => setShowAudienceModal(false)}
       />
 
       <SelectModal

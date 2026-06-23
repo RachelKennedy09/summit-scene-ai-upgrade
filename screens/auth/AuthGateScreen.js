@@ -10,9 +10,9 @@ import { useTheme } from "../../context/ThemeContext";
 
 const COPY = {
   community: {
-    title: "Connect requires an account",
+    title: "Community requires an account",
     subtitle:
-      "Log in or create an account to view Connect, post plans, reply, like, report, block, and use the community safety tools.",
+      "Log in or create an account to view Community, post plans, reply, like, report, block, and use the community safety tools.",
     primaryLabel: "Log In",
     secondaryLabel: "Create Account",
     secondaryParams: undefined,
@@ -70,7 +70,7 @@ export default function AuthGateScreen() {
           <Text style={[styles.cardText, { color: theme.textMuted }]}>
             {mode === "organizer"
               ? "Browsing events and maps is open without an account. Creating hosted event listings requires a reviewed business or organizer profile."
-              : "Browsing events and maps is open without an account. Connect is account-based because posts, replies, reports, blocks, and moderation tools need a real profile."}
+              : "Browsing events and maps is open without an account. Community is account-based because posts, replies, reports, blocks, and moderation tools need a real profile."}
           </Text>
         </View>
 

@@ -1,5 +1,5 @@
 // navigation/TabNavigator.js
-// Bottom tab navigation for the app — Hub, Map, Community, Account
+// Bottom tab navigation for the app — Hub, Map, Connect, Account
 // Verified businesses also get a Create tab for official events.
 
 import React from "react";
@@ -8,7 +8,6 @@ import { Ionicons } from "@expo/vector-icons";
 
 import HubScreen from "../screens/hub/HubScreen";
 import MapScreen from "../screens/map/MapScreen";
-import PostEventScreen from "../screens/events/PostEventScreen";
 import MyEventsScreen from "../screens/events/MyEventsScreen";
 import CommunityScreen from "../screens/community/CommunityScreen";
 import AccountScreen from "../screens/account/AccountScreen";
@@ -42,14 +41,9 @@ export default function TabNavigator() {
         tabBarActiveTintColor: theme.tabBarActive || theme.accent,
         tabBarInactiveTintColor: theme.tabBarInactive || theme.textMuted,
         tabBarLabelStyle: {
-          fontSize: canUseBusinessTools ? 10 : 11,
+          fontSize: 11,
           fontWeight: "600",
         },
-        tabBarItemStyle: canUseBusinessTools
-          ? {
-              paddingHorizontal: 0,
-            }
-          : undefined,
 
         // Icon for each tab
         tabBarIcon: ({ focused, color, size }) => {
@@ -59,8 +53,6 @@ export default function TabNavigator() {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Map") {
             iconName = focused ? "map" : "map-outline";
-          } else if (route.name === "Post") {
-            iconName = focused ? "add-circle" : "add-circle-outline";
           } else if (route.name === "MyEvents") {
             iconName = focused ? "calendar" : "calendar-outline";
           } else if (route.name === "Community") {
@@ -72,7 +64,7 @@ export default function TabNavigator() {
           return (
             <Ionicons
               name={iconName}
-              size={canUseBusinessTools ? Math.max(20, size - 2) : size}
+              size={size}
               color={color}
             />
           );
@@ -88,15 +80,7 @@ export default function TabNavigator() {
         <Tab.Screen
           name="MyEvents"
           component={MyEventsScreen}
-          options={{ title: "Mine" }}
-        />
-      )}
-
-      {canUseBusinessTools && (
-        <Tab.Screen
-          name="Post"
-          component={PostEventScreen}
-          options={{ title: "Create" }}
+          options={{ title: "Manage" }}
         />
       )}
 

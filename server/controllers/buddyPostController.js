@@ -13,6 +13,7 @@ import User from "../models/User.js";
 import { isEventUpcoming } from "../../utils/eventSchedule.js";
 import {
   COMMUNITY_CATEGORY_TAGS,
+  COMMUNITY_CATEGORY_GROUPS,
   EVENT_CATEGORY_GROUPS,
   VIBE_TAGS,
   getMainCategoryForTag,
@@ -93,7 +94,9 @@ function getBuddyCategoryFilterOptions(category) {
   const normalized = typeof category === "string" ? category.trim() : "";
   if (!normalized) return [];
 
-  const group = EVENT_CATEGORY_GROUPS.find((item) => item.title === normalized);
+  const group = [...EVENT_CATEGORY_GROUPS, ...COMMUNITY_CATEGORY_GROUPS].find(
+    (item) => item.title === normalized
+  );
   if (group) return [group.title, ...group.options];
 
   const mainCategory = getMainCategoryForTag(normalized);

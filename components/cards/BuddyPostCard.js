@@ -45,7 +45,6 @@ function getAuthor(post) {
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
     businessVibeTags: user.businessVibeTags || [],
-    languages: user.languages || [],
     skillLevel: user.skillLevel || {},
     socialAccounts: user.socialAccounts || [],
     bio: user.bio || "",
@@ -64,7 +63,6 @@ function getUserProfile(user, fallbackName = "Member") {
       role: "local",
       interests: [],
       businessVibeTags: [],
-      languages: [],
       skillLevel: {},
       socialAccounts: [],
     };
@@ -83,7 +81,6 @@ function getUserProfile(user, fallbackName = "Member") {
     originallyFrom: user.originallyFrom || "",
     interests: user.interests || [],
     businessVibeTags: user.businessVibeTags || [],
-    languages: user.languages || [],
     skillLevel: user.skillLevel || {},
     socialAccounts: user.socialAccounts || [],
     bio: user.bio || "",

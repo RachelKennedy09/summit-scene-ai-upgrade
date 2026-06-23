@@ -131,7 +131,6 @@ export default function MemberProfileModal({
   const businessVibeTags = Array.isArray(user.businessVibeTags)
     ? user.businessVibeTags
     : [];
-  const languages = Array.isArray(user.languages) ? user.languages : [];
   const socialAccounts = Array.isArray(user.socialAccounts)
     ? user.socialAccounts.filter((account) =>
         ["instagram", "facebook"].includes(account?.provider)
@@ -322,19 +321,6 @@ export default function MemberProfileModal({
                     <Chip key={tag} label={tag} theme={theme} />
                   ))}
                 </View>
-              </Section>
-            ) : null}
-
-            {languages.length ? (
-              <Section label="Languages" theme={theme}>
-                <Text
-                  style={[
-                    styles.profileSectionText,
-                    { color: theme.textMain || theme.text },
-                  ]}
-                >
-                  {languages.join(", ")}
-                </Text>
               </Section>
             ) : null}
 

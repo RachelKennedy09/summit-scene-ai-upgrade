@@ -165,7 +165,6 @@ function getAttendeeProfile(value) {
     originallyFrom: value.originallyFrom || "",
     interests: value.interests || [],
     businessVibeTags: value.businessVibeTags || [],
-    languages: value.languages || [],
     skillLevel: value.skillLevel || {},
     socialAccounts: value.socialAccounts || [],
     bio: value.bio || "",

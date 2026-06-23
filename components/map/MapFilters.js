@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import {
+  Image,
   View,
   Text,
   Pressable,
@@ -14,6 +15,7 @@ import {
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
+import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
 function FilterModal({
   visible,
@@ -141,9 +143,12 @@ export default function MapFilters({
   return (
     <>
       <View style={styles.compactHeader}>
-        <Text style={[styles.compactTitle, { color: theme.text || theme.textMain }]}>
-          Explore by Map
-        </Text>
+        <View style={styles.compactTitleRow}>
+          <Image source={logo} style={styles.compactLogo} resizeMode="contain" />
+          <Text style={[styles.compactTitle, { color: theme.text || theme.textMain }]}>
+            Explore by Map
+          </Text>
+        </View>
         <Text style={[styles.compactSubtitle, { color: theme.textMuted }]}>
           Events pinned across Banff, Canmore and Lake Louise.
         </Text>
@@ -396,13 +401,25 @@ export default function MapFilters({
 
 const styles = StyleSheet.create({
   compactHeader: {
+    paddingTop: 6,
     marginBottom: 10,
   },
-  compactTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: "800",
+  compactTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
     marginBottom: 2,
+  },
+  compactLogo: {
+    width: 42,
+    height: 42,
+    flexShrink: 0,
+  },
+  compactTitle: {
+    flex: 1,
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: "800",
   },
   compactSubtitle: {
     fontSize: 15,

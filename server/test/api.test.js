@@ -1058,6 +1058,81 @@ describe("SummitScene API", function () {
     ).to.equal(true);
   });
 
+  it("should only show community-tagged events in the community event feed", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+
+    const regularTitle = `Regular Tour ${testRunId}`;
+    const communityTitle = `Community Meal ${testRunId}`;
+    const audienceOnlyTitle = `Community Focused Audience ${testRunId}`;
+
+    const regularRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title: regularTitle,
+        description: "A visitor-friendly food tour that is not a community event.",
+        town: "Banff",
+        category: "Tours & Experiences",
+        categories: ["Tours & Experiences"],
+        categoryTags: ["Food Tours", "Visitor Experiences"],
+        audience: "Visitors welcome, local-focused",
+        date: "2099-07-01",
+        time: "12:00",
+        address: "100 Banff Avenue, Banff, AB",
+      });
+
+    expect(regularRes.status).to.equal(201);
+
+    const communityRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title: communityTitle,
+        description: "A free meal for local support.",
+        town: "Banff",
+        category: "Community",
+        categories: ["Community"],
+        categoryTags: ["Free community meal"],
+        audience: "Everyone welcome",
+        date: "2099-07-02",
+        time: "17:00",
+        address: "100 Banff Avenue, Banff, AB",
+      });
+
+    expect(communityRes.status).to.equal(201);
+
+    const audienceOnlyRes = await request(app)
+      .post("/api/events")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        title: audienceOnlyTitle,
+        description: "An event explicitly marked community-focused.",
+        town: "Canmore",
+        category: "Food & Drink",
+        categories: ["Food & Drink"],
+        categoryTags: ["Coffee"],
+        audience: "Community-focused",
+        date: "2099-07-03",
+        time: "10:00",
+        address: "100 Banff Avenue, Banff, AB",
+      });
+
+    expect(audienceOnlyRes.status).to.equal(201);
+
+    const feedRes = await request(app).get("/api/events?communityOnly=true");
+
+    expect(feedRes.status).to.equal(200);
+    expect(feedRes.body.some((event) => event.title === regularTitle)).to.equal(
+      false
+    );
+    expect(feedRes.body.some((event) => event.title === communityTitle)).to.equal(
+      true
+    );
+    expect(
+      feedRes.body.some((event) => event.title === audienceOnlyTitle)
+    ).to.equal(true);
+  });
+
   /* -----------------------------------------
    * COMMUNITY TESTS
    * --------------------------------------- */
@@ -1103,7 +1178,7 @@ describe("SummitScene API", function () {
         communityType: "local-plan",
         activityText: "Looking for someone to hike Tunnel Mountain after work.",
         imageUrl: "data:image/png;base64,dGVzdC1jb25uZWN0LXBob3Rv",
-        date: "2026-06-15",
+        date: "2099-06-15",
         time: "17:30",
         town: "Banff",
         skillLevel: "casual",
@@ -1117,7 +1192,7 @@ describe("SummitScene API", function () {
       communityType: "local-plan",
       activityText: "Looking for someone to hike Tunnel Mountain after work.",
       imageUrl: "data:image/png;base64,dGVzdC1jb25uZWN0LXBob3Rv",
-      date: "2026-06-15",
+      date: "2099-06-15",
       time: "17:30",
       town: "Banff",
       skillLevel: "casual",
@@ -1151,7 +1226,7 @@ describe("SummitScene API", function () {
     });
 
     const languageDateRes = await request(app)
-      .get("/api/buddy-posts?language=french&date=2026-06-15&includeExpired=true")
+      .get("/api/buddy-posts?language=french&date=2099-06-15&includeExpired=true")
       .set("Authorization", `Bearer ${authToken}`);
 
     expect(languageDateRes.status).to.equal(200);
@@ -1167,7 +1242,7 @@ describe("SummitScene API", function () {
         type: "hiking",
         category: "Climbing",
         activityText: "Looking for a climbing partner after work.",
-        date: "2026-06-16",
+        date: "2099-06-16",
         time: "18:00",
         town: "Canmore",
         skillLevel: "beginner",
@@ -1190,7 +1265,7 @@ describe("SummitScene API", function () {
         category: "Soccer",
         categoryTags: ["Soccer", "Rugby"],
         activityText: "Looking for people for a casual field sports meetup.",
-        date: "2026-06-17",
+        date: "2099-06-17",
         time: "18:30",
         town: "Canmore",
         groupSizePreference: "any",
@@ -1212,7 +1287,7 @@ describe("SummitScene API", function () {
         category: "Local Clubs",
         communityType: "group",
         activityText: "Starting a casual monthly book club.",
-        date: "2026-06-20",
+        date: "2099-06-20",
         time: "19:00",
         town: "Canmore",
         groupSizePreference: "small-group",
@@ -1220,7 +1295,7 @@ describe("SummitScene API", function () {
         recurrence: {
           frequency: "monthly",
           weekday: "Wednesday",
-          untilDate: "2026-09-30",
+          untilDate: "2099-09-30",
         },
       });
 
@@ -1234,7 +1309,7 @@ describe("SummitScene API", function () {
     expect(recurringRes.body.recurrence).to.include({
       frequency: "monthly",
       weekday: "Wednesday",
-      untilDate: "2026-09-30",
+      untilDate: "2099-09-30",
     });
 
     const multiCategoryGroupRes = await request(app)
@@ -1247,7 +1322,7 @@ describe("SummitScene API", function () {
         categoryTags: ["Book Clubs", "Sober Events"],
         communityType: "group",
         activityText: "Starting a sober book club group.",
-        date: "2026-06-21",
+        date: "2099-06-21",
         time: "18:30",
         town: "Canmore",
         groupSizePreference: "small-group",
@@ -1297,7 +1372,7 @@ describe("SummitScene API", function () {
         category: "Karaoke",
         communityType: "local-plan",
         activityText: "Anyone want to go to karaoke night?",
-        date: "2026-06-22",
+        date: "2099-06-22",
         time: "21:00",
         town: "Banff",
         groupSizePreference: "small-group",
@@ -1322,7 +1397,7 @@ describe("SummitScene API", function () {
         vibeTags: ["Sober-friendly", "Drop-in"],
         communityType: "local-plan",
         activityText: "Anyone want a sober coffee meetup?",
-        date: "2026-06-23",
+        date: "2099-06-23",
         time: "10:00",
         town: "Canmore",
         groupSizePreference: "small-group",
@@ -1373,7 +1448,7 @@ describe("SummitScene API", function () {
         category: "Cultural Events",
         communityType: "new-in-town",
         activityText: "New in town and looking to meet people for easy walks.",
-        date: "2026-06-23",
+        date: "2099-06-23",
         town: "Canmore",
         groupSizePreference: "any",
       });
@@ -1475,7 +1550,7 @@ describe("SummitScene API", function () {
         category: "Hiking",
         communityType: "local-plan",
         activityText: "Easy public walk by the river.",
-        date: "2026-06-01",
+        date: "2099-06-01",
         time: "10:00",
         town: "Canmore",
         groupSizePreference: "small-group",

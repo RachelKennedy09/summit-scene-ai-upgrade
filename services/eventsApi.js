@@ -190,6 +190,12 @@ function buildEventsQueryString(options = {}) {
   if (options.creatorId) {
     params.set("creatorId", String(options.creatorId));
   }
+  if (options.audience) {
+    params.set("audience", String(options.audience));
+  }
+  if (options.communityOnly) {
+    params.set("communityOnly", "true");
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";

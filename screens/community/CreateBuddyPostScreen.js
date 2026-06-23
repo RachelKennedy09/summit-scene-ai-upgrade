@@ -939,7 +939,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
               Community post
             </Text>
             <Text style={[styles.boundaryNoteText, { color: theme.textMuted }]}>
-              This appears in Connect for plans, groups, intros, jobs, notices,
+              This appears in Community for plans, groups, intros, jobs, notices,
               and buddy posts. Official hosted events are posted separately by
               business or organizer profiles.
             </Text>

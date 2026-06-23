@@ -105,9 +105,9 @@ export default function UserHelpScreen() {
           />
         </HelpSection>
 
-        <HelpSection title="How to use Connect and Community" theme={theme}>
+        <HelpSection title="How to use Community" theme={theme}>
           <HelpText theme={theme}>
-            Connect and Community help people make plans, meet newcomers, join
+            Community helps people make plans, meet newcomers, join
             repeat groups, browse local job or volunteer ads, and share practical local updates.
           </HelpText>
           <HelpList
@@ -119,7 +119,7 @@ export default function UserHelpScreen() {
               "Jobs and Volunteer is for local job ads, seasonal roles, hiring notices, and volunteer opportunities.",
               "Town Notices are for practical updates like ride shares, gear swaps, garage sales, road blocks, lost and found, and local notices.",
               "Use post replies and interest buttons to connect inside the app before moving to any outside contact.",
-              "Open a profile before meeting someone so you can review their public name, interests, town, languages, and shared socials.",
+              "Open a profile before meeting someone so you can review their public name, interests, town, and shared socials.",
             ]}
           />
         </HelpSection>
@@ -132,7 +132,7 @@ export default function UserHelpScreen() {
           <HelpList
             theme={theme}
             items={[
-              "Edit Profile lets you update your public name, town, languages, interests, photo, bio, and social links.",
+              "Edit Profile lets you update your public name, town, interests, photo, bio, and social links.",
               "Saved Events and I'm Going help you keep track of upcoming plans you care about.",
               "Business accounts can manage business profile details, verification, and posted events from Account.",
               "Help & FAQ, Safety, Privacy, Terms, and Community Guidelines are available from Account so public rules are easy to find.",

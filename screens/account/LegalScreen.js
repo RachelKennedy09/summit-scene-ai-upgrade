@@ -143,7 +143,7 @@ export default function LegalScreen() {
           </LegalText>
           <LegalBullet theme={theme}>
             Account data: name or business name, email, password hash, role,
-            town, profile details, avatar, selected languages, interests, social
+            town, profile details, avatar, selected interests, social
             links, public business phone number, website, Instagram, Facebook,
             Google Business listing, email verification status, and business
             verification status.
@@ -163,7 +163,7 @@ export default function LegalScreen() {
             privacy policies and terms.
           </LegalBullet>
           <LegalBullet theme={theme}>
-            Optional profile choices, including community interests, languages,
+            Optional profile choices, including community interests,
             social links, or LGBTQ+ related interests, may reveal personal or
             sensitive information. Only add details you are comfortable sharing
             with other users.
@@ -250,7 +250,7 @@ export default function LegalScreen() {
             do not want others to see.
           </LegalText>
           <LegalText theme={theme}>
-            Optional profile choices, including community interests, languages,
+            Optional profile choices, including community interests,
             social links, or LGBTQ+ related interests, may reveal personal or
             sensitive information. Only add details you are comfortable sharing
             with other users.

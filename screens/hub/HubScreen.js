@@ -469,7 +469,7 @@ export default function HubScreen() {
   }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
 
   const hubSubtitle =
-    "Todays events are shown by default. Choose a category, town, and/or date to focus the list. Switch to Connect to browse the community.";
+    "Todays events are shown by default. Choose a category, town, and/or date to focus the list. Switch to Community to browse posts.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||

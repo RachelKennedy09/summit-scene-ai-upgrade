@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import SelectModal from "../../components/common/SelectModal";
 import {
   EVENT_CATEGORY_GROUPS,
   PROFILE_INTEREST_GROUPS,
@@ -298,9 +299,6 @@ export default function EditProfileScreen({ navigation }) {
   });
   const [userType, setUserType] = useState(user?.userType || "local");
   const [originallyFrom, setOriginallyFrom] = useState(user?.originallyFrom || "");
-  const [languagesText, setLanguagesText] = useState(
-    Array.isArray(user?.languages) ? user.languages.join(", ") : ""
-  );
   const [interests, setInterests] = useState(
     Array.isArray(user?.interests) ? user.interests : []
   );
@@ -380,11 +378,6 @@ export default function EditProfileScreen({ navigation }) {
         }
       }
 
-      const languages = languagesText
-        .split(",")
-        .map((language) => language.trim())
-        .filter(Boolean);
-
       const updates = {
         name,
         town: isBusiness ? businessTowns[0] : town,
@@ -392,7 +385,6 @@ export default function EditProfileScreen({ navigation }) {
         bio,
         userType: isBusiness ? undefined : userType,
         originallyFrom: isBusiness ? undefined : originallyFrom,
-        languages: isBusiness ? undefined : languages,
         interests,
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
         lookingFor: isBusiness ? undefined : "",
@@ -603,24 +595,6 @@ export default function EditProfileScreen({ navigation }) {
                 placeholderTextColor={theme.textMuted}
                 value={originallyFrom}
                 onChangeText={setOriginallyFrom}
-              />
-
-              <Text style={[styles.label, { color: theme.text }]}>
-                Languages spoken (optional)
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    color: theme.text,
-                  },
-                ]}
-                placeholder="English, French, Spanish..."
-                placeholderTextColor={theme.textMuted}
-                value={languagesText}
-                onChangeText={setLanguagesText}
               />
 
               <Text style={[styles.label, { color: theme.text }]}>
@@ -950,6 +924,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
+  },
+  pickerButton: {
+    minHeight: 46,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  pickerButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  pickerButtonIcon: {
+    fontSize: 20,
+    fontWeight: "900",
   },
   photoPickerButton: {
     alignItems: "center",

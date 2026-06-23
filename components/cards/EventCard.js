@@ -39,7 +39,17 @@ export default function EventCard({ event, onPress }) {
   const categoryLabel = categoryList.join(", ") || "Event";
   const categoryTags = Array.isArray(event.categoryTags) ? event.categoryTags : [];
   const vibeTags = Array.isArray(event.vibeTags) ? event.vibeTags : [];
-  const combinedTags = [...vibeTags, ...categoryTags];
+  const communityTags = Array.isArray(event.communityTags)
+    ? event.communityTags
+    : [];
+  const audience = event.audience || "";
+  const shouldShowAudienceBadge =
+    audience && audience !== "Everyone welcome";
+  const combinedTags = [
+    ...communityTags,
+    ...vibeTags,
+    ...categoryTags,
+  ];
   const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
   const categoryAccent = getCategoryAccent(categoryList[0], theme);
   const host =
@@ -116,6 +126,22 @@ export default function EventCard({ event, onPress }) {
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {event.title || "Untitled event"}
         </Text>
+
+        {shouldShowAudienceBadge ? (
+          <View
+            style={[
+              styles.audienceBadge,
+              {
+                backgroundColor: theme.accentSoft || theme.background,
+                borderColor: theme.accent,
+              },
+            ]}
+          >
+            <Text style={[styles.audienceBadgeText, { color: theme.accent }]}>
+              {audience}
+            </Text>
+          </View>
+        ) : null}
 
         {importedHostLabel ? (
           <Text
@@ -335,6 +361,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   importedBadgeText: {
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  audienceBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginHorizontal: 16,
+    marginTop: -2,
+    marginBottom: 10,
+  },
+  audienceBadgeText: {
     fontSize: 12,
     fontWeight: "900",
     textTransform: "uppercase",

@@ -458,27 +458,23 @@ function LoginScreen() {
               </Text>
             </Pressable>
 
-            {/* LINK → REGISTER SCREEN */}
-            <Pressable onPress={() => navigation.navigate("Register")}>
-              <Text
-                style={[
-                  styles.linkText,
-                  {
-                    color: theme.accent,
-                  },
-                ]}
-              >
-                Don't have an account? Sign up
-              </Text>
-            </Pressable>
+            <AppButton
+              title="Sign Up"
+              onPress={() => navigation.navigate("Register")}
+              disabled={isSubmitting || isAuthLoading}
+              variant="outline"
+              size="lg"
+              style={styles.secondaryAuthButton}
+            />
 
-            <Pressable
+            <AppButton
+              title="Continue browsing without an account"
               onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
-            >
-              <Text style={[styles.browseLinkText, { color: theme.accent }]}>
-                Continue browsing without an account
-              </Text>
-            </Pressable>
+              disabled={isSubmitting || isAuthLoading}
+              variant="soft"
+              size="lg"
+              style={styles.secondaryAuthButton}
+            />
 
             <Pressable onPress={() => navigation.navigate("Legal")}>
               <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
@@ -610,6 +606,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     fontWeight: "800",
+  },
+  secondaryAuthButton: {
+    marginTop: 12,
   },
   legalLinkText: {
     marginTop: 12,
