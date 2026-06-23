@@ -54,6 +54,66 @@ import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
 const Stack = createNativeStackNavigator();
 const BOOTSTRAP_FALLBACK_DELAY_MS = 12000;
 
+function getFallbackTab(routeName) {
+  if (
+    [
+      "CommunityPost",
+      "EditCommunityPost",
+      "CreateBuddyPost",
+    ].includes(routeName)
+  ) {
+    return "Community";
+  }
+
+  if (
+    [
+      "EditProfile",
+      "ChangeEmail",
+      "ChangePassword",
+      "BlockedUsers",
+      "AdminAccounts",
+      "SavedEvents",
+      "UserHelp",
+      "BusinessHelp",
+      "Legal",
+      "ReportBug",
+      "ModerationQueue",
+      "BusinessVerification",
+    ].includes(routeName)
+  ) {
+    return "Account";
+  }
+
+  return "Hub";
+}
+
+function HeaderBackButton({ navigation, routeName, tintColor, theme }) {
+  function handlePress() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("tabs", { screen: getFallbackTab(routeName) });
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      onPress={handlePress}
+      style={styles.headerBackButton}
+    >
+      <Ionicons
+        name="chevron-back"
+        size={30}
+        color={tintColor || theme.text}
+      />
+    </Pressable>
+  );
+}
+
 //  While auth is still checking for an existing token (restore from storage),
 //  show a branded loading screen.
 
@@ -121,10 +181,11 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator
-      screenOptions={{
+      screenOptions={({ navigation, route }) => ({
         // Make the back button icon-only (no "< Back" text)
         headerBackButtonDisplayMode: "minimal",
         headerBackTitleVisible: false,
+        headerBackVisible: false,
 
         // Use theme colors for header text + back icon
         headerTintColor: theme.text,
@@ -134,16 +195,15 @@ export default function RootNavigator() {
           backgroundColor: theme.background,
         },
 
-        // Custom Ionicons back icon
-        headerBackImage: ({ tintColor }) => (
-          <Ionicons
-            name="chevron-back"
-            size={26}
-            color={tintColor || theme.text}
-            style={{ marginLeft: 4 }}
+        headerLeft: ({ tintColor }) => (
+          <HeaderBackButton
+            navigation={navigation}
+            routeName={route.name}
+            tintColor={tintColor}
+            theme={theme}
           />
         ),
-      }}
+      })}
     >
       {user && !user.hasSeenSafetyTips ? (
         <Stack.Screen
@@ -303,6 +363,13 @@ export default function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
+  headerBackButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: -6,
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: colors.background,

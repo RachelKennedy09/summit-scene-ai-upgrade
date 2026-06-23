@@ -42,6 +42,8 @@ import { isAdminEmail } from "../utils/adminAccess.js";
 const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
   "weekly",
+  "biweekly",
+  "monthly",
   "selected_weekdays",
   "selected_dates",
 ];
@@ -54,6 +56,7 @@ const VALID_WEEKDAYS = [
   "Friday",
   "Saturday",
 ];
+const EVENT_TIME_ZONE = process.env.EVENT_TIME_ZONE || "America/Edmonton";
 
 const USER_POPULATE_FIELDS =
   "name email role isAdmin businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
@@ -208,12 +211,26 @@ function normalizeCommunityTags(value) {
   return normalizedTags;
 }
 
-function buildTodayString() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
+function buildDateStringInEventTimeZone(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: EVENT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
   return `${year}-${month}-${day}`;
+}
+
+function buildDateFromDateString(dateString) {
+  const [year, month, day] = String(dateString || "").split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function buildTodayString() {
+  return buildDateStringInEventTimeZone();
 }
 
 function normalizeTimeSlots(timeSlots, fallbackTime, fallbackEndTime, isAllDay) {
@@ -286,6 +303,10 @@ function normalizeRecurrenceFrequency(value, recurrence) {
     weekday: "selected_weekdays",
     daily: "daily",
     weekly: "weekly",
+    "bi-weekly": "biweekly",
+    biweekly: "biweekly",
+    "every other week": "biweekly",
+    monthly: "monthly",
   };
 
   if (aliasMap[lower]) {
@@ -484,15 +505,12 @@ function buildDateFilterRange(dateFilter) {
     return null;
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = buildDateFromDateString(buildTodayString());
   const rangeStart = new Date(todayStart);
   const rangeEnd = new Date(todayStart);
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedFilter)) {
-    const [year, month, day] = normalizedFilter.split("-").map(Number);
-    rangeStart.setFullYear(year, month - 1, day);
-    rangeStart.setHours(0, 0, 0, 0);
+    rangeStart.setTime(buildDateFromDateString(normalizedFilter).getTime());
     rangeEnd.setTime(rangeStart.getTime());
     rangeEnd.setDate(rangeEnd.getDate() + 1);
   } else if (normalizedFilter === "Today") {

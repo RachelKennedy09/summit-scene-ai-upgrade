@@ -880,19 +880,9 @@ export default function EventDetailScreen({ route }) {
             ) : null}
 
             {isImportedListing ? (
-              <View
-                style={[
-                  styles.importedBadge,
-                  {
-                    backgroundColor: theme.accentSoft || theme.background,
-                    borderColor: theme.accent,
-                  },
-                ]}
-              >
-                <Text style={[styles.importedBadgeText, { color: theme.accent }]}>
-                  Imported by Summit Scene
-                </Text>
-              </View>
+              <Text style={[styles.importedSourceText, { color: theme.textMuted }]}>
+                Listed by Summit Scene
+              </Text>
             ) : null}
 
             {visibleEventTags.length ? (
@@ -946,30 +936,36 @@ export default function EventDetailScreen({ route }) {
               </View>
             </View>
 
-            {duration || priceRange ? (
-              <View style={styles.metaRow}>
-                {duration ? (
-                  <View style={styles.metaItem}>
-                    <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
-                      Duration
-                    </Text>
-                    <Text style={[styles.metaValue, { color: theme.text }]}>
-                      {duration}
-                    </Text>
-                  </View>
-                ) : null}
-                {priceRange ? (
-                  <View style={styles.metaItem}>
-                    <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
-                      Price
-                    </Text>
-                    <Text style={[styles.metaValue, { color: theme.text }]}>
-                      {priceRange}
-                    </Text>
-                  </View>
-                ) : null}
+            <View style={styles.metaRow}>
+              {duration ? (
+                <View style={styles.metaItem}>
+                  <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
+                    Duration
+                  </Text>
+                  <Text style={[styles.metaValue, { color: theme.text }]}>
+                    {duration}
+                  </Text>
+                </View>
+              ) : null}
+              {priceRange ? (
+                <View style={styles.metaItem}>
+                  <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
+                    Price
+                  </Text>
+                  <Text style={[styles.metaValue, { color: theme.text }]}>
+                    {priceRange}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={styles.metaItem}>
+                <Text style={[styles.metaLabel, { color: theme.textMuted }]}>
+                  Booking
+                </Text>
+                <Text style={[styles.metaValue, { color: theme.text }]}>
+                  {bookingRequired ? "Required" : "Not required"}
+                </Text>
               </View>
-            ) : null}
+            </View>
 
             {!eventIsUpcoming ? (
               <View
@@ -1775,18 +1771,11 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginBottom: 10,
   },
-  importedBadge: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  importedSourceText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: -6,
     marginBottom: 12,
-  },
-  importedBadgeText: {
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
   },
   importedHostText: {
     fontSize: 14,
@@ -1825,12 +1814,14 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     gap: 16,
     marginBottom: 12,
   },
   metaItem: {
     flex: 1,
+    minWidth: 95,
   },
   metaLabel: {
     fontSize: 13,

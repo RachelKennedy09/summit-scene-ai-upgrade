@@ -59,6 +59,9 @@ app.get("/api/app-version", (req, res) => {
     androidStoreUrl:
       process.env.ANDROID_PLAY_STORE_URL ||
       "https://play.google.com/store/apps/details?id=com.rachellauren.summitscene",
+    optionalUpdateMessage:
+      process.env.APP_OPTIONAL_UPDATE_MESSAGE ||
+      "A newer version of Summit Scene is available. Update for the latest fixes and improvements.",
     message:
       process.env.APP_UPDATE_MESSAGE ||
       "A newer version of Summit Scene is required to keep using the app.",

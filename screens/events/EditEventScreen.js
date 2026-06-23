@@ -51,6 +51,8 @@ const SCHEDULE_TYPES = [
 const RECURRENCE_OPTIONS = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-weekly" },
+  { value: "monthly", label: "Monthly" },
   { value: "selected_dates", label: "Custom selected dates" },
   { value: "selected_weekdays", label: "Selected weekdays" },
 ];

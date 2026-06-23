@@ -24,6 +24,15 @@ let pendingBusinessUserId = null;
 let emailVerificationToken = null;
 let sharedTestEventId = null;
 
+function formatTestDate(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 async function ensureSharedTestEvent() {
   if (sharedTestEventId) return sharedTestEventId;
 
@@ -81,6 +90,7 @@ describe("SummitScene API", function () {
       "latestVersion",
       "iosStoreUrl",
       "androidStoreUrl",
+      "optionalUpdateMessage",
       "message",
     ]);
     expect(res.body.minimumSupportedVersion).to.be.a("string");
@@ -435,6 +445,54 @@ describe("SummitScene API", function () {
 
     expect(res.status).to.equal(200);
     expect(res.body).to.be.an("array");
+  });
+
+  it("should only return tomorrow events for the Tomorrow date filter", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const tomorrowTitle = `Tomorrow Filter Event ${testRunId}`;
+    const laterTitle = `Later Filter Event ${testRunId}`;
+
+    try {
+      const tomorrowRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: tomorrowTitle,
+          description: "Should appear in Tomorrow only.",
+          town: "Banff",
+          category: "Live Music",
+          date: formatTestDate(1),
+          time: "8:30 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      const laterRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: laterTitle,
+          description: "Should not appear in Tomorrow.",
+          town: "Banff",
+          category: "Live Music",
+          date: formatTestDate(2),
+          time: "8:30 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      expect(tomorrowRes.status).to.equal(201);
+      expect(laterRes.status).to.equal(201);
+
+      const filterRes = await request(app).get(
+        "/api/events?dateFilter=Tomorrow"
+      );
+      const titles = filterRes.body.map((event) => event.title);
+
+      expect(filterRes.status).to.equal(200);
+      expect(titles).to.include(tomorrowTitle);
+      expect(titles).to.not.include(laterTitle);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
   });
 
   it("should let an authenticated user toggle event attendance", async () => {
@@ -1469,6 +1527,9 @@ describe("SummitScene API", function () {
       newInTownListRes.body.some((post) => post._id === newInTownRes.body._id)
     ).to.equal(true);
 
+    const jobExpiryDate = formatTestDate(30);
+    const jobApplyByDate = formatTestDate(21);
+    process.env.ADMIN_EMAILS = testEmail;
     const jobAdRes = await request(app)
       .post("/api/buddy-posts")
       .set("Authorization", `Bearer ${authToken}`)
@@ -1478,15 +1539,26 @@ describe("SummitScene API", function () {
         communityType: "jobs",
         activityText:
           "Hiring a part-time front desk host in Banff. Evening shifts, local team, email to apply.",
-        date: "2026-07-15",
+        businessName: "Banff Front Desk Co.",
+        locationName: "Downtown Banff",
+        applyByDate: jobApplyByDate,
+        expiresAt: jobExpiryDate,
+        date: jobExpiryDate,
         town: "Banff",
         groupSizePreference: "any",
+        importedBySummitScene: true,
       });
+    process.env.ADMIN_EMAILS = originalAdminEmails;
 
     expect(jobAdRes.status).to.equal(201);
     expect(jobAdRes.body).to.include({
       type: "job",
       communityType: "jobs",
+      businessName: "Banff Front Desk Co.",
+      locationName: "Downtown Banff",
+      applyByDate: jobApplyByDate,
+      expiresAt: jobExpiryDate,
+      importedBySummitScene: true,
     });
     expect(jobAdRes.body).to.not.have.property("category");
 
@@ -1496,6 +1568,71 @@ describe("SummitScene API", function () {
 
     expect(jobListRes.status).to.equal(200);
     expect(jobListRes.body.some((post) => post._id === jobAdRes.body._id)).to.equal(
+      true
+    );
+
+    process.env.ADMIN_EMAILS = testEmail;
+    const updatedJobRes = await request(app)
+      .patch(`/api/buddy-posts/${jobAdRes.body._id}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "job",
+        communityType: "jobs",
+        activityText:
+          "Updated front desk host ad with morning and evening shifts.",
+        businessName: "Updated Banff Front Desk Co.",
+        locationName: "Banff Avenue",
+        applyByDate: jobApplyByDate,
+        expiresAt: jobExpiryDate,
+        date: jobExpiryDate,
+        town: "Banff",
+        groupSizePreference: "any",
+        importedBySummitScene: true,
+      });
+    process.env.ADMIN_EMAILS = originalAdminEmails;
+
+    expect(updatedJobRes.status).to.equal(200);
+    expect(updatedJobRes.body).to.include({
+      communityType: "jobs",
+      activityText:
+        "Updated front desk host ad with morning and evening shifts.",
+      businessName: "Updated Banff Front Desk Co.",
+      locationName: "Banff Avenue",
+      importedBySummitScene: true,
+    });
+
+    const tooLongJobAdRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "job",
+        communityType: "jobs",
+        activityText: "Hiring for a future role.",
+        date: formatTestDate(45),
+        town: "Banff",
+        groupSizePreference: "any",
+      });
+
+    expect(tooLongJobAdRes.status).to.equal(400);
+    expect(tooLongJobAdRes.body.message).to.equal(
+      "Job and volunteer ads can stay open for up to 1 month."
+    );
+
+    const nonAdminImportedJobAdRes = await request(app)
+      .post("/api/buddy-posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "job",
+        communityType: "jobs",
+        activityText: "Hiring for a regular local role.",
+        date: formatTestDate(15),
+        town: "Banff",
+        groupSizePreference: "any",
+        importedBySummitScene: true,
+      });
+
+    expect(nonAdminImportedJobAdRes.status).to.equal(201);
+    expect(nonAdminImportedJobAdRes.body.importedBySummitScene).to.not.equal(
       true
     );
 

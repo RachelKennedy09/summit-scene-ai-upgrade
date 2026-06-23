@@ -153,19 +153,9 @@ export default function EventCard({ event, onPress }) {
         ) : null}
 
         {isImportedListing ? (
-          <View
-            style={[
-              styles.importedBadge,
-              {
-                backgroundColor: theme.accentSoft || theme.background,
-                borderColor: theme.accent,
-              },
-            ]}
-          >
-            <Text style={[styles.importedBadgeText, { color: theme.accent }]}>
-              Imported by Summit Scene
-            </Text>
-          </View>
+          <Text style={[styles.importedSourceText, { color: theme.textMuted }]}>
+            Listed by Summit Scene
+          </Text>
         ) : null}
 
         {host ? (
@@ -350,20 +340,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 16,
   },
-  importedBadge: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginHorizontal: 16,
-    marginTop: -2,
-    marginBottom: 12,
-  },
-  importedBadgeText: {
+  importedSourceText: {
     fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
+    fontWeight: "600",
+    marginTop: -4,
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   audienceBadge: {
     alignSelf: "flex-start",

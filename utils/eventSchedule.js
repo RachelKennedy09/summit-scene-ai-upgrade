@@ -127,6 +127,14 @@ export function getRecurrenceLabel(event) {
     return "Weekly";
   }
 
+  if (frequency === "biweekly") {
+    return "Bi-weekly";
+  }
+
+  if (frequency === "monthly") {
+    return "Monthly";
+  }
+
   if (frequency === "selected_weekdays" && weekdays.length > 0) {
     return weekdays
       .slice()
@@ -150,6 +158,20 @@ function getScheduleStartDate(event) {
 
 function getScheduleUntilDate(event) {
   return parseDateOnly(event?.recurrence?.untilDate);
+}
+
+function addMonthsClamped(date, monthsToAdd) {
+  const next = new Date(date);
+  const originalDay = next.getDate();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + monthsToAdd);
+  const lastDayOfMonth = new Date(
+    next.getFullYear(),
+    next.getMonth() + 1,
+    0
+  ).getDate();
+  next.setDate(Math.min(originalDay, lastDayOfMonth));
+  return next;
 }
 
 export function getNextOccurrenceDate(event, fromDate = new Date()) {
@@ -184,6 +206,33 @@ export function getNextOccurrenceDate(event, fromDate = new Date()) {
     const daysToAdd = (startWeekday - candidateWeekday + 7) % 7;
     const next = new Date(candidate);
     next.setDate(candidate.getDate() + daysToAdd);
+    if (untilDate && next > untilDate) {
+      return null;
+    }
+    return next;
+  }
+
+  if (frequency === "biweekly") {
+    const daysSinceStart = Math.max(
+      0,
+      Math.floor((candidate.getTime() - startDate.getTime()) / 86400000)
+    );
+    const daysToAdd = (14 - (daysSinceStart % 14)) % 14;
+    const next = new Date(candidate);
+    next.setDate(candidate.getDate() + daysToAdd);
+    if (untilDate && next > untilDate) {
+      return null;
+    }
+    return next;
+  }
+
+  if (frequency === "monthly") {
+    let monthsToAdd = 0;
+    let next = addMonthsClamped(startDate, monthsToAdd);
+    while (next < candidate) {
+      monthsToAdd += 1;
+      next = addMonthsClamped(startDate, monthsToAdd);
+    }
     if (untilDate && next > untilDate) {
       return null;
     }

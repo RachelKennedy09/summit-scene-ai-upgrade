@@ -2,8 +2,6 @@ export const COMMUNITY_SUPPORT_CATEGORIES = [
   "Local support",
   "Free community meal",
   "Resident / worker focused",
-  "Youth",
-  "Seniors",
   "Families",
   "Newcomers",
   "Volunteer",

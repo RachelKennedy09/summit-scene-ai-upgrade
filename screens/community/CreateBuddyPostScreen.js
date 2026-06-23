@@ -39,8 +39,9 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { fetchEventById, fetchEvents } from "../../services/eventsApi";
-import { createBuddyPost } from "../../services/buddyPostsApi";
+import { createBuddyPost, updateBuddyPost } from "../../services/buddyPostsApi";
 import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
+import { isSummitSceneAdmin } from "../../utils/adminAccess";
 import { getBuddyTypeForEventCategory } from "../../utils/buddyPostPrefill";
 
 const BUDDY_TYPES = [
@@ -201,11 +202,11 @@ const COMMUNITY_FORM_COPY = {
     showCategory: false,
     categoryLabel: "",
     categoryRequired: false,
-    detailsLabel: "Job or volunteer ad",
-    detailsPlaceholder: "Add the role, business or team, location, pay if available, schedule, requirements, and how people should apply.",
-    townLabel: "Town",
-    dateLabel: "Start or apply-by date",
-    timeLabel: "Time",
+    detailsLabel: "Description",
+    detailsPlaceholder: "Add the role, schedule, pay if available, requirements, who it is for, and how people should apply.",
+    townLabel: "Town or area",
+    dateLabel: "Post expires",
+    timeLabel: "",
     showDateTime: true,
     showSchedule: false,
     showGroupSize: false,
@@ -248,6 +249,18 @@ function formatDisplayDate(date) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function isAfterDateOnly(left, right) {
+  const leftDate = new Date(left.getFullYear(), left.getMonth(), left.getDate());
+  const rightDate = new Date(right.getFullYear(), right.getMonth(), right.getDate());
+  return leftDate.getTime() > rightDate.getTime();
 }
 
 function formatTime(date) {
@@ -434,9 +447,11 @@ function getEventSearchText(event) {
 }
 
 export default function CreateBuddyPostScreen({ navigation, route }) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const { theme } = useTheme();
   const eventBuddy = route?.params?.eventBuddy || {};
+  const buddyPostId = eventBuddy._id || eventBuddy.id || "";
+  const isEditingBuddyPost = Boolean(buddyPostId);
   const initialCategories = normalizeCategories(
     eventBuddy.categories || eventBuddy.category
   );
@@ -462,17 +477,36 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   );
   const [activityText, setActivityText] = useState(eventBuddy.activityText || "");
   const [imageUrl, setImageUrl] = useState(eventBuddy.imageUrl || "");
+  const [businessName, setBusinessName] = useState(eventBuddy.businessName || "");
+  const [locationName, setLocationName] = useState(eventBuddy.locationName || "");
+  const [importedBySummitScene, setImportedBySummitScene] = useState(
+    Boolean(eventBuddy.importedBySummitScene)
+  );
+  const [applyByDateObj, setApplyByDateObj] = useState(
+    parseDateString(eventBuddy.applyByDate)
+  );
+  const [applyByDate, setApplyByDate] = useState(eventBuddy.applyByDate || "");
   const [town, setTown] = useState(eventBuddy.town || "");
   const [dateObj, setDateObj] = useState(parseDateString(eventBuddy.date));
   const [timeObj, setTimeObj] = useState(new Date());
   const [time, setTime] = useState(eventBuddy.time || "");
-  const [scheduleType, setScheduleType] = useState("single");
-  const [recurrenceFrequency, setRecurrenceFrequency] = useState("weekly");
-  const [recurrenceWeekday, setRecurrenceWeekday] = useState("");
+  const [scheduleType, setScheduleType] = useState(
+    eventBuddy.scheduleType || "single"
+  );
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState(
+    eventBuddy.recurrence?.frequency || "weekly"
+  );
+  const [recurrenceWeekday, setRecurrenceWeekday] = useState(
+    eventBuddy.recurrence?.weekday || ""
+  );
   const [recurrenceUntilDateObj, setRecurrenceUntilDateObj] = useState(new Date());
-  const [recurrenceUntilDate, setRecurrenceUntilDate] = useState("");
-  const [skillLevel, setSkillLevel] = useState("");
-  const [groupSizePreference, setGroupSizePreference] = useState("any");
+  const [recurrenceUntilDate, setRecurrenceUntilDate] = useState(
+    eventBuddy.recurrence?.untilDate || ""
+  );
+  const [skillLevel, setSkillLevel] = useState(eventBuddy.skillLevel || "");
+  const [groupSizePreference, setGroupSizePreference] = useState(
+    eventBuddy.groupSizePreference || "any"
+  );
   const [linkedEvent, setLinkedEvent] = useState(
     eventBuddy.eventId
       ? {
@@ -496,6 +530,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [eventsError, setEventsError] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showApplyByDatePicker, setShowApplyByDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -505,6 +540,10 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
 
   const formCopy =
     COMMUNITY_FORM_COPY[communityType] || COMMUNITY_FORM_COPY["local-plan"];
+  const isJobPost = communityType === "jobs";
+  const canMarkImportedBySummitScene = isJobPost && isSummitSceneAdmin(user);
+  const maxJobExpiryDate = useMemo(() => addDays(new Date(), 31), []);
+  const showTimeField = formCopy.showDateTime && Boolean(formCopy.timeLabel);
   const shouldShowCategory = formCopy.showCategory !== false;
   const effectiveCategory = shouldShowCategory
     ? category || formCopy.defaultCategory
@@ -586,6 +625,15 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     if (!formCopy.showGroupSize && groupSizePreference !== "any") {
       setGroupSizePreference("any");
     }
+
+    if (isJobPost) {
+      setTime("");
+      if (!eventBuddy.date && isAfterDateOnly(maxJobExpiryDate, dateObj)) {
+        setDateObj(maxJobExpiryDate);
+      }
+    } else if (importedBySummitScene) {
+      setImportedBySummitScene(false);
+    }
   }, [
     category,
     categories,
@@ -597,8 +645,13 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     formCopy.showGroupSize,
     canLinkEvent,
     canShowSchedule,
+    dateObj,
+    eventBuddy.date,
     groupSizePreference,
+    importedBySummitScene,
+    isJobPost,
     linkedEvent,
+    maxJobExpiryDate,
     scheduleType,
   ]);
 
@@ -789,6 +842,22 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       return;
     }
 
+    if (isJobPost && isAfterDateOnly(dateObj, maxJobExpiryDate)) {
+      Alert.alert(
+        "Choose an earlier expiry date",
+        "Job and volunteer ads can stay open for up to 1 month."
+      );
+      return;
+    }
+
+    if (isJobPost && applyByDate && isAfterDateOnly(applyByDateObj, dateObj)) {
+      Alert.alert(
+        "Check apply-by date",
+        "The apply-by date should be on or before the post expiry date."
+      );
+      return;
+    }
+
     if (canShowSchedule && scheduleType === "recurring" && !recurrenceWeekday) {
       Alert.alert("Missing weekday", "Please choose which day this repeats.");
       return;
@@ -802,8 +871,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     try {
       setSubmitting(true);
 
-      await createBuddyPost(
-        {
+      const payload = {
           type: effectiveType,
           category: shouldShowCategory ? effectiveCategory || undefined : undefined,
           categories: shouldShowCategory
@@ -817,8 +885,15 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           communityType,
           activityText: trimmedActivityText,
           imageUrl: trimmedImageUrl || undefined,
+          businessName: isJobPost ? businessName.trim() || undefined : undefined,
+          locationName: isJobPost ? locationName.trim() || undefined : undefined,
+          applyByDate: isJobPost ? applyByDate || undefined : undefined,
+          expiresAt: isJobPost ? formatDateForApi(dateObj) : undefined,
+          importedBySummitScene: canMarkImportedBySummitScene
+            ? importedBySummitScene
+            : undefined,
           date: formatDateForApi(dateObj),
-          time: formCopy.showDateTime ? time || undefined : undefined,
+          time: showTimeField ? time || undefined : undefined,
           town,
           skillLevel: showSkillLevel ? skillLevel : undefined,
           groupSizePreference: formCopy.showGroupSize
@@ -834,17 +909,27 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 }
               : undefined,
           eventId: getEventId(linkedEvent) || undefined,
-        },
-        token
-      );
+        };
+
+      if (isEditingBuddyPost) {
+        await updateBuddyPost(buddyPostId, payload, token);
+      } else {
+        await createBuddyPost(payload, token);
+      }
       recordConnectEngagementForReviewPrompt();
 
-      Alert.alert("Buddy post shared", "Your buddy post is now live.", [
+      Alert.alert(
+        isEditingBuddyPost ? "Community post updated" : "Buddy post shared",
+        isEditingBuddyPost
+          ? "Your community post has been updated."
+          : "Your buddy post is now live.",
+        [
         {
           text: "OK",
           onPress: () => navigation.goBack(),
         },
-      ]);
+        ]
+      );
     } catch (error) {
       Alert.alert("Could not share post", error.message || "Please try again.");
     } finally {
@@ -921,7 +1006,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           keyboardShouldPersistTaps="handled"
         >
           <PageHeader
-            title={formCopy.title}
+            title={isEditingBuddyPost ? `Edit ${formCopy.title}` : formCopy.title}
             subtitle={
               eventBuddy.eventTitle
                 ? `Find someone going to ${eventBuddy.eventTitle}.`
@@ -1175,6 +1260,107 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
             </>
           ) : null}
 
+          {isJobPost ? (
+            <>
+              {canMarkImportedBySummitScene ? (
+                <Pressable
+                  style={[
+                    styles.importToggle,
+                    {
+                      backgroundColor: importedBySummitScene
+                        ? theme.accentSoft || theme.card
+                        : theme.card,
+                      borderColor: importedBySummitScene
+                        ? theme.accent
+                        : theme.border,
+                    },
+                  ]}
+                  onPress={() =>
+                    setImportedBySummitScene((currentValue) => !currentValue)
+                  }
+                >
+                  <View
+                    style={[
+                      styles.importCheckbox,
+                      {
+                        backgroundColor: importedBySummitScene
+                          ? theme.accent
+                          : "transparent",
+                        borderColor: importedBySummitScene
+                          ? theme.accent
+                          : theme.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.importCheckboxText,
+                        {
+                          color:
+                            theme.onAccent || theme.textOnAccent || "#FFFFFF",
+                        },
+                      ]}
+                    >
+                      {importedBySummitScene ? "X" : ""}
+                    </Text>
+                  </View>
+                  <View style={styles.importToggleCopy}>
+                    <Text
+                      style={[styles.importToggleTitle, { color: theme.text }]}
+                    >
+                      Imported by Summit Scene
+                    </Text>
+                    <Text
+                      style={[
+                        styles.importToggleText,
+                        { color: theme.textMuted },
+                      ]}
+                    >
+                      Use this for real job or volunteer ads you add on behalf of
+                      a business or organization.
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
+
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Business or organization name (Optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="Business, organization, or team name"
+                placeholderTextColor={theme.textMuted}
+                value={businessName}
+                onChangeText={setBusinessName}
+              />
+
+              <Text style={[styles.label, { color: theme.textMuted }]}>
+                Location or workplace (Optional)
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="Example: Downtown Banff, remote, or multiple locations"
+                placeholderTextColor={theme.textMuted}
+                value={locationName}
+                onChangeText={setLocationName}
+              />
+            </>
+          ) : null}
+
           <Text style={[styles.label, { color: theme.textMuted }]}>
             {formCopy.detailsLabel} (Required)
           </Text>
@@ -1270,6 +1456,11 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                   ? "First meetup date (Required)"
                   : `${formCopy.dateLabel} (Required)`}
               </Text>
+              {isJobPost ? (
+                <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                  Job and volunteer ads can stay open for up to 1 month.
+                </Text>
+              ) : null}
               <Pressable
                 style={[
                   styles.selectButton,
@@ -1285,36 +1476,89 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 </Text>
               </Pressable>
 
-              <Text style={[styles.label, { color: theme.textMuted }]}>
-                {formCopy.timeLabel} (Optional)
-              </Text>
-              <View style={styles.timeRow}>
-                <Pressable
-                  style={[
-                    styles.selectButton,
-                    styles.timeSelect,
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                  onPress={() => setShowTimePicker(true)}
-                >
-                  <Text style={[styles.selectText, { color: theme.text }]}>
-                    {time || "Select time"}
+              {isJobPost ? (
+                <>
+                  <Text style={[styles.label, { color: theme.textMuted }]}>
+                    Apply by date (Optional)
                   </Text>
-                </Pressable>
-                {time ? (
-                  <Pressable
-                    style={styles.clearTimeButton}
-                    onPress={() => setTime("")}
-                  >
-                    <Text style={[styles.clearTimeText, { color: theme.accent }]}>
-                      Clear
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
+                  <View style={styles.timeRow}>
+                    <Pressable
+                      style={[
+                        styles.selectButton,
+                        styles.timeSelect,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: theme.border,
+                        },
+                      ]}
+                      onPress={() => setShowApplyByDatePicker(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.selectText,
+                          { color: applyByDate ? theme.text : theme.textMuted },
+                        ]}
+                      >
+                        {applyByDate
+                          ? formatDisplayDate(applyByDateObj)
+                          : "No apply-by date"}
+                      </Text>
+                    </Pressable>
+                    {applyByDate ? (
+                      <Pressable
+                        style={styles.clearTimeButton}
+                        onPress={() => {
+                          setApplyByDate("");
+                          setApplyByDateObj(new Date());
+                        }}
+                      >
+                        <Text
+                          style={[styles.clearTimeText, { color: theme.accent }]}
+                        >
+                          Clear
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </>
+              ) : null}
+
+              {showTimeField ? (
+                <>
+                  <Text style={[styles.label, { color: theme.textMuted }]}>
+                    {formCopy.timeLabel} (Optional)
+                  </Text>
+                  <View style={styles.timeRow}>
+                    <Pressable
+                      style={[
+                        styles.selectButton,
+                        styles.timeSelect,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: theme.border,
+                        },
+                      ]}
+                      onPress={() => setShowTimePicker(true)}
+                    >
+                      <Text style={[styles.selectText, { color: theme.text }]}>
+                        {time || "Select time"}
+                      </Text>
+                    </Pressable>
+                    {time ? (
+                      <Pressable
+                        style={styles.clearTimeButton}
+                        onPress={() => setTime("")}
+                      >
+                        <Text
+                          style={[styles.clearTimeText, { color: theme.accent }]}
+                        >
+                          Clear
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </>
+              ) : null}
             </>
           ) : null}
 
@@ -1433,7 +1677,15 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           ) : null}
 
           <AppButton
-            title={submitting ? "Sharing..." : formCopy.submitLabel}
+            title={
+              submitting
+                ? isEditingBuddyPost
+                  ? "Saving..."
+                  : "Sharing..."
+                : isEditingBuddyPost
+                  ? "Save Changes"
+                  : formCopy.submitLabel
+            }
             onPress={handleSubmit}
             loading={submitting}
             variant="primary"
@@ -1450,6 +1702,18 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           onConfirm={(pickedDate) => {
             setDateObj(pickedDate);
             setShowDatePicker(false);
+          }}
+        />
+
+        <DatePickerModal
+          visible={showApplyByDatePicker}
+          initialDate={applyByDateObj}
+          title="Select apply-by date"
+          onCancel={() => setShowApplyByDatePicker(false)}
+          onConfirm={(pickedDate) => {
+            setApplyByDateObj(pickedDate);
+            setApplyByDate(formatDateForApi(pickedDate));
+            setShowApplyByDatePicker(false);
           }}
         />
 
@@ -1723,6 +1987,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 12,
+  },
+  importToggle: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginBottom: 14,
+  },
+  importCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  importCheckboxText: {
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 16,
+  },
+  importToggleCopy: {
+    flex: 1,
+  },
+  importToggleTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 3,
+  },
+  importToggleText: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   chipRow: {
     flexDirection: "row",

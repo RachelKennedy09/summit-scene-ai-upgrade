@@ -39,7 +39,14 @@ const recurrenceSchema = new mongoose.Schema(
   {
     frequency: {
       type: String,
-      enum: ["daily", "weekly", "selected_weekdays", "selected_dates"],
+      enum: [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly",
+        "selected_weekdays",
+        "selected_dates",
+      ],
     },
     weekdays: {
       type: [String],

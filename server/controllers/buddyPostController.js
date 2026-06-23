@@ -19,10 +19,11 @@ import {
   getMainCategoryForTag,
 } from "../../constants/eventCategories.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
+import { isAdminEmail } from "../utils/adminAccess.js";
 
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
-const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "jobs", "notice", "update"]);
+const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
     type: "general",
@@ -85,6 +86,8 @@ function buildListFilter(query = {}) {
       { type: { $in: searchRegexes } },
       { communityType: { $in: searchRegexes } },
       { town: { $in: searchRegexes } },
+      { businessName: { $in: searchRegexes } },
+      { locationName: { $in: searchRegexes } },
     ];
   }
 
@@ -143,6 +146,29 @@ function getTodayDateString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function addDaysToDateString(dateString, days) {
+  const [year, month, day] = String(dateString || "").split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isDateString(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+function canUseSummitSceneImportFlag(user, tokenUser) {
+  return Boolean(
+    user?.isAdmin || isAdminEmail(user?.email) || isAdminEmail(tokenUser?.email)
+  );
+}
+
+function isPostOwner(post, userId) {
+  if (!post?.createdBy || !userId) return false;
+  const creatorId = getUserId(post.createdBy) || post.createdBy.toString();
+  return creatorId.toString() === userId.toString();
+}
+
 function shouldIncludeExpiredPosts(value) {
   return value === "true" || value === true;
 }
@@ -153,6 +179,11 @@ function isFreshBuddyPost(post, today = getTodayDateString()) {
   if (post.scheduleType === "recurring") {
     const untilDate = post.recurrence?.untilDate;
     return !untilDate || untilDate >= today;
+  }
+
+  if (post.communityType === "jobs") {
+    const expiryDate = post.expiresAt || post.date;
+    return !expiryDate || expiryDate >= today;
   }
 
   if (DATE_EXPIRING_COMMUNITY_TYPES.has(post.communityType)) {
@@ -379,6 +410,17 @@ function normalizeCreateBody(body = {}) {
       typeof body.imageUrl === "string" && body.imageUrl.trim()
         ? body.imageUrl.trim()
         : undefined,
+    businessName:
+      typeof body.businessName === "string" && body.businessName.trim()
+        ? body.businessName.trim()
+        : undefined,
+    locationName:
+      typeof body.locationName === "string" && body.locationName.trim()
+        ? body.locationName.trim()
+        : undefined,
+    applyByDate: isDateString(body.applyByDate) ? body.applyByDate : undefined,
+    expiresAt: isDateString(body.expiresAt) ? body.expiresAt : undefined,
+    importedBySummitScene: Boolean(body.importedBySummitScene),
     category: "category" in defaults ? defaults.category : rawCategories[0],
     categories: "category" in defaults ? undefined : rawCategories,
     categoryTags:
@@ -416,6 +458,91 @@ function populateBuddyPost(query) {
     .populate("eventId", "title date time town category categories categoryTags vibeTags imageUrl");
 }
 
+async function validateBuddyPostPayload(payload) {
+  const required = ["type", "activityText", "date", "town"];
+  const missing = required.filter((field) => !payload[field]);
+
+  if (missing.length) {
+    return {
+      status: 400,
+      body: {
+        message: "Type, activity text, date, and town are required.",
+        missing,
+      },
+    };
+  }
+
+  if (payload.communityType === "jobs") {
+    const today = getTodayDateString();
+    const maxExpiryDate = addDaysToDateString(today, 31);
+    const expiryDate = payload.expiresAt || payload.date;
+
+    if (expiryDate > maxExpiryDate) {
+      return {
+        status: 400,
+        body: {
+          message: "Job and volunteer ads can stay open for up to 1 month.",
+        },
+      };
+    }
+
+    if (payload.applyByDate && payload.applyByDate > expiryDate) {
+      return {
+        status: 400,
+        body: {
+          message: "Apply-by date must be on or before the post expiry date.",
+        },
+      };
+    }
+
+    payload.expiresAt = expiryDate;
+  }
+
+  const moderationIssue = findContentModerationIssue({
+    activityText: payload.activityText,
+  });
+  if (moderationIssue) {
+    return {
+      status: 400,
+      body: { message: moderationIssue.message },
+    };
+  }
+
+  if (payload.eventId) {
+    if (!mongoose.Types.ObjectId.isValid(payload.eventId)) {
+      return { status: 400, body: { message: "Invalid eventId." } };
+    }
+
+    const linkedEvent = await Event.findById(payload.eventId).select(
+      "_id title date time endTime scheduleType recurrence"
+    );
+    if (!linkedEvent) {
+      return { status: 404, body: { message: "Linked event was not found." } };
+    }
+    if (!isEventUpcoming(linkedEvent)) {
+      return {
+        status: 400,
+        body: {
+          message: "This event has passed, so event buddy posts are closed.",
+        },
+      };
+    }
+  }
+
+  if (payload.scheduleType === "recurring") {
+    if (!payload.recurrence?.frequency || !payload.recurrence?.weekday) {
+      return {
+        status: 400,
+        body: {
+          message: "Recurring buddy posts require a frequency and weekday.",
+        },
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function getBuddyPosts(req, res) {
   try {
     const blockContext = await getViewerBlockContext(req);
@@ -446,48 +573,17 @@ export async function createBuddyPost(req, res) {
     }
 
     const payload = normalizeCreateBody(req.body);
-    const required = ["type", "activityText", "date", "town"];
-    const missing = required.filter((field) => !payload[field]);
 
-    if (missing.length) {
-      return res.status(400).json({
-        message: "Type, activity text, date, and town are required.",
-        missing,
-      });
+    if (payload.importedBySummitScene) {
+      const creator = await User.findById(userId).select("email isAdmin");
+      payload.importedBySummitScene =
+        payload.communityType === "jobs" &&
+        canUseSummitSceneImportFlag(creator, req.user);
     }
 
-    const moderationIssue = findContentModerationIssue({
-      activityText: payload.activityText,
-    });
-    if (moderationIssue) {
-      return res.status(400).json({ message: moderationIssue.message });
-    }
-
-    if (payload.eventId) {
-      if (!mongoose.Types.ObjectId.isValid(payload.eventId)) {
-        return res.status(400).json({ message: "Invalid eventId." });
-      }
-
-      const linkedEvent = await Event.findById(payload.eventId).select(
-        "_id title date time endTime scheduleType recurrence"
-      );
-      if (!linkedEvent) {
-        return res.status(404).json({ message: "Linked event was not found." });
-      }
-      if (!isEventUpcoming(linkedEvent)) {
-        return res.status(400).json({
-          message: "This event has passed, so event buddy posts are closed.",
-        });
-      }
-    }
-
-    if (payload.scheduleType === "recurring") {
-      if (!payload.recurrence?.frequency || !payload.recurrence?.weekday) {
-        return res.status(400).json({
-          message:
-            "Recurring buddy posts require a frequency and weekday.",
-        });
-      }
+    const validationError = await validateBuddyPostPayload(payload);
+    if (validationError) {
+      return res.status(validationError.status).json(validationError.body);
     }
 
     const post = await BuddyPost.create({
@@ -531,6 +627,121 @@ export async function getBuddyPostById(req, res) {
     console.error("Error in GET /api/buddy-posts/:id:", error);
     return res.status(500).json({
       message: "Failed to load buddy post.",
+      error: error.message,
+    });
+  }
+}
+
+export async function updateBuddyPost(req, res) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const post = await BuddyPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Buddy post not found." });
+    }
+
+    const editor = await User.findById(userId).select("email isAdmin");
+    const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
+    if (!isPostOwner(post, userId) && !isAdminEditor) {
+      return res.status(403).json({ message: "You can only edit your own community posts." });
+    }
+
+    const payload = normalizeCreateBody(req.body);
+    payload.importedBySummitScene =
+      payload.communityType === "jobs" &&
+      isAdminEditor &&
+      Boolean(req.body?.importedBySummitScene);
+
+    const validationError = await validateBuddyPostPayload(payload);
+    if (validationError) {
+      return res.status(validationError.status).json(validationError.body);
+    }
+
+    const editableFields = [
+      "type",
+      "activityText",
+      "imageUrl",
+      "businessName",
+      "locationName",
+      "applyByDate",
+      "expiresAt",
+      "importedBySummitScene",
+      "category",
+      "categories",
+      "categoryTags",
+      "vibeTags",
+      "communityType",
+      "date",
+      "time",
+      "town",
+      "skillLevel",
+      "groupSizePreference",
+      "scheduleType",
+      "recurrence",
+      "eventId",
+    ];
+
+    editableFields.forEach((field) => {
+      if (payload[field] === undefined) {
+        post[field] = undefined;
+      } else {
+        post[field] = payload[field];
+      }
+    });
+
+    await post.save();
+
+    const populated = await populateBuddyPost(BuddyPost.findById(post._id));
+    return res.json(populated);
+  } catch (error) {
+    console.error("Error in PATCH /api/buddy-posts/:id:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: "Buddy post validation failed.",
+        error: error.message,
+      });
+    }
+
+    if (/categor/i.test(error.message || "")) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    return res.status(500).json({
+      message: "Failed to update buddy post.",
+      error: error.message,
+    });
+  }
+}
+
+export async function deleteBuddyPost(req, res) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const post = await BuddyPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Buddy post not found." });
+    }
+
+    const editor = await User.findById(userId).select("email isAdmin");
+    const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
+    if (!isPostOwner(post, userId) && !isAdminEditor) {
+      return res.status(403).json({ message: "You can only delete your own community posts." });
+    }
+
+    await post.deleteOne();
+    return res.json({ message: "Buddy post deleted." });
+  } catch (error) {
+    console.error("Error in DELETE /api/buddy-posts/:id:", error);
+    return res.status(500).json({
+      message: "Failed to delete buddy post.",
       error: error.message,
     });
   }

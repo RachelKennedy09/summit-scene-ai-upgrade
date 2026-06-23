@@ -33,6 +33,7 @@ import { useTheme } from "../../context/ThemeContext";
 import {
   createBuddyPostReply,
   createBuddyPostReplyResponse,
+  deleteBuddyPost,
   deleteBuddyPostReply,
   fetchBuddyPosts,
   toggleBuddyPostInterest,
@@ -164,7 +165,7 @@ function getId(value) {
   return typeof value === "string" ? value : value._id || value.id || "";
 }
 
-export default function CommunityScreen({ navigation }) {
+export default function CommunityScreen({ navigation, route }) {
   const { token, user, blockUser } = useAuth();
   const { theme } = useTheme();
 
@@ -201,6 +202,21 @@ export default function CommunityScreen({ navigation }) {
       : "";
   const activeDateFilter =
     sectionSupportsDate && selectedDate ? formatDateForApi(selectedDate) : "";
+
+  useEffect(() => {
+    if (!route?.params?.resetToHomeAt) {
+      return;
+    }
+
+    setCommunityType("home");
+    setCategory("All");
+    setTown("All");
+    setSelectedDate(null);
+    setSearchQuery("");
+    setActiveSearch("");
+    setCommunityEventsError("");
+    setError("");
+  }, [route?.params?.resetToHomeAt]);
 
   const filters = useMemo(
     () => ({
@@ -466,6 +482,42 @@ export default function CommunityScreen({ navigation }) {
         },
       },
     ]);
+  }
+
+  function handleEditBuddyPost(post) {
+    navigation.navigate("CreateBuddyPost", {
+      eventBuddy: post,
+    });
+  }
+
+  function handleDeleteBuddyPost(post) {
+    if (!token) {
+      Alert.alert("Login required", "Please log in to delete your post.");
+      return;
+    }
+
+    Alert.alert(
+      "Delete community post?",
+      "This will remove the post and its replies from Connect.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteBuddyPost(post._id || post.id, token);
+              await loadBuddyPosts();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete post",
+                error.message || "Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
   }
 
   function handleReport(target) {
@@ -976,6 +1028,8 @@ export default function CommunityScreen({ navigation }) {
                 onToggleReplyLike={handleToggleReplyLike}
                 onUpdateReply={handleUpdateReply}
                 onDeleteReply={handleDeleteReply}
+                onEditPost={handleEditBuddyPost}
+                onDeletePost={handleDeleteBuddyPost}
                 onBlockProfile={handleBlockProfile}
                 onReport={handleReport}
               />

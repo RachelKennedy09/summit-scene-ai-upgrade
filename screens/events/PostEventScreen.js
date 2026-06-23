@@ -33,6 +33,7 @@ import SelectModal from "../../components/common/SelectModal";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import EventCard from "../../components/cards/EventCard";
 import {
   EVENT_MAIN_CATEGORIES,
   VIBE_TAG_GROUPS,
@@ -52,6 +53,8 @@ const SCHEDULE_TYPES = [
 const RECURRENCE_OPTIONS = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-weekly" },
+  { value: "monthly", label: "Monthly" },
   { value: "selected_dates", label: "Custom selected dates" },
   { value: "selected_weekdays", label: "Selected weekdays" },
 ];
@@ -646,6 +649,54 @@ export default function PostEventScreen() {
   function handleClearEventImage() {
     setImageUrl("");
   }
+
+  const previewTimeSlots = getNormalizedTimeSlots();
+  const previewEvent = {
+    _id: "event-preview",
+    id: "event-preview",
+    title: title.trim() || "Your event title",
+    description: description.trim(),
+    duration: duration.trim(),
+    priceRange: priceRange.trim(),
+    town: town || "Town",
+    category: category || "",
+    categories,
+    categoryTags,
+    vibeTags,
+    audience,
+    communityTags: [],
+    date: date || formatDateForApi(dateObj),
+    time: previewTimeSlots[0]?.startTime || undefined,
+    endTime: previewTimeSlots[0]?.endTime || undefined,
+    scheduleType,
+    isAllDay,
+    recurrence:
+      scheduleType === "recurring"
+        ? {
+            frequency: recurrenceFrequency,
+            weekdays: selectedWeekdays,
+            dates: selectedDates,
+            untilDate: recurrenceUntilDate || undefined,
+          }
+        : undefined,
+    timeSlots: previewTimeSlots,
+    locationName: locationName.trim(),
+    address: address.trim(),
+    imageUrl: imageUrl.trim(),
+    bookingRequired,
+    bookingUrl: bookingUrl.trim(),
+    importedBySummitScene:
+      canMarkImportedBySummitScene && importedBySummitScene,
+    createdBy: importedBySummitScene
+      ? undefined
+      : {
+          name: user?.name || "Your business",
+          userType: user?.userType,
+          businessVerificationStatus: user?.businessVerificationStatus,
+          verified: user?.verified,
+          emailVerified: user?.emailVerified,
+        },
+  };
 
   return (
     <SafeAreaView
@@ -1616,41 +1667,15 @@ export default function PostEventScreen() {
           )}
         </View>
 
-        <View
-          style={[
-            styles.previewSummaryCard,
-            { backgroundColor: theme.card, borderColor: theme.border },
-          ]}
-        >
+        <View style={styles.previewSummaryCard}>
           <Text style={[styles.sectionEyebrow, { color: theme.accent }]}>
             Preview
           </Text>
-          <Text style={[styles.previewSummaryTitle, { color: theme.text }]}>
-            {title.trim() || "Your event title"}
+          <Text style={[styles.previewHint, { color: theme.textMuted }]}>
+            This updates as you fill out the event and matches the card people
+            see on the Hub.
           </Text>
-          <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
-            {[
-              town || "Town",
-              categories.length ? categories.join(", ") : "Category",
-              categoryTags.length ? categoryTags.join(", ") : "",
-              vibeTags.length ? vibeTags.join(", ") : "",
-            ]
-              .filter(Boolean)
-              .join(" - ")}
-          </Text>
-          <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
-            {date || "Date"}{isAllDay ? " - All day" : time ? ` - ${time}` : ""}
-          </Text>
-          {canMarkImportedBySummitScene && importedBySummitScene ? (
-            <Text style={[styles.previewImportLabel, { color: theme.accent }]}>
-              Imported by Summit Scene
-            </Text>
-          ) : null}
-          {locationName.trim() || address.trim() ? (
-            <Text style={[styles.previewSummaryMeta, { color: theme.textMuted }]}>
-              {locationName.trim() || address.trim()}
-            </Text>
-          ) : null}
+          <EventCard event={previewEvent} onPress={() => {}} />
         </View>
 
           {/* Submit button */}
@@ -2109,9 +2134,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   previewSummaryCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
+    paddingTop: 4,
     marginBottom: 14,
   },
   previewSummaryTitle: {

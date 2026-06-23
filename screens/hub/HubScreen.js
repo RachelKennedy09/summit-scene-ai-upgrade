@@ -371,7 +371,7 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Community for local plans and intros.";
+      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Connect for local plans and intros.";
     }
 
     if (
@@ -379,19 +379,19 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No events available yet. Check back soon, or open Community for local plans, intros, groups, jobs, and town notices.";
+      return "No events available yet. Check back soon, or open Connect for local plans, intros, groups, jobs, and town notices.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
-      return `No events found in ${selectedTown}. Try another town, a wider date range, or Community.`;
+      return `No events found in ${selectedTown}. Try another town, a wider date range, or Connect.`;
     }
 
     if (selectedTown === "All" && selectedCategory !== "All") {
-      return `No ${selectedCategory} events found. Try another category, a wider date range, or Community.`;
+      return `No ${selectedCategory} events found. Try another category, a wider date range, or Connect.`;
     }
 
     if (selectedDateFilter !== "All Dates") {
-      return `No events match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Community.`;
+      return `No events match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Connect.`;
     }
 
     return `No ${selectedCategory} events found in ${selectedTown}.`;
@@ -674,9 +674,13 @@ export default function HubScreen() {
                     styles.emptyAction,
                     { backgroundColor: theme.accent },
                   ]}
-                  onPress={() => navigation.navigate("Community")}
+                  onPress={() =>
+                    navigation.navigate("Community", {
+                      resetToHomeAt: Date.now(),
+                    })
+                  }
                 >
-                  <Text style={styles.emptyActionText}>Open Community</Text>
+                  <Text style={styles.emptyActionText}>Open Connect</Text>
                 </Pressable>
               </View>
             </View>

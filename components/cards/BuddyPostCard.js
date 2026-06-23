@@ -331,6 +331,8 @@ export default function BuddyPostCard({
   onToggleReplyLike,
   onUpdateReply,
   onDeleteReply,
+  onEditPost,
+  onDeletePost,
   onBlockProfile,
   onReport,
 }) {
@@ -359,6 +361,7 @@ export default function BuddyPostCard({
   const postedAgoText = formatPostedAgo(post.createdAt);
   const recurrenceText = getRecurrenceLabel(post);
   const activityLabel = getActivityLabel(post);
+  const isJobPost = post.communityType === "jobs";
   const townLabel = post.town || getProfileTownLabel(author);
   const skillLabel = hasSkill ? titleCase(post.skillLevel) : "";
   const groupSizeLabel = shouldShowGroupSize(post)
@@ -367,10 +370,19 @@ export default function BuddyPostCard({
   const planText = splitActivityText(post.activityText);
   const linkedEvent =
     post.eventId && typeof post.eventId === "object" ? post.eventId : null;
+  const jobMetaItems = isJobPost
+    ? [
+        post.businessName,
+        post.locationName,
+        post.applyByDate ? `Apply by ${formatDate(post.applyByDate)}` : "",
+        post.expiresAt ? `Open until ${formatDate(post.expiresAt)}` : "",
+      ]
+    : [];
   const metaItems = [
     townLabel,
+    ...jobMetaItems,
     skillLabel,
-    recurrenceText || dateText,
+    isJobPost ? "" : recurrenceText || dateText,
     activityLabel,
   ].filter(Boolean);
   const interestedUsers = Array.isArray(post.interestedUsers)
@@ -389,6 +401,9 @@ export default function BuddyPostCard({
   const commentsLabel = `${commentCount} comment${commentCount === 1 ? "" : "s"}`;
   const isNewInTown = post.communityType === "new-in-town";
   const isCommunityUpdate = post.communityType === "update";
+  const isOwner =
+    Boolean(currentUserId) &&
+    getId(post.createdBy).toString() === currentUserId?.toString();
   const isInterested = interestedUsers.some(
     (user) => getId(user).toString() === currentUserId?.toString()
   );
@@ -550,7 +565,12 @@ export default function BuddyPostCard({
         </Text>
         {metaItems.length ? (
           <Text style={[styles.planMeta, { color: theme.textMuted }]}>
-            {metaItems.join(" • ")}
+            {metaItems.join(" | ")}
+          </Text>
+        ) : null}
+        {isJobPost && post.importedBySummitScene ? (
+          <Text style={[styles.importedSourceText, { color: theme.textMuted }]}>
+            Listed by Summit Scene
           </Text>
         ) : null}
       </View>
@@ -671,6 +691,34 @@ export default function BuddyPostCard({
       ) : null}
 
       <View style={styles.footerRow}>
+        {isOwner ? (
+          <View style={styles.ownerActionsRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.ownerActionButton,
+                { borderColor: theme.accent, backgroundColor: theme.card },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => onEditPost?.(post)}
+            >
+              <Text style={[styles.ownerActionText, { color: theme.accent }]}>
+                Edit
+              </Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.ownerActionButton,
+                { borderColor: theme.border, backgroundColor: theme.card },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => onDeletePost?.(post)}
+            >
+              <Text style={[styles.ownerActionText, { color: theme.textMuted }]}>
+                Delete
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
         {!isCommunityUpdate ? (
           <Pressable
             style={({ pressed }) => [
@@ -1265,6 +1313,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "700",
   },
+  importedSourceText: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+    marginTop: 4,
+  },
   postImage: {
     width: "100%",
     aspectRatio: 4 / 3,
@@ -1371,6 +1425,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexWrap: "wrap",
     gap: 8,
+  },
+  ownerActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    width: "100%",
+  },
+  ownerActionButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    minHeight: 42,
+    justifyContent: "center",
+  },
+  ownerActionText: {
+    fontSize: 14,
+    fontWeight: "900",
   },
   interestButton: {
     borderWidth: 1,

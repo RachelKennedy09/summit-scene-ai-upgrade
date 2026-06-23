@@ -40,6 +40,15 @@ async function readJsonSafely(response) {
   try {
     return JSON.parse(text);
   } catch {
+    if (/^\s*<!doctype html/i.test(text) || /<html[\s>]/i.test(text)) {
+      return {
+        message:
+          response.status === 404
+            ? "This app feature needs the latest backend update. Please try again after the server is redeployed."
+            : "The server returned an unexpected response. Please try again.",
+      };
+    }
+
     return { message: text };
   }
 }
@@ -85,6 +94,65 @@ export async function createBuddyPost(postData, token) {
     throw toUserFriendlyError(
       normalizedError,
       "We couldn't share your buddy post right now. Please try again."
+    );
+  }
+}
+
+export async function updateBuddyPost(postId, postData, token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/buddy-posts/${postId}`, {
+      method: "PATCH",
+      headers: buildHeaders(token),
+      body: JSON.stringify(postData),
+    });
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error || data.message || `Failed to update buddy post (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeBuddyPostError(
+      error,
+      "Update buddy post request timed out. Check the backend and try again."
+    );
+    console.warn("updateBuddyPost issue:", normalizedError.message);
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't update your community post right now. Please try again."
+    );
+  }
+}
+
+export async function deleteBuddyPost(postId, token) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/buddy-posts/${postId}`, {
+      method: "DELETE",
+      headers: buildHeaders(token),
+    });
+
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(
+        data.error || data.message || `Failed to delete buddy post (${res.status})`
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const normalizedError = normalizeBuddyPostError(
+      error,
+      "Delete buddy post request timed out. Check the backend and try again."
+    );
+    console.warn("deleteBuddyPost issue:", normalizedError.message);
+    throw toUserFriendlyError(
+      normalizedError,
+      "We couldn't delete your community post right now. Please try again."
     );
   }
 }

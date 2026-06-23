@@ -176,6 +176,35 @@ const buddyPostSchema = new Schema(
       trim: true,
     },
 
+    businessName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+    },
+
+    locationName: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+    },
+
+    applyByDate: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],
+    },
+
+    expiresAt: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],
+      index: true,
+    },
+
+    importedBySummitScene: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     category: {
       type: String,
       enum: BUDDY_POST_CATEGORIES,

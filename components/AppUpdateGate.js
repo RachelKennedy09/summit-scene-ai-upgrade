@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Platform,
   Pressable,
@@ -37,11 +38,16 @@ function isVersionOlder(currentVersion, minimumVersion) {
   return false;
 }
 
+function isVersionNewer(latestVersion, currentVersion) {
+  return isVersionOlder(currentVersion, latestVersion);
+}
+
 export default function AppUpdateGate({ children }) {
   const { theme } = useTheme();
   const [checking, setChecking] = useState(true);
   const [versionInfo, setVersionInfo] = useState(null);
   const [requiresUpdate, setRequiresUpdate] = useState(false);
+  const [optionalUpdateShown, setOptionalUpdateShown] = useState(false);
 
   const currentVersion = useMemo(
     () => Constants.expoConfig?.version || "0.0.0",
@@ -88,6 +94,32 @@ export default function AppUpdateGate({ children }) {
       Linking.openURL(storeUrl).catch(() => {});
     }
   }
+
+  useEffect(() => {
+    if (
+      checking ||
+      requiresUpdate ||
+      optionalUpdateShown ||
+      !versionInfo?.latestVersion ||
+      !isVersionNewer(versionInfo.latestVersion, currentVersion)
+    ) {
+      return;
+    }
+
+    setOptionalUpdateShown(true);
+    Alert.alert(
+      "Update available",
+      versionInfo.optionalUpdateMessage ||
+        `A newer version of Summit Scene is available. Installed version ${currentVersion}, latest version ${versionInfo.latestVersion}.`,
+      [
+        { text: "Not Now", style: "cancel" },
+        {
+          text: Platform.OS === "android" ? "Open Google Play" : "Open App Store",
+          onPress: handleUpdatePress,
+        },
+      ]
+    );
+  }, [checking, currentVersion, optionalUpdateShown, requiresUpdate, versionInfo]);
 
   if (checking) {
     return (
