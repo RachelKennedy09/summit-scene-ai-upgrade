@@ -84,6 +84,12 @@ export function formatTimeSlotLabel(slot) {
   return "";
 }
 
+function cleanScheduleLabel(value) {
+  return String(value || "")
+    .replace(/Ã¢â‚¬Â¢|â€¢|•/g, "|")
+    .replace(/\s*\|\s*/g, " | ");
+}
+
 export function formatEventTimeLabel(event) {
   if (event?.isAllDay) {
     return "All day";
@@ -284,7 +290,7 @@ export function getCardScheduleLabels(event) {
     if (event?.recurrence?.frequency === "selected_dates" && selectedDateLabels.text) {
       return {
         primary: recurrenceLabel,
-        secondary: selectedDateLabels.text,
+        secondary: cleanScheduleLabel(selectedDateLabels.text),
       };
     }
     const secondary =
@@ -296,13 +302,13 @@ export function getCardScheduleLabels(event) {
 
     return {
       primary: recurrenceLabel,
-      secondary,
+      secondary: cleanScheduleLabel(secondary),
     };
   }
 
   return {
     primary: formatDateShort(event?.date),
-    secondary: formatEventTimeLabel(event),
+    secondary: cleanScheduleLabel(formatEventTimeLabel(event)),
   };
 }
 
@@ -329,19 +335,20 @@ export function getListScheduleLabel(event) {
       label += ` • Until ${untilDate}`;
     }
 
-    return label;
+    return cleanScheduleLabel(label);
   }
 
   const timeLabel = formatEventTimeLabel(event);
   if (event?.date && timeLabel && timeLabel !== "Time TBA") {
+    return cleanScheduleLabel(`${event.date} | ${timeLabel}`);
     return `${event.date} • ${timeLabel}`;
   }
 
   if (event?.date) {
-    return event.date;
+    return cleanScheduleLabel(event.date);
   }
 
-  return timeLabel || "Date & time TBA";
+  return cleanScheduleLabel(timeLabel || "Date & time TBA");
 }
 
 export function getDetailScheduleLabels(event) {

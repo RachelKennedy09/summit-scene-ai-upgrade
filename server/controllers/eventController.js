@@ -259,24 +259,48 @@ function normalizeSelectedDates(dates) {
   ].sort();
 }
 
-function normalizeRecurrenceFrequency(value) {
-  const normalized = normalizeRequiredString(value || "daily");
+function normalizeRecurrenceFrequency(value, recurrence) {
+  const hasSelectedDates = normalizeSelectedDates(
+    recurrence?.dates || recurrence?.selectedDates || recurrence?.customDates
+  ).length > 0;
+  const normalized = normalizeRequiredString(value || (hasSelectedDates ? "selected_dates" : "daily"));
   const lower = normalized.toLowerCase();
   const aliasMap = {
     "custom selected dates": "selected_dates",
+    "custom selected date": "selected_dates",
     "custom dates": "selected_dates",
+    "custom date": "selected_dates",
     "selected dates": "selected_dates",
+    "selected date": "selected_dates",
     custom_selected_dates: "selected_dates",
+    custom_selected_date: "selected_dates",
     custom_dates: "selected_dates",
+    custom_date: "selected_dates",
     selected_dates: "selected_dates",
+    selected_date: "selected_dates",
     "selected weekdays": "selected_weekdays",
+    "selected weekday": "selected_weekdays",
     selected_weekdays: "selected_weekdays",
+    selected_weekday: "selected_weekdays",
     weekdays: "selected_weekdays",
+    weekday: "selected_weekdays",
     daily: "daily",
     weekly: "weekly",
   };
 
-  return aliasMap[lower] || normalized;
+  if (aliasMap[lower]) {
+    return aliasMap[lower];
+  }
+
+  if (hasSelectedDates && lower.includes("date")) {
+    return "selected_dates";
+  }
+
+  if (lower.includes("weekday")) {
+    return "selected_weekdays";
+  }
+
+  return normalized;
 }
 
 function normalizeRecurrence(recurrence, scheduleType) {
@@ -284,7 +308,7 @@ function normalizeRecurrence(recurrence, scheduleType) {
     return undefined;
   }
 
-  const frequency = normalizeRecurrenceFrequency(recurrence?.frequency);
+  const frequency = normalizeRecurrenceFrequency(recurrence?.frequency, recurrence);
   if (!VALID_RECURRENCE_FREQUENCIES.includes(frequency)) {
     throw new Error("Please choose a valid recurrence frequency.");
   }
