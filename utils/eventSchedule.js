@@ -109,6 +109,9 @@ export function getRecurrenceLabel(event) {
   const weekdays = Array.isArray(event?.recurrence?.weekdays)
     ? event.recurrence.weekdays
     : [];
+  const selectedDates = Array.isArray(event?.recurrence?.dates)
+    ? event.recurrence.dates
+    : [];
 
   if (frequency === "daily") {
     return "Daily";
@@ -126,6 +129,10 @@ export function getRecurrenceLabel(event) {
       )
       .map((day) => WEEKDAY_SHORT[day] || day)
       .join(", ");
+  }
+
+  if (frequency === "selected_dates" && selectedDates.length > 0) {
+    return "Custom dates";
   }
 
   return "Recurring";
@@ -203,7 +210,37 @@ export function getNextOccurrenceDate(event, fromDate = new Date()) {
     return null;
   }
 
+  if (frequency === "selected_dates") {
+    const dates = Array.isArray(event?.recurrence?.dates)
+      ? event.recurrence.dates
+          .map((date) => parseDateOnly(date))
+          .filter(Boolean)
+          .sort((a, b) => a.getTime() - b.getTime())
+      : [];
+
+    return dates.find((date) => date >= today) || null;
+  }
+
   return candidate;
+}
+
+export function getSelectedDateLabels(event, limit = 6) {
+  const today = startOfToday();
+  const dates = Array.isArray(event?.recurrence?.dates)
+    ? event.recurrence.dates.slice().sort()
+    : [];
+  const upcomingDates = dates.filter((date) => {
+    const parsed = parseDateOnly(date);
+    return parsed && parsed >= today;
+  });
+  const labels = upcomingDates.slice(0, limit).map(formatDateShort);
+  const remaining = Math.max(0, upcomingDates.length - labels.length);
+
+  return {
+    labels,
+    remaining,
+    text: remaining ? `${labels.join(", ")} +${remaining} more` : labels.join(", "),
+  };
 }
 
 export function getNextOccurrenceDateString(event, fromDate = new Date()) {
@@ -243,6 +280,13 @@ export function getCardScheduleLabels(event) {
     const recurrenceLabel = getRecurrenceLabel(event);
     const untilDate = event?.recurrence?.untilDate;
     const timeLabel = formatEventTimeLabel(event);
+    const selectedDateLabels = getSelectedDateLabels(event, 4);
+    if (event?.recurrence?.frequency === "selected_dates" && selectedDateLabels.text) {
+      return {
+        primary: recurrenceLabel,
+        secondary: selectedDateLabels.text,
+      };
+    }
     const secondary =
       untilDate && timeLabel !== "Time TBA"
         ? `${timeLabel} • Until ${formatDateShort(untilDate)}`
@@ -267,8 +311,13 @@ export function getListScheduleLabel(event) {
     const recurrenceLabel = getRecurrenceLabel(event);
     const timeLabel = formatEventTimeLabel(event);
     const untilDate = event?.recurrence?.untilDate;
+    const selectedDateLabels = getSelectedDateLabels(event, 4);
 
     let label = recurrenceLabel;
+
+    if (event?.recurrence?.frequency === "selected_dates" && selectedDateLabels.text) {
+      label += ` â€¢ ${selectedDateLabels.text}`;
+    }
 
     if (timeLabel && timeLabel !== "Time TBA") {
       label += ` • ${timeLabel}`;
@@ -299,6 +348,17 @@ export function getDetailScheduleLabels(event) {
   if ((event?.scheduleType || "single") === "recurring") {
     const recurrenceLabel = getRecurrenceLabel(event);
     const untilDate = event?.recurrence?.untilDate;
+    const selectedDateLabels = getSelectedDateLabels(event, 8);
+
+    if (event?.recurrence?.frequency === "selected_dates") {
+      return {
+        dateLabel: selectedDateLabels.text
+          ? `Available dates: ${selectedDateLabels.text}`
+          : recurrenceLabel,
+        timeLabel: formatEventTimeLabel(event),
+      };
+    }
+
     return {
       dateLabel: untilDate
         ? `${recurrenceLabel} until ${formatDateLong(untilDate)}`

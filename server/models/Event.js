@@ -39,7 +39,7 @@ const recurrenceSchema = new mongoose.Schema(
   {
     frequency: {
       type: String,
-      enum: ["daily", "weekly", "selected_weekdays"],
+      enum: ["daily", "weekly", "selected_weekdays", "selected_dates"],
     },
     weekdays: {
       type: [String],
@@ -57,6 +57,18 @@ const recurrenceSchema = new mongoose.Schema(
     untilDate: {
       type: String,
       match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],
+    },
+    dates: {
+      type: [String],
+      default: undefined,
+      validate: {
+        validator(values) {
+          return (values || []).every((value) =>
+            /^\d{4}-\d{2}-\d{2}$/.test(value)
+          );
+        },
+        message: "Selected dates must be in format YYYY-MM-DD",
+      },
     },
   },
   { _id: false }
@@ -244,6 +256,11 @@ const eventSchema = new mongoose.Schema(
     bookingUrl: {
       type: String,
       trim: true,
+    },
+
+    bookingRequired: {
+      type: Boolean,
+      default: false,
     },
 
     // Admin-only marker for real business events entered by Summit Scene.

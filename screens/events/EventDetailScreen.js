@@ -302,6 +302,7 @@ export default function EventDetailScreen({ route }) {
   const description = event?.description || "No detailed description added yet.";
   const duration = event?.duration || "";
   const priceRange = event?.priceRange || "";
+  const bookingRequired = Boolean(event?.bookingRequired);
   const bookingUrl = normalizeExternalUrl(event?.bookingUrl);
 
   const { dateLabel, timeLabel } = getDetailScheduleLabels(event || {});
@@ -1147,7 +1148,9 @@ export default function EventDetailScreen({ route }) {
                       { color: theme.onAccent || theme.textOnAccent },
                     ]}
                   >
-                    Book on Organizer Website
+                    {bookingRequired
+                      ? "Book through business"
+                      : "Book on Organizer Website"}
                   </Text>
                 </Pressable>
               ) : null}

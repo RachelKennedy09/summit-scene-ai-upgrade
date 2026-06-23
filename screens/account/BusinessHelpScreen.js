@@ -67,7 +67,7 @@ export default function BusinessHelpScreen() {
           <HelpText theme={theme}>
             Use Create Event for official events hosted by your venue, shop,
             organization, tour company, guide service, or event series. Choose
-            a broad category, then add tags like Food Tours, Guided Hikes,
+            a broad category, then add tags like Food Tours, Hiking Tours,
             Canoe Tours, Wildlife Tours, Photography Tours, Yoga Retreats, or
             Ski Clinics so users can find it through Events, Map, filters, and
             buddy posts.

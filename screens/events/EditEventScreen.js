@@ -46,11 +46,12 @@ const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGOR
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
-  { value: "recurring", label: "Recurring event" },
+  { value: "recurring", label: "Repeats" },
 ];
 const RECURRENCE_OPTIONS = [
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
+  { value: "selected_dates", label: "Custom selected dates" },
   { value: "selected_weekdays", label: "Selected weekdays" },
 ];
 const WEEKDAYS = [
@@ -96,6 +97,13 @@ function formatTime(selectedTime) {
 
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function formatDateForApi(jsDate) {
+  const year = jsDate.getFullYear();
+  const month = String(jsDate.getMonth() + 1).padStart(2, "0");
+  const day = String(jsDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function createEmptyTimeSlot() {
@@ -191,6 +199,10 @@ export default function EditEventScreen({ route, navigation }) {
   const [selectedWeekdays, setSelectedWeekdays] = useState(
     Array.isArray(event.recurrence?.weekdays) ? event.recurrence.weekdays : []
   );
+  const [selectedDates, setSelectedDates] = useState(
+    Array.isArray(event.recurrence?.dates) ? event.recurrence.dates : []
+  );
+  const [selectedDateObj, setSelectedDateObj] = useState(new Date());
   const [recurrenceUntilDateObj, setRecurrenceUntilDateObj] = useState(
     event.recurrence?.untilDate ? new Date(event.recurrence.untilDate) : new Date()
   );
@@ -219,6 +231,9 @@ export default function EditEventScreen({ route, navigation }) {
   const [hasSearchedAddressSuggestions, setHasSearchedAddressSuggestions] =
     useState(false);
   const [imageUrl, setImageUrl] = useState(event.imageUrl || "");
+  const [bookingRequired, setBookingRequired] = useState(
+    Boolean(event.bookingRequired)
+  );
   const [bookingUrl, setBookingUrl] = useState(event.bookingUrl || "");
   const [importedBySummitScene, setImportedBySummitScene] = useState(
     initialImportedBySummitScene
@@ -232,6 +247,7 @@ export default function EditEventScreen({ route, navigation }) {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [showRecurrenceUntilPicker, setShowRecurrenceUntilPicker] =
     useState(false);
+  const [showSelectedDatePicker, setShowSelectedDatePicker] = useState(false);
   const [showTownModal, setShowTownModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
@@ -289,10 +305,7 @@ export default function EditEventScreen({ route, navigation }) {
   // I normalize dates to "YYYY-MM-DD" string
   // to match what the backend expects and what Hub/Map filters use.
   const applyDateFromDateObj = (jsDate) => {
-    const year = jsDate.getFullYear();
-    const month = String(jsDate.getMonth() + 1).padStart(2, "0");
-    const day = String(jsDate.getDate()).padStart(2, "0");
-    setDate(`${year}-${month}-${day}`);
+    setDate(formatDateForApi(jsDate));
   };
 
   const getNormalizedTimeSlots = () => {
@@ -325,6 +338,19 @@ export default function EditEventScreen({ route, navigation }) {
       current.includes(weekday)
         ? current.filter((day) => day !== weekday)
         : [...current, weekday]
+    );
+  };
+
+  const addSelectedDate = (pickedDate) => {
+    const nextDate = formatDateForApi(pickedDate);
+    setSelectedDates((current) =>
+      current.includes(nextDate) ? current : [...current, nextDate].sort()
+    );
+  };
+
+  const removeSelectedDate = (dateToRemove) => {
+    setSelectedDates((current) =>
+      current.filter((selectedDate) => selectedDate !== dateToRemove)
     );
   };
 
@@ -437,6 +463,26 @@ export default function EditEventScreen({ route, navigation }) {
       return;
     }
 
+    if (
+      scheduleType === "recurring" &&
+      recurrenceFrequency === "selected_dates" &&
+      selectedDates.length === 0
+    ) {
+      Alert.alert(
+        "Missing available dates",
+        "Choose at least one available date for this event or tour."
+      );
+      return;
+    }
+
+    if (bookingRequired && !trimmedBookingUrl) {
+      Alert.alert(
+        "Missing booking link",
+        "Add the booking page people should use to reserve this event or tour."
+      );
+      return;
+    }
+
     if (!token) {
       Alert.alert("Not logged in", "Please log in before editing an event.");
       return;
@@ -470,6 +516,7 @@ export default function EditEventScreen({ route, navigation }) {
             ? {
                 frequency: recurrenceFrequency,
                 weekdays: selectedWeekdays,
+                dates: selectedDates,
                 untilDate: recurrenceUntilDate || undefined,
               }
             : undefined,
@@ -479,6 +526,7 @@ export default function EditEventScreen({ route, navigation }) {
         locationName: trimmedLocationName,
         address: trimmedAddress,
         imageUrl: trimmedImageUrl || undefined,
+        bookingRequired,
         bookingUrl: trimmedBookingUrl || undefined,
         importedBySummitScene:
           canMarkImportedBySummitScene && importedBySummitScene,
@@ -786,7 +834,7 @@ export default function EditEventScreen({ route, navigation }) {
         </Pressable>
 
         <Text style={[styles.label, { color: theme.textMuted }]}>
-          Schedule type (Required)
+          Repeats (Required)
         </Text>
         <View style={styles.optionRow}>
           {SCHEDULE_TYPES.map((option) => {
@@ -936,6 +984,48 @@ export default function EditEventScreen({ route, navigation }) {
                     );
                   })}
                 </View>
+              </>
+            ) : null}
+
+            {recurrenceFrequency === "selected_dates" ? (
+              <>
+                <Text style={[styles.label, { color: theme.textMuted }]}>
+                  Available dates (Required)
+                </Text>
+                <Text style={[styles.helperText, { color: theme.textMuted }]}>
+                  Add each date this event or tour can be booked. You can update
+                  these dates later.
+                </Text>
+                <View style={styles.selectedDateRow}>
+                  {selectedDates.map((selectedDate) => (
+                    <Pressable
+                      key={selectedDate}
+                      style={[
+                        styles.selectedDateChip,
+                        {
+                          backgroundColor: theme.accentSoft || theme.card,
+                          borderColor: theme.accent,
+                        },
+                      ]}
+                      onPress={() => removeSelectedDate(selectedDate)}
+                    >
+                      <Text style={[styles.selectedDateText, { color: theme.accent }]}>
+                        {selectedDate} x
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable
+                  style={[
+                    styles.selectButton,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                  onPress={() => setShowSelectedDatePicker(true)}
+                >
+                  <Text style={[styles.selectButtonText, { color: theme.text }]}>
+                    + Add available date
+                  </Text>
+                </Pressable>
               </>
             ) : null}
 
@@ -1306,7 +1396,42 @@ export default function EditEventScreen({ route, navigation }) {
         />
 
         <Text style={[styles.label, { color: theme.textMuted }]}>
-          External Booking Link (Optional)
+          Booking required?
+        </Text>
+        <View style={styles.optionRow}>
+          {[true, false].map((value) => {
+            const selected = bookingRequired === value;
+            return (
+              <Pressable
+                key={value ? "booking-yes" : "booking-no"}
+                style={[
+                  styles.optionChip,
+                  {
+                    backgroundColor: selected
+                      ? theme.accentSoft || theme.card
+                      : theme.card,
+                    borderColor: selected ? theme.accent : theme.border,
+                  },
+                ]}
+                onPress={() => setBookingRequired(value)}
+              >
+                <Text
+                  style={{
+                    color: selected ? theme.accent : theme.text,
+                    fontWeight: selected ? "700" : "500",
+                  }}
+                >
+                  {value ? "Yes" : "No"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.label, { color: theme.textMuted }]}>
+          {bookingRequired
+            ? "Booking Link (Required)"
+            : "External Booking Link (Optional)"}
         </Text>
         <Text style={[styles.helperText, { color: theme.textMuted }]}>
           Add a website, booking page, Instagram DM link, FareHarbor, Viator, or similar. People will book outside Summit Scene.
@@ -1501,6 +1626,18 @@ export default function EditEventScreen({ route, navigation }) {
         onCancel={() => setShowRecurrenceUntilPicker(false)}
       />
 
+      <DatePickerModal
+        visible={showSelectedDatePicker}
+        initialDate={selectedDateObj}
+        title="Add available date"
+        onConfirm={(pickedDate) => {
+          setSelectedDateObj(pickedDate);
+          addSelectedDate(pickedDate);
+          setShowSelectedDatePicker(false);
+        }}
+        onCancel={() => setShowSelectedDatePicker(false)}
+      />
+
       {/* Start Time Picker */}
       <TimePickerModal
         visible={showTimePicker}
@@ -1615,6 +1752,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  selectedDateRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 10,
+  },
+  selectedDateChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  selectedDateText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   input: {
     borderRadius: 8,

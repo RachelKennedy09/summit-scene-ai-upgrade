@@ -8,7 +8,6 @@ export const COMMUNITY_SUPPORT_CATEGORIES = [
   "Newcomers",
   "Volunteer",
   "Local fundraiser",
-  "Language exchange",
   "Indigenous & BIPOC",
   "Accessibility",
 ];
@@ -73,7 +72,6 @@ export const EVENT_CATEGORY_GROUPS = [
     title: "Learning",
     options: [
       "Career Events",
-      "Language Exchange",
       "Employee Workshops",
     ],
   },
@@ -135,8 +133,9 @@ export const EVENT_CATEGORY_GROUPS = [
       "Canoe Tours",
       "Canada Day",
       "Christmas Markets",
-      "Guided Hikes",
-      "Hiking Guides",
+      "Distillery Tours",
+      "Food Tours",
+      "Hiking Tours",
       "Holiday Events",
       "Local Tours",
       "Photography Tours",

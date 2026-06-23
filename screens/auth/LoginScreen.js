@@ -452,12 +452,6 @@ function LoginScreen() {
               </>
             ) : null}
 
-            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
-              <Text style={[styles.linkText, { color: theme.accent }]}>
-                Forgot password?
-              </Text>
-            </Pressable>
-
             <AppButton
               title="Sign Up"
               onPress={() => navigation.navigate("Register")}
@@ -475,6 +469,12 @@ function LoginScreen() {
               size="lg"
               style={styles.secondaryAuthButton}
             />
+
+            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
+              <Text style={[styles.linkText, { color: theme.accent }]}>
+                Forgot password?
+              </Text>
+            </Pressable>
 
             <Pressable onPress={() => navigation.navigate("Legal")}>
               <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>

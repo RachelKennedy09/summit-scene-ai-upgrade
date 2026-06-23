@@ -43,6 +43,7 @@ const VALID_RECURRENCE_FREQUENCIES = [
   "daily",
   "weekly",
   "selected_weekdays",
+  "selected_dates",
 ];
 const VALID_WEEKDAYS = [
   "Sunday",
@@ -244,12 +245,46 @@ function validateTimeSlots(timeSlots) {
   }
 }
 
+function normalizeSelectedDates(dates) {
+  if (!Array.isArray(dates)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      dates
+        .map((date) => normalizeRequiredString(date))
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    ),
+  ].sort();
+}
+
+function normalizeRecurrenceFrequency(value) {
+  const normalized = normalizeRequiredString(value || "daily");
+  const lower = normalized.toLowerCase();
+  const aliasMap = {
+    "custom selected dates": "selected_dates",
+    "custom dates": "selected_dates",
+    "selected dates": "selected_dates",
+    custom_selected_dates: "selected_dates",
+    custom_dates: "selected_dates",
+    selected_dates: "selected_dates",
+    "selected weekdays": "selected_weekdays",
+    selected_weekdays: "selected_weekdays",
+    weekdays: "selected_weekdays",
+    daily: "daily",
+    weekly: "weekly",
+  };
+
+  return aliasMap[lower] || normalized;
+}
+
 function normalizeRecurrence(recurrence, scheduleType) {
   if (scheduleType !== "recurring") {
     return undefined;
   }
 
-  const frequency = normalizeRequiredString(recurrence?.frequency || "daily");
+  const frequency = normalizeRecurrenceFrequency(recurrence?.frequency);
   if (!VALID_RECURRENCE_FREQUENCIES.includes(frequency)) {
     throw new Error("Please choose a valid recurrence frequency.");
   }
@@ -264,11 +299,19 @@ function normalizeRecurrence(recurrence, scheduleType) {
     throw new Error("Choose at least one weekday for this recurring event.");
   }
 
+  const dates = normalizeSelectedDates(
+    recurrence?.dates || recurrence?.selectedDates || recurrence?.customDates
+  );
+  if (frequency === "selected_dates" && dates.length === 0) {
+    throw new Error("Choose at least one available date for this event.");
+  }
+
   const untilDate = normalizeOptionalString(recurrence?.untilDate);
 
   return {
     frequency,
     weekdays: frequency === "selected_weekdays" ? weekdays : [],
+    dates: frequency === "selected_dates" ? dates : [],
     untilDate,
   };
 }
@@ -502,10 +545,19 @@ export async function getAllEvents(req, res) {
         {
           scheduleType: "recurring",
           $or: [
-            { "recurrence.untilDate": { $exists: false } },
-            { "recurrence.untilDate": null },
-            { "recurrence.untilDate": "" },
-            { "recurrence.untilDate": { $gte: todayStr } },
+            {
+              "recurrence.frequency": "selected_dates",
+              "recurrence.dates": { $gte: todayStr },
+            },
+            {
+              "recurrence.frequency": { $ne: "selected_dates" },
+              $or: [
+                { "recurrence.untilDate": { $exists: false } },
+                { "recurrence.untilDate": null },
+                { "recurrence.untilDate": "" },
+                { "recurrence.untilDate": { $gte: todayStr } },
+              ],
+            },
           ],
         },
       ],
@@ -742,6 +794,7 @@ export async function createEvent(req, res) {
       location,
       imageUrl,
       bookingUrl,
+      bookingRequired,
       importedBySummitScene,
     } = rawBody;
 
@@ -806,6 +859,12 @@ export async function createEvent(req, res) {
     if (!["single", "recurring"].includes(normalizedScheduleType)) {
       return res.status(400).json({
         message: "Please choose a valid schedule type.",
+      });
+    }
+
+    if (bookingRequired && !normalizeOptionalString(bookingUrl)) {
+      return res.status(400).json({
+        message: "A booking link is required when booking is required.",
       });
     }
 
@@ -905,6 +964,7 @@ export async function createEvent(req, res) {
       longitude: geocodedFields.longitude,
       imageUrl: normalizeOptionalString(imageUrl),
       bookingUrl: normalizeOptionalString(bookingUrl),
+      bookingRequired: Boolean(bookingRequired),
       importedBySummitScene: shouldMarkImportedBySummitScene,
       createdBy: userId,
     });
@@ -1085,6 +1145,7 @@ export async function updateEvent(req, res) {
       location,
       imageUrl,
       bookingUrl,
+      bookingRequired,
       importedBySummitScene,
     } = rawBody;
 
@@ -1181,6 +1242,12 @@ export async function updateEvent(req, res) {
     }
     if (imageUrl !== undefined) event.imageUrl = normalizeOptionalString(imageUrl);
     if (bookingUrl !== undefined) event.bookingUrl = normalizeOptionalString(bookingUrl);
+    if (bookingRequired !== undefined) event.bookingRequired = Boolean(bookingRequired);
+    if (event.bookingRequired && !normalizeOptionalString(event.bookingUrl)) {
+      return res.status(400).json({
+        message: "A booking link is required when booking is required.",
+      });
+    }
     if (importedBySummitScene !== undefined) {
       if (isAdminEditor) {
         event.importedBySummitScene = Boolean(importedBySummitScene);

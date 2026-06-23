@@ -20,7 +20,6 @@ export const COMMUNITY_EVENT_TAGS = [
   "Newcomers",
   "Volunteer",
   "Local fundraiser",
-  "Language exchange",
   "Indigenous & BIPOC",
   "Accessibility",
 ];
