@@ -42,6 +42,7 @@ import {
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
+const LISTING_TYPES = ["All", "events", "bookings"];
 
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
@@ -94,6 +95,7 @@ export default function HubScreen() {
 
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedListingType, setSelectedListingType] = useState("All");
   const [selectedTown, setSelectedTown] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
@@ -135,6 +137,7 @@ export default function HubScreen() {
         page: nextPage,
         limit: EVENTS_PAGE_SIZE,
         town: selectedTown,
+        listingType: selectedListingType,
         category: selectedCategory,
         dateFilter: selectedDateFilter,
         nearLat: isNearMeEnabled ? nearMeLocation?.latitude : undefined,
@@ -183,7 +186,7 @@ export default function HubScreen() {
         setLoadingMore(false);
       }
     }
-  }, [selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
+  }, [selectedTown, selectedListingType, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
 
   // Reload when the Hub is focused and whenever filters/search change.
   useEffect(() => {
@@ -207,6 +210,51 @@ export default function HubScreen() {
 
     loadEvents({ nextPage: page + 1, mode: "loadMore" });
   }, [loading, refreshing, loadingMore, hasMore, page, loadEvents]);
+
+  const prepareFilterRefresh = useCallback(() => {
+    setEvents([]);
+    setBuddySearchResults([]);
+    setTotalCount(0);
+    setHasMore(false);
+    setPage(1);
+    setLoading(true);
+  }, []);
+
+  const handleSelectTownFilter = useCallback(
+    (town) => {
+      if (town === selectedTown) return;
+      prepareFilterRefresh();
+      setSelectedTown(town);
+    },
+    [prepareFilterRefresh, selectedTown]
+  );
+
+  const handleSelectListingTypeFilter = useCallback(
+    (listingType) => {
+      if (listingType === selectedListingType) return;
+      prepareFilterRefresh();
+      setSelectedListingType(listingType);
+    },
+    [prepareFilterRefresh, selectedListingType]
+  );
+
+  const handleSelectCategoryFilter = useCallback(
+    (category) => {
+      if (category === selectedCategory) return;
+      prepareFilterRefresh();
+      setSelectedCategory(category);
+    },
+    [prepareFilterRefresh, selectedCategory]
+  );
+
+  const handleSelectDateFilter = useCallback(
+    (dateFilter) => {
+      if (dateFilter === selectedDateFilter) return;
+      prepareFilterRefresh();
+      setSelectedDateFilter(dateFilter);
+    },
+    [prepareFilterRefresh, selectedDateFilter]
+  );
 
   const handleToggleNearMe = useCallback(async () => {
     if (nearMeLoading) return;
@@ -243,6 +291,7 @@ export default function HubScreen() {
     }
 
     setSelectedTown("All");
+    setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("All Dates");
     setIsNearMeEnabled(false);
@@ -346,6 +395,7 @@ export default function HubScreen() {
 
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
+    setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("Today");
     setIsNearMeEnabled(false);
@@ -358,6 +408,9 @@ export default function HubScreen() {
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
+    const listingPlural =
+      selectedListingType === "bookings" ? "bookings" : "events";
+
     if (
       activeSearch &&
       events.length === 0 &&
@@ -384,23 +437,35 @@ export default function HubScreen() {
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
-      return `No events found in ${selectedTown}. Try another town, a wider date range, or Connect.`;
+      return `No ${listingPlural} found in ${selectedTown}. Try another town, a wider date range, or Connect.`;
     }
 
     if (selectedTown === "All" && selectedCategory !== "All") {
-      return `No ${selectedCategory} events found. Try another category, a wider date range, or Connect.`;
+      return `No ${selectedCategory} ${listingPlural} found. Try another category, a wider date range, or Connect.`;
     }
 
     if (selectedDateFilter !== "All Dates") {
-      return `No events match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Connect.`;
+      return `No ${listingPlural} match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Connect.`;
     }
 
-    return `No ${selectedCategory} events found in ${selectedTown}.`;
-  }, [selectedCategory, selectedTown, selectedDateFilter, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
+    return `No ${selectedCategory} ${listingPlural} found in ${selectedTown}.`;
+  }, [selectedCategory, selectedListingType, selectedTown, selectedDateFilter, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
     const count = totalCount;
+    const listingSingular =
+      selectedListingType === "bookings"
+        ? "booking"
+        : selectedListingType === "events"
+          ? "event"
+          : "listing";
+    const listingPlural =
+      selectedListingType === "bookings"
+        ? "bookings"
+        : selectedListingType === "events"
+          ? "events"
+          : "listings";
 
     const townLabel = selectedTown === "All" ? "all towns" : ` ${selectedTown}`;
     const categoryLabel =
@@ -421,8 +486,8 @@ export default function HubScreen() {
       }
 
       return isNearMeEnabled
-        ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
-        : "No events match your current filters.";
+        ? `No ${listingPlural} found within ${NEAR_ME_RADIUS_KM} km of you.`
+        : `No ${listingPlural} match your current filters.`;
     }
 
     if (activeSearch) {
@@ -431,23 +496,23 @@ export default function HubScreen() {
             buddySearchResults.length === 1 ? "" : "s"
           }`
         : "";
-      return `Showing ${count} event${count === 1 ? "" : "s"}${buddyText} for "${activeSearch}".`;
+      return `Showing ${count} ${count === 1 ? listingSingular : listingPlural}${buddyText} for "${activeSearch}".`;
     }
 
     if (isShowingInterestFirst) {
-      return `Showing ${count} events with your interests first. Choose a category to focus the list.`;
+      return `Showing ${count} listings with your interests first. Choose a category to focus the list.`;
     }
 
     if (count === 1) {
       return isNearMeEnabled
-        ? `Showing 1 event near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
-        : `Showing 1 event in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+        ? `Showing 1 ${listingSingular} near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
+        : `Showing 1 ${listingSingular} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
     }
 
     return isNearMeEnabled
-      ? `Showing ${count} events near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
-      : `Showing ${count} events in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
+      ? `Showing ${count} ${listingPlural} near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
+      : `Showing ${count} ${listingPlural} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
+  }, [totalCount, selectedTown, selectedListingType, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
 
   const searchStatus = useMemo(() => {
     if (!activeSearch) return "";
@@ -474,6 +539,7 @@ export default function HubScreen() {
 
   const hasActiveFilters =
     selectedTown !== "All" ||
+    selectedListingType !== "All" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
@@ -634,17 +700,20 @@ export default function HubScreen() {
               </View>
               <HubFilters
                 selectedTown={selectedTown}
+                selectedListingType={selectedListingType}
                 selectedCategory={selectedCategory}
                 selectedDateFilter={selectedDateFilter}
                 resultSummary={resultSummary}
                 error={error}
                 towns={TOWNS}
+                listingTypes={LISTING_TYPES}
                 categories={CATEGORIES}
                 categoryGroups={CATEGORY_GROUPS}
                 dateFilters={DATE_FILTERS}
-                onSelectTown={setSelectedTown}
-                onSelectCategory={setSelectedCategory}
-                onSelectDateFilter={setSelectedDateFilter}
+                onSelectTown={handleSelectTownFilter}
+                onSelectListingType={handleSelectListingTypeFilter}
+                onSelectCategory={handleSelectCategoryFilter}
+                onSelectDateFilter={handleSelectDateFilter}
                 isNearMeEnabled={isNearMeEnabled}
                 isNearMeLoading={nearMeLoading}
                 nearMeMessage={nearMeMessage}

@@ -549,6 +549,21 @@ function matchesDateFilter(event, dateFilter) {
   );
 }
 
+function buildBookableListingConditions() {
+  const bookingCategoryOptions =
+    getEventCategoryFilterOptions("Tours & Experiences") || [
+      "Tours & Experiences",
+    ];
+
+  return [
+    { bookingRequired: true },
+    { bookingUrl: { $exists: true, $nin: [null, ""] } },
+    { category: { $in: bookingCategoryOptions } },
+    { categories: { $in: bookingCategoryOptions } },
+    { categoryTags: { $in: bookingCategoryOptions } },
+  ];
+}
+
 // -------------------------------------------
 // GET /api/events
 //   Return upcoming events (today or later).
@@ -564,6 +579,7 @@ export async function getAllEvents(req, res) {
     const normalizedCategory = normalizeRequiredString(req.query?.category);
     const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
     const normalizedAudience = normalizeRequiredString(req.query?.audience);
+    const normalizedListingType = normalizeRequiredString(req.query?.listingType);
     const communityOnly = String(req.query?.communityOnly || "") === "true";
     const searchTerms = buildSearchTerms(req.query?.search);
     const requestedPage = parsePositiveInt(req.query?.page, 1);
@@ -656,6 +672,20 @@ export async function getAllEvents(req, res) {
         return res.status(400).json({ message: "Invalid event audience." });
       }
       baseQuery.audience = normalizedAudience;
+    }
+
+    if (normalizedListingType && normalizedListingType !== "All") {
+      if (!["events", "bookings"].includes(normalizedListingType)) {
+        return res.status(400).json({ message: "Invalid listing type." });
+      }
+
+      const bookableConditions = buildBookableListingConditions();
+      baseQuery.$and = [
+        ...(baseQuery.$and || []),
+        normalizedListingType === "bookings"
+          ? { $or: bookableConditions }
+          : { $nor: bookableConditions },
+      ];
     }
 
     if (searchTerms.length) {

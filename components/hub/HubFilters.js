@@ -19,15 +19,18 @@ import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
 export default function HubFilters({
   selectedTown, // current town filter
+  selectedListingType = "All",
   selectedCategory, // current category filter
   selectedDateFilter, // current date filter label, e.g. "This Week"
   resultSummary, // summary text like "Showing 8 events in Banff this week"
   error, // optional error message (string)
   towns, // array of town options: ["All", "Banff", "Canmore", ...]
+  listingTypes = ["All", "events", "bookings"],
   categories, // array of category options: ["All", "Live Music", "Markets", ...]
   categoryGroups,
   dateFilters, // array of date filter labels: ["Any date", "This week", ...]
   onSelectTown, // callback when user chooses a town
+  onSelectListingType,
   onSelectCategory, // callback when user chooses a category
   onSelectDateFilter, // callback when user chooses a date range
   isNearMeEnabled,
@@ -48,6 +51,8 @@ export default function HubFilters({
 
   // LOCAL UI STATE: which picker modal is open
   const [isTownModalVisible, setIsTownModalVisible] = useState(false);
+  const [isListingTypeModalVisible, setIsListingTypeModalVisible] =
+    useState(false);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isDateModalVisible, setIsDateModalVisible] = useState(false);
 
@@ -56,6 +61,11 @@ export default function HubFilters({
   const handleTownPress = (town) => {
     onSelectTown(town);
     setIsTownModalVisible(false);
+  };
+
+  const handleListingTypePress = (listingType) => {
+    onSelectListingType?.(listingType);
+    setIsListingTypeModalVisible(false);
   };
 
   const handleCategoryPress = (category) => {
@@ -166,6 +176,32 @@ export default function HubFilters({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.pillRow}
         >
+          {/* Listing type Pill */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.pill,
+              {
+                backgroundColor: theme.pill || theme.card,
+                borderColor: theme.border,
+              },
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setIsListingTypeModalVisible(true)}
+          >
+            <View style={styles.pillContent}>
+              <Text style={[styles.pillValue, { color: theme.textMain }]}>
+                {selectedListingType === "bookings"
+                  ? "Bookings"
+                  : selectedListingType === "events"
+                    ? "Events"
+                    : "Events & Bookings"}
+              </Text>
+              <Text style={[styles.pillIndicator, { color: theme.accent }]}>
+                +
+              </Text>
+            </View>
+          </Pressable>
+
           {/* Category Pill */}
           <Pressable
             style={({ pressed }) => [
@@ -359,6 +395,87 @@ export default function HubFilters({
                 pressed && styles.pressed,
               ]}
               onPress={() => setIsTownModalVisible(false)}
+            >
+              <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
+                Cancel
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- Listing Type Selector Modal --- */}
+      <Modal
+        visible={isListingTypeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsListingTypeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: theme.textMain }]}>
+              Choose what to browse
+            </Text>
+
+            {listingTypes.map((listingType) => {
+              const isSelected = listingType === selectedListingType;
+              const label =
+                listingType === "bookings"
+                  ? "Bookings"
+                  : listingType === "events"
+                    ? "Events"
+                    : "Events & Bookings";
+              return (
+                <Pressable
+                  key={listingType}
+                  style={({ pressed }) => [
+                    styles.townOption,
+                    {
+                      backgroundColor: theme.pill || theme.card,
+                      borderColor: "transparent",
+                    },
+                    isSelected && {
+                      backgroundColor: theme.accentSoft || theme.accent,
+                      borderColor: theme.accent,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => handleListingTypePress(listingType)}
+                >
+                  <Text
+                    style={[
+                      styles.townOptionText,
+                      { color: theme.textMain },
+                      isSelected && styles.townOptionTextSelected,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {isSelected && (
+                    <Text
+                      style={[styles.townCheckMark, { color: theme.accent }]}
+                    >
+                      âœ“
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setIsListingTypeModalVisible(false)}
             >
               <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
                 Cancel

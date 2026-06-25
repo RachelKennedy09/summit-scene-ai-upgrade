@@ -111,15 +111,18 @@ function FilterModal({
 
 export default function MapFilters({
   selectedTown,
+  selectedListingType = "All",
   selectedCategory,
   selectedDateFilter,
   filterSummary,
   error,
   towns,
+  listingTypes = ["All", "events", "bookings"],
   categories,
   categoryGroups,
   dateFilters,
   onSelectTown,
+  onSelectListingType,
   onSelectCategory,
   onSelectDateFilter,
   isNearMeEnabled,
@@ -137,6 +140,8 @@ export default function MapFilters({
 }) {
   const { theme } = useTheme();
   const [isTownModalVisible, setIsTownModalVisible] = useState(false);
+  const [isListingTypeModalVisible, setIsListingTypeModalVisible] =
+    useState(false);
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [isDateModalVisible, setIsDateModalVisible] = useState(false);
 
@@ -220,6 +225,31 @@ export default function MapFilters({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.pillRow}
       >
+        <Pressable
+          style={({ pressed }) => [
+            styles.pill,
+            {
+              backgroundColor: theme.pill || theme.card,
+              borderColor: theme.border,
+            },
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setIsListingTypeModalVisible(true)}
+        >
+          <View style={styles.pillContent}>
+            <Text style={[styles.pillValue, { color: theme.textMain }]}>
+              {selectedListingType === "bookings"
+                ? "Bookings"
+                : selectedListingType === "events"
+                  ? "Events"
+                  : "Events & Bookings"}
+            </Text>
+            <Text style={[styles.pillIndicator, { color: theme.accent }]}>
+              +
+            </Text>
+          </View>
+        </Pressable>
+
         <Pressable
           style={({ pressed }) => [
             styles.pill,
@@ -350,6 +380,37 @@ export default function MapFilters({
           setIsTownModalVisible(false);
         }}
         onClose={() => setIsTownModalVisible(false)}
+        theme={theme}
+      />
+
+      <FilterModal
+        visible={isListingTypeModalVisible}
+        title="Choose what to browse"
+        options={listingTypes.map((listingType) =>
+          listingType === "bookings"
+            ? "Bookings"
+            : listingType === "events"
+              ? "Events"
+              : "Events & Bookings"
+        )}
+        selectedValue={
+          selectedListingType === "bookings"
+            ? "Bookings"
+            : selectedListingType === "events"
+              ? "Events"
+              : "Events & Bookings"
+        }
+        onSelect={(value) => {
+          const nextValue =
+            value === "Bookings"
+              ? "bookings"
+              : value === "Events"
+                ? "events"
+                : "All";
+          onSelectListingType?.(nextValue);
+          setIsListingTypeModalVisible(false);
+        }}
+        onClose={() => setIsListingTypeModalVisible(false)}
         theme={theme}
       />
 

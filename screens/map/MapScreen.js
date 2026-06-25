@@ -53,6 +53,7 @@ import {
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
+const LISTING_TYPES = ["All", "events", "bookings"];
 
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
@@ -200,6 +201,23 @@ function getEventCategoryList(event) {
     : event?.category
       ? [event.category]
       : [];
+}
+
+function isBookableListing(event) {
+  const categoryOptions = getEventCategoryFilterOptions("Tours & Experiences") || [
+    "Tours & Experiences",
+  ];
+  const categorySet = new Set(categoryOptions);
+  const categoryValues = [
+    ...getEventCategoryList(event),
+    ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
+  ];
+
+  return Boolean(
+    event?.bookingRequired ||
+      String(event?.bookingUrl || "").trim() ||
+      categoryValues.some((value) => categorySet.has(value))
+  );
 }
 
 function eventMatchesSearch(event, searchTerm) {
@@ -418,6 +436,7 @@ export default function MapScreen({ route }) {
 
   // Filter state (shared wtih Hub): town, category, date range
   const [selectedTown, setSelectedTown] = useState("All");
+  const [selectedListingType, setSelectedListingType] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [showOnlyMyEvents, setShowOnlyMyEvents] = useState(false);
@@ -520,6 +539,11 @@ export default function MapScreen({ route }) {
   const handleSelectTown = useCallback(
     (town) => {
       setSelectedTown(town);
+      setSelectedMarkerId(null);
+      setSelectedEventGroup(null);
+      setMapActionMessage(
+        town === "All" ? "Showing all towns." : `Showing events in ${town}.`
+      );
 
       if (town !== "All" && isNearMeEnabled) {
         setIsNearMeEnabled(false);
@@ -532,8 +556,49 @@ export default function MapScreen({ route }) {
     [isNearMeEnabled]
   );
 
+  const resetMapSelectionForFilter = useCallback((message) => {
+    setSelectedMarkerId(null);
+    setSelectedEventGroup(null);
+    setMapActionMessage(message);
+  }, []);
+
+  const handleSelectListingType = useCallback(
+    (listingType) => {
+      setSelectedListingType(listingType);
+      resetMapSelectionForFilter(
+        listingType === "bookings"
+          ? "Showing bookable tours, experiences, and reservation listings."
+          : listingType === "events"
+            ? "Showing regular events."
+            : "Showing events and bookings."
+      );
+    },
+    [resetMapSelectionForFilter]
+  );
+
+  const handleSelectCategory = useCallback(
+    (category) => {
+      setSelectedCategory(category);
+      resetMapSelectionForFilter(
+        category === "All"
+          ? "Showing all categories."
+          : `Showing ${category} on the map.`
+      );
+    },
+    [resetMapSelectionForFilter]
+  );
+
+  const handleSelectDateFilter = useCallback(
+    (dateFilter) => {
+      setSelectedDateFilter(dateFilter);
+      resetMapSelectionForFilter(`Showing ${dateFilter.toLowerCase()}.`);
+    },
+    [resetMapSelectionForFilter]
+  );
+
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
+    setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("Today");
     setShowOnlyMyEvents(false);
@@ -552,6 +617,7 @@ export default function MapScreen({ route }) {
 
     setActiveSearch(trimmedSearch);
     setSelectedTown("All");
+    setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter(trimmedSearch ? "All Dates" : "Today");
     setIsNearMeEnabled(false);
@@ -651,6 +717,11 @@ export default function MapScreen({ route }) {
           eventOwnerId.toString() === currentUserId.toString());
 
       const townMatch = selectedTown === "All" || event.town === selectedTown;
+      const listingTypeMatch =
+        selectedListingType === "All" ||
+        (selectedListingType === "bookings"
+          ? isBookableListing(event)
+          : !isBookableListing(event));
 
       const selectedCategoryOptions =
         getEventCategoryFilterOptions(selectedCategory);
@@ -692,6 +763,7 @@ export default function MapScreen({ route }) {
       return (
         ownershipMatch &&
         townMatch &&
+        listingTypeMatch &&
         categoryMatch &&
         dateMatch &&
         nearMeMatch &&
@@ -701,6 +773,7 @@ export default function MapScreen({ route }) {
   }, [
     events,
     selectedTown,
+    selectedListingType,
     selectedCategory,
     selectedDateFilter,
     showOnlyMyEvents,
@@ -791,6 +864,7 @@ export default function MapScreen({ route }) {
     if (focusEvent?.town) {
       setSelectedTown(focusEvent.town);
     }
+    setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("All Dates");
     setShowOnlyMyEvents(false);
@@ -866,6 +940,18 @@ export default function MapScreen({ route }) {
   // Human-readable summary line under the filters (e.g. "Showing 3 events in Banff ...")
   const filterSummary = useMemo(() => {
     const count = eventsForMap.length;
+    const listingSingular =
+      selectedListingType === "bookings"
+        ? "booking"
+        : selectedListingType === "events"
+          ? "event"
+          : "listing";
+    const listingPlural =
+      selectedListingType === "bookings"
+        ? "bookings"
+        : selectedListingType === "events"
+          ? "events"
+          : "listings";
 
     const townLabel = selectedTown === "All" ? "all towns" : ` ${selectedTown}`;
     const categoryLabel =
@@ -881,30 +967,31 @@ export default function MapScreen({ route }) {
 
     if (count === 0) {
       return isNearMeEnabled
-        ? `No events found within ${NEAR_ME_RADIUS_KM} km of you.`
+        ? `No ${listingPlural} found within ${NEAR_ME_RADIUS_KM} km of you.`
         : showOnlyMyEvents
-        ? "No posted events match your current map filters."
+        ? `No posted ${listingPlural} match your current map filters.`
         : activeSearch
-          ? `No map events found for "${activeSearch}". Try a simpler search or clear filters.`
-          : "No events match your current map filters.";
+          ? `No map ${listingPlural} found for "${activeSearch}". Try a simpler search or clear filters.`
+          : `No ${listingPlural} match your current map filters.`;
     }
 
     if (count === 1) {
       return `Showing 1 ${
         isNearMeEnabled ? "nearby " : ""
       }${
-        showOnlyMyEvents ? "posted event" : "event"
+        showOnlyMyEvents ? `posted ${listingSingular}` : listingSingular
       }${searchLabel} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
     }
 
     return `Showing ${count} ${
       isNearMeEnabled ? "nearby " : ""
     }${
-      showOnlyMyEvents ? "posted events" : "events"
+      showOnlyMyEvents ? `posted ${listingPlural}` : listingPlural
     }${searchLabel} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
   }, [
     eventsForMap.length,
     selectedTown,
+    selectedListingType,
     selectedCategory,
     selectedDateFilter,
     showOnlyMyEvents,
@@ -1022,6 +1109,7 @@ export default function MapScreen({ route }) {
     isBusiness && showOnlyMyEvents && eventsForMap.length === 0;
   const hasActiveFilters =
     selectedTown !== "All" ||
+    selectedListingType !== "All" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
@@ -1060,17 +1148,20 @@ export default function MapScreen({ route }) {
         {/* Filters header and summary (reused logic from Hub in a shared MapFilters component) */}
         <MapFilters
           selectedTown={selectedTown}
+          selectedListingType={selectedListingType}
           selectedCategory={selectedCategory}
           selectedDateFilter={selectedDateFilter}
           filterSummary={filterSummary}
           error={error}
           towns={TOWNS}
+          listingTypes={LISTING_TYPES}
           categories={CATEGORIES}
           categoryGroups={CATEGORY_GROUPS}
           dateFilters={DATE_FILTERS}
           onSelectTown={handleSelectTown}
-          onSelectCategory={setSelectedCategory}
-          onSelectDateFilter={setSelectedDateFilter}
+          onSelectListingType={handleSelectListingType}
+          onSelectCategory={handleSelectCategory}
+          onSelectDateFilter={handleSelectDateFilter}
           isNearMeEnabled={isNearMeEnabled}
           isNearMeLoading={nearMeLoading}
           nearMeMessage={nearMeMessage}
@@ -1235,7 +1326,7 @@ export default function MapScreen({ route }) {
                           },
                           pressed && styles.pressed,
                         ]}
-                        onPress={() => setSelectedDateFilter(label)}
+                        onPress={() => handleSelectDateFilter(label)}
                       >
                         <Text
                           style={[

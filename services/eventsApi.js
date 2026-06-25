@@ -196,6 +196,13 @@ function buildEventsQueryString(options = {}) {
   if (options.communityOnly) {
     params.set("communityOnly", "true");
   }
+  if (
+    options.listingType &&
+    options.listingType !== "All" &&
+    options.listingType !== "all"
+  ) {
+    params.set("listingType", String(options.listingType));
+  }
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
