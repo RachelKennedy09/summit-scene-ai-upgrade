@@ -42,7 +42,7 @@ import {
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
-const LISTING_TYPES = ["All", "events", "bookings"];
+const LISTING_TYPES = ["events", "tours", "restaurant_specials", "classes", "All"];
 
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
@@ -73,6 +73,17 @@ function getUserInterestCategories(user) {
   );
 }
 
+function getListingTypeNoun(listingType, count = 2) {
+  const isPlural = count !== 1;
+  if (listingType === "tours") return isPlural ? "tours" : "tour";
+  if (listingType === "restaurant_specials") {
+    return isPlural ? "restaurant specials" : "restaurant special";
+  }
+  if (listingType === "classes") return isPlural ? "classes" : "class";
+  if (listingType === "All") return isPlural ? "listings" : "listing";
+  return isPlural ? "events" : "event";
+}
+
 export default function HubScreen() {
   const { user, token } = useAuth();
   const { theme } = useTheme();
@@ -95,7 +106,7 @@ export default function HubScreen() {
 
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedListingType, setSelectedListingType] = useState("All");
+  const [selectedListingType, setSelectedListingType] = useState("events");
   const [selectedTown, setSelectedTown] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
@@ -395,7 +406,7 @@ export default function HubScreen() {
 
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
-    setSelectedListingType("All");
+    setSelectedListingType("events");
     setSelectedCategory("All");
     setSelectedDateFilter("Today");
     setIsNearMeEnabled(false);
@@ -408,8 +419,7 @@ export default function HubScreen() {
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
-    const listingPlural =
-      selectedListingType === "bookings" ? "bookings" : "events";
+    const listingPlural = getListingTypeNoun(selectedListingType);
 
     if (
       activeSearch &&
@@ -454,18 +464,8 @@ export default function HubScreen() {
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
     const count = totalCount;
-    const listingSingular =
-      selectedListingType === "bookings"
-        ? "booking"
-        : selectedListingType === "events"
-          ? "event"
-          : "listing";
-    const listingPlural =
-      selectedListingType === "bookings"
-        ? "bookings"
-        : selectedListingType === "events"
-          ? "events"
-          : "listings";
+    const listingSingular = getListingTypeNoun(selectedListingType, 1);
+    const listingPlural = getListingTypeNoun(selectedListingType);
 
     const townLabel = selectedTown === "All" ? "all towns" : ` ${selectedTown}`;
     const categoryLabel =
@@ -535,11 +535,11 @@ export default function HubScreen() {
   }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
 
   const hubSubtitle =
-    "Todays events are shown by default. Choose a category, town, and/or date to focus the list. Switch to Connect to browse posts.";
+    "Today's events are shown by default. Use Browse to switch to tours, restaurant specials, fitness classes, or all listings.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||
-    selectedListingType !== "All" ||
+    selectedListingType !== "events" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
     isNearMeEnabled ||

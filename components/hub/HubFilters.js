@@ -17,15 +17,23 @@ import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
+function getListingTypeLabel(listingType) {
+  if (listingType === "events") return "Events";
+  if (listingType === "tours") return "Tours & Activities";
+  if (listingType === "restaurant_specials") return "Restaurant Specials";
+  if (listingType === "classes") return "Fitness & Classes";
+  return "All Listings";
+}
+
 export default function HubFilters({
   selectedTown, // current town filter
-  selectedListingType = "All",
+  selectedListingType = "events",
   selectedCategory, // current category filter
   selectedDateFilter, // current date filter label, e.g. "This Week"
   resultSummary, // summary text like "Showing 8 events in Banff this week"
   error, // optional error message (string)
   towns, // array of town options: ["All", "Banff", "Canmore", ...]
-  listingTypes = ["All", "events", "bookings"],
+  listingTypes = ["events", "tours", "restaurant_specials", "classes", "All"],
   categories, // array of category options: ["All", "Live Music", "Markets", ...]
   categoryGroups,
   dateFilters, // array of date filter labels: ["Any date", "This week", ...]
@@ -190,11 +198,7 @@ export default function HubFilters({
           >
             <View style={styles.pillContent}>
               <Text style={[styles.pillValue, { color: theme.textMain }]}>
-                {selectedListingType === "bookings"
-                  ? "Bookings"
-                  : selectedListingType === "events"
-                    ? "Events"
-                    : "Events & Bookings"}
+                {getListingTypeLabel(selectedListingType)}
               </Text>
               <Text style={[styles.pillIndicator, { color: theme.accent }]}>
                 +
@@ -427,12 +431,7 @@ export default function HubFilters({
 
             {listingTypes.map((listingType) => {
               const isSelected = listingType === selectedListingType;
-              const label =
-                listingType === "bookings"
-                  ? "Bookings"
-                  : listingType === "events"
-                    ? "Events"
-                    : "Events & Bookings";
+              const label = getListingTypeLabel(listingType);
               return (
                 <Pressable
                   key={listingType}

@@ -549,8 +549,16 @@ function matchesDateFilter(event, dateFilter) {
   );
 }
 
-function buildBookableListingConditions() {
-  const bookingCategoryOptions =
+function buildCategoryListingConditions(values) {
+  return [
+    { category: { $in: values } },
+    { categories: { $in: values } },
+    { categoryTags: { $in: values } },
+  ];
+}
+
+function buildToursListingConditions() {
+  const categoryOptions =
     getEventCategoryFilterOptions("Tours & Experiences") || [
       "Tours & Experiences",
     ];
@@ -558,10 +566,50 @@ function buildBookableListingConditions() {
   return [
     { bookingRequired: true },
     { bookingUrl: { $exists: true, $nin: [null, ""] } },
-    { category: { $in: bookingCategoryOptions } },
-    { categories: { $in: bookingCategoryOptions } },
-    { categoryTags: { $in: bookingCategoryOptions } },
+    ...buildCategoryListingConditions(categoryOptions),
   ];
+}
+
+function buildRestaurantSpecialListingConditions() {
+  return buildCategoryListingConditions([
+    "Restaurant Specials",
+    "Brunch",
+    "Cocktail Nights",
+    "Coffee",
+    "Breweries",
+    "Wine Tastings",
+  ]);
+}
+
+function buildClassListingConditions() {
+  return buildCategoryListingConditions([
+    "Fitness Classes",
+    "Gym Events",
+    "Low-Impact Fitness",
+    "Run Clubs",
+    "Strength Training",
+    "Yoga",
+    "Wellness Retreats",
+  ]);
+}
+
+function buildDirectoryListingConditions() {
+  return [
+    ...buildToursListingConditions(),
+    ...buildRestaurantSpecialListingConditions(),
+    ...buildClassListingConditions(),
+  ];
+}
+
+function buildListingTypeCondition(listingType) {
+  if (!listingType || listingType === "All") return null;
+  if (listingType === "tours") return { $or: buildToursListingConditions() };
+  if (listingType === "restaurant_specials") {
+    return { $or: buildRestaurantSpecialListingConditions() };
+  }
+  if (listingType === "classes") return { $or: buildClassListingConditions() };
+  if (listingType === "events") return { $nor: buildDirectoryListingConditions() };
+  return null;
 }
 
 // -------------------------------------------
@@ -675,16 +723,18 @@ export async function getAllEvents(req, res) {
     }
 
     if (normalizedListingType && normalizedListingType !== "All") {
-      if (!["events", "bookings"].includes(normalizedListingType)) {
+      if (
+        !["events", "tours", "restaurant_specials", "classes"].includes(
+          normalizedListingType
+        )
+      ) {
         return res.status(400).json({ message: "Invalid listing type." });
       }
 
-      const bookableConditions = buildBookableListingConditions();
+      const listingTypeCondition = buildListingTypeCondition(normalizedListingType);
       baseQuery.$and = [
         ...(baseQuery.$and || []),
-        normalizedListingType === "bookings"
-          ? { $or: bookableConditions }
-          : { $nor: bookableConditions },
+        listingTypeCondition,
       ];
     }
 

@@ -17,6 +17,14 @@ import { colors } from "../../theme/colors";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
+function getListingTypeLabel(listingType) {
+  if (listingType === "events") return "Events";
+  if (listingType === "tours") return "Tours & Activities";
+  if (listingType === "restaurant_specials") return "Restaurant Specials";
+  if (listingType === "classes") return "Fitness & Classes";
+  return "All Listings";
+}
+
 function FilterModal({
   visible,
   title,
@@ -111,13 +119,13 @@ function FilterModal({
 
 export default function MapFilters({
   selectedTown,
-  selectedListingType = "All",
+  selectedListingType = "events",
   selectedCategory,
   selectedDateFilter,
   filterSummary,
   error,
   towns,
-  listingTypes = ["All", "events", "bookings"],
+  listingTypes = ["events", "tours", "restaurant_specials", "classes", "All"],
   categories,
   categoryGroups,
   dateFilters,
@@ -238,11 +246,7 @@ export default function MapFilters({
         >
           <View style={styles.pillContent}>
             <Text style={[styles.pillValue, { color: theme.textMain }]}>
-              {selectedListingType === "bookings"
-                ? "Bookings"
-                : selectedListingType === "events"
-                  ? "Events"
-                  : "Events & Bookings"}
+              {getListingTypeLabel(selectedListingType)}
             </Text>
             <Text style={[styles.pillIndicator, { color: theme.accent }]}>
               +
@@ -386,27 +390,12 @@ export default function MapFilters({
       <FilterModal
         visible={isListingTypeModalVisible}
         title="Choose what to browse"
-        options={listingTypes.map((listingType) =>
-          listingType === "bookings"
-            ? "Bookings"
-            : listingType === "events"
-              ? "Events"
-              : "Events & Bookings"
-        )}
-        selectedValue={
-          selectedListingType === "bookings"
-            ? "Bookings"
-            : selectedListingType === "events"
-              ? "Events"
-              : "Events & Bookings"
-        }
+        options={listingTypes.map(getListingTypeLabel)}
+        selectedValue={getListingTypeLabel(selectedListingType)}
         onSelect={(value) => {
           const nextValue =
-            value === "Bookings"
-              ? "bookings"
-              : value === "Events"
-                ? "events"
-                : "All";
+            listingTypes.find((listingType) => getListingTypeLabel(listingType) === value) ||
+            "All";
           onSelectListingType?.(nextValue);
           setIsListingTypeModalVisible(false);
         }}

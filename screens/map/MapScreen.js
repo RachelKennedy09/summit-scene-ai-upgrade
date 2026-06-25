@@ -53,7 +53,7 @@ import {
 
 // Simple list of towns for the selector modal
 const TOWNS = ["All", "Banff", "Canmore", "Lake Louise"];
-const LISTING_TYPES = ["All", "events", "bookings"];
+const LISTING_TYPES = ["events", "tours", "restaurant_specials", "classes", "All"];
 
 const CATEGORIES = EVENT_CATEGORIES;
 const CATEGORY_GROUPS = getEventCategoryGroups({
@@ -203,21 +203,94 @@ function getEventCategoryList(event) {
       : [];
 }
 
-function isBookableListing(event) {
-  const categoryOptions = getEventCategoryFilterOptions("Tours & Experiences") || [
-    "Tours & Experiences",
-  ];
-  const categorySet = new Set(categoryOptions);
+function eventHasCategoryValue(event, values) {
+  const categorySet = new Set(values);
   const categoryValues = [
     ...getEventCategoryList(event),
     ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
   ];
 
+  return categoryValues.some((value) => categorySet.has(value));
+}
+
+function isTourListing(event) {
+  const categoryOptions = getEventCategoryFilterOptions("Tours & Experiences") || [
+    "Tours & Experiences",
+  ];
+
   return Boolean(
     event?.bookingRequired ||
       String(event?.bookingUrl || "").trim() ||
-      categoryValues.some((value) => categorySet.has(value))
+      eventHasCategoryValue(event, categoryOptions)
   );
+}
+
+function isRestaurantSpecialListing(event) {
+  return eventHasCategoryValue(event, [
+    "Restaurant Specials",
+    "Brunch",
+    "Cocktail Nights",
+    "Coffee",
+    "Breweries",
+    "Wine Tastings",
+  ]);
+}
+
+function isClassListing(event) {
+  return eventHasCategoryValue(event, [
+    "Fitness Classes",
+    "Gym Events",
+    "Low-Impact Fitness",
+    "Run Clubs",
+    "Strength Training",
+    "Yoga",
+    "Wellness Retreats",
+  ]);
+}
+
+function isDirectoryListing(event) {
+  return (
+    isTourListing(event) ||
+    isRestaurantSpecialListing(event) ||
+    isClassListing(event)
+  );
+}
+
+function eventMatchesListingType(event, listingType) {
+  if (listingType === "All") return true;
+  if (listingType === "tours") return isTourListing(event);
+  if (listingType === "restaurant_specials") {
+    return isRestaurantSpecialListing(event);
+  }
+  if (listingType === "classes") return isClassListing(event);
+  return !isDirectoryListing(event);
+}
+
+function getListingTypeNoun(listingType, count = 2) {
+  const isPlural = count !== 1;
+  if (listingType === "tours") return isPlural ? "tours" : "tour";
+  if (listingType === "restaurant_specials") {
+    return isPlural ? "restaurant specials" : "restaurant special";
+  }
+  if (listingType === "classes") return isPlural ? "classes" : "class";
+  if (listingType === "All") return isPlural ? "listings" : "listing";
+  return isPlural ? "events" : "event";
+}
+
+function getListingTypeMapMessage(listingType) {
+  if (listingType === "tours") {
+    return "Showing tours, experiences, and bookable activities.";
+  }
+  if (listingType === "restaurant_specials") {
+    return "Showing restaurant specials.";
+  }
+  if (listingType === "classes") {
+    return "Showing fitness classes and wellness sessions.";
+  }
+  if (listingType === "events") {
+    return "Showing regular events.";
+  }
+  return "Showing all listings.";
 }
 
 function eventMatchesSearch(event, searchTerm) {
@@ -436,7 +509,7 @@ export default function MapScreen({ route }) {
 
   // Filter state (shared wtih Hub): town, category, date range
   const [selectedTown, setSelectedTown] = useState("All");
-  const [selectedListingType, setSelectedListingType] = useState("All");
+  const [selectedListingType, setSelectedListingType] = useState("events");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
   const [showOnlyMyEvents, setShowOnlyMyEvents] = useState(false);
@@ -565,13 +638,7 @@ export default function MapScreen({ route }) {
   const handleSelectListingType = useCallback(
     (listingType) => {
       setSelectedListingType(listingType);
-      resetMapSelectionForFilter(
-        listingType === "bookings"
-          ? "Showing bookable tours, experiences, and reservation listings."
-          : listingType === "events"
-            ? "Showing regular events."
-            : "Showing events and bookings."
-      );
+      resetMapSelectionForFilter(getListingTypeMapMessage(listingType));
     },
     [resetMapSelectionForFilter]
   );
@@ -598,7 +665,7 @@ export default function MapScreen({ route }) {
 
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
-    setSelectedListingType("All");
+    setSelectedListingType("events");
     setSelectedCategory("All");
     setSelectedDateFilter("Today");
     setShowOnlyMyEvents(false);
@@ -718,10 +785,7 @@ export default function MapScreen({ route }) {
 
       const townMatch = selectedTown === "All" || event.town === selectedTown;
       const listingTypeMatch =
-        selectedListingType === "All" ||
-        (selectedListingType === "bookings"
-          ? isBookableListing(event)
-          : !isBookableListing(event));
+        eventMatchesListingType(event, selectedListingType);
 
       const selectedCategoryOptions =
         getEventCategoryFilterOptions(selectedCategory);
@@ -940,18 +1004,8 @@ export default function MapScreen({ route }) {
   // Human-readable summary line under the filters (e.g. "Showing 3 events in Banff ...")
   const filterSummary = useMemo(() => {
     const count = eventsForMap.length;
-    const listingSingular =
-      selectedListingType === "bookings"
-        ? "booking"
-        : selectedListingType === "events"
-          ? "event"
-          : "listing";
-    const listingPlural =
-      selectedListingType === "bookings"
-        ? "bookings"
-        : selectedListingType === "events"
-          ? "events"
-          : "listings";
+    const listingSingular = getListingTypeNoun(selectedListingType, 1);
+    const listingPlural = getListingTypeNoun(selectedListingType);
 
     const townLabel = selectedTown === "All" ? "all towns" : ` ${selectedTown}`;
     const categoryLabel =
@@ -1109,7 +1163,7 @@ export default function MapScreen({ route }) {
     isBusiness && showOnlyMyEvents && eventsForMap.length === 0;
   const hasActiveFilters =
     selectedTown !== "All" ||
-    selectedListingType !== "All" ||
+    selectedListingType !== "events" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
     isNearMeEnabled ||
