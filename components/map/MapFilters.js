@@ -88,13 +88,6 @@ function FilterModal({
                   >
                     {option}
                   </Text>
-                  {isSelected ? (
-                    <Text
-                      style={[styles.optionCheckMark, { color: theme.accent }]}
-                    >
-                      ✓
-                    </Text>
-                  ) : null}
                 </Pressable>
               );
             })}
@@ -649,10 +642,6 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     fontWeight: "700",
-  },
-  optionCheckMark: {
-    fontSize: 16,
-    color: colors.accent,
   },
   modalCloseButton: {
     marginTop: 8,

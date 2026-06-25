@@ -382,13 +382,6 @@ export default function HubFilters({
                   >
                     {town === "All" ? "All Towns" : town}
                   </Text>
-                  {isSelected && (
-                    <Text
-                      style={[styles.townCheckMark, { color: theme.accent }]}
-                    >
-                      ✓
-                    </Text>
-                  )}
                 </Pressable>
               );
             })}
@@ -458,13 +451,6 @@ export default function HubFilters({
                   >
                     {label}
                   </Text>
-                  {isSelected && (
-                    <Text
-                      style={[styles.townCheckMark, { color: theme.accent }]}
-                    >
-                      âœ“
-                    </Text>
-                  )}
                 </Pressable>
               );
             })}
@@ -549,13 +535,6 @@ export default function HubFilters({
                   >
                     {category === "All" ? "All Categories" : category}
                   </Text>
-                  {isSelected && (
-                    <Text
-                      style={[styles.townCheckMark, { color: theme.accent }]}
-                    >
-                      ✓
-                    </Text>
-                  )}
                 </Pressable>
               );
             })}
@@ -625,13 +604,6 @@ export default function HubFilters({
                   >
                     {filter}
                   </Text>
-                  {isSelected && (
-                    <Text
-                      style={[styles.townCheckMark, { color: theme.accent }]}
-                    >
-                      ✓
-                    </Text>
-                  )}
                 </Pressable>
               );
             })}
@@ -844,9 +816,6 @@ const styles = StyleSheet.create({
   },
   townOptionTextSelected: {
     fontWeight: "700",
-  },
-  townCheckMark: {
-    fontSize: 16,
   },
   modalCloseButton: {
     marginTop: 8,
