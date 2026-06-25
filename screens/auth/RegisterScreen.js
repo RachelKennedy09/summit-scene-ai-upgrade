@@ -379,7 +379,10 @@ function SignupProfilePreview({
   socialValues,
 }) {
   const isBusiness = role === "business";
-  const avatarSource = profileImageUrl ? { uri: profileImageUrl } : null;
+  const avatarSource =
+    profileImageUrl && !profileImageUrl.startsWith("data:")
+      ? { uri: profileImageUrl }
+      : null;
   const displayName = name || "Summit Scene member";
   const initial = displayName.charAt(0).toUpperCase() || "?";
   const socialAccounts = Object.entries(socialValues || {})
@@ -544,6 +547,7 @@ function RegisterScreen() {
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [profileImagePreviewUri, setProfileImagePreviewUri] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
 
   const isLocal = role === "local";
@@ -921,6 +925,7 @@ function RegisterScreen() {
 
       const mimeType = asset.mimeType || "image/jpeg";
       setProfileImageUrl(`data:${mimeType};base64,${asset.base64}`);
+      setProfileImagePreviewUri(asset.uri || "");
     } catch (error) {
       Alert.alert(
         "Could not choose photo",
@@ -931,6 +936,7 @@ function RegisterScreen() {
 
   function handleClearProfilePhoto() {
     setProfileImageUrl("");
+    setProfileImagePreviewUri("");
   }
 
   function renderAccountTypeChoice() {
@@ -1337,7 +1343,10 @@ function RegisterScreen() {
                 { backgroundColor: theme.card, borderColor: theme.border },
               ]}
             >
-              <Image source={{ uri: profileImageUrl }} style={styles.photoPreview} />
+              <Image
+                source={{ uri: profileImagePreviewUri || profileImageUrl }}
+                style={styles.photoPreview}
+              />
               <View style={styles.photoPreviewCopy}>
                 <Text style={[styles.photoPreviewTitle, { color: theme.text }]}>
                   Profile photo selected
@@ -1390,7 +1399,10 @@ function RegisterScreen() {
                 { backgroundColor: theme.card, borderColor: theme.border },
               ]}
             >
-              <Image source={{ uri: profileImageUrl }} style={styles.photoPreview} />
+              <Image
+                source={{ uri: profileImagePreviewUri || profileImageUrl }}
+                style={styles.photoPreview}
+              />
               <View style={styles.photoPreviewCopy}>
                 <Text style={[styles.photoPreviewTitle, { color: theme.text }]}>
                   Profile photo selected
@@ -1602,7 +1614,7 @@ function RegisterScreen() {
           interests={interests}
           businessVibeTags={businessVibeTags}
           bio={bio}
-          profileImageUrl={profileImageUrl}
+          profileImageUrl={profileImagePreviewUri || profileImageUrl}
           socialValues={socialValues}
         />
         <View
@@ -1676,7 +1688,7 @@ function RegisterScreen() {
     >
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" && !isFinalStep ? "padding" : undefined}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={{ flex: 1 }}>

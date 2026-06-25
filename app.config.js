@@ -51,9 +51,9 @@ export default {
       },
     },
     android: {
-      versionCode: 1,
+      versionCode: 3,
       adaptiveIcon: {
-        foregroundImage: "./assets/app-icon.png",
+        foregroundImage: "./assets/android-adaptive-foreground-safe.png",
         backgroundColor: "#F5F3EE",
       },
       edgeToEdgeEnabled: true,
