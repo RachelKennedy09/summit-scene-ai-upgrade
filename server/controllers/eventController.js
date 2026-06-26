@@ -557,16 +557,47 @@ function buildCategoryListingConditions(values) {
   ];
 }
 
+const TOUR_EVENT_TAG_EXCLUSIONS = [
+  "Canada Day",
+  "Christmas Markets",
+  "Holiday Events",
+  "Ski Season Launch",
+  "Stampede Events",
+  "Summer Kickoff",
+];
+
+function buildCategoryExclusionConditions(values) {
+  return [
+    { category: { $nin: values } },
+    { categories: { $nin: values } },
+    { categoryTags: { $nin: values } },
+  ];
+}
+
 function buildToursListingConditions() {
   const categoryOptions =
     getEventCategoryFilterOptions("Tours & Experiences") || [
       "Tours & Experiences",
     ];
+  const tourTagOptions = categoryOptions.filter(
+    (option) =>
+      option !== "Tours & Experiences" &&
+      !TOUR_EVENT_TAG_EXCLUSIONS.includes(option)
+  );
 
   return [
-    { bookingRequired: true },
-    { bookingUrl: { $exists: true, $nin: [null, ""] } },
-    ...buildCategoryListingConditions(categoryOptions),
+    ...buildCategoryListingConditions(tourTagOptions),
+    {
+      $and: [
+        {
+          $or: [
+            { category: "Tours & Experiences" },
+            { categories: "Tours & Experiences" },
+          ],
+        },
+        ...buildCategoryExclusionConditions(TOUR_EVENT_TAG_EXCLUSIONS),
+      ],
+    },
   ];
 }
 

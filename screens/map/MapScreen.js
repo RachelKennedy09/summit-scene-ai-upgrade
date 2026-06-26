@@ -213,15 +213,30 @@ function eventHasCategoryValue(event, values) {
   return categoryValues.some((value) => categorySet.has(value));
 }
 
+const TOUR_EVENT_TAG_EXCLUSIONS = [
+  "Canada Day",
+  "Christmas Markets",
+  "Holiday Events",
+  "Ski Season Launch",
+  "Stampede Events",
+  "Summer Kickoff",
+];
+
 function isTourListing(event) {
   const categoryOptions = getEventCategoryFilterOptions("Tours & Experiences") || [
     "Tours & Experiences",
   ];
+  const tourTagOptions = categoryOptions.filter(
+    (option) =>
+      option !== "Tours & Experiences" &&
+      !TOUR_EVENT_TAG_EXCLUSIONS.includes(option)
+  );
 
-  return Boolean(
-    event?.bookingRequired ||
-      String(event?.bookingUrl || "").trim() ||
-      eventHasCategoryValue(event, categoryOptions)
+  if (eventHasCategoryValue(event, tourTagOptions)) return true;
+
+  return (
+    eventHasCategoryValue(event, ["Tours & Experiences"]) &&
+    !eventHasCategoryValue(event, TOUR_EVENT_TAG_EXCLUSIONS)
   );
 }
 

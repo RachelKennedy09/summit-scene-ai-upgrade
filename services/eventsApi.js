@@ -152,6 +152,123 @@ export function sortEventsByUpcomingDate(events) {
   });
 }
 
+function eventTextValues(event) {
+  return [
+    event?.category,
+    ...(Array.isArray(event?.categories) ? event.categories : []),
+    ...(Array.isArray(event?.categoryTags) ? event.categoryTags : []),
+    ...(Array.isArray(event?.tags) ? event.tags : []),
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+}
+
+function eventHasAnyTextValue(event, values) {
+  const eventValues = eventTextValues(event);
+  const normalizedValues = values.map((value) => String(value).toLowerCase());
+  return eventValues.some((eventValue) => normalizedValues.includes(eventValue));
+}
+
+const TOUR_LISTING_VALUES = [
+  "Canoe Tours",
+  "Distillery Tours",
+  "Food Tours",
+  "Hiking Tours",
+  "Local Tours",
+  "Photography Tours",
+  "Ski Clinics",
+  "Visitor Experiences",
+  "Wildlife Tours",
+  "Yoga Retreats",
+];
+
+const TOUR_EVENT_TAG_EXCLUSIONS = [
+  "Canada Day",
+  "Christmas Markets",
+  "Holiday Events",
+  "Ski Season Launch",
+  "Stampede Events",
+  "Summer Kickoff",
+];
+
+function isTourListing(event) {
+  if (eventHasAnyTextValue(event, TOUR_LISTING_VALUES)) return true;
+
+  return (
+    eventHasAnyTextValue(event, ["Tours & Experiences"]) &&
+    !eventHasAnyTextValue(event, TOUR_EVENT_TAG_EXCLUSIONS)
+  );
+}
+
+function isRestaurantSpecialListing(event) {
+  return eventHasAnyTextValue(event, [
+    "Restaurant Specials",
+    "Brunch",
+    "Cocktail Nights",
+    "Coffee",
+    "Breweries",
+    "Wine Tastings",
+  ]);
+}
+
+function isClassListing(event) {
+  return eventHasAnyTextValue(event, [
+    "Fitness Classes",
+    "Gym Events",
+    "Low-Impact Fitness",
+    "Run Clubs",
+    "Strength Training",
+    "Yoga",
+    "Wellness Retreats",
+  ]);
+}
+
+function eventMatchesListingType(event, listingType) {
+  if (!listingType || listingType === "All" || listingType === "all") return true;
+  if (listingType === "tours") return isTourListing(event);
+  if (listingType === "restaurant_specials") return isRestaurantSpecialListing(event);
+  if (listingType === "classes") return isClassListing(event);
+  if (listingType === "events") {
+    return (
+      !isTourListing(event) &&
+      !isRestaurantSpecialListing(event) &&
+      !isClassListing(event)
+    );
+  }
+  return true;
+}
+
+function filterFetchedEventsByListingType(data, listingType) {
+  if (!listingType || listingType === "All" || listingType === "all") {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.filter((event) => eventMatchesListingType(event, listingType));
+  }
+
+  if (data && Array.isArray(data.events)) {
+    const events = data.events.filter((event) =>
+      eventMatchesListingType(event, listingType)
+    );
+    return {
+      ...data,
+      events,
+      totalCount: events.length,
+      totalPages: 1,
+      hasMore: false,
+    };
+  }
+
+  return data;
+}
+
+function isInvalidListingTypeResponse(response, data, listingType) {
+  if (!listingType || listingType === "All" || listingType === "all") return false;
+  const message = String(data?.message || data?.error || "").toLowerCase();
+  return response?.status === 400 && message.includes("invalid listing type");
+}
+
 function buildEventsQueryString(options = {}) {
   const params = new URLSearchParams();
 
@@ -225,6 +342,17 @@ export async function fetchEvents(options = {}) {
     const data = await readJsonSafely(res);
 
     if (!res.ok) {
+      if (isInvalidListingTypeResponse(res, data, options.listingType)) {
+        console.warn(
+          "fetchEvents listingType unsupported by backend; retrying without server listing filter."
+        );
+        const fallbackData = await fetchEvents({
+          ...options,
+          listingType: "All",
+        });
+        return filterFetchedEventsByListingType(fallbackData, options.listingType);
+      }
+
       console.error("fetchEvents backend failure:", {
         url,
         status: res.status,
