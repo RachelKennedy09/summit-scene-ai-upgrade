@@ -221,11 +221,7 @@ export default function MapFilters({
         ) : null}
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.pillRow}
-      >
+      <View style={styles.pillRow}>
         <Pressable
           style={({ pressed }) => [
             styles.pill,
@@ -309,7 +305,7 @@ export default function MapFilters({
             </Text>
           </View>
         </Pressable>
-      </ScrollView>
+      </View>
 
       <View style={styles.quickActionRow}>
         <Pressable
@@ -526,10 +522,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     paddingBottom: 8,
   },
   pill: {
+    flexBasis: "48%",
+    flexGrow: 1,
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -540,11 +540,15 @@ const styles = StyleSheet.create({
   pillContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 7,
+    minWidth: 0,
   },
   pillValue: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: "800",
+    textAlign: "center",
   },
   pillIndicator: {
     fontSize: 18,

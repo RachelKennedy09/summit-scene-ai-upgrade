@@ -178,12 +178,8 @@ export default function HubFilters({
           ) : null}
         </View>
 
-        {/* Compact filter row: Category, Town, Date */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.pillRow}
-        >
+        {/* Compact filter row: Browse, Category, Town, Date */}
+        <View style={styles.pillRow}>
           {/* Listing type Pill */}
           <Pressable
             style={({ pressed }) => [
@@ -271,7 +267,7 @@ export default function HubFilters({
               </Text>
             </View>
           </Pressable>
-        </ScrollView>
+        </View>
 
         <View style={styles.quickActionRow}>
           <Pressable
@@ -653,6 +649,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     paddingBottom: 8,
   },
@@ -747,6 +745,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   pill: {
+    flexBasis: "48%",
+    flexGrow: 1,
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -757,11 +757,15 @@ const styles = StyleSheet.create({
   pillContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 7,
+    minWidth: 0,
   },
   pillValue: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: "800",
+    textAlign: "center",
   },
   pillIndicator: {
     fontSize: 18,
