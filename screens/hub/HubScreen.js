@@ -535,7 +535,7 @@ export default function HubScreen() {
   }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
 
   const hubSubtitle =
-    "Today's events are shown by default. Use Browse to switch to tours, restaurant specials, fitness classes, or all listings.";
+    "Start with today's events. Use Browse, Category, Town, and Date to narrow the list, or open Map to explore nearby.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||
