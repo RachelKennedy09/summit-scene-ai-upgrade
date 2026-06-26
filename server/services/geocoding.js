@@ -1,6 +1,11 @@
 const GEOCODING_TIMEOUT_MS = 12000;
 const DEFAULT_GEOCODER_USER_AGENT = "SummitScene/1.0";
 const AUTOCOMPLETE_LIMIT = 5;
+const TOWN_COORDS = {
+  Banff: { latitude: 51.1784, longitude: -115.5708 },
+  Canmore: { latitude: 51.0892, longitude: -115.3593 },
+  "Lake Louise": { latitude: 51.4254, longitude: -116.1773 },
+};
 
 function readJsonSafely(text) {
   if (!text) return null;
@@ -142,6 +147,36 @@ function parseAutocompleteResult(result) {
   };
 }
 
+function getApproximateTownCoords(town) {
+  return TOWN_COORDS[normalizeAddressPart(town)] || null;
+}
+
+function buildManualAddressSuggestion(query, town) {
+  const coords = getApproximateTownCoords(town);
+  const normalizedQuery = normalizeAddressPart(query);
+  const normalizedTown = normalizeAddressPart(town);
+
+  if (!coords || normalizedQuery.length < 3) {
+    return null;
+  }
+
+  const address = dedupeParts([
+    normalizedQuery,
+    normalizedTown,
+    "Alberta",
+    "Canada",
+  ]).join(", ");
+
+  return {
+    id: `manual:${normalizedTown}:${normalizedQuery}`,
+    name: "Use entered address",
+    address,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    isApproximate: true,
+  };
+}
+
 export async function autocompleteEventAddresses({ query, town }) {
   const normalizedQuery = normalizeSearchQuery(query);
   if (!normalizedQuery || normalizedQuery.length < 3) {
@@ -209,14 +244,26 @@ export async function autocompleteEventAddresses({ query, town }) {
       }
     }
 
-    return suggestions.slice(0, AUTOCOMPLETE_LIMIT);
+    const trimmedSuggestions = suggestions.slice(0, AUTOCOMPLETE_LIMIT);
+    if (trimmedSuggestions.length) {
+      return trimmedSuggestions;
+    }
+
+    const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
+    return manualSuggestion ? [manualSuggestion] : [];
   } catch (error) {
     if (error?.name === "AbortError") {
+      const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
+      if (manualSuggestion) {
+        return [manualSuggestion];
+      }
+
       throw new Error("Address suggestions timed out. Please try again.");
     }
 
     console.warn("Autocomplete failed:", error.message);
-    return [];
+    const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
+    return manualSuggestion ? [manualSuggestion] : [];
   } finally {
     clearTimeout(timeoutId);
   }
@@ -251,11 +298,31 @@ export async function geocodeEventAddress({ address, town }) {
     }
 
     console.warn("Geocoding found no match for address:", { address, town, queries });
+    const fallbackCoords = getApproximateTownCoords(town);
+    if (fallbackCoords) {
+      return {
+        latitude: fallbackCoords.latitude,
+        longitude: fallbackCoords.longitude,
+        geocodedAddress: normalizeAddressPart(address),
+        isApproximate: true,
+      };
+    }
+
     throw new Error(
       "We could not find that address. Please check the street number, street name, and town."
     );
   } catch (error) {
     if (error?.name === "AbortError") {
+      const fallbackCoords = getApproximateTownCoords(town);
+      if (fallbackCoords) {
+        return {
+          latitude: fallbackCoords.latitude,
+          longitude: fallbackCoords.longitude,
+          geocodedAddress: normalizeAddressPart(address),
+          isApproximate: true,
+        };
+      }
+
       throw new Error("Address lookup timed out. Please try again.");
     }
 

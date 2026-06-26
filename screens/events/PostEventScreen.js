@@ -13,7 +13,6 @@ import {
   TextInput,
   ScrollView,
   Alert,
-  Keyboard,
   Platform,
   Image,
 } from "react-native";
@@ -94,7 +93,6 @@ export default function PostEventScreen() {
   const { user, token, logout } = useAuth();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const canMarkImportedBySummitScene = isSummitSceneAdmin(user);
 
   // Basic event fields
@@ -217,24 +215,6 @@ export default function PostEventScreen() {
       clearTimeout(timeoutId);
     };
   }, [address, town, shouldShowAddressSuggestions]);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const showSubscription = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates?.height || 0);
-    });
-
-    const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   // --- Helpers for formatting dates/times ---
 
@@ -707,9 +687,8 @@ export default function PostEventScreen() {
         style={[styles.scrollView, { backgroundColor: theme.background }]}
         contentContainerStyle={[
           styles.container,
-          { paddingBottom: insets.bottom + keyboardHeight + 40 },
+          { paddingBottom: insets.bottom + 120 },
         ]}
-        scrollIndicatorInsets={{ bottom: keyboardHeight }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
@@ -1476,7 +1455,7 @@ export default function PostEventScreen() {
           ) : null}
           {selectedCoords ? (
             <Text style={[styles.helperText, { color: theme.textMuted }]}>
-              Selected address will use an exact map pin.
+              Selected address will use the best available map pin.
             </Text>
           ) : null}
         </View>

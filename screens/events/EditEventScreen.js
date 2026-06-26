@@ -1329,7 +1329,7 @@ export default function EditEventScreen({ route, navigation }) {
         ) : null}
         {selectedCoords ? (
           <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Selected address will use an exact map pin.
+            Selected address will use the best available map pin.
           </Text>
         ) : null}
 
