@@ -44,6 +44,11 @@ import { isSummitSceneAdmin } from "../../utils/adminAccess";
 
 const EVENT_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
+const TOWN_COORDS = {
+  Banff: { latitude: 51.1784, longitude: -115.5708 },
+  Canmore: { latitude: 51.0892, longitude: -115.3593 },
+  "Lake Louise": { latitude: 51.4254, longitude: -116.1773 },
+};
 const FORM_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
 const SCHEDULE_TYPES = [
   { value: "single", label: "One-time event" },
@@ -167,6 +172,22 @@ export default function PostEventScreen() {
     () => getCategoryTagGroupsForCategories(categories),
     [categories]
   );
+  const canUseTypedAddress =
+    Boolean(town && TOWN_COORDS[town]) &&
+    address.trim().length >= 3 &&
+    !selectedCoords;
+
+  const handleUseTypedAddress = () => {
+    const coords = TOWN_COORDS[town];
+    if (!coords) return;
+
+    setSelectedCoords(coords);
+    setShouldShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    setAddressSuggestionsError("");
+    setHasSearchedAddressSuggestions(false);
+  };
+
   useEffect(() => {
     if (canMarkImportedBySummitScene && route.params?.importedBySummitScene) {
       setImportedBySummitScene(true);
@@ -1453,6 +1474,25 @@ export default function PostEventScreen() {
               No address suggestions found. Keep typing or enter the full address manually.
             </Text>
           ) : null}
+          {canUseTypedAddress ? (
+            <Pressable
+              style={[
+                styles.useTypedAddressButton,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.accent,
+                },
+              ]}
+              onPress={handleUseTypedAddress}
+            >
+              <Text style={[styles.useTypedAddressTitle, { color: theme.accent }]}>
+                Use typed address
+              </Text>
+              <Text style={[styles.useTypedAddressText, { color: theme.textMuted }]}>
+                Use "{address.trim()}" and place the map pin near {town}.
+              </Text>
+            </Pressable>
+          ) : null}
           {selectedCoords ? (
             <Text style={[styles.helperText, { color: theme.textMuted }]}>
               Selected address will use the best available map pin.
@@ -2032,6 +2072,22 @@ const styles = StyleSheet.create({
   suggestionSubtitle: {
     fontSize: 13,
     lineHeight: 19,
+  },
+  useTypedAddressButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  useTypedAddressTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  useTypedAddressText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   previewCard: {
     borderWidth: 1,
