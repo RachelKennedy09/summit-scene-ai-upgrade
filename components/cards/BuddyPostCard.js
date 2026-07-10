@@ -335,27 +335,15 @@ export default function BuddyPostCard({
   onOpenEvent,
   onToggleInterested,
   onSubmitReply,
-  onSubmitReplyResponse,
-  onToggleReplyLike,
-  onUpdateReply,
-  onDeleteReply,
   onEditPost,
   onDeletePost,
-  onBlockProfile,
   onReport,
   onRequireAccount,
 }) {
   const [replyText, setReplyText] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
-  const [editingReplyId, setEditingReplyId] = useState("");
-  const [editingReplyText, setEditingReplyText] = useState("");
-  const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
-  const [replyingToId, setReplyingToId] = useState("");
-  const [replyResponseText, setReplyResponseText] = useState("");
-  const [submittingReplyResponse, setSubmittingReplyResponse] = useState(false);
   const [updatingInterest, setUpdatingInterest] = useState(false);
   const author = getAuthor(post);
   const avatarSource =
@@ -410,7 +398,8 @@ export default function BuddyPostCard({
   const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
   const displayTags = showAllTags ? combinedTags : visibleTags;
   const commentCount = getReplyThreadCount(replies);
-  const commentsLabel = `${commentCount} comment${commentCount === 1 ? "" : "s"}`;
+  const commentsLabel =
+    commentCount === 1 ? "1 comment" : `${commentCount} replies`;
   const isNewInTown = post.communityType === "new-in-town";
   const isCommunityUpdate = post.communityType === "update";
   const isOwner =
@@ -466,17 +455,7 @@ export default function BuddyPostCard({
     if (requireAccount("Log in or create an account to reply.")) {
       return;
     }
-    setCommentsOpen(true);
     setReplyOpen((current) => !current);
-  }
-
-  function handleToggleComments() {
-    if (commentsOpen) {
-      setReplyOpen(false);
-      setReplyingToId("");
-      setReplyResponseText("");
-    }
-    setCommentsOpen((current) => !current);
   }
 
   async function handleSubmitReply() {
@@ -491,47 +470,6 @@ export default function BuddyPostCard({
       setReplyOpen(false);
     } finally {
       setSubmittingReply(false);
-    }
-  }
-
-  async function handleSaveReplyEdit(reply) {
-    if (requireAccount("Log in or create an account to edit replies.")) return;
-    const replyId = reply._id || reply.id;
-    const trimmedReply = editingReplyText.trim();
-    if (!replyId || !trimmedReply || !onUpdateReply || submittingReplyEdit) {
-      return;
-    }
-
-    try {
-      setSubmittingReplyEdit(true);
-      await onUpdateReply(post, reply, trimmedReply);
-      setEditingReplyId("");
-      setEditingReplyText("");
-    } finally {
-      setSubmittingReplyEdit(false);
-    }
-  }
-
-  async function handleSubmitReplyResponse(reply) {
-    if (requireAccount("Log in or create an account to reply.")) return;
-    const replyId = reply._id || reply.id;
-    const trimmedReply = replyResponseText.trim();
-    if (
-      !replyId ||
-      !trimmedReply ||
-      !onSubmitReplyResponse ||
-      submittingReplyResponse
-    ) {
-      return;
-    }
-
-    try {
-      setSubmittingReplyResponse(true);
-      await onSubmitReplyResponse(post, reply, trimmedReply);
-      setReplyingToId("");
-      setReplyResponseText("");
-    } finally {
-      setSubmittingReplyResponse(false);
     }
   }
 
@@ -810,18 +748,16 @@ export default function BuddyPostCard({
             </Text>
           </Pressable>
         ) : null}
-        <Pressable
-          style={({ pressed }) => [
+        <View
+          style={[
             styles.secondaryActionButton,
             { borderColor: theme.border, backgroundColor: theme.card },
-            pressed && styles.pressed,
           ]}
-          onPress={handleToggleComments}
         >
           <Text style={[styles.secondaryActionText, { color: theme.textMuted }]}>
-            {commentsOpen ? "Hide comments" : commentsLabel}
+            {commentsLabel}
           </Text>
-        </Pressable>
+        </View>
         {!isCommunityUpdate ? (
           <Pressable
             style={({ pressed }) => [
@@ -872,371 +808,7 @@ export default function BuddyPostCard({
         </Text>
       </Pressable>
 
-      {commentsOpen ? (
-        <View style={styles.replyHeaderRow}>
-          <Text style={[styles.replyHeader, { color: theme.text }]}>
-            Comments {replies.length ? `(${replies.length})` : ""}
-          </Text>
-        </View>
-      ) : null}
-
-      {commentsOpen && replies.length ? (
-        <View style={styles.repliesList}>
-          {replies.slice(-3).map((reply) => {
-            const replyAuthor =
-              reply.createdBy && typeof reply.createdBy === "object"
-                ? reply.createdBy
-                : {};
-            const replyName = replyAuthor.name || "Member";
-            const replyProfile = getUserProfile(replyAuthor, replyName);
-            const replyId = reply._id || reply.id || `${replyName}-${reply.createdAt}`;
-            const isOwnReply =
-              Boolean(currentUserId) &&
-              getId(replyAuthor).toString() === currentUserId?.toString();
-            const isEditingReply = editingReplyId === replyId.toString();
-            const replyLikes = Array.isArray(reply.likes) ? reply.likes : [];
-            const hasLikedReply = isLikedByUser(replyLikes, currentUserId);
-            const childReplies = Array.isArray(reply.replies) ? reply.replies : [];
-            const isReplyingToThis = replyingToId === replyId.toString();
-
-            return (
-              <View
-                key={replyId}
-                style={[
-                  styles.replyBubble,
-                  {
-                    backgroundColor: theme.pill || colors.surfaceMuted,
-                    borderColor: theme.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.replyMeta, { color: theme.textMuted }]}>
-                  {replyName}
-                  {reply.createdAt ? ` | ${formatShortDateTime(reply.createdAt)}` : ""}
-                </Text>
-                {isEditingReply ? (
-                  <View style={styles.replyEditBlock}>
-                    <TextInput
-                      style={[
-                        styles.replyEditInput,
-                        {
-                          backgroundColor: theme.card,
-                          borderColor: theme.border,
-                          color: theme.text,
-                        },
-                      ]}
-                      placeholder="Update your reply..."
-                      placeholderTextColor={theme.textMuted}
-                      value={editingReplyText}
-                      onChangeText={setEditingReplyText}
-                      multiline
-                    />
-                  </View>
-                ) : (
-                  <Text style={[styles.replyText, { color: theme.text }]}>
-                    {reply.text}
-                  </Text>
-                )}
-                <View style={styles.replyActionsRow}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.replyMiniButton,
-                      {
-                        borderColor: hasLikedReply ? theme.accent : theme.border,
-                        backgroundColor: hasLikedReply
-                          ? theme.accentSoft || colors.tealTint
-                          : "transparent",
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => {
-                      if (
-                        requireAccount(
-                          "Log in or create an account to like comments."
-                        )
-                      ) {
-                        return;
-                      }
-                      onToggleReplyLike?.(post, reply);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.replyMiniButtonText,
-                        { color: hasLikedReply ? theme.accent : theme.textMuted },
-                      ]}
-                    >
-                      {hasLikedReply ? "Liked" : "Like"}
-                      {replyLikes.length ? ` (${replyLikes.length})` : ""}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.replyMiniButton,
-                      { borderColor: theme.border },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => {
-                      if (requireAccount("Log in or create an account to reply.")) {
-                        return;
-                      }
-                      setReplyingToId(isReplyingToThis ? "" : replyId.toString());
-                      setReplyResponseText("");
-                    }}
-                  >
-                    <Text style={[styles.replyMiniButtonText, { color: theme.accent }]}>
-                      {isReplyingToThis ? "Cancel" : "Reply"}
-                    </Text>
-                  </Pressable>
-                  {isOwnReply ? (
-                    isEditingReply ? (
-                      <>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.replyMiniButton,
-                            { borderColor: theme.accent },
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => handleSaveReplyEdit(reply)}
-                          disabled={!editingReplyText.trim() || submittingReplyEdit}
-                        >
-                          <Text
-                            style={[
-                              styles.replyMiniButtonText,
-                              { color: theme.accent },
-                            ]}
-                          >
-                            {submittingReplyEdit ? "Saving..." : "Save"}
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.replyMiniButton,
-                            { borderColor: theme.border },
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => {
-                            setEditingReplyId("");
-                            setEditingReplyText("");
-                          }}
-                        >
-                          <Text style={[styles.reportText, { color: theme.textMuted }]}>
-                            Cancel
-                          </Text>
-                        </Pressable>
-                      </>
-                    ) : (
-                      <>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.replyMiniButton,
-                            { borderColor: theme.accent },
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => {
-                            setEditingReplyId(replyId.toString());
-                            setEditingReplyText(reply.text || "");
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.replyMiniButtonText,
-                              { color: theme.accent },
-                            ]}
-                          >
-                            Edit
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.replyMiniButton,
-                            { borderColor: theme.border },
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => onDeleteReply?.(post, reply)}
-                        >
-                          <Text style={[styles.reportText, { color: theme.textMuted }]}>
-                            Delete
-                          </Text>
-                        </Pressable>
-                      </>
-                    )
-                  ) : (
-                    <>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.replyMiniButton,
-                          { borderColor: theme.accent },
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => handleOpenProfile(replyProfile)}
-                      >
-                        <Text
-                          style={[
-                            styles.replyMiniButtonText,
-                            { color: theme.accent },
-                          ]}
-                        >
-                          View Profile
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.replyMiniButton,
-                          { borderColor: theme.border },
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => {
-                          if (
-                            requireAccount(
-                              "Log in or create an account to block users."
-                            )
-                          ) {
-                            return;
-                          }
-                          onBlockProfile?.(replyProfile);
-                        }}
-                      >
-                        <Text style={[styles.reportText, { color: theme.textMuted }]}>
-                          Block user
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.replyMiniButton,
-                          { borderColor: theme.border },
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => {
-                          if (
-                            requireAccount(
-                              "Log in or create an account to submit a report."
-                            )
-                          ) {
-                            return;
-                          }
-                          onReport?.({
-                            targetType: "buddyReply",
-                            targetId: reply._id || reply.id,
-                            parentType: "buddyPost",
-                            parentId: post._id || post.id,
-                          });
-                        }}
-                      >
-                        <Text style={[styles.reportText, { color: theme.textMuted }]}>
-                          Report reply
-                        </Text>
-                      </Pressable>
-                    </>
-                  )}
-                </View>
-                {childReplies.length ? (
-                  <View
-                    style={[
-                      styles.replyResponsesList,
-                      { borderLeftColor: theme.accent },
-                    ]}
-                  >
-                    {childReplies.map((childReply) => {
-                      const childAuthor =
-                        childReply.createdBy && typeof childReply.createdBy === "object"
-                          ? childReply.createdBy
-                          : {};
-                      const childName = childAuthor.name || "Member";
-                      const childId =
-                        childReply._id ||
-                        childReply.id ||
-                        `${childName}-${childReply.createdAt}`;
-
-                      return (
-                        <View
-                          key={childId}
-                          style={[
-                            styles.replyResponseBubble,
-                            {
-                              backgroundColor: theme.card,
-                              borderColor: theme.border,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.replyResponseContext,
-                              { color: theme.textMuted },
-                            ]}
-                          >
-                            Replying to {replyName}
-                          </Text>
-                          <Text style={[styles.replyMeta, { color: theme.textMuted }]}>
-                            {childName}
-                            {childReply.createdAt
-                              ? ` | ${formatShortDateTime(childReply.createdAt)}`
-                              : ""}
-                          </Text>
-                          <Text style={[styles.replyText, { color: theme.text }]}>
-                            {childReply.text}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : null}
-                {isReplyingToThis ? (
-                  <View
-                    style={[
-                      styles.replyResponseComposer,
-                      { borderLeftColor: theme.accent },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.replyResponseContext,
-                        { color: theme.textMuted },
-                      ]}
-                    >
-                      Replying to {replyName}
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.replyEditInput,
-                        {
-                          backgroundColor: theme.card,
-                          borderColor: theme.border,
-                          color: theme.text,
-                        },
-                      ]}
-                      placeholder={`Reply to ${replyName}...`}
-                      placeholderTextColor={theme.textMuted}
-                      value={replyResponseText}
-                      onChangeText={setReplyResponseText}
-                      multiline
-                    />
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.replySubmit,
-                        {
-                          backgroundColor: replyResponseText.trim()
-                            ? theme.accent
-                            : theme.pill || colors.surfaceMuted,
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                      onPress={() => handleSubmitReplyResponse(reply)}
-                      disabled={!replyResponseText.trim() || submittingReplyResponse}
-                    >
-                      <Text style={styles.replySubmitText}>
-                        {submittingReplyResponse ? "Sending..." : "Send"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
-
-      {commentsOpen && replyOpen ? (
+      {replyOpen ? (
         <View style={styles.replyComposer}>
           <TextInput
             style={[
@@ -1603,96 +1175,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   moreInterestedText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  replyHeaderRow: {
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0, 0, 0, 0.08)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  replyHeader: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  replyToggle: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  repliesList: {
-    marginTop: 10,
-    gap: 8,
-  },
-  replyBubble: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  replyMeta: {
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 3,
-  },
-  replyText: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  replyEditBlock: {
-    marginTop: 2,
-  },
-  replyEditInput: {
-    minHeight: 62,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 8,
-    fontSize: 13,
-    lineHeight: 18,
-    textAlignVertical: "top",
-  },
-  replyActionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  },
-  replyResponsesList: {
-    gap: 6,
-    marginTop: 8,
-    marginLeft: 10,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-  },
-  replyResponseBubble: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  replyResponseContext: {
-    fontSize: 11,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-  replyResponseComposer: {
-    gap: 8,
-    marginTop: 8,
-    marginLeft: 10,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-  },
-  replyMiniButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  replyMiniButtonText: {
     fontSize: 12,
     fontWeight: "800",
   },
