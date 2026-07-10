@@ -65,6 +65,8 @@ const DATE_FILTERS = [
 ];
 const EVENTS_PAGE_SIZE = 20;
 const NEAR_ME_RADIUS_KM = 15;
+const DEFAULT_LISTING_TYPE = "All";
+const DEFAULT_DATE_FILTER = "Today";
 
 function getUserInterestCategories(user) {
   const interests = Array.isArray(user?.interests) ? user.interests : [];
@@ -106,9 +108,9 @@ export default function HubScreen() {
 
   // Filter state (synced with Map tab filters)
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedListingType, setSelectedListingType] = useState("events");
+  const [selectedListingType, setSelectedListingType] = useState(DEFAULT_LISTING_TYPE);
   const [selectedTown, setSelectedTown] = useState("All");
-  const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
+  const [selectedDateFilter, setSelectedDateFilter] = useState(DEFAULT_DATE_FILTER);
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
@@ -160,7 +162,7 @@ export default function HubScreen() {
       const nextEvents = Array.isArray(data?.events) ? data.events : [];
       let nextBuddyPosts = [];
 
-      if (activeSearch && token && nextPage === 1) {
+      if (activeSearch && nextPage === 1) {
         nextBuddyPosts = await fetchBuddyPosts(
           { search: activeSearch, status: "open" },
           token
@@ -314,7 +316,7 @@ export default function HubScreen() {
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     setActiveSearch("");
-    setSelectedDateFilter("Today");
+    setSelectedDateFilter(DEFAULT_DATE_FILTER);
     setBuddySearchResults([]);
   }, []);
 
@@ -406,9 +408,9 @@ export default function HubScreen() {
 
   const handleClearFilters = useCallback(() => {
     setSelectedTown("All");
-    setSelectedListingType("events");
+    setSelectedListingType(DEFAULT_LISTING_TYPE);
     setSelectedCategory("All");
-    setSelectedDateFilter("Today");
+    setSelectedDateFilter(DEFAULT_DATE_FILTER);
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -531,17 +533,17 @@ export default function HubScreen() {
 
     return `${totalMatches} result${totalMatches === 1 ? "" : "s"} found: ${eventCount} event${
       eventCount === 1 ? "" : "s"
-    }${token ? `, ${buddyCount} community post${buddyCount === 1 ? "" : "s"}` : ""}.`;
-  }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing, token]);
+    }, ${buddyCount} community post${buddyCount === 1 ? "" : "s"}.`;
+  }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing]);
 
   const hubSubtitle =
-    "Start with today's events. Use Browse, Category, Town, and Date to narrow the list, or open Map to explore nearby.";
+    "Browse category, town, and date below to narrow the list, or open Map to explore nearby.";
 
   const hasActiveFilters =
     selectedTown !== "All" ||
-    selectedListingType !== "events" ||
+    selectedListingType !== DEFAULT_LISTING_TYPE ||
     selectedCategory !== "All" ||
-    selectedDateFilter !== "Today" ||
+    selectedDateFilter !== DEFAULT_DATE_FILTER ||
     isNearMeEnabled ||
     Boolean(activeSearch);
 
@@ -691,7 +693,7 @@ export default function HubScreen() {
                 </View>
                 <View style={styles.greetingCopy}>
                   <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
-                    Hello {displayName}!
+                    Hello {displayName}! Today in the Bow Valley.
                   </Text>
                   <Text style={[styles.hubSubtitle, { color: theme.textMuted }]}>
                     {hubSubtitle}

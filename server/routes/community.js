@@ -6,12 +6,13 @@
 //  - Add replies to posts
 //  - Like / unlike posts
 //
-// All routes in this file require:
+// Browsing is public. Creating, editing, replying, liking, and deleting require:
 //  - A valid JWT (checked by authMiddleware)
 //  - req.user populated with { userId, name, role }
 
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
+import optionalAuth from "../middleware/optionalAuth.js";
 
 import {
   getCommunityPosts,
@@ -25,19 +26,12 @@ import {
 const router = express.Router();
 
 // -------------------------------------------
-// GLOBAL RULE FOR THIS ROUTER
-// Every route below requires authentication.
-// The authMiddleware validates the token and
-// attaches the user info onto req.user
-// -------------------------------------------
-
-// -------------------------------------------
 // GET /api/community
 //   Fetch all community posts.
 //   Can filter with ?type=highwayconditions or ?town=Canmore
 //   Allows feed-style viewing of posts specific to interests or local towns
 // -------------------------------------------
-router.get("/", authMiddleware, getCommunityPosts);
+router.get("/", optionalAuth, getCommunityPosts);
 
 // -------------------------------------------
 // POST /api/community

@@ -292,9 +292,10 @@ function AccountScreen() {
         <View style={styles.container}>
           <Text style={[styles.title, { color: theme.text }]}>Hello User!</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            Log in or create an account to connect with the community, save and
-            share events, post events or buddy posts, reply, report, block, or
-            manage a profile.
+            You can browse events, tours, specials, jobs, businesses, and
+            community posts without an account. Log in or create an account to
+            post, comment, like, save events, receive notifications, report,
+            block, or manage a profile.
           </Text>
           <AppButton
             title="Log In"

@@ -311,7 +311,7 @@ export default function EventDetailScreen({ route }) {
   const { dateLabel, timeLabel } = getDetailScheduleLabels(event || {});
 
   const loadEventBuddyPosts = useCallback(async () => {
-    if (!eventId || !token || !eventIsUpcoming) {
+    if (!eventId || !eventIsUpcoming) {
       setBuddyPosts([]);
       setBuddyPostsError("");
       return;
@@ -664,6 +664,11 @@ export default function EventDetailScreen({ route }) {
   };
 
   const handleBlockProfile = (targetUser) => {
+    if (!token) {
+      showAccountRequired("Log in or create an account to block users.");
+      return;
+    }
+
     const targetUserId = targetUser?._id || targetUser?.id || "";
     if (!targetUserId) return;
 

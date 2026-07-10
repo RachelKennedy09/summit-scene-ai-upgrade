@@ -11,7 +11,6 @@ import MapScreen from "../screens/map/MapScreen";
 import MyEventsScreen from "../screens/events/MyEventsScreen";
 import CommunityScreen from "../screens/community/CommunityScreen";
 import AccountScreen from "../screens/account/AccountScreen";
-import AuthGateScreen from "../screens/auth/AuthGateScreen";
 
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -86,8 +85,7 @@ export default function TabNavigator() {
 
       <Tab.Screen
         name="Community"
-        component={user ? CommunityScreen : AuthGateScreen}
-        initialParams={user ? undefined : { mode: "community" }}
+        component={CommunityScreen}
         options={{ title: "Connect" }}
       />
 

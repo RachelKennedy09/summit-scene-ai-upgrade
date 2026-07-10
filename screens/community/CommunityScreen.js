@@ -133,13 +133,31 @@ const COMMUNITY_SECTIONS = [
   },
 ];
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
+const ALL_POSTS_VALUE = "all-posts";
+const ALL_POSTS_LABEL = "All postings";
 const HOME_SECTION_LABEL = "Choose how to connect";
 const SECTION_FILTER_OPTIONS = [
+  ALL_POSTS_LABEL,
   HOME_SECTION_LABEL,
   ...COMMUNITY_SECTIONS.map((section) => section.label),
 ];
 
 function getSection(value) {
+  if (value === ALL_POSTS_VALUE) {
+    return {
+      label: ALL_POSTS_LABEL,
+      value: ALL_POSTS_VALUE,
+      title: "All community postings",
+      subtitle:
+        "Browse all community posts, or use the filters below to narrow what to browse.",
+      emptyTitle: "No community posts yet",
+      emptyText:
+        "Community posts will show here when people share plans, groups, jobs, volunteer posts, and notices.",
+      supportsCategory: false,
+      supportsDate: true,
+    };
+  }
+
   return (
     COMMUNITY_SECTIONS.find((section) => section.value === value) ||
     COMMUNITY_SECTIONS[0]
@@ -171,7 +189,7 @@ export default function CommunityScreen({ navigation, route }) {
   const { theme } = useTheme();
 
   const [posts, setPosts] = useState([]);
-  const [communityType, setCommunityType] = useState("home");
+  const [communityType, setCommunityType] = useState(ALL_POSTS_VALUE);
   const [category, setCategory] = useState("All");
   const [town, setTown] = useState("All");
   const [selectedDate, setSelectedDate] = useState(null);
@@ -190,7 +208,8 @@ export default function CommunityScreen({ navigation, route }) {
   const [profileUser, setProfileUser] = useState(null);
 
   const isCommunityHome = communityType === "home";
-  const activeSection = isCommunityHome ? COMMUNITY_SECTIONS[0] : getSection(communityType);
+  const isAllPosts = communityType === ALL_POSTS_VALUE;
+  const activeSection = isCommunityHome ? getSection(ALL_POSTS_VALUE) : getSection(communityType);
   const categoryAllLabel = activeSection.categoryAllLabel || "All Categories";
   const sectionSupportsCategory = Boolean(activeSection.supportsCategory);
   const sectionSupportsDate = Boolean(activeSection.supportsDate);
@@ -209,7 +228,7 @@ export default function CommunityScreen({ navigation, route }) {
       return;
     }
 
-    setCommunityType("home");
+    setCommunityType(ALL_POSTS_VALUE);
     setCategory("All");
     setTown("All");
     setSelectedDate(null);
@@ -220,8 +239,24 @@ export default function CommunityScreen({ navigation, route }) {
   }, [route?.params?.resetToHomeAt]);
 
   useEffect(() => {
+    const initialSection = route?.params?.initialSection;
+    if (!initialSection) {
+      return;
+    }
+
+    setCommunityType(initialSection);
+    setCategory("All");
+    setTown("All");
+    setSelectedDate(null);
+    setSearchQuery("");
+    setActiveSearch("");
+    setCommunityEventsError("");
+    setError("");
+  }, [route?.params?.initialSection, route?.params?.openedAt]);
+
+  useEffect(() => {
     const buddyPostId = route?.params?.openBuddyPostId;
-    if (!buddyPostId || !token) {
+    if (!buddyPostId) {
       return;
     }
 
@@ -261,7 +296,8 @@ export default function CommunityScreen({ navigation, route }) {
   const filters = useMemo(
     () => ({
       category: activeCategoryFilter,
-      communityType: activeSearch ? "" : communityType,
+      communityType:
+        activeSearch || isAllPosts || isCommunityHome ? "" : communityType,
       town: activeTownFilter,
       date: activeDateFilter,
       search: activeSearch,
@@ -270,6 +306,8 @@ export default function CommunityScreen({ navigation, route }) {
     [
       activeCategoryFilter,
       communityType,
+      isAllPosts,
+      isCommunityHome,
       activeTownFilter,
       activeDateFilter,
       activeSearch,
@@ -365,7 +403,10 @@ export default function CommunityScreen({ navigation, route }) {
       : category;
   const currentUserId = user?._id || user?.id || "";
   const createPostParams = {
-    eventBuddy: communityType ? { communityType } : undefined,
+    eventBuddy:
+      !isAllPosts && !isCommunityHome && communityType
+        ? { communityType }
+        : undefined,
   };
   const totalMatches = isCommunityEventsSection
     ? communityEvents.length
@@ -409,9 +450,28 @@ export default function CommunityScreen({ navigation, route }) {
     setCommunityEventsError("");
   }
 
+  function promptLogin(message) {
+    Alert.alert("Account required", message, [
+      { text: "Not now", style: "cancel" },
+      { text: "Log In", onPress: () => navigation.navigate("Login") },
+      { text: "Create Account", onPress: () => navigation.navigate("Register") },
+    ]);
+  }
+
+  function handleCreatePost() {
+    if (!token) {
+      promptLogin(
+        "Log in or create an account to post in the community."
+      );
+      return;
+    }
+
+    navigation.navigate("CreateBuddyPost", createPostParams);
+  }
+
   async function handleToggleInterested(post) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to show interest.");
+      promptLogin("Log in or create an account to show interest.");
       return;
     }
 
@@ -426,7 +486,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   async function handleSubmitReply(post, text) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to reply.");
+      promptLogin("Log in or create an account to reply.");
       return;
     }
 
@@ -441,7 +501,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   async function handleSubmitReplyResponse(post, reply, text) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to reply.");
+      promptLogin("Log in or create an account to reply.");
       return;
     }
 
@@ -461,7 +521,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   async function handleToggleReplyLike(post, reply) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to like comments.");
+      promptLogin("Log in or create an account to like comments.");
       return;
     }
 
@@ -480,7 +540,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   async function handleUpdateReply(post, reply, text) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to edit your reply.");
+      promptLogin("Log in or create an account to edit replies.");
       return;
     }
 
@@ -499,7 +559,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   function handleDeleteReply(post, reply) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to delete your reply.");
+      promptLogin("Log in or create an account to manage replies.");
       return;
     }
 
@@ -525,6 +585,11 @@ export default function CommunityScreen({ navigation, route }) {
   }
 
   function handleEditBuddyPost(post) {
+    if (!token) {
+      promptLogin("Log in or create an account to edit your community posts.");
+      return;
+    }
+
     navigation.navigate("CreateBuddyPost", {
       eventBuddy: post,
     });
@@ -532,7 +597,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   function handleDeleteBuddyPost(post) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to delete your post.");
+      promptLogin("Log in or create an account to delete your post.");
       return;
     }
 
@@ -562,7 +627,7 @@ export default function CommunityScreen({ navigation, route }) {
 
   function handleReport(target) {
     if (!token) {
-      Alert.alert("Login required", "Please log in to submit a report.");
+      promptLogin("Log in or create an account to submit a report.");
       return;
     }
 
@@ -580,6 +645,11 @@ export default function CommunityScreen({ navigation, route }) {
   }
 
   function handleBlockProfile(targetUser) {
+    if (!token) {
+      promptLogin("Log in or create an account to block users.");
+      return;
+    }
+
     const targetUserId = targetUser?._id || targetUser?.id || "";
     if (!targetUserId) return;
 
@@ -635,7 +705,7 @@ export default function CommunityScreen({ navigation, route }) {
         }
       >
         <PageHeader
-          title="Choose how to connect"
+          title={isCommunityHome ? "Choose how to connect" : activeSection.title}
           subtitle={isCommunityHome ? "" : activeSection.subtitle}
         />
 
@@ -673,18 +743,6 @@ export default function CommunityScreen({ navigation, route }) {
           </View>
         ) : (
           <>
-        <Pressable
-          style={({ pressed }) => [
-            styles.allOptionsButton,
-            pressed && styles.pressed,
-          ]}
-          onPress={() => handleChooseSection("home")}
-        >
-          <Text style={[styles.allOptionsText, { color: theme.accent }]}>
-            All community options
-          </Text>
-        </Pressable>
-
         <View
           style={[
             styles.searchPanel,
@@ -871,10 +929,10 @@ export default function CommunityScreen({ navigation, route }) {
           </Pressable>
         ) : null}
 
-        {!isCommunityEventsSection ? (
+        {!isCommunityEventsSection && !isAllPosts ? (
           <AppButton
             title={activeSection.cta}
-            onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+            onPress={handleCreatePost}
             variant="primary"
             size="md"
             style={styles.compactCtaButton}
@@ -899,6 +957,10 @@ export default function CommunityScreen({ navigation, route }) {
               ? `No community posts match "${activeSearch}" yet.`
               : activeSearch
               ? `${posts.length} matching community post${posts.length === 1 ? "" : "s"}`
+              : isAllPosts
+              ? posts.length === 0
+                ? "No open community posts yet."
+                : `${posts.length} open community post${posts.length === 1 ? "" : "s"}`
               : posts.length === 0
               ? `No open ${activeFilterLabel.toLowerCase()} posts yet.`
               : `${posts.length} open ${activeFilterLabel.toLowerCase()} post${
@@ -1024,8 +1086,12 @@ export default function CommunityScreen({ navigation, route }) {
                 : activeSection.emptyText}
             </Text>
             <AppButton
-              title={activeSection.cta}
-              onPress={() => navigation.navigate("CreateBuddyPost", createPostParams)}
+              title={isAllPosts ? "Choose Post Type" : activeSection.cta}
+              onPress={
+                isAllPosts
+                  ? () => handleChooseSection("home")
+                  : handleCreatePost
+              }
               variant="primary"
               size="sm"
               style={styles.emptyButton}
@@ -1120,6 +1186,11 @@ export default function CommunityScreen({ navigation, route }) {
         options={SECTION_FILTER_OPTIONS}
         selectedValue={isCommunityHome ? HOME_SECTION_LABEL : activeSection.label}
         onSelect={(nextLabel) => {
+          if (nextLabel === ALL_POSTS_LABEL) {
+            handleChooseSection(ALL_POSTS_VALUE);
+            setSectionPickerVisible(false);
+            return;
+          }
           if (nextLabel === HOME_SECTION_LABEL) {
             handleChooseSection("home");
             setSectionPickerVisible(false);

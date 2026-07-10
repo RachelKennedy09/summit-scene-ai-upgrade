@@ -546,7 +546,8 @@ function RegisterScreen() {
   const [website, setWebsite] = useState("");
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
   const [phone, setPhone] = useState("");
-  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const profileImageUploadRef = useRef("");
+  const [hasProfileImage, setHasProfileImage] = useState(false);
   const [profileImagePreviewUri, setProfileImagePreviewUri] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
 
@@ -821,6 +822,8 @@ function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
+      const profileImageUpload = profileImageUploadRef.current;
+
       await register({
         name,
         email,
@@ -832,7 +835,7 @@ function RegisterScreen() {
         originallyFrom: isLocal ? originallyFrom : undefined,
         interests,
         businessVibeTags: isBusiness ? businessVibeTags : undefined,
-        socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
+        socialAccounts: buildSocialAccounts(socialValues, profileImageUpload),
         bio,
         lookingFor: undefined,
         instagram: socialValues.instagram,
@@ -841,7 +844,7 @@ function RegisterScreen() {
         googleBusinessUrl: isBusiness ? googleBusinessUrl : undefined,
         phone: isBusiness ? phone : undefined,
         avatarKey: null,
-        profileImageUrl,
+        profileImageUrl: profileImageUpload,
         acceptedAgeTerms: hasAcceptedAgreements,
       });
       if (isBusiness) {
@@ -898,8 +901,9 @@ function RegisterScreen() {
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.45,
+        quality: 0.3,
         base64: true,
+        exif: false,
       });
 
       if (result.canceled) {
@@ -924,7 +928,8 @@ function RegisterScreen() {
       }
 
       const mimeType = asset.mimeType || "image/jpeg";
-      setProfileImageUrl(`data:${mimeType};base64,${asset.base64}`);
+      profileImageUploadRef.current = `data:${mimeType};base64,${asset.base64}`;
+      setHasProfileImage(true);
       setProfileImagePreviewUri(asset.uri || "");
     } catch (error) {
       Alert.alert(
@@ -935,7 +940,8 @@ function RegisterScreen() {
   }
 
   function handleClearProfilePhoto() {
-    setProfileImageUrl("");
+    profileImageUploadRef.current = "";
+    setHasProfileImage(false);
     setProfileImagePreviewUri("");
   }
 
@@ -1336,7 +1342,7 @@ function RegisterScreen() {
               Choose from camera roll
             </Text>
           </Pressable>
-          {profileImageUrl ? (
+          {hasProfileImage && profileImagePreviewUri ? (
             <View
               style={[
                 styles.photoPreviewCard,
@@ -1344,7 +1350,7 @@ function RegisterScreen() {
               ]}
             >
               <Image
-                source={{ uri: profileImagePreviewUri || profileImageUrl }}
+                source={{ uri: profileImagePreviewUri }}
                 style={styles.photoPreview}
               />
               <View style={styles.photoPreviewCopy}>
@@ -1392,7 +1398,7 @@ function RegisterScreen() {
               Choose from camera roll
             </Text>
           </Pressable>
-          {profileImageUrl ? (
+          {hasProfileImage && profileImagePreviewUri ? (
             <View
               style={[
                 styles.photoPreviewCard,
@@ -1400,7 +1406,7 @@ function RegisterScreen() {
               ]}
             >
               <Image
-                source={{ uri: profileImagePreviewUri || profileImageUrl }}
+                source={{ uri: profileImagePreviewUri }}
                 style={styles.photoPreview}
               />
               <View style={styles.photoPreviewCopy}>
@@ -1614,7 +1620,7 @@ function RegisterScreen() {
           interests={interests}
           businessVibeTags={businessVibeTags}
           bio={bio}
-          profileImageUrl={profileImagePreviewUri || profileImageUrl}
+          profileImageUrl={profileImagePreviewUri}
           socialValues={socialValues}
         />
         <View

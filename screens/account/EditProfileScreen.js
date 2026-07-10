@@ -1,7 +1,7 @@
 // screens/account/EditProfileScreen.js
 // Lets logged-in users edit their profile fields (not email/password yet)
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -316,6 +316,10 @@ export default function EditProfileScreen({ navigation }) {
   const [profileImageUrl, setProfileImageUrl] = useState(
     user?.profileImageUrl || ""
   );
+  const profileImageUploadRef = useRef("");
+  const [profileImagePreviewUri, setProfileImagePreviewUri] = useState(
+    user?.profileImageUrl || ""
+  );
   const [socialValues, setSocialValues] = useState(() => {
     const accounts = Array.isArray(user?.socialAccounts)
       ? user.socialAccounts
@@ -378,6 +382,9 @@ export default function EditProfileScreen({ navigation }) {
         }
       }
 
+      const profileImageUpload =
+        profileImageUploadRef.current || profileImageUrl;
+
       const updates = {
         name,
         town: isBusiness ? businessTowns[0] : town,
@@ -391,8 +398,8 @@ export default function EditProfileScreen({ navigation }) {
         instagram: socialValues.instagram || instagram,
         website,
         avatarKey: null,
-        profileImageUrl,
-        socialAccounts: buildSocialAccounts(socialValues, profileImageUrl),
+        profileImageUrl: profileImageUpload,
+        socialAccounts: buildSocialAccounts(socialValues, profileImageUpload),
       };
 
       if (isBusiness) {
@@ -470,8 +477,9 @@ export default function EditProfileScreen({ navigation }) {
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.45,
+        quality: 0.3,
         base64: true,
+        exif: false,
       });
 
       if (result.canceled) {
@@ -496,7 +504,9 @@ export default function EditProfileScreen({ navigation }) {
       }
 
       const mimeType = asset.mimeType || "image/jpeg";
-      setProfileImageUrl(`data:${mimeType};base64,${asset.base64}`);
+      profileImageUploadRef.current = `data:${mimeType};base64,${asset.base64}`;
+      setProfileImagePreviewUri(asset.uri || "");
+      setProfileImageUrl(asset.uri || "selected");
     } catch (error) {
       Alert.alert(
         "Could not choose photo",
@@ -506,7 +516,9 @@ export default function EditProfileScreen({ navigation }) {
   }
 
   function handleClearProfilePhoto() {
+    profileImageUploadRef.current = "";
     setProfileImageUrl("");
+    setProfileImagePreviewUri("");
   }
 
   return (
@@ -739,10 +751,10 @@ export default function EditProfileScreen({ navigation }) {
               Choose from camera roll
             </Text>
           </Pressable>
-          {profileImageUrl ? (
+          {profileImagePreviewUri || profileImageUrl ? (
             <View style={styles.socialPhotoRow}>
               <Image
-                source={{ uri: profileImageUrl }}
+                source={{ uri: profileImagePreviewUri || profileImageUrl }}
                 style={styles.socialPhotoPreview}
               />
               <View style={styles.socialPhotoCopy}>

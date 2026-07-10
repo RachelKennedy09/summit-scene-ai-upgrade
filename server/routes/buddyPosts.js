@@ -1,8 +1,9 @@
 // server/routes/buddyPosts.js
-// Authenticated routes for creating and browsing buddy posts.
+// Public browsing plus authenticated write routes for buddy posts.
 
 import express from "express";
 import authMiddleware from "../middleware/auth.js";
+import optionalAuth from "../middleware/optionalAuth.js";
 import {
   addBuddyPostReply,
   addBuddyPostReplyResponse,
@@ -19,7 +20,7 @@ import {
 
 const router = express.Router();
 
-router.get("/", authMiddleware, getBuddyPosts);
+router.get("/", optionalAuth, getBuddyPosts);
 router.post("/", authMiddleware, createBuddyPost);
 router.patch("/:id", authMiddleware, updateBuddyPost);
 router.delete("/:id", authMiddleware, deleteBuddyPost);
@@ -29,6 +30,6 @@ router.post("/:id/replies/:replyId/likes", authMiddleware, toggleBuddyPostReplyL
 router.post("/:id/replies/:replyId/replies", authMiddleware, addBuddyPostReplyResponse);
 router.patch("/:id/replies/:replyId", authMiddleware, updateBuddyPostReply);
 router.delete("/:id/replies/:replyId", authMiddleware, deleteBuddyPostReply);
-router.get("/:id", authMiddleware, getBuddyPostById);
+router.get("/:id", optionalAuth, getBuddyPostById);
 
 export default router;
