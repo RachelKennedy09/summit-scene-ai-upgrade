@@ -343,6 +343,7 @@ export default function BuddyPostCard({
   onDeletePost,
   onBlockProfile,
   onReport,
+  onRequireAccount,
 }) {
   const [replyText, setReplyText] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
@@ -440,8 +441,20 @@ export default function BuddyPostCard({
     0,
     interestedProfiles.length - interestedPreview.length
   );
+  const canInteract = Boolean(currentUserId);
+
+  function requireAccount(message) {
+    if (canInteract) return false;
+    if (onRequireAccount) {
+      onRequireAccount(message);
+    } else {
+      Alert.alert("Account required", message);
+    }
+    return true;
+  }
 
   async function handleToggleInterested() {
+    if (requireAccount("Log in or create an account to show interest.")) return;
     if (!onToggleInterested || updatingInterest) return;
 
     try {
@@ -453,6 +466,7 @@ export default function BuddyPostCard({
   }
 
   async function handleSubmitReply() {
+    if (requireAccount("Log in or create an account to reply.")) return;
     const trimmedReply = replyText.trim();
     if (!trimmedReply || !onSubmitReply || submittingReply) return;
 
@@ -467,6 +481,7 @@ export default function BuddyPostCard({
   }
 
   async function handleSaveReplyEdit(reply) {
+    if (requireAccount("Log in or create an account to edit replies.")) return;
     const replyId = reply._id || reply.id;
     const trimmedReply = editingReplyText.trim();
     if (!replyId || !trimmedReply || !onUpdateReply || submittingReplyEdit) {
@@ -484,6 +499,7 @@ export default function BuddyPostCard({
   }
 
   async function handleSubmitReplyResponse(reply) {
+    if (requireAccount("Log in or create an account to reply.")) return;
     const replyId = reply._id || reply.id;
     const trimmedReply = replyResponseText.trim();
     if (
@@ -801,12 +817,15 @@ export default function BuddyPostCard({
 
       <Pressable
         style={({ pressed }) => [styles.reportLink, pressed && styles.pressed]}
-        onPress={() =>
+        onPress={() => {
+          if (requireAccount("Log in or create an account to submit a report.")) {
+            return;
+          }
           onReport?.({
             targetType: "buddyPost",
             targetId: post._id || post.id,
-          })
-        }
+          });
+        }}
       >
         <Text style={[styles.reportText, { color: theme.textMuted }]}>
           Report
@@ -905,7 +924,12 @@ export default function BuddyPostCard({
             styles.textButtonHitArea,
             pressed && styles.pressed,
           ]}
-          onPress={() => setReplyOpen((current) => !current)}
+          onPress={() => {
+            if (requireAccount("Log in or create an account to reply.")) {
+              return;
+            }
+            setReplyOpen((current) => !current);
+          }}
         >
           <Text style={[styles.replyToggle, { color: theme.accent }]}>
             {replyOpen ? "Cancel" : "Reply"}
@@ -982,7 +1006,16 @@ export default function BuddyPostCard({
                       },
                       pressed && styles.pressed,
                     ]}
-                    onPress={() => onToggleReplyLike?.(post, reply)}
+                    onPress={() => {
+                      if (
+                        requireAccount(
+                          "Log in or create an account to like comments."
+                        )
+                      ) {
+                        return;
+                      }
+                      onToggleReplyLike?.(post, reply);
+                    }}
                   >
                     <Text
                       style={[
@@ -1001,6 +1034,9 @@ export default function BuddyPostCard({
                       pressed && styles.pressed,
                     ]}
                     onPress={() => {
+                      if (requireAccount("Log in or create an account to reply.")) {
+                        return;
+                      }
                       setReplyingToId(isReplyingToThis ? "" : replyId.toString());
                       setReplyResponseText("");
                     }}
@@ -1107,7 +1143,16 @@ export default function BuddyPostCard({
                           { borderColor: theme.border },
                           pressed && styles.pressed,
                         ]}
-                        onPress={() => onBlockProfile?.(replyProfile)}
+                        onPress={() => {
+                          if (
+                            requireAccount(
+                              "Log in or create an account to block users."
+                            )
+                          ) {
+                            return;
+                          }
+                          onBlockProfile?.(replyProfile);
+                        }}
                       >
                         <Text style={[styles.reportText, { color: theme.textMuted }]}>
                           Block user
@@ -1119,14 +1164,21 @@ export default function BuddyPostCard({
                           { borderColor: theme.border },
                           pressed && styles.pressed,
                         ]}
-                        onPress={() =>
+                        onPress={() => {
+                          if (
+                            requireAccount(
+                              "Log in or create an account to submit a report."
+                            )
+                          ) {
+                            return;
+                          }
                           onReport?.({
                             targetType: "buddyReply",
                             targetId: reply._id || reply.id,
                             parentType: "buddyPost",
                             parentId: post._id || post.id,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <Text style={[styles.reportText, { color: theme.textMuted }]}>
                           Report reply

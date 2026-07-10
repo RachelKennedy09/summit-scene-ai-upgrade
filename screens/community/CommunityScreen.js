@@ -1138,6 +1138,7 @@ export default function CommunityScreen({ navigation, route }) {
                 onDeletePost={handleDeleteBuddyPost}
                 onBlockProfile={handleBlockProfile}
                 onReport={handleReport}
+                onRequireAccount={promptLogin}
               />
             ))}
           </View>

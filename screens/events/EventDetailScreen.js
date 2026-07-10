@@ -1485,6 +1485,7 @@ export default function EventDetailScreen({ route }) {
                       onDeleteReply={handleDeleteBuddyReply}
                       onBlockProfile={handleBlockProfile}
                       onReport={handleReport}
+                      onRequireAccount={showAccountRequired}
                     />
                   ))}
                 </View>
