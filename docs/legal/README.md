@@ -1,6 +1,6 @@
 # Summit Scene Legal Drafts
 
-Last updated: June 20, 2026
+Last updated: July 10, 2026
 
 These drafts are working product/legal copy for testing and launch preparation.
 They are not legal advice. Before publishing Summit Scene publicly, have a
@@ -47,6 +47,8 @@ Data collected may include:
   tags, duration, price range, meeting location, booking links, community posts,
   buddy posts, replies, profile information, likes, interests, attendance
   choices, saved event choices, reminder choices, and business information.
+  Public content may be visible to account users and to people browsing without
+  an account.
 - Optional location: device location for nearby event features after permission
   is granted. Event addresses may be sent to address lookup/geocoding services
   to place events on the map.

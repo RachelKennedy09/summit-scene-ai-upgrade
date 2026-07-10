@@ -453,6 +453,13 @@ export default function BuddyPostCard({
     return true;
   }
 
+  function handleOpenProfile(profile) {
+    if (requireAccount("Log in or create an account to view profiles.")) {
+      return;
+    }
+    onOpenProfile?.(profile);
+  }
+
   async function handleToggleInterested() {
     if (requireAccount("Log in or create an account to show interest.")) return;
     if (!onToggleInterested || updatingInterest) return;
@@ -544,7 +551,7 @@ export default function BuddyPostCard({
             styles.authorRow,
             pressed && styles.pressed,
           ]}
-          onPress={() => onOpenProfile?.(author)}
+          onPress={() => handleOpenProfile(author)}
         >
           <View
             style={[
@@ -802,7 +809,7 @@ export default function BuddyPostCard({
             { borderColor: theme.accent },
             pressed && styles.pressed,
           ]}
-          onPress={() => onOpenProfile?.(author)}
+          onPress={() => handleOpenProfile(author)}
         >
           <Text style={[styles.profileButtonText, { color: theme.accent }]}>
             View Profile
@@ -873,7 +880,7 @@ export default function BuddyPostCard({
                     },
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => onOpenProfile?.(profile)}
+                  onPress={() => handleOpenProfile(profile)}
                 >
                   <View
                     style={[
@@ -1126,7 +1133,7 @@ export default function BuddyPostCard({
                           { borderColor: theme.accent },
                           pressed && styles.pressed,
                         ]}
-                        onPress={() => onOpenProfile?.(replyProfile)}
+                        onPress={() => handleOpenProfile(replyProfile)}
                       >
                         <Text
                           style={[

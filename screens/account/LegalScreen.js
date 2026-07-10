@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "June 20, 2026";
+const LAST_UPDATED = "July 10, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -252,8 +252,9 @@ export default function LegalScreen() {
             Profiles, events, tours, photos, categories, tags, booking links,
             community posts, replies, business information, public business
             phone numbers, social links, attendance signals, and similar content
-            may be visible to other users. Do not post private information you
-            do not want others to see.
+            may be visible to account users and to people browsing without an
+            account. Do not post private information you do not want others to
+            see.
           </LegalText>
           <LegalText theme={theme}>
             Optional profile choices, including community interests,
