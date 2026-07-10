@@ -347,7 +347,7 @@ export default function BuddyPostCard({
 }) {
   const [replyText, setReplyText] = useState("");
   const [replyOpen, setReplyOpen] = useState(false);
-  const [showAllInterested, setShowAllInterested] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState("");
@@ -403,9 +403,6 @@ export default function BuddyPostCard({
   const interestedUsers = Array.isArray(post.interestedUsers)
     ? post.interestedUsers
     : [];
-  const interestedProfiles = interestedUsers
-    .map((user) => getUserProfile(user, "Member"))
-    .filter((profile) => profile._id || profile.id);
   const replies = Array.isArray(post.replies) ? post.replies : [];
   const categoryTags = Array.isArray(post.categoryTags) ? post.categoryTags : [];
   const vibeTags = Array.isArray(post.vibeTags) ? post.vibeTags : [];
@@ -434,13 +431,6 @@ export default function BuddyPostCard({
         interestedUsers.length === 1 ? "" : "s"
       }`
     : `${interestedUsers.length} interested`;
-  const interestedPreview = showAllInterested
-    ? interestedProfiles
-    : interestedProfiles.slice(0, 4);
-  const hiddenInterestedCount = Math.max(
-    0,
-    interestedProfiles.length - interestedPreview.length
-  );
   const canInteract = Boolean(currentUserId);
 
   function requireAccount(message) {
@@ -470,6 +460,23 @@ export default function BuddyPostCard({
     } finally {
       setUpdatingInterest(false);
     }
+  }
+
+  function handleStartReply() {
+    if (requireAccount("Log in or create an account to reply.")) {
+      return;
+    }
+    setCommentsOpen(true);
+    setReplyOpen((current) => !current);
+  }
+
+  function handleToggleComments() {
+    if (commentsOpen) {
+      setReplyOpen(false);
+      setReplyingToId("");
+      setReplyResponseText("");
+    }
+    setCommentsOpen((current) => !current);
   }
 
   async function handleSubmitReply() {
@@ -805,6 +812,32 @@ export default function BuddyPostCard({
         ) : null}
         <Pressable
           style={({ pressed }) => [
+            styles.secondaryActionButton,
+            { borderColor: theme.border, backgroundColor: theme.card },
+            pressed && styles.pressed,
+          ]}
+          onPress={handleToggleComments}
+        >
+          <Text style={[styles.secondaryActionText, { color: theme.textMuted }]}>
+            {commentsOpen ? "Hide comments" : commentsLabel}
+          </Text>
+        </Pressable>
+        {!isCommunityUpdate ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryActionButton,
+              { borderColor: theme.accent, backgroundColor: theme.card },
+              pressed && styles.pressed,
+            ]}
+            onPress={handleStartReply}
+          >
+            <Text style={[styles.secondaryActionText, { color: theme.accent }]}>
+              {replyOpen ? "Cancel reply" : "Reply"}
+            </Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          style={({ pressed }) => [
             styles.profileButton,
             { borderColor: theme.accent },
             pressed && styles.pressed,
@@ -817,7 +850,7 @@ export default function BuddyPostCard({
         </Pressable>
         {!isCommunityUpdate ? (
           <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {countLabel} | {commentsLabel}
+            {countLabel}
           </Text>
         ) : null}
       </View>
@@ -839,112 +872,15 @@ export default function BuddyPostCard({
         </Text>
       </Pressable>
 
-      {!isCommunityUpdate && interestedProfiles.length ? (
-        <View style={styles.interestedBlock}>
-          <View style={styles.interestedHeaderRow}>
-            <Text style={[styles.interestedTitle, { color: theme.text }]}>
-              {isNewInTown ? "Welcomed by" : "People interested"}
-            </Text>
-            {interestedProfiles.length > 4 ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.textButtonHitArea,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => setShowAllInterested((current) => !current)}
-              >
-                <Text style={[styles.interestedToggle, { color: theme.accent }]}>
-                  {showAllInterested ? "Show less" : "View all"}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-          <View style={styles.interestedList}>
-            {interestedPreview.map((profile) => {
-              const avatarSource =
-                profile.avatarKey && AVATARS[profile.avatarKey]
-                  ? AVATARS[profile.avatarKey]
-                  : profile.profileImageUrl
-                    ? { uri: profile.profileImageUrl }
-                  : null;
-              const initial = profile.name?.charAt(0).toUpperCase() || "?";
-
-              return (
-                <Pressable
-                  key={profile._id || profile.id}
-                  style={({ pressed }) => [
-                    styles.interestedPill,
-                    {
-                      backgroundColor: theme.pill || colors.surfaceMuted,
-                      borderColor: theme.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => handleOpenProfile(profile)}
-                >
-                  <View
-                    style={[
-                      styles.interestedAvatar,
-                      { backgroundColor: theme.card },
-                    ]}
-                  >
-                    {avatarSource ? (
-                      <Image
-                        source={avatarSource}
-                        style={styles.interestedAvatarImage}
-                      />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.interestedInitial,
-                          { color: theme.text },
-                        ]}
-                      >
-                        {initial}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    style={[styles.interestedName, { color: theme.text }]}
-                    numberOfLines={1}
-                  >
-                    {profile.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            {!showAllInterested && hiddenInterestedCount ? (
-              <Text style={[styles.moreInterestedText, { color: theme.textMuted }]}>
-                +{hiddenInterestedCount} more
-              </Text>
-            ) : null}
-          </View>
+      {commentsOpen ? (
+        <View style={styles.replyHeaderRow}>
+          <Text style={[styles.replyHeader, { color: theme.text }]}>
+            Comments {replies.length ? `(${replies.length})` : ""}
+          </Text>
         </View>
       ) : null}
 
-      <View style={styles.replyHeaderRow}>
-        <Text style={[styles.replyHeader, { color: theme.text }]}>
-          Replies {replies.length ? `(${replies.length})` : ""}
-        </Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.textButtonHitArea,
-            pressed && styles.pressed,
-          ]}
-          onPress={() => {
-            if (requireAccount("Log in or create an account to reply.")) {
-              return;
-            }
-            setReplyOpen((current) => !current);
-          }}
-        >
-          <Text style={[styles.replyToggle, { color: theme.accent }]}>
-            {replyOpen ? "Cancel" : "Reply"}
-          </Text>
-        </Pressable>
-      </View>
-
-      {replies.length ? (
+      {commentsOpen && replies.length ? (
         <View style={styles.repliesList}>
           {replies.slice(-3).map((reply) => {
             const replyAuthor =
@@ -1300,7 +1236,7 @@ export default function BuddyPostCard({
         </View>
       ) : null}
 
-      {replyOpen ? (
+      {commentsOpen && replyOpen ? (
         <View style={styles.replyComposer}>
           <TextInput
             style={[
@@ -1343,7 +1279,7 @@ export default function BuddyPostCard({
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 14,
   },
   topRow: {
@@ -1579,22 +1515,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  secondaryActionButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  secondaryActionText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
   statusText: {
     fontSize: 14,
     fontWeight: "700",
     marginLeft: "auto",
   },
   reportLink: {
-    alignSelf: "flex-start",
-    marginTop: 8,
-    paddingVertical: 8,
+    alignSelf: "flex-end",
+    marginTop: 4,
+    paddingVertical: 6,
   },
   textButtonHitArea: {
     paddingHorizontal: 6,
     paddingVertical: 8,
   },
   reportText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   interestedBlock: {
