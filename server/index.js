@@ -56,7 +56,7 @@ app.get("/api/app-version", (req, res) => {
     latestVersion: process.env.LATEST_APP_VERSION || "1.0.2",
     iosStoreUrl:
       process.env.IOS_APP_STORE_URL ||
-      "https://apps.apple.com/search?term=Summit%20Scene",
+      "https://apps.apple.com/app/summit-scene/id6777819596",
     androidStoreUrl:
       process.env.ANDROID_PLAY_STORE_URL ||
       "https://play.google.com/store/apps/details?id=com.rachellauren.summitscene",
@@ -65,7 +65,7 @@ app.get("/api/app-version", (req, res) => {
       "A newer version of Summit Scene is available. Update for the latest fixes and improvements.",
     message:
       process.env.APP_UPDATE_MESSAGE ||
-      "A newer version of Summit Scene is required to keep using the app.",
+      "Newer version available - please download the latest Summit Scene update before using the app.",
   });
 });
 

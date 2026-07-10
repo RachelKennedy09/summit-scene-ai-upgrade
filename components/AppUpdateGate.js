@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Platform,
   Pressable,
@@ -47,7 +46,6 @@ export default function AppUpdateGate({ children }) {
   const [checking, setChecking] = useState(true);
   const [versionInfo, setVersionInfo] = useState(null);
   const [requiresUpdate, setRequiresUpdate] = useState(false);
-  const [optionalUpdateShown, setOptionalUpdateShown] = useState(false);
 
   const currentVersion = useMemo(
     () => Constants.expoConfig?.version || "0.0.0",
@@ -64,7 +62,8 @@ export default function AppUpdateGate({ children }) {
 
         setVersionInfo(info);
         setRequiresUpdate(
-          isVersionOlder(currentVersion, info.minimumSupportedVersion)
+          isVersionOlder(currentVersion, info.minimumSupportedVersion) ||
+            isVersionNewer(info.latestVersion, currentVersion)
         );
       } catch {
         if (!cancelled) {
@@ -95,32 +94,6 @@ export default function AppUpdateGate({ children }) {
     }
   }
 
-  useEffect(() => {
-    if (
-      checking ||
-      requiresUpdate ||
-      optionalUpdateShown ||
-      !versionInfo?.latestVersion ||
-      !isVersionNewer(versionInfo.latestVersion, currentVersion)
-    ) {
-      return;
-    }
-
-    setOptionalUpdateShown(true);
-    Alert.alert(
-      "Update available",
-      versionInfo.optionalUpdateMessage ||
-        `A newer version of Summit Scene is available. Installed version ${currentVersion}, latest version ${versionInfo.latestVersion}.`,
-      [
-        { text: "Not Now", style: "cancel" },
-        {
-          text: Platform.OS === "android" ? "Open Google Play" : "Open App Store",
-          onPress: handleUpdatePress,
-        },
-      ]
-    );
-  }, [checking, currentVersion, optionalUpdateShown, requiresUpdate, versionInfo]);
-
   if (checking) {
     return (
       <SafeAreaView
@@ -148,7 +121,7 @@ export default function AppUpdateGate({ children }) {
         </Text>
         <Text style={[styles.body, { color: theme.textMuted }]}>
           {versionInfo?.message ||
-            "A newer version of Summit Scene is required to keep using the app."}
+            "Newer version available - please download the latest Summit Scene update before using the app."}
         </Text>
         <Text style={[styles.versionText, { color: theme.textMuted }]}>
           Installed version {currentVersion}
