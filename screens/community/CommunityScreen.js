@@ -22,7 +22,6 @@ import EventCard from "../../components/cards/EventCard";
 import AppButton from "../../components/common/AppButton";
 import GroupedCategoryModal from "../../components/common/GroupedCategoryModal";
 import SelectModal from "../../components/common/SelectModal";
-import PageHeader from "../../components/common/PageHeader";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import {
   COMMUNITY_NOTICE_CATEGORIES,
@@ -135,11 +134,17 @@ const COMMUNITY_SECTIONS = [
 const TOWN_FILTERS = ["All", "Banff", "Canmore", "Lake Louise"];
 const ALL_POSTS_VALUE = "all-posts";
 const ALL_POSTS_LABEL = "All postings";
-const HOME_SECTION_LABEL = "Choose how to connect";
 const SECTION_FILTER_OPTIONS = [
   ALL_POSTS_LABEL,
-  HOME_SECTION_LABEL,
   ...COMMUNITY_SECTIONS.map((section) => section.label),
+];
+const QUICK_BOARD_FILTERS = [
+  { label: "Meet People", communityType: "local-plan" },
+  { label: "Lost & Found", communityType: "notice", category: "Lost & Found" },
+  { label: "Buy & Sell", communityType: "notice", category: "Gear Sale / Swap" },
+  { label: "Local Questions", communityType: "notice", category: "Community Notice" },
+  { label: "Clubs & Groups", communityType: "group" },
+  { label: "Rides", communityType: "notice", category: "Ride Share" },
 ];
 
 function getSection(value) {
@@ -150,9 +155,9 @@ function getSection(value) {
       title: "All community postings",
       subtitle:
         "Browse all community posts, or use the filters below to narrow what to browse.",
-      emptyTitle: "No community posts yet",
+      emptyTitle: "The community board is quiet right now.",
       emptyText:
-        "Community posts will show here when people share plans, groups, jobs, volunteer posts, and notices.",
+        "Find hiking buddies, ask a local question, sell some gear, post something you lost, start a group, or share a useful local notice.",
       supportsCategory: false,
       supportsDate: true,
     };
@@ -440,8 +445,19 @@ export default function CommunityScreen({ navigation, route }) {
   }
 
   function handleChooseSection(nextValue) {
-    setCommunityType(nextValue);
+    setCommunityType(nextValue === "home" ? ALL_POSTS_VALUE : nextValue);
     setCategory("All");
+    setTown("All");
+    setSelectedDate(null);
+    setSearchQuery("");
+    setActiveSearch("");
+    setError("");
+    setCommunityEventsError("");
+  }
+
+  function handleChooseShortcut(shortcut) {
+    setCommunityType(shortcut.communityType || ALL_POSTS_VALUE);
+    setCategory(shortcut.category || "All");
     setTown("All");
     setSelectedDate(null);
     setSearchQuery("");
@@ -603,7 +619,7 @@ export default function CommunityScreen({ navigation, route }) {
 
     Alert.alert(
       "Delete community post?",
-      "This will remove the post and its replies from Connect.",
+      "This will remove the post and its replies from Community.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -704,45 +720,118 @@ export default function CommunityScreen({ navigation, route }) {
           />
         }
       >
-        <PageHeader
-          title={isCommunityHome ? "Choose how to connect" : activeSection.title}
-          subtitle={isCommunityHome ? "" : activeSection.subtitle}
-        />
+        <View
+          style={[
+            styles.boardHeader,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.boardEyebrow, { color: theme.accent }]}>
+            Community
+          </Text>
+          <Text style={[styles.boardTitle, { color: theme.text }]}>
+            Bow Valley Community
+          </Text>
+          <Text style={[styles.boardSubtitle, { color: theme.textMuted }]}>
+            Ask. Share. Find. Connect.
+          </Text>
+          <AppButton
+            title="+ Post to the Community"
+            onPress={handleCreatePost}
+            variant="primary"
+            size="md"
+            style={styles.boardCtaButton}
+          />
+        </View>
 
-        {isCommunityHome ? (
-          <View style={styles.connectHome}>
-            <View style={styles.connectGrid}>
-              {COMMUNITY_SECTIONS.map((section) => (
+        <View
+          style={[
+            styles.promptCard,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.promptTitle, { color: theme.text }]}>
+            What are you looking for?
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shortcutContent}
+          >
+            {QUICK_BOARD_FILTERS.map((shortcut) => {
+              const selected =
+                communityType === shortcut.communityType &&
+                (shortcut.category ? category === shortcut.category : category === "All");
+              return (
                 <Pressable
-                  key={section.value}
+                  key={shortcut.label}
                   style={({ pressed }) => [
-                    styles.connectOption,
+                    styles.quickChip,
                     {
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
+                      backgroundColor: selected
+                        ? theme.accentSoft || theme.card
+                        : theme.background,
+                      borderColor: selected ? theme.accent : theme.border,
                     },
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => handleChooseSection(section.value)}
+                  onPress={() => handleChooseShortcut(shortcut)}
                 >
-                  <Text style={[styles.connectOptionTitle, { color: theme.text }]}>
-                    {section.label}
-                  </Text>
                   <Text
                     style={[
-                      styles.connectOptionText,
-                      { color: theme.textMuted },
+                      styles.quickChipText,
+                      { color: selected ? theme.accent : theme.text },
                     ]}
-                    numberOfLines={3}
                   >
-                    {section.subtitle}
+                    {shortcut.label}
                   </Text>
                 </Pressable>
-              ))}
-            </View>
+              );
+            })}
+            <Pressable
+              style={({ pressed }) => [
+                styles.quickChip,
+                { backgroundColor: theme.background, borderColor: theme.border },
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setSectionPickerVisible(true)}
+            >
+              <Text style={[styles.quickChipText, { color: theme.text }]}>
+                More
+              </Text>
+            </Pressable>
+          </ScrollView>
+          <View style={styles.townQuickRow}>
+            {TOWN_FILTERS.map((townOption) => {
+              const selected = town === townOption;
+              return (
+                <Pressable
+                  key={townOption}
+                  style={({ pressed }) => [
+                    styles.townQuickChip,
+                    {
+                      backgroundColor: selected
+                        ? theme.accentSoft || theme.card
+                        : theme.background,
+                      borderColor: selected ? theme.accent : theme.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setTown(townOption)}
+                >
+                  <Text
+                    style={[
+                      styles.townQuickText,
+                      { color: selected ? theme.accent : theme.textMuted },
+                    ]}
+                  >
+                    {townOption}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        ) : (
-          <>
+        </View>
         <View
           style={[
             styles.searchPanel,
@@ -939,6 +1028,12 @@ export default function CommunityScreen({ navigation, route }) {
           />
         ) : null}
 
+        <View style={styles.feedHeaderRow}>
+          <Text style={[styles.feedTitle, { color: theme.text }]}>
+            {isCommunityEventsSection ? "Community Events" : "Latest Around the Valley"}
+          </Text>
+        </View>
+
         <View style={styles.summaryRow}>
           <Text style={[styles.summaryText, { color: theme.textMuted }]}>
             {isCommunityEventsSection
@@ -1086,16 +1181,34 @@ export default function CommunityScreen({ navigation, route }) {
                 : activeSection.emptyText}
             </Text>
             <AppButton
-              title={isAllPosts ? "Choose Post Type" : activeSection.cta}
-              onPress={
-                isAllPosts
-                  ? () => handleChooseSection("home")
-                  : handleCreatePost
-              }
+              title={isAllPosts ? "Create a Post" : activeSection.cta}
+              onPress={handleCreatePost}
               variant="primary"
               size="sm"
               style={styles.emptyButton}
             />
+          </View>
+        ) : null}
+
+        {!isCommunityEventsSection &&
+        !loading &&
+        !error &&
+        !activeSearch &&
+        posts.length > 0 &&
+        posts.length <= 5 ? (
+          <View
+            style={[
+              styles.lowContentCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.lowContentTitle, { color: theme.text }]}>
+              Anything local belongs here.
+            </Text>
+            <Text style={[styles.lowContentText, { color: theme.textMuted }]}>
+              Find people, ask questions, post lost and found, buy or sell gear,
+              organize rides, start groups, or share community notices.
+            </Text>
           </View>
         ) : null}
 
@@ -1143,8 +1256,6 @@ export default function CommunityScreen({ navigation, route }) {
             ))}
           </View>
         ) : null}
-          </>
-        )}
       </ScrollView>
 
       <MemberProfileModal
@@ -1185,15 +1296,10 @@ export default function CommunityScreen({ navigation, route }) {
         visible={sectionPickerVisible}
         title="Choose what to browse"
         options={SECTION_FILTER_OPTIONS}
-        selectedValue={isCommunityHome ? HOME_SECTION_LABEL : activeSection.label}
+        selectedValue={activeSection.label}
         onSelect={(nextLabel) => {
           if (nextLabel === ALL_POSTS_LABEL) {
             handleChooseSection(ALL_POSTS_VALUE);
-            setSectionPickerVisible(false);
-            return;
-          }
-          if (nextLabel === HOME_SECTION_LABEL) {
-            handleChooseSection("home");
             setSectionPickerVisible(false);
             return;
           }
@@ -1235,32 +1341,84 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 36,
   },
+  boardHeader: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 10,
+  },
+  boardEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: 5,
+  },
+  boardTitle: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "900",
+  },
+  boardSubtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginTop: 4,
+  },
+  boardCtaButton: {
+    borderRadius: 8,
+    marginTop: 14,
+  },
+  promptCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+  },
+  promptTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "900",
+    marginBottom: 10,
+  },
+  shortcutContent: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  quickChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    minHeight: 40,
+    justifyContent: "center",
+  },
+  quickChipText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "900",
+  },
+  townQuickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  townQuickChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 38,
+    justifyContent: "center",
+  },
+  townQuickText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+  },
   compactCtaButton: {
     borderRadius: 8,
     marginBottom: 12,
-  },
-  connectHome: {
-    paddingBottom: 8,
-  },
-  connectGrid: {
-    gap: 10,
-  },
-  connectOption: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 14,
-    minHeight: 96,
-    justifyContent: "center",
-  },
-  connectOptionTitle: {
-    fontSize: 17,
-    fontWeight: "900",
-    lineHeight: 22,
-    marginBottom: 5,
-  },
-  connectOptionText: {
-    fontSize: 14,
-    lineHeight: 20,
   },
   allOptionsButton: {
     alignSelf: "flex-start",
@@ -1373,6 +1531,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
+  feedHeaderRow: {
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  feedTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+  },
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1424,6 +1591,22 @@ const styles = StyleSheet.create({
   emptyButton: {
     marginTop: 14,
     borderRadius: 8,
+  },
+  lowContentCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 12,
+  },
+  lowContentTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+  lowContentText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   feed: {
     gap: 12,

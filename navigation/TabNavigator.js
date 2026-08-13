@@ -1,5 +1,5 @@
 // navigation/TabNavigator.js
-// Bottom tab navigation for the app — Hub, Map, Connect, Account
+// Bottom tab navigation for the app - Hub, Map, Community, Account
 // Verified businesses also get a Create tab for official events.
 
 import React from "react";
@@ -86,7 +86,7 @@ export default function TabNavigator() {
       <Tab.Screen
         name="Community"
         component={CommunityScreen}
-        options={{ title: "Connect" }}
+        options={{ title: "Community" }}
       />
 
       {/* Everyone gets Account */}

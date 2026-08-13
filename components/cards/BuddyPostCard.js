@@ -10,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
-import TrustBadgeRow from "../common/TrustBadges";
 import { colors } from "../../theme/colors";
 import { getVisibleTags } from "../../utils/categoryVisuals";
 
@@ -415,11 +414,6 @@ export default function BuddyPostCard({
     : isInterested
       ? "Interested"
       : "I'm interested";
-  const countLabel = isNewInTown
-    ? `${interestedUsers.length} welcome${
-        interestedUsers.length === 1 ? "" : "s"
-      }`
-    : `${interestedUsers.length} interested`;
   const canInteract = Boolean(currentUserId);
 
   function requireAccount(message) {
@@ -523,19 +517,6 @@ export default function BuddyPostCard({
             {postedAgoText ? (
               <Text style={[styles.authorMeta, { color: theme.textMuted }]}>
                 {postedAgoText}
-              </Text>
-            ) : null}
-            <View style={styles.authorBadgeRow}>
-              <TrustBadgeRow
-                profile={author}
-                communityType={post.communityType}
-                theme={theme}
-                compact
-              />
-            </View>
-            {author.originallyFrom ? (
-              <Text style={[styles.authorMeta, { color: theme.textMuted }]}>
-                Originally from {author.originallyFrom}
               </Text>
             ) : null}
           </View>
@@ -726,6 +707,30 @@ export default function BuddyPostCard({
         {!isCommunityUpdate ? (
           <Pressable
             style={({ pressed }) => [
+              styles.replyButton,
+              { borderColor: theme.accent, backgroundColor: theme.card },
+              pressed && styles.pressed,
+            ]}
+            onPress={handleStartReply}
+          >
+            <Text style={[styles.replyButtonText, { color: theme.accent }]}>
+              {replyOpen ? "Cancel reply" : "Reply"}
+            </Text>
+          </Pressable>
+        ) : null}
+        <View
+          style={[
+            styles.secondaryActionButton,
+            { borderColor: theme.border, backgroundColor: theme.card },
+          ]}
+        >
+          <Text style={[styles.secondaryActionText, { color: theme.textMuted }]}>
+            {commentsLabel}
+          </Text>
+        </View>
+        {!isCommunityUpdate ? (
+          <Pressable
+            style={({ pressed }) => [
               styles.interestButton,
               {
                 backgroundColor: isInterested
@@ -747,47 +752,6 @@ export default function BuddyPostCard({
               {actionLabel}
             </Text>
           </Pressable>
-        ) : null}
-        <View
-          style={[
-            styles.secondaryActionButton,
-            { borderColor: theme.border, backgroundColor: theme.card },
-          ]}
-        >
-          <Text style={[styles.secondaryActionText, { color: theme.textMuted }]}>
-            {commentsLabel}
-          </Text>
-        </View>
-        {!isCommunityUpdate ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondaryActionButton,
-              { borderColor: theme.accent, backgroundColor: theme.card },
-              pressed && styles.pressed,
-            ]}
-            onPress={handleStartReply}
-          >
-            <Text style={[styles.secondaryActionText, { color: theme.accent }]}>
-              {replyOpen ? "Cancel reply" : "Reply"}
-            </Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          style={({ pressed }) => [
-            styles.profileButton,
-            { borderColor: theme.accent },
-            pressed && styles.pressed,
-          ]}
-          onPress={() => handleOpenProfile(author)}
-        >
-          <Text style={[styles.profileButtonText, { color: theme.accent }]}>
-            View Profile
-          </Text>
-        </Pressable>
-        {!isCommunityUpdate ? (
-          <Text style={[styles.statusText, { color: theme.textMuted }]}>
-            {countLabel}
-          </Text>
         ) : null}
       </View>
 
@@ -852,14 +816,14 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: 8,
-    padding: 14,
+    padding: 12,
   },
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionPill: {
     maxWidth: 178,
@@ -900,17 +864,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
-  authorBadgeRow: {
-    marginTop: 6,
-  },
   planBlock: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   planHeadline: {
-    fontSize: 20,
-    lineHeight: 25,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: "900",
-    marginBottom: 6,
+    marginBottom: 5,
   },
   planMeta: {
     fontSize: 14,
@@ -925,9 +886,9 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: "100%",
-    aspectRatio: 4 / 3,
-    borderRadius: 10,
-    marginBottom: 12,
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    marginBottom: 10,
     backgroundColor: colors.surfaceMuted,
   },
   descriptionBlock: {
@@ -1066,16 +1027,16 @@ const styles = StyleSheet.create({
   interestButton: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 38,
     justifyContent: "center",
   },
   interestButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "800",
   },
-  profileButton: {
+  replyButton: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -1083,9 +1044,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: "center",
   },
-  profileButtonText: {
+  replyButtonText: {
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   secondaryActionButton: {
     borderWidth: 1,

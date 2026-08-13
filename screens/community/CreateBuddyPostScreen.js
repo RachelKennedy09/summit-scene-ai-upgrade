@@ -63,7 +63,12 @@ const BUDDY_TYPES = [
   { label: "Other", value: "other" },
 ];
 
-const TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
+const TOWNS = [
+  "Banff",
+  "Canmore",
+  "Lake Louise",
+  { label: "Bow Valley", value: "All" },
+];
 const BUDDY_POST_IMAGE_MAX_BASE64_LENGTH = 2200000;
 const CATEGORY_GROUPS = getCommunityCategoryGroups();
 const PLAN_CATEGORY_GROUPS = [{ title: "Categories", options: EVENT_MAIN_CATEGORIES }];
@@ -141,14 +146,15 @@ const SKILL_CATEGORIES = new Set([
 
 const COMMUNITY_FORM_COPY = {
   "local-plan": {
-    title: "Make a Plan",
-    subtitle: "Share a plan people can join, like coffee before open mic, a walk, or an event buddy post.",
+    title: "Post to the Community",
+    subtitle: "Choose what you are posting about, then add a few clear details.",
+    titlePlaceholder: "Looking for hiking buddies this weekend",
     showCategory: true,
     categoryLabel: "Categories",
     categoryRequired: true,
     categoryGroups: PLAN_CATEGORY_GROUPS,
     detailsLabel: "Plan",
-    detailsPlaceholder: "What is the plan? Add enough detail for someone to say yes.",
+    detailsPlaceholder: "Tell people what you are planning and who you are looking to meet.",
     townLabel: "Where",
     dateLabel: "Date",
     timeLabel: "Time",
@@ -160,8 +166,9 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "event",
   },
   "new-in-town": {
-    title: "New in Town",
-    subtitle: "Introduce yourself and make it easy for people nearby to say hello.",
+    title: "Post to the Community",
+    subtitle: "Choose what you are posting about, then add a few clear details.",
+    titlePlaceholder: "New in town and looking to meet people",
     showCategory: false,
     categoryLabel: "",
     categoryRequired: false,
@@ -178,14 +185,15 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "general",
   },
   group: {
-    title: "Start a Group",
-    subtitle: "Create a repeatable interest group like book club, trivia team, hiking crew, or art night.",
+    title: "Post to the Community",
+    subtitle: "Choose what you are posting about, then add a few clear details.",
+    titlePlaceholder: "Looking to start a weekly bingo group",
     showCategory: true,
     categoryLabel: "Group categories",
     categoryRequired: false,
     categoryGroups: PLAN_CATEGORY_GROUPS,
     detailsLabel: "Group idea",
-    detailsPlaceholder: "What is the group, who is it for, and how often do you want to meet?",
+    detailsPlaceholder: "Tell people about the group.",
     townLabel: "Home base",
     dateLabel: "First meetup date",
     timeLabel: "Usual time",
@@ -197,8 +205,9 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "general",
   },
   jobs: {
-    title: "Post Job or Volunteer Ad",
-    subtitle: "Share a local job, seasonal role, hiring notice, or volunteer opportunity.",
+    title: "Post to the Community",
+    subtitle: "Choose what you are posting about, then add a few clear details.",
+    titlePlaceholder: "Weekend help wanted in Banff",
     showCategory: false,
     categoryLabel: "",
     categoryRequired: false,
@@ -215,14 +224,15 @@ const COMMUNITY_FORM_COPY = {
     defaultType: "job",
   },
   notice: {
-    title: "Share Community Notice or Info",
-    subtitle: "Post a useful notice, program, course, organization link, online booking option, garage sale, gear swap, ride share, lost and found, or community heads-up.",
+    title: "Post to the Community",
+    subtitle: "Choose what you are posting about, then add a few clear details.",
+    titlePlaceholder: "Lost black wallet near Banff Ave",
     showCategory: true,
     categoryLabel: "Notice or info type",
     categoryRequired: false,
     categoryGroups: NOTICE_CATEGORY_GROUPS,
     detailsLabel: "Notice or program details",
-    detailsPlaceholder: "What are you sharing? Add dates, who it is for, how to register or book, location details, and what people should know.",
+    detailsPlaceholder: "Where and when did it happen? Add the useful details people need.",
     townLabel: "Applies to",
     dateLabel: "Date or start date",
     timeLabel: "Time",
@@ -446,6 +456,24 @@ function getEventSearchText(event) {
     .toLowerCase();
 }
 
+function splitPostText(value) {
+  const text = String(value || "").trim();
+  if (!text) return { title: "", description: "" };
+
+  const [firstLine, ...remainingLines] = text.split(/\r?\n/);
+  return {
+    title: firstLine.trim(),
+    description: remainingLines.join("\n").trim(),
+  };
+}
+
+function combinePostText(title, description) {
+  return [title, description]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 export default function CreateBuddyPostScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
@@ -464,6 +492,7 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     COMMUNITY_TYPES.some((option) => option.value === eventBuddy.communityType)
       ? eventBuddy.communityType
       : "local-plan";
+  const initialPostText = splitPostText(eventBuddy.activityText);
 
   const [communityType, setCommunityType] = useState(initialCommunityType);
   const [categories, setCategories] = useState(initialCategories);
@@ -475,7 +504,10 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       ? getBuddyTypeForEventCategory(initialCategory)
       : eventBuddy.type || ""
   );
-  const [activityText, setActivityText] = useState(eventBuddy.activityText || "");
+  const [postTitle, setPostTitle] = useState(initialPostText.title);
+  const [postDescription, setPostDescription] = useState(
+    initialPostText.description
+  );
   const [imageUrl, setImageUrl] = useState(eventBuddy.imageUrl || "");
   const [businessName, setBusinessName] = useState(eventBuddy.businessName || "");
   const [locationName, setLocationName] = useState(eventBuddy.locationName || "");
@@ -750,8 +782,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
     if (nextEvent.time) {
       setTime(nextEvent.time);
     }
-    if (!activityText.trim() && nextEvent.title) {
-      setActivityText(`Anyone going to ${nextEvent.title}?`);
+    if (!postTitle.trim() && nextEvent.title) {
+      setPostTitle(`Anyone going to ${nextEvent.title}?`);
     }
 
     setCommunityType("local-plan");
@@ -817,7 +849,12 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
   }, [eventPickerOpen, eventsLoaded, loadingEvents]);
 
   async function handleSubmit() {
-    const trimmedActivityText = activityText.trim();
+    const trimmedPostTitle = postTitle.trim();
+    const trimmedPostDescription = postDescription.trim();
+    const trimmedActivityText = combinePostText(
+      trimmedPostTitle,
+      trimmedPostDescription
+    );
     const trimmedImageUrl = imageUrl.trim();
 
     if (shouldShowCategory && formCopy.categoryRequired && !categories.length) {
@@ -825,8 +862,13 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
       return;
     }
 
-    if (!trimmedActivityText) {
-      Alert.alert("Missing activity", "Please describe what you want to do.");
+    if (!trimmedPostTitle) {
+      Alert.alert("Missing title", "Please add a short title.");
+      return;
+    }
+
+    if (!trimmedPostDescription) {
+      Alert.alert("Missing description", "Please add a short description.");
       return;
     }
 
@@ -1390,7 +1432,25 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
           ) : null}
 
           <Text style={[styles.label, { color: theme.textMuted }]}>
-            {formCopy.detailsLabel} (Required)
+            Title (Required)
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
+            placeholder={formCopy.titlePlaceholder || "What are you posting about?"}
+            placeholderTextColor={theme.textMuted}
+            value={postTitle}
+            onChangeText={setPostTitle}
+          />
+
+          <Text style={[styles.label, { color: theme.textMuted }]}>
+            Description (Required)
           </Text>
           <TextInput
             style={[
@@ -1409,8 +1469,8 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
                 : "What do you want to do?")
             }
             placeholderTextColor={theme.textMuted}
-            value={activityText}
-            onChangeText={setActivityText}
+            value={postDescription}
+            onChangeText={setPostDescription}
             multiline
             textAlignVertical="top"
           />

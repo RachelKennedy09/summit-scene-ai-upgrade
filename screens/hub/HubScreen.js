@@ -741,7 +741,7 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Connect for local plans and intros.";
+      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Community for local plans and questions.";
     }
 
     if (
@@ -749,19 +749,19 @@ export default function HubScreen() {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No events available yet. Check back soon, or open Connect for local plans, intros, groups, jobs, and community notices.";
+      return "No events available yet. Check back soon, or open Community for local plans, questions, groups, jobs, and notices.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
-      return `No ${listingPlural} found in ${selectedTown}. Try another town, a wider date range, or Connect.`;
+      return `No ${listingPlural} found in ${selectedTown}. Try another town, a wider date range, or Community.`;
     }
 
     if (selectedTown === "All" && selectedCategory !== "All") {
-      return `No ${selectedCategory} ${listingPlural} found. Try another category, a wider date range, or Connect.`;
+      return `No ${selectedCategory} ${listingPlural} found. Try another category, a wider date range, or Community.`;
     }
 
     if (selectedDateFilter !== "All Dates") {
-      return `No ${listingPlural} match your filters for ${selectedDateLabel.toLowerCase()}. Try a wider date range or open Connect.`;
+      return `No ${listingPlural} match your filters for ${selectedDateLabel.toLowerCase()}. Try a wider date range or open Community.`;
     }
 
     return `No ${selectedCategory} ${listingPlural} found in ${selectedTown}.`;
@@ -1468,7 +1468,7 @@ export default function HubScreen() {
                     })
                   }
                 >
-                  <Text style={styles.emptyActionText}>Open Connect</Text>
+                  <Text style={styles.emptyActionText}>Open Community</Text>
                 </Pressable>
               </View>
             </View>
