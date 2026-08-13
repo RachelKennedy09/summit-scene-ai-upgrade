@@ -12,10 +12,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Picker } from "@react-native-picker/picker";
 
+import DatePickerModal from "../../components/events/DatePickerModal";
 import PageHeader from "../../components/common/PageHeader";
+import TimePickerModal from "../../components/events/TimePickerModal";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { EVENT_MAIN_CATEGORIES } from "../../constants/eventCategories";
 import {
   approveHighConfidenceImportCandidates,
   approveImportCandidate,
@@ -49,6 +53,9 @@ export default function EventImportReviewScreen() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [previewing, setPreviewing] = useState(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [timePickerTarget, setTimePickerTarget] = useState(null);
 
   async function loadCandidates() {
     if (!user?.isAdmin || !token) return;
@@ -98,6 +105,61 @@ export default function EventImportReviewScreen() {
       price: candidate.price || "",
       ticketUrl: candidate.ticketUrl || "",
     });
+  }
+
+  function candidateToPreviewEvent(candidate) {
+    const link = candidate.ticketUrl || candidate.sourceUrl || "";
+    return {
+      title: candidate.title || "Untitled event",
+      town: candidate.town || "",
+      category: candidate.category || "Other",
+      categories: candidate.categories?.length
+        ? candidate.categories
+        : [candidate.category || "Other"],
+      date: candidate.startDate || "",
+      time: candidate.startTime || "",
+      endTime: candidate.endTime || "",
+      locationName: candidate.venue || "",
+      address: candidate.address || "",
+      imageUrl: candidate.imageUrl || "",
+      priceRange: candidate.price || "",
+      bookingUrl: link,
+      sourceUrl: candidate.sourceUrl || "",
+      sourceName: candidate.sourceName || "",
+      importedBySummitScene: true,
+    };
+  }
+
+  function parseDateString(value) {
+    const [year, month, day] = String(value || "").split("-").map(Number);
+    if (!year || !month || !day) return new Date();
+    return new Date(year, month - 1, day);
+  }
+
+  function parseTimeString(value) {
+    const match = String(value || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    const date = new Date();
+    if (!match) return date;
+
+    let hour = Number(match[1]) % 12;
+    if (match[3].toUpperCase() === "PM") hour += 12;
+    date.setHours(hour, Number(match[2]), 0, 0);
+    return date;
+  }
+
+  function formatDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatTimeString(date) {
+    const hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const meridiem = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes} ${meridiem}`;
   }
 
   async function handleSaveEdit() {
@@ -327,6 +389,15 @@ export default function EventImportReviewScreen() {
               </Pressable>
               <Pressable
                 disabled={working}
+                onPress={() => setPreviewing(candidate)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Preview
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
                 onPress={() => openEdit(candidate)}
                 style={[styles.smallOutlineButton, { borderColor: theme.border }]}
               >
@@ -358,6 +429,90 @@ export default function EventImportReviewScreen() {
       <Modal
         animationType="slide"
         transparent
+        visible={Boolean(previewing)}
+        onRequestClose={() => setPreviewing(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Approval preview
+            </Text>
+            {previewing ? (
+              <View style={styles.previewSurface}>
+                <Text style={[styles.previewCategory, { color: theme.accent }]}>
+                  {candidateToPreviewEvent(previewing).category}
+                </Text>
+                <Text style={[styles.previewTitle, { color: theme.text }]}>
+                  {candidateToPreviewEvent(previewing).title}
+                </Text>
+                <Text style={[styles.previewLine, { color: theme.textMuted }]}>
+                  {[
+                    candidateToPreviewEvent(previewing).town,
+                    candidateToPreviewEvent(previewing).date,
+                    [
+                      candidateToPreviewEvent(previewing).time,
+                      candidateToPreviewEvent(previewing).endTime,
+                    ]
+                      .filter(Boolean)
+                      .join(" - "),
+                  ]
+                    .filter(Boolean)
+                    .join(" | ")}
+                </Text>
+                <Text style={[styles.previewLine, { color: theme.textMuted }]}>
+                  {candidateToPreviewEvent(previewing).locationName ||
+                    candidateToPreviewEvent(previewing).address ||
+                    "Location TBA"}
+                </Text>
+                {candidateToPreviewEvent(previewing).priceRange ? (
+                  <Text style={[styles.previewLine, { color: theme.textMuted }]}>
+                    {candidateToPreviewEvent(previewing).priceRange}
+                  </Text>
+                ) : null}
+                {candidateToPreviewEvent(previewing).bookingUrl ? (
+                  <Text style={[styles.previewLink, { color: theme.accent }]}>
+                    Organizer link will open: {candidateToPreviewEvent(previewing).bookingUrl}
+                  </Text>
+                ) : null}
+                {previewing.description ? (
+                  <Text
+                    style={[styles.previewDescription, { color: theme.text }]}
+                    numberOfLines={8}
+                  >
+                    {previewing.description}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setPreviewing(null)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Close
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
+                onPress={() => {
+                  const candidate = previewing;
+                  setPreviewing(null);
+                  if (candidate) handleApprove(candidate);
+                }}
+                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+              >
+                <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                  Approve
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="slide"
+        transparent
         visible={Boolean(editing)}
         onRequestClose={() => setEditing(null)}
       >
@@ -367,15 +522,113 @@ export default function EventImportReviewScreen() {
               Edit imported event
             </Text>
             <ScrollView style={styles.modalFields}>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  Town
+                </Text>
+                <View
+                  style={[
+                    styles.pickerWrap,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
+                    },
+                  ]}
+                >
+                  <Picker
+                    selectedValue={editForm.town || "Banff"}
+                    onValueChange={(value) =>
+                      setEditForm((current) => ({ ...current, town: value }))
+                    }
+                  >
+                    {["Banff", "Canmore", "Lake Louise"].map((town) => (
+                      <Picker.Item key={town} label={town} value={town} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  Category
+                </Text>
+                <View
+                  style={[
+                    styles.pickerWrap,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
+                    },
+                  ]}
+                >
+                  <Picker
+                    selectedValue={editForm.category || "Other"}
+                    onValueChange={(value) =>
+                      setEditForm((current) => ({
+                        ...current,
+                        category: value,
+                        categories: [value],
+                      }))
+                    }
+                  >
+                    {EVENT_MAIN_CATEGORIES.map((category) => (
+                      <Picker.Item
+                        key={category}
+                        label={category}
+                        value={category}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  Date
+                </Text>
+                <Pressable
+                  onPress={() => setDatePickerVisible(true)}
+                  style={[
+                    styles.inputButton,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.inputButtonText, { color: theme.text }]}>
+                    {editForm.startDate || "Choose date"}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.timeRow}>
+                {[
+                  ["startTime", "Start time"],
+                  ["endTime", "End time"],
+                ].map(([key, label]) => (
+                  <View key={key} style={[styles.fieldGroup, styles.timeField]}>
+                    <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                      {label}
+                    </Text>
+                    <Pressable
+                      onPress={() => setTimePickerTarget(key)}
+                      style={[
+                        styles.inputButton,
+                        {
+                          borderColor: theme.border,
+                          backgroundColor: theme.background,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.inputButtonText, { color: theme.text }]}>
+                        {editForm[key] || "Choose time"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
               {[
                 ["title", "Title"],
-                ["town", "Town"],
-                ["category", "Category"],
                 ["venue", "Venue"],
                 ["address", "Address"],
-                ["startDate", "Date"],
-                ["startTime", "Start time"],
-                ["endTime", "End time"],
                 ["price", "Price"],
                 ["ticketUrl", "Ticket URL"],
               ].map(([key, label]) => (
@@ -424,6 +677,37 @@ export default function EventImportReviewScreen() {
           </View>
         </View>
       </Modal>
+      <DatePickerModal
+        visible={datePickerVisible}
+        initialDate={parseDateString(editForm.startDate)}
+        title="Select event date"
+        onCancel={() => setDatePickerVisible(false)}
+        onConfirm={(date) => {
+          setEditForm((current) => ({
+            ...current,
+            startDate: formatDateString(date),
+          }));
+          setDatePickerVisible(false);
+        }}
+      />
+      <TimePickerModal
+        visible={Boolean(timePickerTarget)}
+        initialTime={parseTimeString(editForm[timePickerTarget])}
+        title={
+          timePickerTarget === "endTime"
+            ? "Select end time"
+            : "Select start time"
+        }
+        onCancel={() => setTimePickerTarget(null)}
+        onConfirm={(date) => {
+          const key = timePickerTarget;
+          setEditForm((current) => ({
+            ...current,
+            [key]: formatTimeString(date),
+          }));
+          setTimePickerTarget(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -504,8 +788,32 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "900", marginBottom: 12 },
   modalFields: { maxHeight: 480 },
+  previewSurface: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  previewCategory: { fontSize: 12, fontWeight: "900" },
+  previewTitle: { fontSize: 22, fontWeight: "900", lineHeight: 27 },
+  previewLine: { fontSize: 13, lineHeight: 18 },
+  previewLink: { fontSize: 12, lineHeight: 17, fontWeight: "800" },
+  previewDescription: { fontSize: 14, lineHeight: 20, marginTop: 4 },
   fieldGroup: { marginBottom: 10 },
   fieldLabel: { fontSize: 12, fontWeight: "800", marginBottom: 5 },
+  pickerWrap: {
+    borderWidth: 1,
+    borderRadius: 9,
+    overflow: "hidden",
+  },
+  inputButton: {
+    minHeight: 42,
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+  },
+  inputButtonText: { fontSize: 14, fontWeight: "700" },
+  timeRow: { flexDirection: "row", gap: 10 },
+  timeField: { flex: 1 },
   input: {
     minHeight: 42,
     borderWidth: 1,

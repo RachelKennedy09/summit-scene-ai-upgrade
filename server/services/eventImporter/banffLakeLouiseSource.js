@@ -15,6 +15,16 @@ function resolveUrl(value, baseUrl) {
   }
 }
 
+function detailUrlForSlug(slug, sourceUrl) {
+  const cleaned = cleanText(slug);
+  if (!cleaned) return "";
+  try {
+    return new URL(`/events/${encodeURIComponent(cleaned)}`, sourceUrl).toString();
+  } catch {
+    return "";
+  }
+}
+
 function formatTimeFromIso(value) {
   if (!value || !/T\d{2}:\d{2}/.test(String(value))) return undefined;
 
@@ -26,6 +36,91 @@ function formatTimeFromIso(value) {
   const meridiem = hour24 >= 12 ? "PM" : "AM";
   const hour12 = hour24 % 12 || 12;
   return `${hour12}:${String(minute).padStart(2, "0")} ${meridiem}`;
+}
+
+function formatAddress(address) {
+  if (!address || typeof address !== "object") return "";
+  return [
+    address.address_1,
+    address.address_2,
+    address.city,
+    address.province,
+    address.postcode,
+  ]
+    .map(cleanText)
+    .filter(Boolean)
+    .join(", ");
+}
+
+function portableTextToPlainText(blocks) {
+  if (!Array.isArray(blocks)) return "";
+  return blocks
+    .map((block) =>
+      Array.isArray(block?.children)
+        ? block.children.map((child) => cleanText(child?.text)).join(" ")
+        : ""
+    )
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function readDetailData(html) {
+  const $ = cheerio.load(html || "");
+  const rawJson = $("#__NEXT_DATA__").text();
+  if (!rawJson) return null;
+
+  try {
+    const data = JSON.parse(rawJson)?.props?.pageProps?.data;
+    return data?._type === "event" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchEventDetail(item, sourceUrl) {
+  const detailUrl = detailUrlForSlug(item?.slug, sourceUrl);
+  if (!detailUrl) return null;
+
+  const response = await fetch(detailUrl, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent":
+        "SummitSceneBot/1.0 (+https://summitscene.ca; event discovery)",
+    },
+  });
+  if (!response.ok) return null;
+
+  const data = readDetailData(await response.text());
+  if (!data) return null;
+
+  const firstDate = Array.isArray(data.dates) ? data.dates[0] : null;
+  const button = Array.isArray(data.buttons) ? data.buttons[0] : null;
+  const exactLink =
+    button?.memberLink?.link ||
+    button?.external ||
+    button?.customButton?.url ||
+    "";
+  const location = data.content
+    ?.flatMap((section) => section?.locations || [])
+    ?.find((item) => Number.isFinite(item?.lat) && Number.isFinite(item?.lng));
+  const description = portableTextToPlainText(data.description);
+
+  return {
+    title: cleanText(data.title),
+    description: description || cleanText(data.cardSummary),
+    dateText: cleanText(data.dateInfo || firstDate?.start),
+    startDate: firstDate?.start,
+    endDate: firstDate?.end,
+    startTime: formatTimeFromIso(firstDate?.start),
+    endTime: formatTimeFromIso(firstDate?.end),
+    venue: cleanText(data.displayVenue || data.venue || button?.memberLink?.entity?.title),
+    address: formatAddress(data.address),
+    ticketUrl: resolveUrl(exactLink, sourceUrl),
+    sourceUrl: detailUrl,
+    latitude: location?.lat,
+    longitude: location?.lng,
+    rawDetailData: data,
+  };
 }
 
 function mapTourismItemToExtractedEvent(item, sourceUrl) {
@@ -44,9 +139,7 @@ function mapTourismItemToExtractedEvent(item, sourceUrl) {
     endDate: firstDate?.end,
     startTime: formatTimeFromIso(firstDate?.start),
     endTime: formatTimeFromIso(firstDate?.end),
-    sourceUrl:
-      resolveUrl(item?.slug ? `/events/${cleanText(item.slug)}` : "", sourceUrl) ||
-      sourceUrl,
+    sourceUrl: detailUrlForSlug(item?.slug, sourceUrl) || sourceUrl,
     imageUrl: resolveUrl(imageUrl, sourceUrl),
     extractionMethod: "banff-lake-louise-list-data",
     raw: item,
@@ -126,7 +219,18 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
   for (let page = 1; page <= totalPages; page += 1) {
     const data = await fetchListPage(source.url, page, listConfig);
     for (const item of data.items || []) {
-      const event = mapTourismItemToExtractedEvent(item, source.url);
+      const baseEvent = mapTourismItemToExtractedEvent(item, source.url);
+      const detailEvent = await fetchEventDetail(item, source.url).catch(
+        () => null
+      );
+      const event = {
+        ...baseEvent,
+        ...(detailEvent || {}),
+        raw: {
+          listItem: item,
+          detail: detailEvent?.rawDetailData,
+        },
+      };
       if (!event.title || seenUrls.has(event.sourceUrl)) continue;
       seenUrls.add(event.sourceUrl);
       events.push(event);

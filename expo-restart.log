@@ -1,0 +1,11 @@
+
+> summit-scene-ai-upgrade@1.0.0 start:clear
+> expo start --clear --host lan
+
+env: load .env
+env: export ADMIN_EMAILS EXPO_PUBLIC_API_BASE_URL GOOGLE_SERVICES_JSON EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+Starting project at C:\SummitSceneUpgrade\summit-scene-ai-upgrade
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8081
+Logs for your project will appear below.

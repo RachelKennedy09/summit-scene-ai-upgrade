@@ -109,6 +109,8 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     categories: [category],
     venue,
     address: cleanText(extracted?.address),
+    latitude: extracted?.latitude,
+    longitude: extracted?.longitude,
     startDate,
     endDate: endDate && endDate !== startDate ? endDate : undefined,
     startTime: cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text),

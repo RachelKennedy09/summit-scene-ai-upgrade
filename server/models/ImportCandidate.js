@@ -51,6 +51,16 @@ const importCandidateSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90,
+    },
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180,
+    },
     startDate: {
       type: String,
       required: [true, "Start date is required"],
