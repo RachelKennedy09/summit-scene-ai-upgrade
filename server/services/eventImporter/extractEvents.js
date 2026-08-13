@@ -3,6 +3,10 @@ import { mapTourismItemToExtractedEvent } from "./banffLakeLouiseSource.js";
 
 const EVENT_SELECTOR =
   "[class*='event' i], [id*='event' i], article, li, .card";
+const MONTH_PATTERN =
+  "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+const WEEKDAY_PATTERN =
+  "mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?";
 const KNOWN_BANFF_CENTRE_VENUES = [
   "Jeanne & Peter Lougheed Building",
   "Margaret Greenham Theatre",
@@ -28,6 +32,95 @@ function resolveUrl(value, baseUrl) {
   } catch {
     return undefined;
   }
+}
+
+function getKnownSourceDetails(sourceUrl) {
+  const lower = String(sourceUrl || "").toLowerCase();
+
+  if (lower.includes("roseandcrown.ca")) {
+    return {
+      venue: "Rose & Crown Banff",
+      address: "202 Banff Ave, Banff, AB",
+      category: "Music & Nightlife",
+    };
+  }
+
+  if (lower.includes("dustybootbanff.com")) {
+    return {
+      venue: "The Dusty Boot Banff",
+      address: "Banff, AB",
+      category: "Music & Nightlife",
+    };
+  }
+
+  if (lower.includes("fatoxbanff.ca")) {
+    return {
+      venue: "The Fat Ox",
+      address: "415 Banff Ave, Banff, AB",
+      category: "Food & Drink",
+    };
+  }
+
+  if (lower.includes("skilouise.com")) {
+    return {
+      venue: "Lake Louise Ski Resort",
+      address: "Lake Louise, AB",
+      category: "Outdoors & Sports",
+    };
+  }
+
+  return {};
+}
+
+function stripLinkChrome(text) {
+  return cleanText(text)
+    .replace(/\b(?:learn more|read more|view details|book now|reserve)\b\.?$/i, "")
+    .trim();
+}
+
+function parseDatedLinkText(rawText) {
+  const text = stripLinkChrome(rawText);
+  if (!text || text.length < 8 || text.length > 180) return null;
+  if (/^(reserve|menu|contact|instagram|facebook|tiktok|open in google maps)$/i.test(text)) {
+    return null;
+  }
+
+  const startsWithDate = text.match(
+    new RegExp(
+      `^(?:(?:${WEEKDAY_PATTERN})\\.?[,]?\\s+)?` +
+        `(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?` +
+        `(?:,?\\s+(\\d{4}))?` +
+        `(?:\\s+(\\d{1,2}(?::\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?)))?` +
+        `\\s+(.+)$`,
+      "i"
+    )
+  );
+
+  if (startsWithDate) {
+    const [, month, day, year, time, title] = startsWithDate;
+    return {
+      title: stripLinkChrome(title),
+      dateText: cleanText([month, day, year, time].filter(Boolean).join(" ")),
+      startTime: cleanText(time),
+    };
+  }
+
+  const endsWithDate = text.match(
+    new RegExp(
+      `^(.+?)\\s+(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?$`,
+      "i"
+    )
+  );
+
+  if (endsWithDate) {
+    const [, title, month, day, year] = endsWithDate;
+    return {
+      title: stripLinkChrome(title),
+      dateText: cleanText([month, day, year].filter(Boolean).join(" ")),
+    };
+  }
+
+  return null;
 }
 
 function getKnownVenueFromText(text) {
@@ -112,6 +205,149 @@ function readNextDataEvents($, sourceUrl) {
   }
 }
 
+function readDatedLinkEvents($, sourceUrl) {
+  const events = [];
+  const seen = new Set();
+  const knownDetails = getKnownSourceDetails(sourceUrl);
+
+  $("a[href]").each((_, element) => {
+    const node = $(element);
+    const parsed = parseDatedLinkText(node.text());
+    if (!parsed?.title || parsed.title.length < 3) return;
+
+    const link = node.attr("href");
+    const resolvedLink = resolveUrl(link, sourceUrl) || sourceUrl;
+    const key = `${resolvedLink}|${parsed.dateText}|${parsed.title}`.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    events.push({
+      title: parsed.title,
+      description: cleanText(node.closest("article,li,.card,[class*='event' i]").text()) || parsed.title,
+      dateText: parsed.dateText,
+      startTime: parsed.startTime,
+      venue: knownDetails.venue,
+      address: knownDetails.address,
+      category: knownDetails.category,
+      ticketUrl: resolvedLink,
+      sourceUrl: resolvedLink,
+      imageUrl: resolveUrl(
+        node.closest("article,li,.card,[class*='event' i]").find("img[src]").first().attr("src"),
+        sourceUrl
+      ),
+      extractionMethod: "dated-link",
+      raw: { text: cleanText(node.text()) },
+    });
+  });
+
+  return events;
+}
+
+function buildRecurringSourceEvent({
+  title,
+  description,
+  sourceUrl,
+  startTime,
+  endTime,
+  weekdays,
+  category = "Music & Nightlife",
+}) {
+  const knownDetails = getKnownSourceDetails(sourceUrl);
+
+  return {
+    title,
+    description,
+    dateText: description,
+    startTime,
+    endTime,
+    scheduleType: "recurring",
+    recurrence: {
+      frequency: weekdays?.length ? "selected_weekdays" : "daily",
+      weekdays,
+      dates: [],
+    },
+    venue: knownDetails.venue,
+    address: knownDetails.address,
+    category,
+    ticketUrl: sourceUrl,
+    sourceUrl,
+    extractionMethod: "known-recurring-source",
+    raw: { text: description },
+  };
+}
+
+function readKnownRecurringEvents($, sourceUrl) {
+  const lower = String(sourceUrl || "").toLowerCase();
+  const text = cleanText($.root().text());
+  const events = [];
+
+  if (lower.includes("dustybootbanff.com")) {
+    if (/50%\s+off\s+select\s+cocktails/i.test(text)) {
+      events.push(
+        buildRecurringSourceEvent({
+          title: "Dusty Boot Happy Hour - Monday to Thursday",
+          description:
+            "50% off select cocktails and $6 Bud and Coors. Monday to Thursday, 5:00 PM to 7:00 PM.",
+          sourceUrl,
+          startTime: "5:00 PM",
+          endTime: "7:00 PM",
+          weekdays: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+          category: "Food & Drink",
+        }),
+        buildRecurringSourceEvent({
+          title: "Dusty Boot Happy Hour - Friday to Sunday",
+          description:
+            "50% off select cocktails and $6 Bud and Coors. Friday to Sunday, 4:00 PM to 6:00 PM.",
+          sourceUrl,
+          startTime: "4:00 PM",
+          endTime: "6:00 PM",
+          weekdays: ["Friday", "Saturday", "Sunday"],
+          category: "Food & Drink",
+        })
+      );
+    }
+
+    if (/line\s+dancing/i.test(text)) {
+      events.push(
+        buildRecurringSourceEvent({
+          title: "Free Line Dancing at The Dusty Boot",
+          description:
+            "Free instructed line dancing on Tuesday, Wednesday and Sunday nights.",
+          sourceUrl,
+          startTime: "8:30 PM",
+          weekdays: ["Tuesday", "Wednesday", "Sunday"],
+        })
+      );
+    }
+
+    if (/friday\s+live\s+music|live\s+music\s+from\s+6:30pm/i.test(text)) {
+      events.push(
+        buildRecurringSourceEvent({
+          title: "Friday Live Music at The Dusty Boot",
+          description: "Live music from 6:30 PM late every Friday.",
+          sourceUrl,
+          startTime: "6:30 PM",
+          weekdays: ["Friday"],
+        })
+      );
+    }
+
+    if (/saturday\s+live\s+music|live\s+music\s+from\s+6:30pm/i.test(text)) {
+      events.push(
+        buildRecurringSourceEvent({
+          title: "Saturday Live Music at The Dusty Boot",
+          description: "Live music from 6:30 PM late every Saturday.",
+          sourceUrl,
+          startTime: "6:30 PM",
+          weekdays: ["Saturday"],
+        })
+      );
+    }
+  }
+
+  return events;
+}
+
 function readGenericHtmlEvents($, sourceUrl) {
   const events = [];
   const seen = new Set();
@@ -169,9 +405,15 @@ export function extractEvents(html, source) {
     return [...jsonLdEvents, ...nextDataEvents].filter((event) => event.title);
   }
 
+  const datedLinkEvents = readDatedLinkEvents($, sourceUrl);
+  const knownRecurringEvents = readKnownRecurringEvents($, sourceUrl);
   const genericEvents = readGenericHtmlEvents($, sourceUrl);
 
-  return [...jsonLdEvents, ...nextDataEvents, ...genericEvents].filter(
-    (event) => event.title
-  );
+  return [
+    ...jsonLdEvents,
+    ...nextDataEvents,
+    ...datedLinkEvents,
+    ...knownRecurringEvents,
+    ...genericEvents,
+  ].filter((event) => event.title);
 }

@@ -57,10 +57,54 @@ function todayString(now = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function chooseImportStartDate(startDate, endDate, now) {
+function chooseImportStartDate(startDate, endDate, now, isRecurring = false) {
   if (isValidFutureDateString(startDate, now)) return startDate;
   if (isValidFutureDateString(endDate, now)) return todayString(now);
+  if (isRecurring) return todayString(now);
   return startDate;
+}
+
+function normalizeRecurrence(recurrence, options = {}) {
+  if (!recurrence || typeof recurrence !== "object") return undefined;
+
+  const validFrequencies = new Set([
+    "daily",
+    "weekly",
+    "biweekly",
+    "monthly",
+    "selected_weekdays",
+    "selected_dates",
+  ]);
+  const validWeekdays = new Set([
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ]);
+  const weekdays = Array.isArray(recurrence.weekdays)
+    ? recurrence.weekdays.filter((weekday) => validWeekdays.has(weekday))
+    : [];
+  const dates = Array.isArray(recurrence.dates)
+    ? recurrence.dates.filter((date) => isValidFutureDateString(date, options.now))
+    : [];
+  const frequency = validFrequencies.has(recurrence.frequency)
+    ? recurrence.frequency
+    : weekdays.length
+      ? "selected_weekdays"
+      : dates.length
+        ? "selected_dates"
+        : "daily";
+  const untilDate = parseEventDate(recurrence.untilDate, options);
+
+  return {
+    frequency,
+    weekdays: weekdays.length ? weekdays : [],
+    untilDate: isValidFutureDateString(untilDate, options.now) ? untilDate : undefined,
+    dates,
+  };
 }
 
 function scoreCandidate(candidate, notes) {
@@ -95,7 +139,17 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     options
   );
   const endDate = parseEventDate(extracted?.endDate, options);
-  const startDate = chooseImportStartDate(parsedStartDate, endDate, options.now);
+  const scheduleType =
+    extracted?.scheduleType === "recurring" || extracted?.recurrence
+      ? "recurring"
+      : "single";
+  const recurrence = normalizeRecurrence(extracted?.recurrence, options);
+  const startDate = chooseImportStartDate(
+    parsedStartDate,
+    endDate,
+    options.now,
+    scheduleType === "recurring"
+  );
   const town = normalizeTown(extracted?.town) || inferTown(text, source?.town);
   const category = normalizeCategory(extracted?.category, text);
   const title = cleanText(extracted?.title);
@@ -115,6 +169,8 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     endDate: endDate && endDate !== startDate ? endDate : undefined,
     startTime: cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text),
     endTime: cleanText(extracted?.endTime),
+    scheduleType,
+    recurrence: scheduleType === "recurring" ? recurrence || { frequency: "daily" } : undefined,
     price: cleanText(extracted?.price),
     ticketUrl: cleanText(extracted?.ticketUrl),
     sourceUrl: cleanText(extracted?.sourceUrl || source?.url),

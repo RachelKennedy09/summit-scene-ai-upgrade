@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
@@ -1220,20 +1221,41 @@ export default function HubScreen() {
     () => (
       <>
         <View style={styles.browseHeader}>
+          <View style={styles.browseTitleRow}>
+            <Image source={logo} style={styles.browseLogo} resizeMode="contain" />
+            <View style={styles.browseTitleCopy}>
+              <Text style={[styles.browseTitle, { color: theme.text }]}>
+                Browse Events
+              </Text>
+              <Text style={[styles.browseHeaderHint, { color: theme.textMuted }]}>
+                Search, pick a town, choose a category, or change the date range.
+              </Text>
+            </View>
+          </View>
           <Pressable
             onPress={() => {
               handleClearFilters();
               setIsBrowseMode(false);
             }}
-            style={[styles.backHomeButton, { borderColor: theme.border }]}
+            style={({ pressed }) => [
+              styles.backHomeButton,
+              {
+                backgroundColor: theme.accentSoft || theme.card,
+                borderColor: theme.accent,
+              },
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={[styles.backHomeText, { color: theme.text }]}>
+            <Ionicons
+              name="chevron-back"
+              size={16}
+              color={theme.accent}
+              style={styles.backHomeIcon}
+            />
+            <Text style={[styles.backHomeText, { color: theme.accent }]}>
               Back to Today
             </Text>
           </Pressable>
-          <Text style={[styles.browseHeaderHint, { color: theme.textMuted }]}>
-            Search, pick a town, choose a category, or change the date range.
-          </Text>
         </View>
         <HubFilters
           selectedTown={selectedTown}
@@ -1603,24 +1625,49 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   browseHeader: {
-    paddingTop: 12,
-    marginBottom: 6,
+    paddingTop: 6,
+    marginBottom: 12,
+  },
+  browseTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    marginBottom: 10,
+  },
+  browseLogo: {
+    width: 42,
+    height: 42,
+    flexShrink: 0,
+  },
+  browseTitleCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  browseTitle: {
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: "800",
   },
   browseHeaderHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 10,
+    fontSize: 15,
+    lineHeight: 21,
   },
   backHomeButton: {
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 42,
+  },
+  backHomeIcon: {
+    marginLeft: -3,
   },
   backHomeText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "900",
   },
   emptyText: {

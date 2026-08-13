@@ -9,6 +9,55 @@ const IMPORT_CANDIDATE_STATUSES = [
   "error",
 ];
 const IMPORT_CANDIDATE_TOWNS = ["Banff", "Canmore", "Lake Louise"];
+const IMPORT_CANDIDATE_SCHEDULE_TYPES = ["single", "recurring"];
+const IMPORT_CANDIDATE_RECURRENCE_FREQUENCIES = [
+  "daily",
+  "weekly",
+  "biweekly",
+  "monthly",
+  "selected_weekdays",
+  "selected_dates",
+];
+const IMPORT_CANDIDATE_WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+const importCandidateRecurrenceSchema = new mongoose.Schema(
+  {
+    frequency: {
+      type: String,
+      enum: IMPORT_CANDIDATE_RECURRENCE_FREQUENCIES,
+    },
+    weekdays: {
+      type: [String],
+      enum: IMPORT_CANDIDATE_WEEKDAYS,
+      default: undefined,
+    },
+    untilDate: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, "Date must be in format YYYY-MM-DD"],
+    },
+    dates: {
+      type: [String],
+      default: undefined,
+      validate: {
+        validator(values) {
+          return (values || []).every((value) =>
+            /^\d{4}-\d{2}-\d{2}$/.test(value)
+          );
+        },
+        message: "Selected dates must be in format YYYY-MM-DD",
+      },
+    },
+  },
+  { _id: false }
+);
 
 const importCandidateSchema = new mongoose.Schema(
   {
@@ -78,6 +127,12 @@ const importCandidateSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    scheduleType: {
+      type: String,
+      enum: IMPORT_CANDIDATE_SCHEDULE_TYPES,
+      default: "single",
+    },
+    recurrence: importCandidateRecurrenceSchema,
     price: {
       type: String,
       trim: true,

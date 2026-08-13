@@ -24,6 +24,22 @@ function isDateRange(startDate, endDate) {
   );
 }
 
+function normalizeRecurrence(value) {
+  if (!value || typeof value !== "object") return undefined;
+
+  const weekdays = Array.isArray(value.weekdays)
+    ? value.weekdays.filter(Boolean)
+    : [];
+  const dates = Array.isArray(value.dates) ? value.dates.filter(Boolean) : [];
+
+  return {
+    frequency: normalizeString(value.frequency) || "daily",
+    untilDate: normalizeString(value.untilDate),
+    weekdays,
+    dates,
+  };
+}
+
 function candidateToEventPayload(candidate, overrides = {}, userId) {
   const merged = { ...candidate.toObject(), ...overrides };
   const venue = normalizeString(merged.venue);
@@ -33,6 +49,8 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
   const startDate = normalizeString(merged.startDate);
   const endDate = normalizeString(merged.endDate);
   const hasDateRange = isDateRange(startDate, endDate);
+  const mergedRecurrence = normalizeRecurrence(merged.recurrence);
+  const isRecurring = merged.scheduleType === "recurring" || hasDateRange;
 
   return {
     title: normalizeString(merged.title),
@@ -45,10 +63,15 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     date: startDate,
     time: normalizeString(merged.startTime),
     endTime: normalizeString(merged.endTime),
-    scheduleType: hasDateRange ? "recurring" : "single",
+    scheduleType: isRecurring ? "recurring" : "single",
     isAllDay: false,
-    recurrence: hasDateRange
-      ? {
+    recurrence: isRecurring
+      ? mergedRecurrence
+        ? {
+            ...mergedRecurrence,
+            untilDate: mergedRecurrence.untilDate || (hasDateRange ? endDate : undefined),
+          }
+        : {
           frequency: "daily",
           untilDate: endDate,
           weekdays: [],
@@ -123,6 +146,8 @@ router.patch("/candidates/:id", authMiddleware, isAdmin, async (req, res) => {
       "endDate",
       "startTime",
       "endTime",
+      "scheduleType",
+      "recurrence",
       "price",
       "ticketUrl",
       "imageUrl",

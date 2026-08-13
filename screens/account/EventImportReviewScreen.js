@@ -43,6 +43,19 @@ function getCandidateId(candidate) {
 }
 
 function formatDateTime(candidate) {
+  if (candidate?.scheduleType === "recurring" || candidate?.recurrence) {
+    const weekdays = Array.isArray(candidate?.recurrence?.weekdays)
+      ? candidate.recurrence.weekdays
+      : [];
+    const recurrenceLabel = weekdays.length
+      ? `Repeats ${weekdays.join(", ")}`
+      : `Repeats ${candidate?.recurrence?.frequency || "daily"}`;
+    const timeRange = [candidate.startTime, candidate.endTime]
+      .filter(Boolean)
+      .join(" - ");
+    return [recurrenceLabel, timeRange].filter(Boolean).join(" | ");
+  }
+
   const dateRange = [candidate.startDate, candidate.endDate]
     .filter(Boolean)
     .join(" to ");
@@ -119,6 +132,8 @@ export default function EventImportReviewScreen() {
       endDate: candidate.endDate || "",
       startTime: candidate.startTime || "",
       endTime: candidate.endTime || "",
+      scheduleType: candidate.scheduleType || "single",
+      recurrence: candidate.recurrence || undefined,
       price: candidate.price || "",
       ticketUrl: candidate.ticketUrl || "",
     });
@@ -130,6 +145,8 @@ export default function EventImportReviewScreen() {
       candidate.endDate &&
       candidate.startDate &&
       candidate.endDate > candidate.startDate;
+    const isRecurring =
+      candidate.scheduleType === "recurring" || Boolean(candidate.recurrence) || hasDateRange;
     return {
       title: candidate.title || "Untitled event",
       town: candidate.town || "",
@@ -140,9 +157,9 @@ export default function EventImportReviewScreen() {
       date: candidate.startDate || "",
       time: candidate.startTime || "",
       endTime: candidate.endTime || "",
-      scheduleType: hasDateRange ? "recurring" : "single",
-      recurrence: hasDateRange
-        ? {
+      scheduleType: isRecurring ? "recurring" : "single",
+      recurrence: isRecurring
+        ? candidate.recurrence || {
             frequency: "daily",
             untilDate: candidate.endDate,
             weekdays: [],

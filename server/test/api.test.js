@@ -1040,6 +1040,57 @@ describe("SummitScene API", function () {
     }
   });
 
+  it("should approve an imported recurring weekly candidate", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const startDate = formatTestDate(0);
+    try {
+      const candidate = await ImportCandidate.create({
+        title: `Imported Happy Hour Candidate ${testRunId}`,
+        description: "A recurring restaurant special imported from a source page.",
+        town: "Banff",
+        category: "Food & Drink",
+        categories: ["Food & Drink"],
+        venue: "Candidate Pub",
+        address: "100 Banff Avenue, Banff, AB",
+        startDate,
+        startTime: "5:00 PM",
+        endTime: "7:00 PM",
+        scheduleType: "recurring",
+        recurrence: {
+          frequency: "selected_weekdays",
+          weekdays: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+        },
+        sourceUrl: `https://example.com/recurring-${testRunId}`,
+        sourceName: "Example Import Source",
+        confidenceScore: 95,
+      });
+
+      const res = await request(app)
+        .post(`/api/event-import/candidates/${candidate._id}/approve`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send();
+
+      expect(res.status).to.equal(201);
+      expect(res.body.event.scheduleType).to.equal("recurring");
+      expect(res.body.event.recurrence).to.include({
+        frequency: "selected_weekdays",
+      });
+      expect(res.body.event.recurrence.weekdays).to.deep.equal([
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+      ]);
+      expect(res.body.event).to.include({
+        date: startDate,
+        time: "5:00 PM",
+        endTime: "7:00 PM",
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
   it("should let an admin create and disable an event source", async () => {
     process.env.ADMIN_EMAILS = testEmail;
     const sourceUrl = `https://example.com/source-management-${testRunId}`;
