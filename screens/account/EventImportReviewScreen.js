@@ -12,7 +12,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Picker } from "@react-native-picker/picker";
 
 import EventCard from "../../components/cards/EventCard";
 import DatePickerModal from "../../components/events/DatePickerModal";
@@ -31,6 +30,8 @@ import {
   seedStarterEventSources,
   updateImportCandidate,
 } from "../../services/adminApi";
+
+const TOWNS = ["Banff", "Canmore", "Lake Louise"];
 
 function getCandidateId(candidate) {
   return String(candidate?._id || candidate?.id || "");
