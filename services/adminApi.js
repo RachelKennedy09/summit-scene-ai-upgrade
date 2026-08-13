@@ -321,3 +321,23 @@ export async function runEventImporter(token) {
 
   return data;
 }
+
+export async function seedStarterEventSources(token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/sources/seed-starter`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to seed event sources (${res.status})`),
+      "We couldn't add the starter event sources right now."
+    );
+  }
+
+  return data;
+}

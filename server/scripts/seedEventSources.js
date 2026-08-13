@@ -2,22 +2,12 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { connectDB } from "../config/db.js";
 import EventSource from "../models/EventSource.js";
-
-const STARTER_SOURCES = [
-  {
-    name: "Banff Centre Events",
-    url: "https://www.banffcentre.ca/events",
-    town: "Banff",
-    sourceType: "html",
-    enabled: true,
-    trusted: true,
-  },
-];
+import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
 try {
   await connectDB();
 
-  for (const source of STARTER_SOURCES) {
+  for (const source of STARTER_EVENT_SOURCES) {
     await EventSource.findOneAndUpdate(
       { url: source.url },
       { $set: source },

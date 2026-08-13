@@ -22,6 +22,7 @@ import {
   fetchImportCandidates,
   rejectImportCandidate,
   runEventImporter,
+  seedStarterEventSources,
   updateImportCandidate,
 } from "../../services/adminApi";
 
@@ -160,6 +161,21 @@ export default function EventImportReviewScreen() {
     }
   }
 
+  async function handleSeedSources() {
+    try {
+      setWorking(true);
+      const result = await seedStarterEventSources(token);
+      Alert.alert(
+        "Sources ready",
+        `${result.sources?.length || 0} starter source saved. Run the importer next.`
+      );
+    } catch (seedError) {
+      Alert.alert("Could not add sources", seedError.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function handleApproveHighConfidence() {
     try {
       setWorking(true);
@@ -200,6 +216,15 @@ export default function EventImportReviewScreen() {
         />
 
         <View style={styles.actions}>
+          <Pressable
+            disabled={working}
+            onPress={handleSeedSources}
+            style={[styles.secondaryButton, { borderColor: theme.border }]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+              Add Starter Sources
+            </Text>
+          </Pressable>
           <Pressable
             disabled={working}
             onPress={handleRunImporter}

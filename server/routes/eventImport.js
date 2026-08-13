@@ -6,6 +6,7 @@ import Event from "../models/Event.js";
 import EventSource from "../models/EventSource.js";
 import ImportCandidate from "../models/ImportCandidate.js";
 import { runEventImport } from "../services/eventImporter/runEventImport.js";
+import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
 const router = express.Router();
 
@@ -221,6 +222,28 @@ router.post("/sources", authMiddleware, isAdmin, async (req, res) => {
     return res.status(201).json(source);
   } catch (error) {
     return res.status(400).json({ message: error.message || "Could not create source." });
+  }
+});
+
+router.post("/sources/seed-starter", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const sources = [];
+    for (const starterSource of STARTER_EVENT_SOURCES) {
+      const source = await EventSource.findOneAndUpdate(
+        { url: starterSource.url },
+        { $set: starterSource },
+        { upsert: true, new: true, runValidators: true }
+      );
+      sources.push(source);
+    }
+
+    return res.json({
+      message: "Starter event sources are ready.",
+      sources,
+    });
+  } catch (error) {
+    console.error("Error seeding starter event sources:", error);
+    return res.status(500).json({ message: "Could not seed starter event sources." });
   }
 });
 
