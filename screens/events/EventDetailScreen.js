@@ -1155,7 +1155,7 @@ export default function EventDetailScreen({ route }) {
                   >
                     {bookingRequired
                       ? "Book through business"
-                      : "Book on Organizer Website"}
+                      : "View organizer website for more info"}
                   </Text>
                 </Pressable>
               ) : null}

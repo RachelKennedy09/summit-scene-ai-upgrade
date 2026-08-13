@@ -4,6 +4,10 @@ import { findDuplicateEvent } from "./detectDuplicate.js";
 import { isValidFutureDateString } from "./dateParsing.js";
 import { normalizeWithAi } from "./aiNormalizer.js";
 import { normalizeExtractedEvent } from "./normalizeEvent.js";
+import {
+  discoverDetailPageImageUrl,
+  getFallbackImageUrlForSource,
+} from "./imageDiscovery.js";
 
 function buildCandidateQuery(candidate) {
   return {
@@ -39,6 +43,12 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     ...deterministicCandidate,
     ...(aiCandidate || {}),
   };
+  if (!candidate.imageUrl) {
+    candidate.imageUrl =
+      (await discoverDetailPageImageUrl(candidate.sourceUrl || candidate.ticketUrl)) ||
+      (await discoverDetailPageImageUrl(source?.url)) ||
+      getFallbackImageUrlForSource(candidate.sourceUrl || source?.url || source?.name);
+  }
 
   if (
     !candidate.title ||

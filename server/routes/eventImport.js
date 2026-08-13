@@ -6,6 +6,7 @@ import Event from "../models/Event.js";
 import EventSource from "../models/EventSource.js";
 import ImportCandidate from "../models/ImportCandidate.js";
 import { runEventImport } from "../services/eventImporter/runEventImport.js";
+import { getFallbackImageUrlForSource } from "../services/eventImporter/imageDiscovery.js";
 import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
 const router = express.Router();
@@ -83,7 +84,9 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     latitude: merged.latitude,
     longitude: merged.longitude,
     location: [venue, address].filter(Boolean).join(" - ") || undefined,
-    imageUrl: normalizeString(merged.imageUrl),
+    imageUrl:
+      normalizeString(merged.imageUrl) ||
+      getFallbackImageUrlForSource(sourceUrl || merged.sourceName),
     bookingUrl: ticketUrl || sourceUrl,
     bookingRequired: false,
     priceRange: normalizeString(merged.price),

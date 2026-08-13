@@ -3,6 +3,10 @@ import ImportCandidate from "../models/ImportCandidate.js";
 import { parseEventDate, parseEventTime } from "../services/eventImporter/dateParsing.js";
 import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/detectDuplicate.js";
 import { extractEvents } from "../services/eventImporter/extractEvents.js";
+import {
+  findBestImageUrlFromHtml,
+  getFallbackImageUrlForSource,
+} from "../services/eventImporter/imageDiscovery.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
 
 describe("event importer helpers", () => {
@@ -423,6 +427,30 @@ describe("event importer helpers", () => {
     });
     expect(candidate.recurrence.weekdays).to.deep.equal(["Friday"]);
     expect(candidate.confidenceScore).to.be.at.least(90);
+  });
+
+  it("finds event images from common detail page metadata", () => {
+    const imageUrl = findBestImageUrlFromHtml(
+      `
+        <html>
+          <head>
+            <meta property="og:image" content="/uploads/event-hero.webp" />
+          </head>
+          <body>
+            <img src="/images/logo.png" />
+          </body>
+        </html>
+      `,
+      "https://example.com/events/live-music"
+    );
+
+    expect(imageUrl).to.equal("https://example.com/uploads/event-hero.webp");
+  });
+
+  it("provides a fallback image for known source pages", () => {
+    expect(
+      getFallbackImageUrlForSource("https://www.banfflakelouise.com/events")
+    ).to.match(/^https:\/\/banfflakelouise\.bynder\.com\/.+\.jpg$/);
   });
 
   it("extracts Banff Lake Louise Next.js event cards", () => {
