@@ -19,6 +19,7 @@ import { useTheme } from "../../context/ThemeContext";
 import {
   approveHighConfidenceImportCandidates,
   approveImportCandidate,
+  cleanupStaleImportCandidates,
   fetchImportCandidates,
   rejectImportCandidate,
   runEventImporter,
@@ -192,6 +193,22 @@ export default function EventImportReviewScreen() {
     }
   }
 
+  async function handleCleanupStale() {
+    try {
+      setWorking(true);
+      const result = await cleanupStaleImportCandidates(token);
+      Alert.alert(
+        "Bad imports cleaned",
+        `${result.deletedCount || 0} stale date-title candidates removed.`
+      );
+      await loadCandidates();
+    } catch (cleanupError) {
+      Alert.alert("Could not clean imports", cleanupError.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
   if (!user?.isAdmin) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -244,6 +261,15 @@ export default function EventImportReviewScreen() {
           >
             <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
               Approve All High Confidence ({highConfidenceCount})
+            </Text>
+          </Pressable>
+          <Pressable
+            disabled={working}
+            onPress={handleCleanupStale}
+            style={[styles.secondaryButton, { borderColor: theme.border }]}
+          >
+            <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+              Clean Bad Imports
             </Text>
           </Pressable>
         </View>

@@ -196,6 +196,23 @@ router.post("/candidates/approve-high-confidence", authMiddleware, isAdmin, asyn
   }
 });
 
+router.post("/candidates/cleanup-stale", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const result = await ImportCandidate.deleteMany({
+      status: "pending",
+      title: /^Date:/,
+    });
+
+    return res.json({
+      message: "Stale date-title import candidates removed.",
+      deletedCount: result.deletedCount || 0,
+    });
+  } catch (error) {
+    console.error("Error cleaning stale import candidates:", error);
+    return res.status(500).json({ message: "Could not clean stale import candidates." });
+  }
+});
+
 router.post("/run", authMiddleware, isAdmin, async (req, res) => {
   try {
     const summary = await runEventImport();

@@ -305,6 +305,26 @@ export async function approveHighConfidenceImportCandidates(token) {
   return data;
 }
 
+export async function cleanupStaleImportCandidates(token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/cleanup-stale`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to clean stale imports (${res.status})`),
+      "We couldn't clean stale imported events right now."
+    );
+  }
+
+  return data;
+}
+
 export async function runEventImporter(token) {
   const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/run`, {
     method: "POST",

@@ -2,6 +2,17 @@ import * as cheerio from "cheerio";
 
 const EVENT_SELECTOR =
   "[class*='event' i], [id*='event' i], article, li, .card";
+const KNOWN_BANFF_CENTRE_VENUES = [
+  "Jeanne & Peter Lougheed Building",
+  "Margaret Greenham Theatre",
+  "Rolston Recital Hall",
+  "Walter Phillips Gallery",
+  "Jenny Belzberg Theatre",
+  "Eric Harvie Theatre",
+  "Glyde Hall",
+  "CLVB '33",
+  "Le Café",
+];
 
 function cleanText(value) {
   return String(value || "")
@@ -16,6 +27,17 @@ function resolveUrl(value, baseUrl) {
   } catch {
     return undefined;
   }
+}
+
+function getKnownVenueFromText(text) {
+  const afterDate = cleanText(text).replace(
+    /^Date:\s+.+?\d{4}(?:\s*@\s*\d{1,2}:\d{2}\s*(?:AM|PM))?(?:\s*-\s*.+?\d{4})?\s+/i,
+    ""
+  );
+
+  return KNOWN_BANFF_CENTRE_VENUES.find((venue) =>
+    afterDate.toLowerCase().startsWith(venue.toLowerCase())
+  );
 }
 
 function readJsonLdEvents($, sourceUrl) {
@@ -76,14 +98,26 @@ function readGenericHtmlEvents($, sourceUrl) {
     const text = cleanText(node.text());
     if (text.length < 30 || text.length > 3000) return;
 
+    // Banff Centre pages expose nested date/venue fragments. Keep only full
+    // event cards so review candidates do not get titles like "Date: Thu...".
+    if (
+      sourceUrl.includes("banffcentre.ca") &&
+      text.startsWith("Date:") &&
+      (text.length < 90 || !/(View Event|Attend Free|View Past Event|\$\d)/i.test(text))
+    ) {
+      return;
+    }
+
     const title =
       cleanText(node.find("h1,h2,h3,h4,[class*='title' i]").first().text()) ||
       cleanText(node.attr("aria-label")) ||
       text.slice(0, 90);
     if (!title || title.length < 3) return;
+    if (/^Date:/i.test(title)) return;
 
     const link = node.find("a[href]").first().attr("href");
     const image = node.find("img[src]").first().attr("src");
+    const venue = getKnownVenueFromText(text);
     const key = `${title.toLowerCase()}|${text.slice(0, 120).toLowerCase()}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -92,6 +126,7 @@ function readGenericHtmlEvents($, sourceUrl) {
       title,
       description: text,
       dateText: text,
+      venue,
       sourceUrl: resolveUrl(link, sourceUrl) || sourceUrl,
       imageUrl: resolveUrl(image, sourceUrl),
       extractionMethod: "generic-html",

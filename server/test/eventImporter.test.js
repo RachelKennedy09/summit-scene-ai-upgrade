@@ -2,6 +2,7 @@ import { expect } from "chai";
 import ImportCandidate from "../models/ImportCandidate.js";
 import { parseEventDate, parseEventTime } from "../services/eventImporter/dateParsing.js";
 import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/detectDuplicate.js";
+import { extractEvents } from "../services/eventImporter/extractEvents.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
 
 describe("event importer helpers", () => {
@@ -47,6 +48,29 @@ describe("event importer helpers", () => {
       sourceName: "Banff Test Calendar",
     });
     expect(candidate.confidenceScore).to.be.at.least(90);
+  });
+
+  it("extracts full Banff Centre event cards without date-only titles", () => {
+    const events = extractEvents(
+      `
+        <div class="event-card">
+          <span>Date: Thu, Aug 13 2026 @ 7:30 PM</span>
+        </div>
+        <article class="event-card">
+          <span>Date: Thu, Aug 13 2026 @ 7:30 PM Rolston Recital Hall</span>
+          <h3>Jazz & Sonic Arts Concert 2</h3>
+          <p>Simon Barker and Melissa Aldana unite live for one adventurous night.</p>
+          <a href="/events/jazz-sonic-arts-concert-2">View Event $45.00</a>
+        </article>
+      `,
+      source
+    );
+
+    expect(events).to.have.length(1);
+    expect(events[0]).to.include({
+      title: "Jazz & Sonic Arts Concert 2",
+      venue: "Rolston Recital Hall",
+    });
   });
 
   it("detects likely duplicate existing events", () => {
