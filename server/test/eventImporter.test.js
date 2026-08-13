@@ -3,10 +3,6 @@ import ImportCandidate from "../models/ImportCandidate.js";
 import { parseEventDate, parseEventTime } from "../services/eventImporter/dateParsing.js";
 import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/detectDuplicate.js";
 import { extractEvents } from "../services/eventImporter/extractEvents.js";
-import {
-  findBestImageUrlFromHtml,
-  getFallbackImageUrlForSource,
-} from "../services/eventImporter/imageDiscovery.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
 
 describe("event importer helpers", () => {
@@ -51,6 +47,11 @@ describe("event importer helpers", () => {
       venue: "The Lodge",
       sourceName: "Banff Test Calendar",
     });
+    expect(candidate.description).to.equal(
+      "Live Music at the Lodge is listed for 2026-09-20, 7:00 PM at The Lodge in Canmore. Details are attributed to Banff Test Calendar; view the organizer website for the latest information."
+    );
+    expect(candidate.imageUrl).to.equal(undefined);
+    expect(candidate.rawExtractedData).to.not.have.property("description");
     expect(candidate.confidenceScore).to.be.at.least(90);
   });
 
@@ -301,7 +302,6 @@ describe("event importer helpers", () => {
       venue: "SkiBig3",
       category: "Outdoors & Sports",
       sourceUrl: "https://www.skibig3.com/events/mt-slushmore/",
-      imageUrl: "https://www.skibig3.com/images/slush-cup.jpg",
     });
     expect(events[1]).to.include({
       title: "Spring Ski Festival",
@@ -427,30 +427,6 @@ describe("event importer helpers", () => {
     });
     expect(candidate.recurrence.weekdays).to.deep.equal(["Friday"]);
     expect(candidate.confidenceScore).to.be.at.least(90);
-  });
-
-  it("finds event images from common detail page metadata", () => {
-    const imageUrl = findBestImageUrlFromHtml(
-      `
-        <html>
-          <head>
-            <meta property="og:image" content="/uploads/event-hero.webp" />
-          </head>
-          <body>
-            <img src="/images/logo.png" />
-          </body>
-        </html>
-      `,
-      "https://example.com/events/live-music"
-    );
-
-    expect(imageUrl).to.equal("https://example.com/uploads/event-hero.webp");
-  });
-
-  it("provides a fallback image for known source pages", () => {
-    expect(
-      getFallbackImageUrlForSource("https://www.banfflakelouise.com/events")
-    ).to.match(/^https:\/\/banfflakelouise\.bynder\.com\/.+\.jpg$/);
   });
 
   it("extracts Banff Lake Louise Next.js event cards", () => {

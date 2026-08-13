@@ -12,7 +12,8 @@
     "web": "expo start --web",
     "import-events": "npm --prefix server run import-events",
     "seed:event-sources": "npm --prefix server run seed:event-sources",
-    "repair:imported-event-ranges": "npm --prefix server run repair:imported-event-ranges"
+    "repair:imported-event-ranges": "npm --prefix server run repair:imported-event-ranges",
+    "repair:imported-event-compliance": "npm --prefix server run repair:imported-event-compliance"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

@@ -50,6 +50,66 @@ function normalizeCategory(value, text = "") {
   )?.category || "Other";
 }
 
+export function buildOriginalSummary({
+  title,
+  startDate,
+  endDate,
+  startTime,
+  endTime,
+  venue,
+  town,
+  price,
+  sourceName,
+}) {
+  const where = [venue, town].filter(Boolean).join(" in ");
+  const timeText = [startTime, endTime].filter(Boolean).join(" to ");
+  const dateText = endDate && endDate !== startDate
+    ? `${startDate} to ${endDate}`
+    : startDate;
+  const parts = [];
+
+  if (title && dateText && where) {
+    parts.push(`${title} is listed for ${dateText}${timeText ? `, ${timeText}` : ""} at ${where}.`);
+  } else if (title && dateText) {
+    parts.push(`${title} is listed for ${dateText}${timeText ? `, ${timeText}` : ""}.`);
+  } else if (title && where) {
+    parts.push(`${title} is listed at ${where}.`);
+  } else if (title) {
+    parts.push(`${title} is listed as an upcoming event.`);
+  }
+
+  if (price) {
+    parts.push(`Price: ${price}.`);
+  }
+
+  if (sourceName) {
+    parts.push(`Details are attributed to ${sourceName}; view the organizer website for the latest information.`);
+  } else {
+    parts.push("View the organizer website for the latest information.");
+  }
+
+  return parts.join(" ");
+}
+
+export function buildFactualRawExtractedData(extracted, source) {
+  return {
+    title: cleanText(extracted?.title),
+    dateText: cleanText(extracted?.dateText),
+    startDate: cleanText(extracted?.startDate),
+    endDate: cleanText(extracted?.endDate),
+    startTime: cleanText(extracted?.startTime),
+    endTime: cleanText(extracted?.endTime),
+    venue: cleanText(extracted?.venue),
+    address: cleanText(extracted?.address),
+    town: cleanText(extracted?.town || source?.town),
+    price: cleanText(extracted?.price),
+    ticketUrl: cleanText(extracted?.ticketUrl),
+    sourceUrl: cleanText(extracted?.sourceUrl || source?.url),
+    sourceName: cleanText(source?.name),
+    extractionMethod: cleanText(extracted?.extractionMethod),
+  };
+}
+
 function todayString(now = new Date()) {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -161,10 +221,24 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
   const category = normalizeCategory(extracted?.category, text);
   const title = cleanText(extracted?.title);
   const venue = cleanText(extracted?.venue);
+  const startTime = cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text);
+  const endTime = cleanText(extracted?.endTime);
+  const price = cleanText(extracted?.price);
+  const sourceName = cleanText(source?.name);
 
   const candidate = {
     title,
-    description: cleanText(extracted?.description),
+    description: buildOriginalSummary({
+      title,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      venue,
+      town,
+      price,
+      sourceName,
+    }),
     town,
     category,
     categories: [category],
@@ -174,17 +248,17 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     longitude: extracted?.longitude,
     startDate,
     endDate: endDate && endDate !== startDate ? endDate : undefined,
-    startTime: cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text),
-    endTime: cleanText(extracted?.endTime),
+    startTime,
+    endTime,
     scheduleType,
     recurrence: scheduleType === "recurring" ? recurrence || { frequency: "daily" } : undefined,
-    price: cleanText(extracted?.price),
+    price,
     ticketUrl: cleanText(extracted?.ticketUrl),
     sourceUrl: cleanText(extracted?.sourceUrl || source?.url),
-    sourceName: cleanText(source?.name),
+    sourceName,
     source: source?._id,
-    imageUrl: cleanText(extracted?.imageUrl),
-    rawExtractedData: extracted,
+    imageUrl: undefined,
+    rawExtractedData: buildFactualRawExtractedData(extracted, source),
   };
 
   candidate.confidenceScore = scoreCandidate(candidate, notes);

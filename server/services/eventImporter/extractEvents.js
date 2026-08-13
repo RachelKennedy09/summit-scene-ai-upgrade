@@ -259,7 +259,6 @@ function readJsonLdEvents($, sourceUrl) {
         .forEach((item) => {
           events.push({
             title: cleanText(item.name),
-            description: cleanText(item.description),
             dateText: cleanText([item.startDate, item.endDate].filter(Boolean).join(" - ")),
             startDate: item.startDate,
             endDate: item.endDate,
@@ -271,10 +270,8 @@ function readJsonLdEvents($, sourceUrl) {
               cleanText(item.location?.address),
             price: cleanText(item.offers?.price || item.offers?.lowPrice),
             ticketUrl: resolveUrl(item.offers?.url || item.url, sourceUrl),
-            imageUrl: resolveUrl(Array.isArray(item.image) ? item.image[0] : item.image, sourceUrl),
             sourceUrl: resolveUrl(item.url, sourceUrl) || sourceUrl,
             extractionMethod: "json-ld",
-            raw: item,
           });
         });
     } catch {
@@ -325,7 +322,6 @@ function readDatedLinkEvents($, sourceUrl) {
 
     events.push({
       title: parsed.title,
-      description: cleanText(node.closest("article,li,.card,[class*='event' i]").text()) || parsed.title,
       dateText: parsed.dateText,
       startTime: parsed.startTime,
       venue: knownDetails.venue,
@@ -333,12 +329,7 @@ function readDatedLinkEvents($, sourceUrl) {
       category: knownDetails.category,
       ticketUrl: resolvedLink,
       sourceUrl: resolvedLink,
-      imageUrl: resolveUrl(
-        node.closest("article,li,.card,[class*='event' i]").find("img[src]").first().attr("src"),
-        sourceUrl
-      ),
       extractionMethod: "dated-link",
-      raw: { text: cleanText(node.text()) },
     });
   });
 
@@ -514,9 +505,7 @@ function readExploreCanmoreEvents($, sourceUrl) {
       category: inferExploreCanmoreCategory(`${title} ${description}`),
       ticketUrl: ticketLink,
       sourceUrl: sourceLink,
-      imageUrl: resolveUrl(card.find("img[src]").first().attr("src"), sourceUrl),
       extractionMethod: "explore-canmore-listing",
-      raw: { text: cardText },
     });
   });
 
@@ -565,9 +554,7 @@ function readSkiLouiseEvents($, sourceUrl) {
       category: inferSkiLouiseCategory(`${title} ${description}`),
       ticketUrl: sourceLink,
       sourceUrl: sourceLink,
-      imageUrl: resolveUrl(card.find("img[src]").first().attr("src"), sourceUrl),
       extractionMethod: "ski-louise-listing",
-      raw: { text: cardText },
     });
   });
 
@@ -639,9 +626,7 @@ function readSkiBig3Events($, sourceUrl) {
       category: inferSkiBig3Category(`${title} ${description}`),
       ticketUrl: sourceLink,
       sourceUrl: sourceLink,
-      imageUrl: resolveUrl(card.find("img[src]").first().attr("src"), sourceUrl),
       extractionMethod: "skibig3-card",
-      raw: { text: cardText },
     });
   });
 
@@ -710,7 +695,6 @@ function parseChateauCalendarCardText(rawText, sourceUrl) {
     ticketUrl: sourceUrl,
     sourceUrl,
     extractionMethod: "chateau-calendar-card",
-    raw: { text: cleanText(rawText) },
   };
 }
 
@@ -776,7 +760,6 @@ function buildRecurringSourceEvent({
     ticketUrl: sourceUrl,
     sourceUrl,
     extractionMethod: "known-recurring-source",
-    raw: { text: description },
   };
 }
 
@@ -879,7 +862,6 @@ function readGenericHtmlEvents($, sourceUrl) {
     if (/^Date:/i.test(title)) return;
 
     const link = node.find("a[href]").first().attr("href");
-    const image = node.find("img[src]").first().attr("src");
     const venue = getKnownVenueFromText(text);
     const key = `${title.toLowerCase()}|${text.slice(0, 120).toLowerCase()}`;
     if (seen.has(key)) return;
@@ -887,13 +869,10 @@ function readGenericHtmlEvents($, sourceUrl) {
 
     events.push({
       title,
-      description: text,
       dateText: text,
       venue,
       sourceUrl: resolveUrl(link, sourceUrl) || sourceUrl,
-      imageUrl: resolveUrl(image, sourceUrl),
       extractionMethod: "generic-html",
-      raw: { text },
     });
   });
 

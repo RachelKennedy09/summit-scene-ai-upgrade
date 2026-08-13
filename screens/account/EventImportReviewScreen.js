@@ -168,7 +168,7 @@ export default function EventImportReviewScreen() {
         : undefined,
       locationName: candidate.venue || "",
       address: candidate.address || "",
-      imageUrl: candidate.imageUrl || "",
+      imageUrl: "",
       priceRange: candidate.price || "",
       bookingUrl: link,
       sourceUrl: candidate.sourceUrl || "",

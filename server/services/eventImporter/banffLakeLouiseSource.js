@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { assertCanFetchUrl, waitForRateLimit } from "./fetchSource.js";
 
 function cleanText(value) {
   return String(value || "")
@@ -52,18 +53,6 @@ function formatAddress(address) {
     .join(", ");
 }
 
-function portableTextToPlainText(blocks) {
-  if (!Array.isArray(blocks)) return "";
-  return blocks
-    .map((block) =>
-      Array.isArray(block?.children)
-        ? block.children.map((child) => cleanText(child?.text)).join(" ")
-        : ""
-    )
-    .filter(Boolean)
-    .join("\n\n");
-}
-
 function readDetailData(html) {
   const $ = cheerio.load(html || "");
   const rawJson = $("#__NEXT_DATA__").text();
@@ -81,6 +70,8 @@ async function fetchEventDetail(item, sourceUrl) {
   const detailUrl = detailUrlForSlug(item?.slug, sourceUrl);
   if (!detailUrl) return null;
 
+  await assertCanFetchUrl(detailUrl);
+  await waitForRateLimit(detailUrl);
   const response = await fetch(detailUrl, {
     headers: {
       Accept: "text/html,application/xhtml+xml",
@@ -103,11 +94,9 @@ async function fetchEventDetail(item, sourceUrl) {
   const location = data.content
     ?.flatMap((section) => section?.locations || [])
     ?.find((item) => Number.isFinite(item?.lat) && Number.isFinite(item?.lng));
-  const description = portableTextToPlainText(data.description);
 
   return {
     title: cleanText(data.title),
-    description: description || cleanText(data.cardSummary),
     dateText: cleanText(data.dateInfo || firstDate?.start),
     startDate: firstDate?.start,
     endDate: firstDate?.end,
@@ -119,20 +108,14 @@ async function fetchEventDetail(item, sourceUrl) {
     sourceUrl: detailUrl,
     latitude: location?.lat,
     longitude: location?.lng,
-    rawDetailData: data,
   };
 }
 
 function mapTourismItemToExtractedEvent(item, sourceUrl) {
   const firstDate = Array.isArray(item?.dates) ? item.dates[0] : null;
-  const imageUrl =
-    item?.bynderImage?.defaultUrl ||
-    item?.bynderImage?.previewUrl ||
-    item?.image?.asset?.url;
 
   return {
     title: cleanText(item?.title),
-    description: cleanText(item?.cardSummary),
     category: cleanText(item?.tag),
     dateText: cleanText(item?.dateInfo || firstDate?.start),
     startDate: firstDate?.start,
@@ -140,9 +123,7 @@ function mapTourismItemToExtractedEvent(item, sourceUrl) {
     startTime: formatTimeFromIso(firstDate?.start),
     endTime: formatTimeFromIso(firstDate?.end),
     sourceUrl: detailUrlForSlug(item?.slug, sourceUrl) || sourceUrl,
-    imageUrl: resolveUrl(imageUrl, sourceUrl),
     extractionMethod: "banff-lake-louise-list-data",
-    raw: item,
   };
 }
 
@@ -186,6 +167,8 @@ async function fetchListPage(sourceUrl, page, listConfig) {
   const endpoint = new URL("/api/list-data/", sourceUrl);
   endpoint.searchParams.set("config", JSON.stringify(config));
 
+  await assertCanFetchUrl(endpoint.toString());
+  await waitForRateLimit(endpoint.toString());
   const response = await fetch(endpoint.toString(), {
     headers: {
       Accept: "application/json",
@@ -217,7 +200,12 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
   const seenUrls = new Set();
 
   for (let page = 1; page <= totalPages; page += 1) {
-    const data = await fetchListPage(source.url, page, listConfig);
+    const data = await fetchListPage(source.url, page, listConfig).catch((error) => {
+      if (/robots\.txt/i.test(error.message)) return null;
+      throw error;
+    });
+    if (!data) return null;
+
     for (const item of data.items || []) {
       const baseEvent = mapTourismItemToExtractedEvent(item, source.url);
       const detailEvent = await fetchEventDetail(item, source.url).catch(
@@ -226,10 +214,6 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
       const event = {
         ...baseEvent,
         ...(detailEvent || {}),
-        raw: {
-          listItem: item,
-          detail: detailEvent?.rawDetailData,
-        },
       };
       if (!event.title || seenUrls.has(event.sourceUrl)) continue;
       seenUrls.add(event.sourceUrl);
