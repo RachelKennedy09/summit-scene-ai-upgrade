@@ -326,6 +326,13 @@ describe("event importer helpers", () => {
           <a href="/events/free-range-country/">More details</a>
           <a href="https://www.carter-ryan.com/free-range-country">Visit Website</a>
         </article>
+        <article class="event-listing">
+          <a href="/events/nadgt/">2026 NADGT Canada Exclusive in Canmore</a>
+          <div>Aug 15</div>
+          <a href="https://www.google.com/maps/place/1988+Olympic+Way">1988 Olympic Way Canmore, Alberta, T1W 2T6</a>
+          <a href="/events/nadgt/">More details</a>
+          <a href="https://example.com/nadgt">Visit Website</a>
+        </article>
         <article class="story-card">
           <a href="/stories/things-to-do-this-summer/">Things to do in Kananaskis this Summer</a>
           <p>Featured Stories</p>
@@ -338,7 +345,7 @@ describe("event importer helpers", () => {
       }
     );
 
-    expect(events).to.have.length(2);
+    expect(events).to.have.length(3);
     expect(events[0]).to.include({
       title: "Canmore Mountain Market",
       dateText: "Aug 13",
@@ -356,6 +363,12 @@ describe("event importer helpers", () => {
       endDate: "Sep 6",
       category: "Music & Nightlife",
       sourceUrl: "https://www.explorecanmore.ca/events/free-range-country/",
+    });
+    expect(events[2]).to.include({
+      title: "2026 NADGT Canada Exclusive in Canmore",
+      dateText: "Aug 15",
+      startDate: "Aug 15",
+      sourceUrl: "https://www.explorecanmore.ca/events/nadgt/",
     });
   });
 
@@ -549,6 +562,66 @@ describe("event importer helpers", () => {
     expect(duplicate?.reason).to.equal(
       "same date, town and time with similar title"
     );
+  });
+
+  it("does not mark different recurring items from one listing page as duplicates", () => {
+    const duplicate = findDuplicateEvent(
+      {
+        title: "Dusty Boot Happy Hour - Monday to Thursday",
+        town: "Banff",
+        startDate: "2026-08-13",
+        startTime: "5:00 PM",
+        endTime: "7:00 PM",
+        venue: "The Dusty Boot Banff",
+        scheduleType: "recurring",
+        recurrence: {
+          frequency: "selected_weekdays",
+          weekdays: ["Monday", "Tuesday", "Wednesday", "Thursday"],
+        },
+        sourceUrl: "https://www.dustybootbanff.com/live-music-specials",
+      },
+      [
+        {
+          _id: "507f1f77bcf86cd799439013",
+          title: "Dusty Boot Happy Hour - Friday to Sunday",
+          town: "Banff",
+          date: "2026-08-13",
+          time: "4:00 PM",
+          endTime: "6:00 PM",
+          locationName: "The Dusty Boot Banff",
+          scheduleType: "recurring",
+          recurrence: {
+            frequency: "selected_weekdays",
+            weekdays: ["Friday", "Saturday", "Sunday"],
+          },
+          sourceUrl: "https://www.dustybootbanff.com/live-music-specials",
+        },
+      ]
+    );
+
+    expect(duplicate).to.equal(null);
+  });
+
+  it("still marks the same item from the same source link as a duplicate", () => {
+    const duplicate = findDuplicateEvent(
+      {
+        title: "Dusty Boot Happy Hour - Monday to Thursday",
+        town: "Banff",
+        startDate: "2026-08-13",
+        sourceUrl: "https://www.dustybootbanff.com/live-music-specials",
+      },
+      [
+        {
+          _id: "507f1f77bcf86cd799439014",
+          title: "Dusty Boot Happy Hour - Monday to Thursday",
+          town: "Banff",
+          date: "2026-08-13",
+          sourceUrl: "https://www.dustybootbanff.com/live-music-specials",
+        },
+      ]
+    );
+
+    expect(duplicate?.reason).to.equal("same source URL and similar title");
   });
 
   it("validates required import candidate fields with existing enums", async () => {

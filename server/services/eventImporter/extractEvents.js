@@ -346,19 +346,27 @@ function readDatedLinkEvents($, sourceUrl) {
 }
 
 function findNearbySkiLouiseCard($, linkNode) {
-  const closestCard = linkNode.closest(
+  let node = linkNode.parent();
+
+  for (let depth = 0; depth < 8 && node.length; depth += 1) {
+    const text = cleanText(node.text());
+    const title = cleanText(node.find("h1,h2,h3,h4").first().text());
+
+    if (
+      title &&
+      readDateRangeText(text) &&
+      /more details/i.test(text) &&
+      !/^the best views of the canadian rockies$/i.test(title)
+    ) {
+      return node;
+    }
+
+    node = node.parent();
+  }
+
+  return linkNode.closest(
     "article,li,.card,[class*='card' i],[class*='event' i],[class*='post' i]"
   );
-  if (closestCard.length && closestCard.find("h2,h3").length) {
-    return closestCard;
-  }
-
-  const parent = linkNode.parent();
-  if (parent.length && parent.find("h2,h3").length) {
-    return parent;
-  }
-
-  return closestCard.length ? closestCard : parent;
 }
 
 function inferSkiLouiseCategory(text) {
@@ -399,6 +407,32 @@ function inferExploreCanmoreCategory(text) {
   return "Inclusive Community";
 }
 
+function readExploreCanmoreDateText(text) {
+  const normalized = cleanText(text);
+
+  const fullRangeMatch = normalized.match(
+    new RegExp(
+      `\\b(${MONTH_PATTERN})\\.?\\s+\\d{1,2}(?:,?\\s+\\d{4})?\\s*-\\s*` +
+        `(?:(?:${MONTH_PATTERN})\\.?\\s+)?\\d{1,2},?\\s+\\d{4}\\b`,
+      "i"
+    )
+  );
+  if (fullRangeMatch) return cleanText(fullRangeMatch[0]);
+
+  const noYearRangeMatch = normalized.match(
+    new RegExp(
+      `\\b(${MONTH_PATTERN})\\.?\\s+\\d{1,2}\\s*-\\s*(?:${MONTH_PATTERN})\\.?\\s+\\d{1,2}\\b`,
+      "i"
+    )
+  );
+  if (noYearRangeMatch) return cleanText(noYearRangeMatch[0]);
+
+  const noYearSingleMatch = normalized.match(
+    new RegExp(`\\b(${MONTH_PATTERN})\\.?\\s+\\d{1,2}\\b`, "i")
+  );
+  return noYearSingleMatch ? cleanText(noYearSingleMatch[0]) : "";
+}
+
 function readGoogleAddressFromCard($, card) {
   const googleLink = card
     .find("a[href*='google.com'],a[href*='maps.google']")
@@ -414,22 +448,12 @@ function readExploreCanmoreEvents($, sourceUrl) {
   const events = [];
   const seen = new Set();
   const knownDetails = getKnownSourceDetails(sourceUrl);
-  const candidates = [
-    "article",
-    "li",
-    ".card",
-    "[class*='card' i]",
-    "[class*='event' i]",
-    "[class*='listing' i]",
-  ].join(",");
+  const candidates = ".listing,.event-listing";
 
   $(candidates).each((_, element) => {
     const card = $(element);
     const cardText = cleanText(card.text());
     if (!/more details/i.test(cardText) || /featured stories/i.test(cardText)) return;
-
-    const dateText = readDateRangeText(cardText);
-    if (!dateText) return;
 
     const titleLink = card
       .find("a[href]")
@@ -441,7 +465,12 @@ function readExploreCanmoreEvents($, sourceUrl) {
     const title =
       cleanText(card.find("h1,h2,h3,h4,[class*='title' i]").first().text()) ||
       cleanText(titleLink.text());
-    if (!title) return;
+    if (!title || /^(festivals & events|upcoming events)$/i.test(title)) return;
+
+    const dateText = readExploreCanmoreDateText(
+      cleanText(cardText.replace(title, " "))
+    );
+    if (!dateText) return;
 
     const detailsLink =
       card
@@ -513,8 +542,8 @@ function readSkiLouiseEvents($, sourceUrl) {
     const card = findNearbySkiLouiseCard($, linkNode);
     const cardText = cleanText(card.text());
     const title =
-      cleanText(card.find("h2,h3").first().text()) ||
-      cleanText(linkNode.prevAll("h2,h3").first().text());
+      cleanText(card.find("h1,h2,h3,h4").first().text()) ||
+      cleanText(linkNode.prevAll("h1,h2,h3,h4").first().text());
     const dateText = readDateRangeText(cardText);
     const description =
       cleanText(card.find("p").first().text()) ||
@@ -577,7 +606,7 @@ function readSkiBig3Events($, sourceUrl) {
           .first()
           .text()
       );
-    if (!title || /^show all$/i.test(title)) return;
+    if (!title || /^show all$/i.test(title) || title === dateText) return;
 
     const link =
       card.find("a[href]").filter((__, link) => {
@@ -874,6 +903,7 @@ function readGenericHtmlEvents($, sourceUrl) {
 export function extractEvents(html, source) {
   const $ = cheerio.load(html || "");
   const sourceUrl = source?.url || "";
+  const lowerSourceUrl = sourceUrl.toLowerCase();
   const jsonLdEvents = readJsonLdEvents($, sourceUrl);
   const nextDataEvents = readNextDataEvents($, sourceUrl);
   if (nextDataEvents.length) {
@@ -918,6 +948,20 @@ export function extractEvents(html, source) {
       ...jsonLdEvents,
       ...nextDataEvents,
       ...skiBig3Events,
+      ...knownRecurringEvents,
+    ].filter((event) => event.title);
+  }
+
+  if (
+    lowerSourceUrl.includes("chateau-lake-louise.com") ||
+    lowerSourceUrl.includes("explorecanmore.ca") ||
+    lowerSourceUrl.includes("skibig3.com") ||
+    lowerSourceUrl.includes("skilouise.com")
+  ) {
+    return [
+      ...jsonLdEvents,
+      ...nextDataEvents,
+      ...datedLinkEvents,
       ...knownRecurringEvents,
     ].filter((event) => event.title);
   }

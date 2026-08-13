@@ -25,15 +25,38 @@ function sameText(left, right) {
   return normalizeTitle(left) && normalizeTitle(left) === normalizeTitle(right);
 }
 
+function recurrenceSignature(value) {
+  const recurrence = value?.recurrence || {};
+  const weekdays = Array.isArray(recurrence.weekdays)
+    ? [...recurrence.weekdays].map((day) => String(day).toLowerCase()).sort()
+    : [];
+  const dates = Array.isArray(recurrence.dates)
+    ? [...recurrence.dates].map(String).sort()
+    : [];
+
+  return [
+    value?.scheduleType || "",
+    recurrence.frequency || "",
+    weekdays.join(","),
+    dates.join(","),
+    value?.startTime || value?.time || "",
+    value?.endTime || "",
+  ].join("|");
+}
+
 export function findDuplicateEvent(candidate, existingEvents = []) {
   const candidateUrl = String(candidate?.sourceUrl || candidate?.ticketUrl || "").trim();
+  const candidateIsRecurring =
+    candidate?.scheduleType === "recurring" || Boolean(candidate?.recurrence);
 
   for (const event of existingEvents) {
     const eventUrl = String(event?.sourceUrl || event?.bookingUrl || "").trim();
-    if (candidateUrl && eventUrl && candidateUrl === eventUrl) {
-      return { event, reason: "same source URL", score: 1 };
-    }
-
+    const eventIsRecurring =
+      event?.scheduleType === "recurring" || Boolean(event?.recurrence);
+    const recurringMismatch =
+      candidateIsRecurring &&
+      eventIsRecurring &&
+      recurrenceSignature(candidate) !== recurrenceSignature(event);
     const sameDate = candidate?.startDate && candidate.startDate === event?.date;
     const sameTown = candidate?.town && candidate.town === event?.town;
     const sameTime =
@@ -46,15 +69,24 @@ export function findDuplicateEvent(candidate, existingEvents = []) {
       sameText(candidate?.venue, event?.location);
     const titleScore = jaccardSimilarity(candidate?.title, event?.title);
 
-    if (sameDate && sameTown && titleScore >= 0.72) {
+    if (
+      candidateUrl &&
+      eventUrl &&
+      candidateUrl === eventUrl &&
+      (sameText(candidate?.title, event?.title) || titleScore >= 0.72)
+    ) {
+      return { event, reason: "same source URL and similar title", score: 1 };
+    }
+
+    if (!recurringMismatch && sameDate && sameTown && titleScore >= 0.72) {
       return { event, reason: "similar title, same date and town", score: titleScore };
     }
 
-    if (sameDate && sameTown && sameVenue && titleScore >= 0.5) {
+    if (!recurringMismatch && sameDate && sameTown && sameVenue && titleScore >= 0.5) {
       return { event, reason: "same venue/date/town with similar title", score: titleScore };
     }
 
-    if (sameDate && sameTown && sameTime && titleScore >= 0.5) {
+    if (!recurringMismatch && sameDate && sameTown && sameTime && titleScore >= 0.5) {
       return { event, reason: "same date, town and time with similar title", score: titleScore };
     }
   }
