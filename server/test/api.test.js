@@ -956,6 +956,40 @@ describe("SummitScene API", function () {
         title: `Imported Candidate ${testRunId}`,
         importedBySummitScene: true,
         sourceUrl: `https://example.com/imported-${testRunId}`,
+        bookingUrl: `https://example.com/imported-${testRunId}`,
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
+  it("should prefer a candidate ticket URL over the source URL when approving", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    try {
+      const candidate = await ImportCandidate.create({
+        title: `Ticketed Imported Candidate ${testRunId}`,
+        description: "Candidate with separate ticket link.",
+        town: "Banff",
+        category: "Live Music",
+        categories: ["Live Music"],
+        venue: "Candidate Venue",
+        address: "100 Banff Avenue, Banff, AB",
+        startDate: "2026-12-31",
+        sourceUrl: `https://example.com/source-${testRunId}`,
+        ticketUrl: `https://tickets.example.com/event-${testRunId}`,
+        sourceName: "Example Import Source",
+        confidenceScore: 95,
+      });
+
+      const res = await request(app)
+        .post(`/api/event-import/candidates/${candidate._id}/approve`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send();
+
+      expect(res.status).to.equal(201);
+      expect(res.body.event).to.include({
+        sourceUrl: `https://example.com/source-${testRunId}`,
+        bookingUrl: `https://tickets.example.com/event-${testRunId}`,
       });
     } finally {
       process.env.ADMIN_EMAILS = originalAdminEmails;

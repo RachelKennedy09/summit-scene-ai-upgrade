@@ -20,6 +20,8 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
   const merged = { ...candidate.toObject(), ...overrides };
   const venue = normalizeString(merged.venue);
   const address = normalizeString(merged.address);
+  const sourceUrl = normalizeString(merged.sourceUrl);
+  const ticketUrl = normalizeString(merged.ticketUrl);
 
   return {
     title: normalizeString(merged.title),
@@ -38,11 +40,11 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     address,
     location: [venue, address].filter(Boolean).join(" - ") || undefined,
     imageUrl: normalizeString(merged.imageUrl),
-    bookingUrl: normalizeString(merged.ticketUrl),
+    bookingUrl: ticketUrl || sourceUrl,
     bookingRequired: false,
     priceRange: normalizeString(merged.price),
     importedBySummitScene: true,
-    sourceUrl: normalizeString(merged.sourceUrl),
+    sourceUrl,
     sourceName: normalizeString(merged.sourceName),
     createdBy: userId,
   };
