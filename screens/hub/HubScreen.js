@@ -212,9 +212,9 @@ export default function HubScreen() {
     };
   }, [isFocused, loadEvents]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     loadEvents({ nextPage: 1, mode: "refresh" });
-  };
+  }, [loadEvents]);
 
   const handleLoadMore = useCallback(() => {
     if (loading || refreshing || loadingMore || !hasMore) {
@@ -547,6 +547,171 @@ export default function HubScreen() {
     isNearMeEnabled ||
     Boolean(activeSearch);
 
+  const handleRetryLoad = useCallback(() => {
+    loadEvents({ nextPage: 1, mode: "initial" });
+  }, [loadEvents]);
+
+  const handleOpenEvent = useCallback(
+    (event) => {
+      navigation.navigate("EventDetail", { event, eventId: event._id });
+    },
+    [navigation]
+  );
+
+  const keyExtractor = useCallback((item) => {
+    if (item._listType) {
+      return item.id || item._searchKey || item._id?.toString();
+    }
+
+    return item._id?.toString() || `${item.title}-${item.date}-${item.time}`;
+  }, []);
+
+  const renderEvent = useCallback(
+    ({ item }) => {
+      if (item?._listType === "sectionHeader") {
+        return (
+          <View
+            style={[
+              styles.feedSectionHeader,
+              { borderColor: theme.border, backgroundColor: theme.background },
+            ]}
+          >
+            <Text style={[styles.feedSectionTitle, { color: theme.text }]}>
+              {item.title}
+            </Text>
+            {item.subtitle ? (
+              <Text
+                style={[styles.feedSectionSubtitle, { color: theme.textMuted }]}
+              >
+                {item.subtitle}
+              </Text>
+            ) : null}
+          </View>
+        );
+      }
+
+      if (item._listType === "buddyPost") {
+        return (
+          <BuddyPostCard
+            post={item}
+            theme={theme}
+            currentUserId={user?._id || user?.id}
+            onOpenEvent={handleOpenEvent}
+          />
+        );
+      }
+
+      return <EventCard event={item} onPress={() => handleOpenEvent(item)} />;
+    },
+    [handleOpenEvent, theme, user?._id, user?.id]
+  );
+
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return <View style={styles.footerSpacer} />;
+
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.accent} />
+        <Text style={[styles.footerLoaderText, { color: theme.textMuted }]}>
+          Loading more events...
+        </Text>
+      </View>
+    );
+  }, [loadingMore, theme.accent, theme.textMuted]);
+
+  const listHeader = useMemo(
+    () => (
+      <>
+        <View style={styles.logoHeader}>
+          <Image source={logo} style={styles.hubLogo} resizeMode="contain" />
+        </View>
+        <View style={styles.greetingHeader}>
+          <View
+            style={[
+              styles.profileAvatar,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            {avatarSource ? (
+              <Image source={avatarSource} style={styles.profileAvatarImage} />
+            ) : (
+              <Text style={[styles.profileAvatarInitial, { color: theme.text }]}>
+                {avatarInitial}
+              </Text>
+            )}
+          </View>
+          <View style={styles.greetingCopy}>
+            <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
+              Hello {displayName}! Today in the Bow Valley.
+            </Text>
+            <Text style={[styles.hubSubtitle, { color: theme.textMuted }]}>
+              {hubSubtitle}
+            </Text>
+          </View>
+        </View>
+        <HubFilters
+          selectedTown={selectedTown}
+          selectedListingType={selectedListingType}
+          selectedCategory={selectedCategory}
+          selectedDateFilter={selectedDateFilter}
+          resultSummary={resultSummary}
+          error={error}
+          towns={TOWNS}
+          listingTypes={LISTING_TYPES}
+          categories={CATEGORIES}
+          categoryGroups={CATEGORY_GROUPS}
+          dateFilters={DATE_FILTERS}
+          onSelectTown={handleSelectTownFilter}
+          onSelectListingType={handleSelectListingTypeFilter}
+          onSelectCategory={handleSelectCategoryFilter}
+          onSelectDateFilter={handleSelectDateFilter}
+          isNearMeEnabled={isNearMeEnabled}
+          isNearMeLoading={nearMeLoading}
+          nearMeMessage={nearMeMessage}
+          onToggleNearMe={handleToggleNearMe}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={handleClearFilters}
+          searchQuery={searchQuery}
+          activeSearch={activeSearch}
+          searchStatus={searchStatus}
+          onChangeSearchQuery={setSearchQuery}
+          onApplySearch={handleApplySearch}
+          onClearSearch={handleClearSearch}
+          onRetry={handleRetryLoad}
+        />
+      </>
+    ),
+    [
+      activeSearch,
+      avatarInitial,
+      avatarSource,
+      displayName,
+      error,
+      handleApplySearch,
+      handleClearFilters,
+      handleClearSearch,
+      handleRetryLoad,
+      handleSelectCategoryFilter,
+      handleSelectDateFilter,
+      handleSelectListingTypeFilter,
+      handleSelectTownFilter,
+      handleToggleNearMe,
+      hasActiveFilters,
+      hubSubtitle,
+      isNearMeEnabled,
+      nearMeLoading,
+      nearMeMessage,
+      resultSummary,
+      searchQuery,
+      searchStatus,
+      selectedCategory,
+      selectedDateFilter,
+      selectedListingType,
+      selectedTown,
+      theme,
+    ]
+  );
+
   // Inital loading state (before there are any events)
   if (loading && !refreshing && events.length === 0) {
     return (
@@ -577,7 +742,7 @@ export default function HubScreen() {
           </Text>
           <Pressable
             style={[styles.retryButton, { borderColor: theme.accent }]}
-            onPress={() => loadEvents({ nextPage: 1, mode: "initial" })}
+            onPress={handleRetryLoad}
           >
             <Text style={[styles.retryText, { color: theme.accent }]}>
               Try again
@@ -588,63 +753,6 @@ export default function HubScreen() {
     );
   }
 
-  // Renders each event as a tappable card taht leads to EventDetail.
-  const renderEvent = ({ item }) => {
-    if (item?._listType === "sectionHeader") {
-      return (
-        <View
-          style={[
-            styles.feedSectionHeader,
-            { borderColor: theme.border, backgroundColor: theme.background },
-          ]}
-        >
-          <Text style={[styles.feedSectionTitle, { color: theme.text }]}>
-            {item.title}
-          </Text>
-          {item.subtitle ? (
-            <Text
-              style={[styles.feedSectionSubtitle, { color: theme.textMuted }]}
-            >
-              {item.subtitle}
-            </Text>
-          ) : null}
-        </View>
-      );
-    }
-
-    return (
-      item._listType === "buddyPost" ? (
-        <BuddyPostCard
-          post={item}
-          theme={theme}
-          currentUserId={user?._id || user?.id}
-          onOpenEvent={(event) =>
-            navigation.navigate("EventDetail", { event, eventId: event._id })
-          }
-        />
-      ) :
-      <EventCard
-        event={item}
-        onPress={() =>
-          navigation.navigate("EventDetail", { event: item, eventId: item._id })
-        }
-      />
-    );
-  };
-
-  const renderFooter = () => {
-    if (!loadingMore) return <View style={styles.footerSpacer} />;
-
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={theme.accent} />
-        <Text style={[styles.footerLoaderText, { color: theme.textMuted }]}>
-          Loading more events...
-        </Text>
-      </View>
-    );
-  };
-
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
@@ -653,12 +761,13 @@ export default function HubScreen() {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <FlatList
           data={eventsToShow}
-          keyExtractor={(item) =>
-            item._listType
-              ? item.id || item._searchKey || item._id?.toString()
-              : item._id?.toString() || `${item.title}-${item.date}-${item.time}`
-          }
+          keyExtractor={keyExtractor}
           renderItem={renderEvent}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          updateCellsBatchingPeriod={80}
+          windowSize={7}
+          removeClippedSubviews
           contentContainerStyle={
             eventsToShow.length === 0
               ? styles.emptyContainer
@@ -676,62 +785,7 @@ export default function HubScreen() {
             />
           }
           // HubFilters renders the filter chips + greeting + result summary at the top of the list.
-          ListHeaderComponent={
-            <>
-              <View style={styles.logoHeader}>
-                <Image source={logo} style={styles.hubLogo} resizeMode="contain" />
-              </View>
-              <View style={styles.greetingHeader}>
-                <View style={[styles.profileAvatar, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  {avatarSource ? (
-                    <Image source={avatarSource} style={styles.profileAvatarImage} />
-                  ) : (
-                    <Text style={[styles.profileAvatarInitial, { color: theme.text }]}>
-                      {avatarInitial}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.greetingCopy}>
-                  <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
-                    Hello {displayName}! Today in the Bow Valley.
-                  </Text>
-                  <Text style={[styles.hubSubtitle, { color: theme.textMuted }]}>
-                    {hubSubtitle}
-                  </Text>
-                </View>
-              </View>
-              <HubFilters
-                selectedTown={selectedTown}
-                selectedListingType={selectedListingType}
-                selectedCategory={selectedCategory}
-                selectedDateFilter={selectedDateFilter}
-                resultSummary={resultSummary}
-                error={error}
-                towns={TOWNS}
-                listingTypes={LISTING_TYPES}
-                categories={CATEGORIES}
-                categoryGroups={CATEGORY_GROUPS}
-                dateFilters={DATE_FILTERS}
-                onSelectTown={handleSelectTownFilter}
-                onSelectListingType={handleSelectListingTypeFilter}
-                onSelectCategory={handleSelectCategoryFilter}
-                onSelectDateFilter={handleSelectDateFilter}
-                isNearMeEnabled={isNearMeEnabled}
-                isNearMeLoading={nearMeLoading}
-                nearMeMessage={nearMeMessage}
-                onToggleNearMe={handleToggleNearMe}
-                hasActiveFilters={hasActiveFilters}
-                onClearFilters={handleClearFilters}
-                searchQuery={searchQuery}
-                activeSearch={activeSearch}
-                searchStatus={searchStatus}
-                onChangeSearchQuery={setSearchQuery}
-                onApplySearch={handleApplySearch}
-                onClearSearch={handleClearSearch}
-                onRetry={() => loadEvents({ nextPage: 1, mode: "initial" })}
-              />
-            </>
-          }
+          ListHeaderComponent={listHeader}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>

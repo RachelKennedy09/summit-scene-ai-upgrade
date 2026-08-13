@@ -24,14 +24,19 @@ import {
   approveHighConfidenceImportCandidates,
   approveImportCandidate,
   cleanupStaleImportCandidates,
+  createEventSource,
+  fetchEventSources,
   fetchImportCandidates,
   rejectImportCandidate,
+  retryEventSource,
   runEventImporter,
   seedStarterEventSources,
+  updateEventSource,
   updateImportCandidate,
 } from "../../services/adminApi";
 
 const TOWNS = ["Banff", "Canmore", "Lake Louise"];
+const SOURCE_TYPES = ["html", "json-ld", "rss", "custom"];
 
 function getCandidateId(candidate) {
   return String(candidate?._id || candidate?.id || "");
@@ -54,18 +59,26 @@ export default function EventImportReviewScreen() {
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [sources, setSources] = useState([]);
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [previewing, setPreviewing] = useState(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerTarget, setTimePickerTarget] = useState(null);
+  const [sourceEditing, setSourceEditing] = useState(null);
+  const [sourceForm, setSourceForm] = useState({});
 
-  async function loadCandidates() {
+  async function loadImportData() {
     if (!user?.isAdmin || !token) return;
     try {
       setLoading(true);
       setError("");
-      setCandidates(await fetchImportCandidates(token, "pending"));
+      const [nextCandidates, nextSources] = await Promise.all([
+        fetchImportCandidates(token, "pending"),
+        fetchEventSources(token),
+      ]);
+      setCandidates(nextCandidates);
+      setSources(nextSources);
     } catch (loadError) {
       setError(loadError.message || "Could not load event imports.");
     } finally {
@@ -74,7 +87,7 @@ export default function EventImportReviewScreen() {
   }
 
   useEffect(() => {
-    loadCandidates();
+    loadImportData();
   }, [token, user?.isAdmin]);
 
   async function handleApprove(candidate) {
@@ -238,7 +251,7 @@ export default function EventImportReviewScreen() {
         "Event import completed",
         `Sources checked: ${summary.sourcesChecked}\nEvents discovered: ${summary.eventsDiscovered}\nNew candidates: ${summary.newCandidates}\nDuplicates: ${summary.duplicates}\nErrors: ${summary.errors}${sourceErrorText}`
       );
-      await loadCandidates();
+      await loadImportData();
     } catch (runError) {
       Alert.alert("Could not run importer", runError.message);
     } finally {
@@ -269,7 +282,7 @@ export default function EventImportReviewScreen() {
         "High confidence events approved",
         `${result.approved?.length || 0} approved, ${result.errors?.length || 0} errors.`
       );
-      await loadCandidates();
+      await loadImportData();
     } catch (approveError) {
       Alert.alert("Could not approve events", approveError.message);
     } finally {
@@ -285,9 +298,88 @@ export default function EventImportReviewScreen() {
         "Bad imports cleaned",
         `${result.deletedCount || 0} stale date-title candidates removed.`
       );
-      await loadCandidates();
+      await loadImportData();
     } catch (cleanupError) {
       Alert.alert("Could not clean imports", cleanupError.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  function openSourceEditor(source = null) {
+    setSourceEditing(source || { isNew: true });
+    setSourceForm({
+      name: source?.name || "",
+      url: source?.url || "",
+      town: source?.town || "Banff",
+      sourceType: source?.sourceType || "html",
+      enabled: source?.enabled !== false,
+      trusted: Boolean(source?.trusted),
+    });
+  }
+
+  async function handleSaveSource() {
+    try {
+      setWorking(true);
+      if (sourceEditing?.isNew) {
+        const created = await createEventSource(sourceForm, token);
+        setSources((current) => [...current, created].sort((a, b) =>
+          String(a.name || "").localeCompare(String(b.name || ""))
+        ));
+      } else {
+        const sourceId = getCandidateId(sourceEditing);
+        const updated = await updateEventSource(sourceId, sourceForm, token);
+        setSources((current) =>
+          current.map((source) =>
+            getCandidateId(source) === sourceId ? updated : source
+          )
+        );
+      }
+      setSourceEditing(null);
+    } catch (sourceError) {
+      Alert.alert("Could not save source", sourceError.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleToggleSource(source) {
+    const sourceId = getCandidateId(source);
+    if (!sourceId) return;
+
+    try {
+      setWorking(true);
+      const updated = await updateEventSource(
+        sourceId,
+        { enabled: source.enabled === false },
+        token
+      );
+      setSources((current) =>
+        current.map((item) =>
+          getCandidateId(item) === sourceId ? updated : item
+        )
+      );
+    } catch (sourceError) {
+      Alert.alert("Could not update source", sourceError.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleRetrySource(source) {
+    const sourceId = getCandidateId(source);
+    if (!sourceId) return;
+
+    try {
+      setWorking(true);
+      const summary = await retryEventSource(sourceId, token);
+      Alert.alert(
+        "Source retry completed",
+        `Events discovered: ${summary.eventsDiscovered}\nNew candidates: ${summary.newCandidates}\nDuplicates: ${summary.duplicates}\nErrors: ${summary.errors}`
+      );
+      await loadImportData();
+    } catch (sourceError) {
+      Alert.alert("Could not retry source", sourceError.message);
     } finally {
       setWorking(false);
     }
@@ -356,6 +448,102 @@ export default function EventImportReviewScreen() {
               Clean Bad Imports
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Event sources
+          </Text>
+          <Pressable
+            disabled={working}
+            onPress={() => openSourceEditor()}
+            style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+          >
+            <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+              Add Source
+            </Text>
+          </Pressable>
+        </View>
+
+        {sources.map((source) => (
+          <View
+            key={getCandidateId(source)}
+            style={[
+              styles.sourceCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleWrap}>
+                <Text style={[styles.title, { color: theme.text }]}>
+                  {source.name}
+                </Text>
+                <Text style={[styles.meta, { color: theme.textMuted }]}>
+                  {[source.town, source.sourceType, source.enabled === false ? "Disabled" : "Enabled"]
+                    .filter(Boolean)
+                    .join(" | ")}
+                </Text>
+                <Text
+                  style={[styles.meta, { color: theme.textMuted }]}
+                  numberOfLines={1}
+                >
+                  {source.url}
+                </Text>
+              </View>
+              <Text style={[styles.sourceStatus, { color: theme.accent }]}>
+                {source.trusted ? "Trusted" : "Source"}
+              </Text>
+            </View>
+            <Text style={[styles.meta, { color: theme.textMuted }]}>
+              Failures: {source.consecutiveFailures || 0}
+            </Text>
+            <View style={styles.rowActions}>
+              <Pressable
+                disabled={working}
+                onPress={() => handleToggleSource(source)}
+                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+              >
+                <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                  {source.enabled === false ? "Enable" : "Disable"}
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
+                onPress={() => openSourceEditor(source)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Edit
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
+                onPress={() => handleRetrySource(source)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Retry
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => source.url && Linking.openURL(source.url)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Open
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            New events found
+          </Text>
+          <Text style={[styles.meta, { color: theme.textMuted }]}>
+            {candidates.length} pending
+          </Text>
         </View>
 
         {loading ? (
@@ -715,6 +903,180 @@ export default function EventImportReviewScreen() {
           </View>
         </View>
       </Modal>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={Boolean(sourceEditing)}
+        onRequestClose={() => setSourceEditing(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              {sourceEditing?.isNew ? "Add event source" : "Edit event source"}
+            </Text>
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalFields}
+              keyboardShouldPersistTaps="handled"
+            >
+              {[
+                ["name", "Name"],
+                ["url", "URL"],
+              ].map(([key, label]) => (
+                <View key={key} style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                    {label}
+                  </Text>
+                  <TextInput
+                    value={sourceForm[key] || ""}
+                    onChangeText={(value) =>
+                      setSourceForm((current) => ({ ...current, [key]: value }))
+                    }
+                    autoCapitalize={key === "url" ? "none" : "sentences"}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.background,
+                      },
+                    ]}
+                  />
+                </View>
+              ))}
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  Town
+                </Text>
+                <View style={styles.optionRow}>
+                  {TOWNS.map((town) => {
+                    const selected = (sourceForm.town || "Banff") === town;
+                    return (
+                      <Pressable
+                        key={town}
+                        onPress={() =>
+                          setSourceForm((current) => ({ ...current, town }))
+                        }
+                        style={[
+                          styles.optionChip,
+                          {
+                            borderColor: selected ? theme.accent : theme.border,
+                            backgroundColor: selected
+                              ? theme.accentSoft || theme.background
+                              : theme.background,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            { color: selected ? theme.accent : theme.text },
+                          ]}
+                        >
+                          {town}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  Source type
+                </Text>
+                <View style={styles.optionRow}>
+                  {SOURCE_TYPES.map((sourceType) => {
+                    const selected = (sourceForm.sourceType || "html") === sourceType;
+                    return (
+                      <Pressable
+                        key={sourceType}
+                        onPress={() =>
+                          setSourceForm((current) => ({ ...current, sourceType }))
+                        }
+                        style={[
+                          styles.optionChip,
+                          {
+                            borderColor: selected ? theme.accent : theme.border,
+                            backgroundColor: selected
+                              ? theme.accentSoft || theme.background
+                              : theme.background,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            { color: selected ? theme.accent : theme.text },
+                          ]}
+                        >
+                          {sourceType}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+              <View style={styles.optionRow}>
+                {[
+                  ["enabled", "Enabled"],
+                  ["trusted", "Trusted"],
+                ].map(([key, label]) => {
+                  const selected = Boolean(sourceForm[key]);
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() =>
+                        setSourceForm((current) => ({
+                          ...current,
+                          [key]: !current[key],
+                        }))
+                      }
+                      style={[
+                        styles.optionChip,
+                        {
+                          borderColor: selected ? theme.accent : theme.border,
+                          backgroundColor: selected
+                            ? theme.accentSoft || theme.background
+                            : theme.background,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          { color: selected ? theme.accent : theme.text },
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <Pressable
+                disabled={working}
+                onPress={() => setSourceEditing(null)}
+                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+              >
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
+                onPress={handleSaveSource}
+                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+              >
+                <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                  Save
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <DatePickerModal
         key={datePickerVisible || "event-import-date-picker"}
         visible={Boolean(datePickerVisible)}
@@ -776,11 +1138,26 @@ const styles = StyleSheet.create({
   secondaryButtonText: { fontSize: 13, fontWeight: "800" },
   loader: { marginVertical: 12 },
   statusText: { fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  sectionTitle: { fontSize: 17, fontWeight: "900" },
   card: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
+  },
+  sourceCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
   },
   cardHeader: {
     flexDirection: "row",
@@ -793,6 +1170,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, lineHeight: 17 },
   notes: { fontSize: 12, lineHeight: 17, marginTop: 8 },
   score: { fontSize: 22, fontWeight: "900" },
+  sourceStatus: { fontSize: 12, fontWeight: "900" },
   rowActions: {
     flexDirection: "row",
     flexWrap: "wrap",

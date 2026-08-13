@@ -18,7 +18,7 @@ function normalizeExternalUrl(value) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-export default function EventCard({ event, onPress }) {
+function EventCard({ event, onPress }) {
   const { theme } = useTheme();
 
   if (!event) return null;
@@ -281,6 +281,10 @@ export default function EventCard({ event, onPress }) {
     </Pressable>
   );
 }
+
+export default React.memo(EventCard, (prevProps, nextProps) => {
+  return prevProps.event === nextProps.event;
+});
 
 const styles = StyleSheet.create({
   cardWrapper: {

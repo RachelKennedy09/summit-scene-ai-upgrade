@@ -5,6 +5,7 @@ import { expect } from "chai";
 import request from "supertest";
 import app from "../index.js";
 import ImportCandidate from "../models/ImportCandidate.js";
+import EventSource from "../models/EventSource.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
 import { getCategoryTagGroupsForCategories } from "../../constants/eventCategories.js";
@@ -1035,6 +1036,49 @@ describe("SummitScene API", function () {
         endTime: "5:00 PM",
       });
     } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
+  it("should let an admin create and disable an event source", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const sourceUrl = `https://example.com/source-management-${testRunId}`;
+
+    try {
+      await EventSource.deleteOne({ url: sourceUrl });
+
+      const createRes = await request(app)
+        .post("/api/event-import/sources")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          name: `Managed Source ${testRunId}`,
+          url: sourceUrl,
+          town: "Canmore",
+          sourceType: "html",
+          enabled: true,
+          trusted: false,
+        });
+
+      expect(createRes.status).to.equal(201);
+      expect(createRes.body).to.include({
+        name: `Managed Source ${testRunId}`,
+        url: sourceUrl,
+        town: "Canmore",
+        enabled: true,
+      });
+
+      const updateRes = await request(app)
+        .patch(`/api/event-import/sources/${createRes.body._id}`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ enabled: false, trusted: true });
+
+      expect(updateRes.status).to.equal(200);
+      expect(updateRes.body).to.include({
+        enabled: false,
+        trusted: true,
+      });
+    } finally {
+      await EventSource.deleteOne({ url: sourceUrl });
       process.env.ADMIN_EMAILS = originalAdminEmails;
     }
   });

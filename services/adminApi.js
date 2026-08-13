@@ -362,3 +362,79 @@ export async function seedStarterEventSources(token) {
 
   return data;
 }
+
+export async function fetchEventSources(token) {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/sources`, {
+    headers: buildHeaders(token),
+  });
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to load event sources (${res.status})`),
+      "We couldn't load event sources right now."
+    );
+  }
+
+  return Array.isArray(data) ? data : [];
+}
+
+export async function createEventSource(source, token) {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/sources`, {
+    method: "POST",
+    headers: buildHeaders(token),
+    body: JSON.stringify(source || {}),
+  });
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to create event source (${res.status})`),
+      "We couldn't create that event source right now."
+    );
+  }
+
+  return data;
+}
+
+export async function updateEventSource(sourceId, updates, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/sources/${sourceId}`,
+    {
+      method: "PATCH",
+      headers: buildHeaders(token),
+      body: JSON.stringify(updates || {}),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to update event source (${res.status})`),
+      "We couldn't update that event source right now."
+    );
+  }
+
+  return data;
+}
+
+export async function retryEventSource(sourceId, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/sources/${sourceId}/retry`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+    },
+    IMPORT_RUN_TIMEOUT_MS
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to retry event source (${res.status})`),
+      "We couldn't retry that event source right now."
+    );
+  }
+
+  return data;
+}
