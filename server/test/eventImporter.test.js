@@ -73,6 +73,99 @@ describe("event importer helpers", () => {
     });
   });
 
+  it("extracts Banff Lake Louise Next.js event cards", () => {
+    const events = extractEvents(
+      `
+        <script id="__NEXT_DATA__" type="application/json">
+          {
+            "props": {
+              "pageProps": {
+                "data": {
+                  "content": [
+                    {
+                      "lists": [
+                        {
+                          "initialItems": [
+                            {
+                              "type": "event",
+                              "title": "Sunset Festival",
+                              "cardSummary": "Live music at the summit nightly this summer.",
+                              "tag": "Events & Festivals",
+                              "dateInfo": "Jun 19 - Sep 7, 2026",
+                              "slug": "sunset-festival",
+                              "dates": [
+                                {
+                                  "start": "2026-06-19T18:00:00-06:00",
+                                  "end": "2026-09-07T21:30:00-06:00"
+                                }
+                              ],
+                              "bynderImage": {
+                                "previewUrl": "https://example.com/sunset.jpg"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        </script>
+      `,
+      { url: "https://www.banfflakelouise.com/events" }
+    );
+
+    expect(events).to.have.length(1);
+    expect(events[0]).to.include({
+      title: "Sunset Festival",
+      startTime: "6:00 PM",
+      endTime: "9:30 PM",
+      sourceUrl: "https://www.banfflakelouise.com/events/sunset-festival",
+    });
+  });
+
+  it("uses embedded Next.js event data instead of generic page fragments", () => {
+    const events = extractEvents(
+      `
+        <script id="__NEXT_DATA__" type="application/json">
+          {
+            "props": {
+              "pageProps": {
+                "data": {
+                  "content": [
+                    {
+                      "lists": [
+                        {
+                          "initialItems": [
+                            {
+                              "type": "event",
+                              "title": "Winter Festival",
+                              "slug": " winter-festival ",
+                              "dates": [{"start": "2026-12-01T10:00:00-07:00"}]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        </script>
+        <div class="event-fragment">Date: Tue, Dec 1 2026 @ 10:00 AM</div>
+      `,
+      { url: "https://www.banfflakelouise.com/events" }
+    );
+
+    expect(events.map((event) => event.title)).to.deep.equal(["Winter Festival"]);
+    expect(events[0].sourceUrl).to.equal(
+      "https://www.banfflakelouise.com/events/winter-festival"
+    );
+  });
+
   it("detects likely duplicate existing events", () => {
     const duplicate = findDuplicateEvent(
       {
@@ -94,6 +187,29 @@ describe("event importer helpers", () => {
 
     expect(normalizeTitle(" Live Music: at the Lodge! ")).to.equal("live music at the lodge");
     expect(duplicate?.reason).to.match(/similar title|same venue/);
+  });
+
+  it("detects cross-source duplicates with same date, town and time", () => {
+    const duplicate = findDuplicateEvent(
+      {
+        title: "SHY FRiEND",
+        town: "Banff",
+        startDate: "2026-08-14",
+        startTime: "8:00 PM",
+      },
+      [
+        {
+          title: "Live at CLVB '33: SHY FRiEND",
+          town: "Banff",
+          date: "2026-08-14",
+          time: "8:00 PM",
+        },
+      ]
+    );
+
+    expect(duplicate?.reason).to.equal(
+      "same date, town and time with similar title"
+    );
   });
 
   it("validates required import candidate fields with existing enums", async () => {

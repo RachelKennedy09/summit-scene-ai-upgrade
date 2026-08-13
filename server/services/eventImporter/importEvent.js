@@ -14,6 +14,20 @@ function buildCandidateQuery(candidate) {
   };
 }
 
+function candidateToDuplicateComparable(candidate) {
+  return {
+    _id: candidate._id,
+    title: candidate.title,
+    town: candidate.town,
+    date: candidate.startDate,
+    time: candidate.startTime,
+    locationName: candidate.venue,
+    location: candidate.venue,
+    bookingUrl: candidate.ticketUrl,
+    sourceUrl: candidate.sourceUrl,
+  };
+}
+
 export async function importExtractedEvent(extracted, source, options = {}) {
   const aiCandidate = await normalizeWithAi(extracted).catch((error) => ({
     importNotes: `AI normalization failed: ${error.message}`,
@@ -36,18 +50,31 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     };
   }
 
-  const existingEvents = await Event.find({
-    town: candidate.town,
-    date: candidate.startDate,
-  }).select("title town date locationName location bookingUrl");
-  const duplicate = findDuplicateEvent(candidate, existingEvents);
-
-  const candidateStatus = duplicate ? "duplicate" : "pending";
   const existingCandidate = await ImportCandidate.findOne(buildCandidateQuery(candidate));
   if (existingCandidate) {
+    const [existingEvents, existingCandidates] = await Promise.all([
+      Event.find({
+        town: candidate.town,
+        date: candidate.startDate,
+      }).select("title town date time locationName location bookingUrl sourceUrl"),
+      ImportCandidate.find({
+        _id: { $ne: existingCandidate._id },
+        town: candidate.town,
+        startDate: candidate.startDate,
+        status: { $in: ["pending", "approved", "duplicate"] },
+      }).select("title town startDate startTime venue ticketUrl sourceUrl"),
+    ]);
+    const duplicate =
+      findDuplicateEvent(candidate, existingEvents) ||
+      findDuplicateEvent(
+        candidate,
+        existingCandidates.map(candidateToDuplicateComparable)
+      );
     existingCandidate.set({
       ...candidate,
-      status: existingCandidate.status === "pending" ? candidateStatus : existingCandidate.status,
+      status: existingCandidate.status === "pending" && duplicate
+        ? "duplicate"
+        : existingCandidate.status,
       duplicateOf: duplicate?.event?._id,
       confidenceScore: duplicate ? Math.min(candidate.confidenceScore, 70) : candidate.confidenceScore,
       importNotes: duplicate
@@ -57,6 +84,26 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     await existingCandidate.save();
     return { status: "updated", candidate: existingCandidate, duplicate };
   }
+
+  const [existingEvents, existingCandidates] = await Promise.all([
+    Event.find({
+      town: candidate.town,
+      date: candidate.startDate,
+    }).select("title town date time locationName location bookingUrl sourceUrl"),
+    ImportCandidate.find({
+      town: candidate.town,
+      startDate: candidate.startDate,
+      status: { $in: ["pending", "approved", "duplicate"] },
+    }).select("title town startDate startTime venue ticketUrl sourceUrl"),
+  ]);
+  const duplicate =
+    findDuplicateEvent(candidate, existingEvents) ||
+    findDuplicateEvent(
+      candidate,
+      existingCandidates.map(candidateToDuplicateComparable)
+    );
+
+  const candidateStatus = duplicate ? "duplicate" : "pending";
 
   const savedCandidate = await ImportCandidate.create({
     ...candidate,

@@ -36,6 +36,11 @@ export function findDuplicateEvent(candidate, existingEvents = []) {
 
     const sameDate = candidate?.startDate && candidate.startDate === event?.date;
     const sameTown = candidate?.town && candidate.town === event?.town;
+    const sameTime =
+      candidate?.startTime &&
+      event?.time &&
+      String(candidate.startTime).trim().toLowerCase() ===
+        String(event.time).trim().toLowerCase();
     const sameVenue =
       sameText(candidate?.venue, event?.locationName) ||
       sameText(candidate?.venue, event?.location);
@@ -47,6 +52,10 @@ export function findDuplicateEvent(candidate, existingEvents = []) {
 
     if (sameDate && sameTown && sameVenue && titleScore >= 0.5) {
       return { event, reason: "same venue/date/town with similar title", score: titleScore };
+    }
+
+    if (sameDate && sameTown && sameTime && titleScore >= 0.5) {
+      return { event, reason: "same date, town and time with similar title", score: titleScore };
     }
   }
 

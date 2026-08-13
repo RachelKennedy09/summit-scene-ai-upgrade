@@ -89,6 +89,62 @@ function readJsonLdEvents($, sourceUrl) {
   return events;
 }
 
+function formatTimeFromIso(value) {
+  if (!value || !/T\d{2}:\d{2}/.test(String(value))) return undefined;
+
+  const [, hourText, minuteText] = String(value).match(/T(\d{2}):(\d{2})/) || [];
+  const hour24 = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isFinite(hour24) || !Number.isFinite(minute)) return undefined;
+
+  const meridiem = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${meridiem}`;
+}
+
+function readNextDataEvents($, sourceUrl) {
+  const rawJson = $("#__NEXT_DATA__").text();
+  if (!rawJson) return [];
+
+  try {
+    const parsed = JSON.parse(rawJson);
+    const lists = parsed?.props?.pageProps?.data?.content
+      ?.flatMap((section) => section?.lists || [])
+      ?.filter(Boolean) || [];
+    const items = lists.flatMap((list) => list.initialItems || []);
+
+    return items
+      .filter((item) => item?.type === "event" && item?.title)
+      .map((item) => {
+        const firstDate = Array.isArray(item.dates) ? item.dates[0] : null;
+        const imageUrl =
+          item.bynderImage?.defaultUrl ||
+          item.bynderImage?.previewUrl ||
+          item.image?.asset?.url;
+
+        return {
+          title: cleanText(item.title),
+          description: cleanText(item.cardSummary),
+          category: cleanText(item.tag),
+          dateText: cleanText(item.dateInfo || firstDate?.start),
+          startDate: firstDate?.start,
+          endDate: firstDate?.end,
+          startTime: formatTimeFromIso(firstDate?.start),
+          endTime: formatTimeFromIso(firstDate?.end),
+          sourceUrl: resolveUrl(
+            item.slug ? `/events/${cleanText(item.slug)}` : "",
+            sourceUrl
+          ) || sourceUrl,
+          imageUrl: resolveUrl(imageUrl, sourceUrl),
+          extractionMethod: "next-data",
+          raw: item,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
 function readGenericHtmlEvents($, sourceUrl) {
   const events = [];
   const seen = new Set();
@@ -141,7 +197,14 @@ export function extractEvents(html, source) {
   const $ = cheerio.load(html || "");
   const sourceUrl = source?.url || "";
   const jsonLdEvents = readJsonLdEvents($, sourceUrl);
+  const nextDataEvents = readNextDataEvents($, sourceUrl);
+  if (nextDataEvents.length) {
+    return [...jsonLdEvents, ...nextDataEvents].filter((event) => event.title);
+  }
+
   const genericEvents = readGenericHtmlEvents($, sourceUrl);
 
-  return [...jsonLdEvents, ...genericEvents].filter((event) => event.title);
+  return [...jsonLdEvents, ...nextDataEvents, ...genericEvents].filter(
+    (event) => event.title
+  );
 }
