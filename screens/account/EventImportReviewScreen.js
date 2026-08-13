@@ -38,10 +38,13 @@ function getCandidateId(candidate) {
 }
 
 function formatDateTime(candidate) {
+  const dateRange = [candidate.startDate, candidate.endDate]
+    .filter(Boolean)
+    .join(" to ");
   const timeRange = [candidate.startTime, candidate.endTime]
     .filter(Boolean)
     .join(" - ");
-  return [candidate.startDate, timeRange].filter(Boolean).join(" | ");
+  return [dateRange, timeRange].filter(Boolean).join(" | ");
 }
 
 export default function EventImportReviewScreen() {
@@ -100,6 +103,7 @@ export default function EventImportReviewScreen() {
       venue: candidate.venue || "",
       address: candidate.address || "",
       startDate: candidate.startDate || "",
+      endDate: candidate.endDate || "",
       startTime: candidate.startTime || "",
       endTime: candidate.endTime || "",
       price: candidate.price || "",
@@ -109,6 +113,10 @@ export default function EventImportReviewScreen() {
 
   function candidateToPreviewEvent(candidate) {
     const link = candidate.ticketUrl || candidate.sourceUrl || "";
+    const hasDateRange =
+      candidate.endDate &&
+      candidate.startDate &&
+      candidate.endDate > candidate.startDate;
     return {
       title: candidate.title || "Untitled event",
       town: candidate.town || "",
@@ -119,6 +127,15 @@ export default function EventImportReviewScreen() {
       date: candidate.startDate || "",
       time: candidate.startTime || "",
       endTime: candidate.endTime || "",
+      scheduleType: hasDateRange ? "recurring" : "single",
+      recurrence: hasDateRange
+        ? {
+            frequency: "daily",
+            untilDate: candidate.endDate,
+            weekdays: [],
+            dates: [],
+          }
+        : undefined,
       locationName: candidate.venue || "",
       address: candidate.address || "",
       imageUrl: candidate.imageUrl || "",
@@ -584,10 +601,10 @@ export default function EventImportReviewScreen() {
               </View>
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
-                  Date
+                  Start date
                 </Text>
                 <Pressable
-                  onPress={() => setDatePickerVisible(true)}
+                  onPress={() => setDatePickerVisible("startDate")}
                   style={[
                     styles.inputButton,
                     {
@@ -598,6 +615,25 @@ export default function EventImportReviewScreen() {
                 >
                   <Text style={[styles.inputButtonText, { color: theme.text }]}>
                     {editForm.startDate || "Choose date"}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
+                  End date
+                </Text>
+                <Pressable
+                  onPress={() => setDatePickerVisible("endDate")}
+                  style={[
+                    styles.inputButton,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.inputButtonText, { color: theme.text }]}>
+                    {editForm.endDate || "No end date"}
                   </Text>
                 </Pressable>
               </View>
@@ -680,14 +716,16 @@ export default function EventImportReviewScreen() {
         </View>
       </Modal>
       <DatePickerModal
-        visible={datePickerVisible}
-        initialDate={parseDateString(editForm.startDate)}
-        title="Select event date"
+        key={datePickerVisible || "event-import-date-picker"}
+        visible={Boolean(datePickerVisible)}
+        initialDate={parseDateString(editForm[datePickerVisible])}
+        title={datePickerVisible === "endDate" ? "Select end date" : "Select start date"}
         onCancel={() => setDatePickerVisible(false)}
         onConfirm={(date) => {
+          const key = datePickerVisible;
           setEditForm((current) => ({
             ...current,
-            startDate: formatDateString(date),
+            [key]: formatDateString(date),
           }));
           setDatePickerVisible(false);
         }}

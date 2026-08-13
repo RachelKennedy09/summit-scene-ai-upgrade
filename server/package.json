@@ -12,7 +12,8 @@
     "cleanup:generated-tests": "node scripts/cleanupGeneratedTestData.js",
     "normalize:community-posts": "node scripts/normalizeCommunityPostFields.js",
     "import-events": "node scripts/runEventImport.js",
-    "seed:event-sources": "node scripts/seedEventSources.js"
+    "seed:event-sources": "node scripts/seedEventSources.js",
+    "repair:imported-event-ranges": "node scripts/repairImportedEventRanges.js"
   },
   "keywords": [],
   "author": "",

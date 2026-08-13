@@ -996,6 +996,49 @@ describe("SummitScene API", function () {
     }
   });
 
+  it("should approve an imported date range as a daily recurring event", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const startDate = formatTestDate(0);
+    const endDate = formatTestDate(60);
+    try {
+      const candidate = await ImportCandidate.create({
+        title: `Imported Range Candidate ${testRunId}`,
+        description: "An exhibition open every day for a fixed run.",
+        town: "Banff",
+        category: "Arts & Creativity",
+        categories: ["Arts & Creativity"],
+        venue: "Candidate Gallery",
+        address: "100 Banff Avenue, Banff, AB",
+        startDate,
+        endDate,
+        startTime: "10:00 AM",
+        endTime: "5:00 PM",
+        sourceUrl: `https://example.com/range-${testRunId}`,
+        sourceName: "Example Import Source",
+        confidenceScore: 95,
+      });
+
+      const res = await request(app)
+        .post(`/api/event-import/candidates/${candidate._id}/approve`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send();
+
+      expect(res.status).to.equal(201);
+      expect(res.body.event.scheduleType).to.equal("recurring");
+      expect(res.body.event.recurrence).to.include({
+        frequency: "daily",
+        untilDate: endDate,
+      });
+      expect(res.body.event).to.include({
+        date: startDate,
+        time: "10:00 AM",
+        endTime: "5:00 PM",
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
   it("should return admin dashboard stats", async () => {
     process.env.ADMIN_EMAILS = "";
 

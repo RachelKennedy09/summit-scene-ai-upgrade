@@ -16,12 +16,23 @@ function normalizeString(value) {
   return trimmed || undefined;
 }
 
+function isDateRange(startDate, endDate) {
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || "")) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(endDate || "")) &&
+    endDate > startDate
+  );
+}
+
 function candidateToEventPayload(candidate, overrides = {}, userId) {
   const merged = { ...candidate.toObject(), ...overrides };
   const venue = normalizeString(merged.venue);
   const address = normalizeString(merged.address);
   const sourceUrl = normalizeString(merged.sourceUrl);
   const ticketUrl = normalizeString(merged.ticketUrl);
+  const startDate = normalizeString(merged.startDate);
+  const endDate = normalizeString(merged.endDate);
+  const hasDateRange = isDateRange(startDate, endDate);
 
   return {
     title: normalizeString(merged.title),
@@ -31,11 +42,19 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     categories: Array.isArray(merged.categories) && merged.categories.length
       ? merged.categories
       : [normalizeString(merged.category || "Other")],
-    date: normalizeString(merged.startDate),
+    date: startDate,
     time: normalizeString(merged.startTime),
     endTime: normalizeString(merged.endTime),
-    scheduleType: "single",
+    scheduleType: hasDateRange ? "recurring" : "single",
     isAllDay: false,
+    recurrence: hasDateRange
+      ? {
+          frequency: "daily",
+          untilDate: endDate,
+          weekdays: [],
+          dates: [],
+        }
+      : undefined,
     locationName: venue,
     address,
     latitude: merged.latitude,

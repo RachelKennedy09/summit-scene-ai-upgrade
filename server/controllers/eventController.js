@@ -379,6 +379,35 @@ function buildLegacyLocation(locationName, address) {
   return locationName || address || undefined;
 }
 
+function parseTimeToMinutes(value) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return 23 * 60 + 59;
+
+  let hours = Number(match[1]) % 12;
+  const minutes = Number(match[2]);
+  if (match[3].toUpperCase() === "PM") {
+    hours += 12;
+  }
+  return hours * 60 + minutes;
+}
+
+function getSortableEventTime(event) {
+  const nextDate = getNextOccurrenceDateString(event) || event?.date;
+  const date = buildDateFromDateString(nextDate);
+  const dateTime = Number.isNaN(date.getTime())
+    ? Number.MAX_SAFE_INTEGER
+    : date.getTime();
+  return dateTime + parseTimeToMinutes(event?.time) * 60000;
+}
+
+function sortEventsByNextOccurrence(events) {
+  return events.slice().sort((a, b) => {
+    const timeDiff = getSortableEventTime(a) - getSortableEventTime(b);
+    if (timeDiff !== 0) return timeDiff;
+    return String(a.title || "").localeCompare(String(b.title || ""));
+  });
+}
+
 async function buildGeocodedEventFields({ address, town }) {
   const normalizedAddress = normalizeRequiredString(address);
   const normalizedTown = normalizeRequiredString(town);
@@ -846,14 +875,18 @@ export async function getAllEvents(req, res) {
             .sort((a, b) => a.distanceKm - b.distanceKm)
             .map(({ event }) => event)
         : filteredEvents;
+    const sortedEvents =
+      nearLat !== null && nearLng !== null
+        ? nearMeEvents
+        : sortEventsByNextOccurrence(nearMeEvents);
 
     if (!shouldPaginate) {
-      return res.json(nearMeEvents.map(decorateEventForResponse));
+      return res.json(sortedEvents.map(decorateEventForResponse));
     }
 
-    const totalCount = nearMeEvents.length;
+    const totalCount = sortedEvents.length;
     const startIndex = (requestedPage - 1) * requestedLimit;
-    const pagedEvents = nearMeEvents.slice(
+    const pagedEvents = sortedEvents.slice(
       startIndex,
       startIndex + requestedLimit
     ).map(decorateEventForResponse);
