@@ -3,7 +3,11 @@ import {
   getMainCategoryForTag,
 } from "../../../constants/eventCategories.js";
 import { TOWNS } from "./config.js";
-import { isValidFutureDateString, parseEventDate, parseEventTime } from "./dateParsing.js";
+import {
+  isValidFutureDateString,
+  parseEventDate,
+  parseEventTime,
+} from "./dateParsing.js";
 
 function cleanText(value) {
   return String(value || "")
@@ -46,6 +50,19 @@ function normalizeCategory(value, text = "") {
   )?.category || "Other";
 }
 
+function todayString(now = new Date()) {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function chooseImportStartDate(startDate, endDate, now) {
+  if (isValidFutureDateString(startDate, now)) return startDate;
+  if (isValidFutureDateString(endDate, now)) return todayString(now);
+  return startDate;
+}
+
 function scoreCandidate(candidate, notes) {
   let score = 20;
 
@@ -73,8 +90,12 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
       extracted?.address,
     ].filter(Boolean).join(" ")
   );
-  const startDate = parseEventDate(extracted?.startDate || extracted?.dateText || text, options);
+  const parsedStartDate = parseEventDate(
+    extracted?.startDate || extracted?.dateText || text,
+    options
+  );
   const endDate = parseEventDate(extracted?.endDate, options);
+  const startDate = chooseImportStartDate(parsedStartDate, endDate, options.now);
   const town = normalizeTown(extracted?.town) || inferTown(text, source?.town);
   const category = normalizeCategory(extracted?.category, text);
   const title = cleanText(extracted?.title);

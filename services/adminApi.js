@@ -4,6 +4,7 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
 const REQUEST_TIMEOUT_MS = 15000;
+const IMPORT_RUN_TIMEOUT_MS = 90000;
 
 function buildHeaders(token) {
   return {
@@ -12,9 +13,9 @@ function buildHeaders(token) {
   };
 }
 
-async function fetchWithTimeout(url, options = {}) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     return await fetch(url, { ...options, signal: controller.signal });
@@ -329,7 +330,7 @@ export async function runEventImporter(token) {
   const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/run`, {
     method: "POST",
     headers: buildHeaders(token),
-  });
+  }, IMPORT_RUN_TIMEOUT_MS);
   const data = await readJsonSafely(res);
 
   if (!res.ok) {

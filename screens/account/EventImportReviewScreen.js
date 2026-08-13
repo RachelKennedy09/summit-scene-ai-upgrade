@@ -150,9 +150,14 @@ export default function EventImportReviewScreen() {
     try {
       setWorking(true);
       const summary = await runEventImporter(token);
+      const sourceErrorText = Array.isArray(summary.sourceErrors) && summary.sourceErrors.length
+        ? `\nSource errors: ${summary.sourceErrors
+            .map((item) => item.sourceName || item.message)
+            .join(", ")}`
+        : "";
       Alert.alert(
         "Event import completed",
-        `Sources checked: ${summary.sourcesChecked}\nEvents discovered: ${summary.eventsDiscovered}\nNew candidates: ${summary.newCandidates}\nDuplicates: ${summary.duplicates}\nErrors: ${summary.errors}`
+        `Sources checked: ${summary.sourcesChecked}\nEvents discovered: ${summary.eventsDiscovered}\nNew candidates: ${summary.newCandidates}\nDuplicates: ${summary.duplicates}\nErrors: ${summary.errors}${sourceErrorText}`
       );
       await loadCandidates();
     } catch (runError) {

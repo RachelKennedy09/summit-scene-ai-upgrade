@@ -3,6 +3,7 @@ import { EVENT_IMPORT_CONFIG } from "./config.js";
 import { fetchSource } from "./fetchSource.js";
 import { extractEvents } from "./extractEvents.js";
 import { importExtractedEvent } from "./importEvent.js";
+import { fetchBanffLakeLouiseEvents } from "./banffLakeLouiseSource.js";
 
 let isImportRunning = false;
 
@@ -51,7 +52,12 @@ export async function runEventImport(options = {}) {
       source.lastCheckedAt = new Date();
       try {
         const { html } = await fetchSource(source, options);
-        const extractedEvents = extractEvents(html, source).slice(
+        const sourceSpecificEvents = await fetchBanffLakeLouiseEvents(
+          source,
+          html,
+          options
+        );
+        const extractedEvents = (sourceSpecificEvents || extractEvents(html, source)).slice(
           0,
           Math.max(0, maxEvents - summary.eventsDiscovered)
         );

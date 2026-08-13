@@ -50,6 +50,22 @@ describe("event importer helpers", () => {
     expect(candidate.confidenceScore).to.be.at.least(90);
   });
 
+  it("keeps active date-range events importable when the original start passed", () => {
+    const candidate = normalizeExtractedEvent(
+      {
+        title: "Summer Exhibition",
+        description: "An exhibition running through fall.",
+        startDate: "2026-05-01T00:00:00-06:00",
+        endDate: "2026-11-08T00:00:00-07:00",
+      },
+      source,
+      { now: fixedNow }
+    );
+
+    expect(candidate.startDate).to.equal("2026-08-13");
+    expect(candidate.endDate).to.equal("2026-11-08");
+  });
+
   it("extracts full Banff Centre event cards without date-only titles", () => {
     const events = extractEvents(
       `
