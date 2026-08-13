@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
+import DateRangeCalendarModal from "../common/DateRangeCalendarModal";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
 
@@ -115,6 +116,8 @@ export default function MapFilters({
   selectedListingType = "events",
   selectedCategory,
   selectedDateFilter,
+  selectedStartDate,
+  selectedEndDate,
   filterSummary,
   error,
   towns,
@@ -126,6 +129,7 @@ export default function MapFilters({
   onSelectListingType,
   onSelectCategory,
   onSelectDateFilter,
+  onSelectDateRange,
   isNearMeEnabled,
   isNearMeLoading,
   nearMeMessage,
@@ -422,17 +426,18 @@ export default function MapFilters({
         />
       ) : null}
 
-      <FilterModal
+      <DateRangeCalendarModal
         visible={isDateModalVisible}
-        title="Choose a date range"
-        options={dateFilters}
-        selectedValue={selectedDateFilter}
-        onSelect={(value) => {
+        title="Choose dates"
+        quickFilters={dateFilters}
+        selectedFilter={selectedDateFilter}
+        selectedStartDate={selectedStartDate}
+        selectedEndDate={selectedEndDate}
+        onSelectQuickFilter={(value) => {
           onSelectDateFilter(value);
-          setIsDateModalVisible(false);
         }}
+        onSelectRange={onSelectDateRange}
         onClose={() => setIsDateModalVisible(false)}
-        theme={theme}
       />
     </>
   );

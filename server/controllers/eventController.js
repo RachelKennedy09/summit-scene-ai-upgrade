@@ -523,7 +523,30 @@ function buildSearchTerms(value) {
   return [...new Set(terms)];
 }
 
-function buildDateFilterRange(dateFilter) {
+function isDateOnlyString(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+function buildCustomDateRange(startDate, endDate) {
+  if (!isDateOnlyString(startDate)) return null;
+
+  const rangeStart = buildDateFromDateString(startDate);
+  const rangeEnd = isDateOnlyString(endDate)
+    ? buildDateFromDateString(endDate)
+    : buildDateFromDateString(startDate);
+
+  if (rangeEnd < rangeStart) {
+    rangeEnd.setTime(rangeStart.getTime());
+  }
+
+  rangeEnd.setDate(rangeEnd.getDate() + 1);
+  return { start: rangeStart, end: rangeEnd };
+}
+
+function buildDateFilterRange(dateFilter, startDate, endDate) {
+  const customRange = buildCustomDateRange(startDate, endDate);
+  if (customRange) return customRange;
+
   const normalizedFilter = normalizeRequiredString(dateFilter);
   if (
     !normalizedFilter ||
@@ -549,6 +572,12 @@ function buildDateFilterRange(dateFilter) {
     rangeEnd.setDate(rangeEnd.getDate() + 2);
   } else if (normalizedFilter === "Next 3 days") {
     rangeEnd.setDate(rangeEnd.getDate() + 3);
+  } else if (normalizedFilter === "This weekend") {
+    const day = rangeStart.getDay();
+    const saturdayOffset = day === 0 ? -1 : 6 - day;
+    rangeStart.setDate(rangeStart.getDate() + saturdayOffset);
+    rangeEnd.setTime(rangeStart.getTime());
+    rangeEnd.setDate(rangeEnd.getDate() + 2);
   } else if (normalizedFilter === "Next 7 days") {
     rangeEnd.setDate(rangeEnd.getDate() + 7);
   } else if (normalizedFilter === "Next 30 days") {
@@ -566,8 +595,8 @@ function buildDateFilterRange(dateFilter) {
   return { start: rangeStart, end: rangeEnd };
 }
 
-function matchesDateFilter(event, dateFilter) {
-  const range = buildDateFilterRange(dateFilter);
+function matchesDateFilter(event, dateFilter, startDate, endDate) {
+  const range = buildDateFilterRange(dateFilter, startDate, endDate);
   if (!range) return true;
 
   const nextOccurrence = getNextOccurrenceDate(event, range.start);
@@ -686,6 +715,8 @@ export async function getAllEvents(req, res) {
     const normalizedTown = normalizeRequiredString(req.query?.town);
     const normalizedCategory = normalizeRequiredString(req.query?.category);
     const normalizedDateFilter = normalizeRequiredString(req.query?.dateFilter);
+    const normalizedStartDate = normalizeRequiredString(req.query?.startDate);
+    const normalizedEndDate = normalizeRequiredString(req.query?.endDate);
     const normalizedAudience = normalizeRequiredString(req.query?.audience);
     const normalizedListingType = normalizeRequiredString(req.query?.listingType);
     const communityOnly = String(req.query?.communityOnly || "") === "true";
@@ -698,6 +729,14 @@ export async function getAllEvents(req, res) {
     const creatorId = normalizeRequiredString(req.query?.creatorId);
     const shouldPaginate =
       req.query?.page !== undefined || req.query?.limit !== undefined;
+
+    if (normalizedStartDate && !isDateOnlyString(normalizedStartDate)) {
+      return res.status(400).json({ message: "Invalid start date." });
+    }
+
+    if (normalizedEndDate && !isDateOnlyString(normalizedEndDate)) {
+      return res.status(400).json({ message: "Invalid end date." });
+    }
 
     const baseQuery = {
       $or: [
@@ -853,8 +892,15 @@ export async function getAllEvents(req, res) {
       );
 
     const filteredEvents =
-      normalizedDateFilter && normalizedDateFilter !== "All"
-        ? events.filter((event) => matchesDateFilter(event, normalizedDateFilter))
+      (normalizedDateFilter && normalizedDateFilter !== "All") || normalizedStartDate
+        ? events.filter((event) =>
+            matchesDateFilter(
+              event,
+              normalizedDateFilter,
+              normalizedStartDate,
+              normalizedEndDate
+            )
+          )
         : events;
 
     const nearMeEvents =

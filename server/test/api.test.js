@@ -497,6 +497,79 @@ describe("SummitScene API", function () {
     }
   });
 
+  it("should filter events by a custom calendar date range", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const rangeTitle = `Calendar Range Event ${testRunId}`;
+    const outsideTitle = `Outside Calendar Range Event ${testRunId}`;
+    const recurringTitle = `Recurring Calendar Range Event ${testRunId}`;
+    const rangeDate = formatTestDate(4);
+
+    try {
+      const rangeRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: rangeTitle,
+          description: "Should appear in the custom range.",
+          town: "Banff",
+          category: "Live Music",
+          date: rangeDate,
+          time: "8:30 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      const outsideRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: outsideTitle,
+          description: "Should not appear in the custom range.",
+          town: "Banff",
+          category: "Live Music",
+          date: formatTestDate(8),
+          time: "8:30 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      const recurringRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: recurringTitle,
+          description: "Daily recurring event should appear in the custom range.",
+          town: "Banff",
+          category: "Restaurant Specials",
+          date: formatTestDate(0),
+          time: "5:00 PM",
+          endTime: "7:00 PM",
+          scheduleType: "recurring",
+          recurrence: {
+            frequency: "daily",
+            untilDate: formatTestDate(10),
+            weekdays: [],
+            dates: [],
+          },
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      expect(rangeRes.status).to.equal(201);
+      expect(outsideRes.status).to.equal(201);
+      expect(recurringRes.status).to.equal(201);
+
+      const filterRes = await request(app).get(
+        `/api/events?startDate=${rangeDate}&endDate=${rangeDate}`
+      );
+      const titles = filterRes.body.map((event) => event.title);
+
+      expect(filterRes.status).to.equal(200);
+      expect(titles).to.include(rangeTitle);
+      expect(titles).to.include(recurringTitle);
+      expect(titles).to.not.include(outsideTitle);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
   it("should let an authenticated user toggle event attendance", async () => {
     const eventId = await ensureSharedTestEvent();
     const goingRes = await request(app)

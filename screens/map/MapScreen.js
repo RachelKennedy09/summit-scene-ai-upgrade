@@ -66,12 +66,8 @@ const CATEGORY_GROUPS = getEventCategoryGroups({
 const DATE_FILTERS = [
   "Today",
   "Tomorrow",
-  "Next 3 days",
+  "This weekend",
   "Next 7 days",
-  "Next 30 days",
-  "Next 90 days",
-  "Next 6 months",
-  "Next 12 months",
   "All Dates",
 ];
 const NEAR_ME_RADIUS_KM = 15;
@@ -105,6 +101,66 @@ function toDateOnlyString(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString().slice(0, 10);
+}
+
+function formatBrowseDateLabel(dateString) {
+  if (!dateString) return "";
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  if (!year || !month || !day) return dateString;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(year, month - 1, day));
+}
+
+function getDateFilterLabel(dateFilter, startDate, endDate) {
+  if (dateFilter !== "Choose dates") return dateFilter;
+  if (!startDate) return "Choose dates";
+  if (!endDate || endDate === startDate) return formatBrowseDateLabel(startDate);
+  return `${formatBrowseDateLabel(startDate)} to ${formatBrowseDateLabel(endDate)}`;
+}
+
+function buildDateRange(dateFilter, startDate, endDate) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (dateFilter === "Choose dates" && startDate) {
+    const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
+    const [endYear, endMonth, endDay] = (endDate || startDate).split("-").map(Number);
+    if (!startYear || !startMonth || !startDay || !endYear || !endMonth || !endDay) {
+      return { rangeStart: null, rangeEnd: null };
+    }
+    const rangeStart = new Date(startYear, startMonth - 1, startDay);
+    const rangeEnd = new Date(endYear, endMonth - 1, endDay);
+    if (rangeEnd < rangeStart) {
+      rangeEnd.setTime(rangeStart.getTime());
+    }
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+    return { rangeStart, rangeEnd };
+  }
+
+  const rangeStart = new Date(todayStart);
+  const rangeEnd = new Date(todayStart);
+
+  if (dateFilter === "Today") {
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+  } else if (dateFilter === "Tomorrow") {
+    rangeStart.setDate(rangeStart.getDate() + 1);
+    rangeEnd.setDate(rangeEnd.getDate() + 2);
+  } else if (dateFilter === "This weekend") {
+    const day = rangeStart.getDay();
+    const saturdayOffset = day === 0 ? -1 : 6 - day;
+    rangeStart.setDate(rangeStart.getDate() + saturdayOffset);
+    rangeEnd.setTime(rangeStart.getTime());
+    rangeEnd.setDate(rangeEnd.getDate() + 2);
+  } else if (dateFilter === "Next 7 days") {
+    rangeEnd.setDate(rangeEnd.getDate() + 7);
+  } else {
+    return { rangeStart: null, rangeEnd: null };
+  }
+
+  return { rangeStart, rangeEnd };
 }
 
 // Helper to "fan out" markers per town so they don't sit exactly on top of each other
@@ -527,6 +583,8 @@ export default function MapScreen({ route }) {
   const [selectedListingType, setSelectedListingType] = useState("events");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState("Today");
+  const [selectedStartDate, setSelectedStartDate] = useState("");
+  const [selectedEndDate, setSelectedEndDate] = useState("");
   const [showOnlyMyEvents, setShowOnlyMyEvents] = useState(false);
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
@@ -673,7 +731,22 @@ export default function MapScreen({ route }) {
   const handleSelectDateFilter = useCallback(
     (dateFilter) => {
       setSelectedDateFilter(dateFilter);
+      setSelectedStartDate("");
+      setSelectedEndDate("");
       resetMapSelectionForFilter(`Showing ${dateFilter.toLowerCase()}.`);
+    },
+    [resetMapSelectionForFilter]
+  );
+
+  const handleSelectDateRange = useCallback(
+    ({ startDate, endDate }) => {
+      if (!startDate) return;
+      setSelectedDateFilter("Choose dates");
+      setSelectedStartDate(startDate);
+      setSelectedEndDate(endDate || startDate);
+      resetMapSelectionForFilter(
+        `Showing ${getDateFilterLabel("Choose dates", startDate, endDate || startDate).toLowerCase()}.`
+      );
     },
     [resetMapSelectionForFilter]
   );
@@ -683,6 +756,8 @@ export default function MapScreen({ route }) {
     setSelectedListingType("events");
     setSelectedCategory("All");
     setSelectedDateFilter("Today");
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setShowOnlyMyEvents(false);
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
@@ -702,6 +777,8 @@ export default function MapScreen({ route }) {
     setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter(trimmedSearch ? "All Dates" : "Today");
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -718,6 +795,8 @@ export default function MapScreen({ route }) {
     setSearchQuery("");
     setActiveSearch("");
     setSelectedDateFilter("Today");
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setSelectedMarkerId(null);
     setSelectedEventGroup(null);
     setMapActionMessage("Search cleared. Showing today's events.");
@@ -742,50 +821,11 @@ export default function MapScreen({ route }) {
   // I compute a date range (Today / Tomorrow / Next 3 / Next 7 / Next 30) and then
   // I keep only events that match town + category + date.
   const eventsForMap = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
+    const { rangeStart, rangeEnd } = buildDateRange(
+      selectedDateFilter,
+      selectedStartDate,
+      selectedEndDate
     );
-
-    let rangeStart = null;
-    let rangeEnd = null;
-
-    if (selectedDateFilter === "Today") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 1);
-    } else if (selectedDateFilter === "Tomorrow") {
-      rangeStart = new Date(todayStart);
-      rangeStart.setDate(rangeStart.getDate() + 1);
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 2);
-    } else if (selectedDateFilter === "Next 3 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 3);
-    } else if (selectedDateFilter === "Next 7 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 7);
-    } else if (selectedDateFilter === "Next 30 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 30);
-    } else if (selectedDateFilter === "Next 90 days") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 90);
-    } else if (selectedDateFilter === "Next 6 months") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setMonth(rangeEnd.getMonth() + 6);
-    } else if (selectedDateFilter === "Next 12 months") {
-      rangeStart = todayStart;
-      rangeEnd = new Date(todayStart);
-      rangeEnd.setFullYear(rangeEnd.getFullYear() + 1);
-    }
 
     return events.filter((event) => {
       const eventOwnerId =
@@ -855,6 +895,8 @@ export default function MapScreen({ route }) {
     selectedListingType,
     selectedCategory,
     selectedDateFilter,
+    selectedStartDate,
+    selectedEndDate,
     showOnlyMyEvents,
     currentUserId,
     isNearMeEnabled,
@@ -946,6 +988,8 @@ export default function MapScreen({ route }) {
     setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("All Dates");
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setShowOnlyMyEvents(false);
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
@@ -1016,6 +1060,11 @@ export default function MapScreen({ route }) {
     });
   }
 
+  const selectedDateLabel = useMemo(
+    () => getDateFilterLabel(selectedDateFilter, selectedStartDate, selectedEndDate),
+    [selectedDateFilter, selectedStartDate, selectedEndDate]
+  );
+
   // Human-readable summary line under the filters (e.g. "Showing 3 events in Banff ...")
   const filterSummary = useMemo(() => {
     const count = eventsForMap.length;
@@ -1031,7 +1080,7 @@ export default function MapScreen({ route }) {
     const dateLabel =
       selectedDateFilter === "All Dates"
         ? ""
-        : ` (${selectedDateFilter.toLowerCase()})`;
+        : ` (${selectedDateLabel.toLowerCase()})`;
     const searchLabel = activeSearch ? ` matching "${activeSearch}"` : "";
 
     if (count === 0) {
@@ -1063,6 +1112,7 @@ export default function MapScreen({ route }) {
     selectedListingType,
     selectedCategory,
     selectedDateFilter,
+    selectedDateLabel,
     showOnlyMyEvents,
     isNearMeEnabled,
     activeSearch,
@@ -1181,6 +1231,7 @@ export default function MapScreen({ route }) {
     selectedListingType !== "events" ||
     selectedCategory !== "All" ||
     selectedDateFilter !== "Today" ||
+    Boolean(selectedStartDate) ||
     isNearMeEnabled ||
     showOnlyMyEvents ||
     Boolean(activeSearch);
@@ -1219,7 +1270,9 @@ export default function MapScreen({ route }) {
           selectedTown={selectedTown}
           selectedListingType={selectedListingType}
           selectedCategory={selectedCategory}
-          selectedDateFilter={selectedDateFilter}
+          selectedDateFilter={selectedDateLabel}
+          selectedStartDate={selectedStartDate}
+          selectedEndDate={selectedEndDate}
           filterSummary={filterSummary}
           error={error}
           towns={TOWNS}
@@ -1231,6 +1284,7 @@ export default function MapScreen({ route }) {
           onSelectListingType={handleSelectListingType}
           onSelectCategory={handleSelectCategory}
           onSelectDateFilter={handleSelectDateFilter}
+          onSelectDateRange={handleSelectDateRange}
           isNearMeEnabled={isNearMeEnabled}
           isNearMeLoading={nearMeLoading}
           nearMeMessage={nearMeMessage}
@@ -1382,7 +1436,7 @@ export default function MapScreen({ route }) {
                   </View>
                 ) : (
                   <View style={styles.emptyActions}>
-                    {["Next 7 days", "Next 30 days", "All Dates"].map((label) => (
+                    {["This weekend", "Next 7 days", "All Dates"].map((label) => (
                       <Pressable
                         key={label}
                         style={({ pressed }) => [

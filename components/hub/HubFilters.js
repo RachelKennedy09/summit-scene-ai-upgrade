@@ -15,6 +15,7 @@ import {
 
 import { useTheme } from "../../context/ThemeContext";
 import { colors } from "../../theme/colors";
+import DateRangeCalendarModal from "../common/DateRangeCalendarModal";
 import GroupedCategoryModal from "../common/GroupedCategoryModal";
 
 function getListingTypeLabel(listingType) {
@@ -30,6 +31,8 @@ export default function HubFilters({
   selectedListingType = "events",
   selectedCategory, // current category filter
   selectedDateFilter, // current date filter label, e.g. "This Week"
+  selectedStartDate,
+  selectedEndDate,
   resultSummary, // summary text like "Showing 8 events in Banff this week"
   error, // optional error message (string)
   towns, // array of town options: ["All", "Banff", "Canmore", ...]
@@ -41,6 +44,7 @@ export default function HubFilters({
   onSelectListingType,
   onSelectCategory, // callback when user chooses a category
   onSelectDateFilter, // callback when user chooses a date range
+  onSelectDateRange,
   isNearMeEnabled,
   isNearMeLoading,
   nearMeMessage,
@@ -552,72 +556,17 @@ export default function HubFilters({
       </Modal>
 
       {/* --- Date Selector Modal --- */}
-      <Modal
+      <DateRangeCalendarModal
         visible={isDateModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsDateModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: theme.textMain }]}>
-              Choose a date range
-            </Text>
-
-            {dateFilters.map((filter) => {
-              const isSelected = filter === selectedDateFilter;
-              return (
-                <Pressable
-                  key={filter}
-                  style={({ pressed }) => [
-                    styles.townOption,
-                    {
-                      backgroundColor: theme.pill || theme.card,
-                      borderColor: "transparent",
-                    },
-                    isSelected && {
-                      backgroundColor: theme.accentSoft || theme.accent,
-                      borderColor: theme.accent,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => handleDateFilterPress(filter)}
-                >
-                  <Text
-                    style={[
-                      styles.townOptionText,
-                      { color: theme.textMain },
-                      isSelected && styles.townOptionTextSelected,
-                    ]}
-                  >
-                    {filter}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.modalCloseButton,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => setIsDateModalVisible(false)}
-            >
-              <Text style={[styles.modalCloseText, { color: theme.textMuted }]}>
-                Cancel
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        title="Choose dates"
+        quickFilters={dateFilters}
+        selectedFilter={selectedDateFilter}
+        selectedStartDate={selectedStartDate}
+        selectedEndDate={selectedEndDate}
+        onSelectQuickFilter={handleDateFilterPress}
+        onSelectRange={onSelectDateRange}
+        onClose={() => setIsDateModalVisible(false)}
+      />
     </>
   );
 }

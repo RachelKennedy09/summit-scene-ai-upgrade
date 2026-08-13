@@ -290,9 +290,16 @@ function buildEventsQueryString(options = {}) {
   if (
     options.dateFilter &&
     options.dateFilter !== "All" &&
-    options.dateFilter !== "All Dates"
+    options.dateFilter !== "All Dates" &&
+    options.dateFilter !== "Choose dates"
   ) {
     params.set("dateFilter", options.dateFilter);
+  }
+  if (options.startDate) {
+    params.set("startDate", String(options.startDate));
+  }
+  if (options.endDate) {
+    params.set("endDate", String(options.endDate));
   }
   if (
     Number.isFinite(options.nearLat) &&

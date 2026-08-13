@@ -61,12 +61,8 @@ const CATEGORY_GROUPS = getEventCategoryGroups({
 const DATE_FILTERS = [
   "Today",
   "Tomorrow",
-  "Next 3 days",
+  "This weekend",
   "Next 7 days",
-  "Next 30 days",
-  "Next 90 days",
-  "Next 6 months",
-  "Next 12 months",
   "All Dates",
 ];
 const EVENTS_PAGE_SIZE = 20;
@@ -129,6 +125,24 @@ function formatDateForApi(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatBrowseDateLabel(dateString) {
+  if (!dateString) return "";
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  if (!year || !month || !day) return dateString;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(year, month - 1, day));
+}
+
+function getDateFilterLabel(dateFilter, startDate, endDate) {
+  if (dateFilter !== "Choose dates") return dateFilter;
+  if (!startDate) return "Choose dates";
+  if (!endDate || endDate === startDate) return formatBrowseDateLabel(startDate);
+  return `${formatBrowseDateLabel(startDate)} to ${formatBrowseDateLabel(endDate)}`;
 }
 
 function getAlbertaTodayContext(now = new Date()) {
@@ -199,6 +213,8 @@ export default function HubScreen() {
   const [selectedListingType, setSelectedListingType] = useState(DEFAULT_LISTING_TYPE);
   const [selectedTown, setSelectedTown] = useState("All");
   const [selectedDateFilter, setSelectedDateFilter] = useState(DEFAULT_DATE_FILTER);
+  const [selectedStartDate, setSelectedStartDate] = useState("");
+  const [selectedEndDate, setSelectedEndDate] = useState("");
   const [isNearMeEnabled, setIsNearMeEnabled] = useState(false);
   const [nearMeLocation, setNearMeLocation] = useState(null);
   const [nearMeLoading, setNearMeLoading] = useState(false);
@@ -302,6 +318,8 @@ export default function HubScreen() {
         listingType: selectedListingType,
         category: selectedCategory,
         dateFilter: selectedDateFilter,
+        startDate: selectedDateFilter === "Choose dates" ? selectedStartDate : undefined,
+        endDate: selectedDateFilter === "Choose dates" ? selectedEndDate : undefined,
         nearLat: isNearMeEnabled ? nearMeLocation?.latitude : undefined,
         nearLng: isNearMeEnabled ? nearMeLocation?.longitude : undefined,
         radiusKm: isNearMeEnabled ? NEAR_ME_RADIUS_KM : undefined,
@@ -348,7 +366,7 @@ export default function HubScreen() {
         setLoadingMore(false);
       }
     }
-  }, [selectedTown, selectedListingType, selectedCategory, selectedDateFilter, isNearMeEnabled, nearMeLocation, activeSearch, token]);
+  }, [selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedStartDate, selectedEndDate, isNearMeEnabled, nearMeLocation, activeSearch, token]);
 
   // Reload when the Hub is focused and whenever filters/search change.
   useEffect(() => {
@@ -414,11 +432,24 @@ export default function HubScreen() {
 
   const handleSelectDateFilter = useCallback(
     (dateFilter) => {
-      if (dateFilter === selectedDateFilter) return;
+      if (dateFilter === selectedDateFilter && !selectedStartDate && !selectedEndDate) return;
       prepareFilterRefresh();
       setSelectedDateFilter(dateFilter);
+      setSelectedStartDate("");
+      setSelectedEndDate("");
     },
-    [prepareFilterRefresh, selectedDateFilter]
+    [prepareFilterRefresh, selectedDateFilter, selectedStartDate, selectedEndDate]
+  );
+
+  const handleSelectDateRange = useCallback(
+    ({ startDate, endDate }) => {
+      if (!startDate) return;
+      prepareFilterRefresh();
+      setSelectedDateFilter("Choose dates");
+      setSelectedStartDate(startDate);
+      setSelectedEndDate(endDate || startDate);
+    },
+    [prepareFilterRefresh]
   );
 
   const handleToggleNearMe = useCallback(async () => {
@@ -459,6 +490,8 @@ export default function HubScreen() {
     setSelectedListingType("All");
     setSelectedCategory("All");
     setSelectedDateFilter("All Dates");
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -469,6 +502,8 @@ export default function HubScreen() {
     setSearchQuery("");
     setActiveSearch("");
     setSelectedDateFilter(DEFAULT_DATE_FILTER);
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setBuddySearchResults([]);
   }, []);
 
@@ -483,6 +518,8 @@ export default function HubScreen() {
       setSelectedTown(town);
       setSelectedCategory(category);
       setSelectedDateFilter(dateFilter);
+      setSelectedStartDate("");
+      setSelectedEndDate("");
       setSelectedListingType(listingType);
       setIsNearMeEnabled(false);
       setNearMeLocation(null);
@@ -670,6 +707,8 @@ export default function HubScreen() {
     setSelectedListingType(DEFAULT_LISTING_TYPE);
     setSelectedCategory("All");
     setSelectedDateFilter(DEFAULT_DATE_FILTER);
+    setSelectedStartDate("");
+    setSelectedEndDate("");
     setIsNearMeEnabled(false);
     setNearMeLocation(null);
     setNearMeMessage("");
@@ -677,6 +716,11 @@ export default function HubScreen() {
     setActiveSearch("");
     setBuddySearchResults([]);
   }, []);
+
+  const selectedDateLabel = useMemo(
+    () => getDateFilterLabel(selectedDateFilter, selectedStartDate, selectedEndDate),
+    [selectedDateFilter, selectedStartDate, selectedEndDate]
+  );
 
   // Text for the "no events" state, depending on which filters are active.
   const emptyMessage = useMemo(() => {
@@ -716,11 +760,11 @@ export default function HubScreen() {
     }
 
     if (selectedDateFilter !== "All Dates") {
-      return `No ${listingPlural} match your filters for ${selectedDateFilter.toLowerCase()}. Try a wider date range or open Connect.`;
+      return `No ${listingPlural} match your filters for ${selectedDateLabel.toLowerCase()}. Try a wider date range or open Connect.`;
     }
 
     return `No ${selectedCategory} ${listingPlural} found in ${selectedTown}.`;
-  }, [selectedCategory, selectedListingType, selectedTown, selectedDateFilter, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
+  }, [selectedCategory, selectedListingType, selectedTown, selectedDateFilter, selectedDateLabel, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
@@ -737,7 +781,7 @@ export default function HubScreen() {
     const dateLabel =
       selectedDateFilter === "All Dates"
         ? ""
-        : ` (${selectedDateFilter.toLowerCase()})`;
+        : ` (${selectedDateLabel.toLowerCase()})`;
 
     if (count === 0) {
       if (activeSearch && buddySearchResults.length) {
@@ -773,7 +817,7 @@ export default function HubScreen() {
     return isNearMeEnabled
       ? `Showing ${count} ${listingPlural} near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
       : `Showing ${count} ${listingPlural} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedListingType, selectedCategory, selectedDateFilter, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
+  }, [totalCount, selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedDateLabel, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
 
   const searchStatus = useMemo(() => {
     if (!activeSearch) return "";
@@ -800,6 +844,7 @@ export default function HubScreen() {
     selectedListingType !== DEFAULT_LISTING_TYPE ||
     selectedCategory !== "All" ||
     selectedDateFilter !== DEFAULT_DATE_FILTER ||
+    Boolean(selectedStartDate) ||
     isNearMeEnabled ||
     Boolean(activeSearch);
 
@@ -1261,7 +1306,9 @@ export default function HubScreen() {
           selectedTown={selectedTown}
           selectedListingType={selectedListingType}
           selectedCategory={selectedCategory}
-          selectedDateFilter={selectedDateFilter}
+          selectedDateFilter={selectedDateLabel}
+          selectedStartDate={selectedStartDate}
+          selectedEndDate={selectedEndDate}
           resultSummary={resultSummary}
           error={error}
           towns={TOWNS}
@@ -1273,6 +1320,7 @@ export default function HubScreen() {
           onSelectListingType={handleSelectListingTypeFilter}
           onSelectCategory={handleSelectCategoryFilter}
           onSelectDateFilter={handleSelectDateFilter}
+          onSelectDateRange={handleSelectDateRange}
           isNearMeEnabled={isNearMeEnabled}
           isNearMeLoading={nearMeLoading}
           nearMeMessage={nearMeMessage}
@@ -1298,6 +1346,7 @@ export default function HubScreen() {
       handleRetryLoad,
       handleSelectCategoryFilter,
       handleSelectDateFilter,
+      handleSelectDateRange,
       handleSelectListingTypeFilter,
       handleSelectTownFilter,
       handleToggleNearMe,
@@ -1309,7 +1358,9 @@ export default function HubScreen() {
       searchQuery,
       searchStatus,
       selectedCategory,
-      selectedDateFilter,
+      selectedDateLabel,
+      selectedEndDate,
+      selectedStartDate,
       selectedListingType,
       selectedTown,
       setIsBrowseMode,
