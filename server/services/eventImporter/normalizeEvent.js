@@ -58,6 +58,13 @@ function todayString(now = new Date()) {
 }
 
 function chooseImportStartDate(startDate, endDate, now, isRecurring = false) {
+  if (
+    isValidFutureDateString(startDate, now) &&
+    isValidFutureDateString(endDate, now) &&
+    startDate > endDate
+  ) {
+    return todayString(now);
+  }
   if (isValidFutureDateString(startDate, now)) return startDate;
   if (isValidFutureDateString(endDate, now)) return todayString(now);
   if (isRecurring) return todayString(now);

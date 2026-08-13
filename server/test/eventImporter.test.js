@@ -176,6 +176,213 @@ describe("event importer helpers", () => {
     ]);
   });
 
+  it("extracts Ski Louise listing cards with exact detail links", () => {
+    const events = extractEvents(
+      `
+        <article class="event-card">
+          <h3>Parkway to Pint</h3>
+          <p>It is the ultimate outdoor summer activity to do with your family or friends.</p>
+          <span>Aug 1 - Sep 1 2026</span>
+          <a href="/things-to-do/parkway-to-pint26/">More Details</a>
+        </article>
+        <article class="event-card">
+          <h3>Banded Peak Acoustic Afternoons are back!</h3>
+          <p>Enjoy specials on draft beer and live music from 2pm-5pm.</p>
+          <span>Aug 15 2026</span>
+          <a href="/things-to-do/banded-peak-acoustic-afternoons-are-back/">More Details</a>
+        </article>
+      `,
+      {
+        url: "https://www.skilouise.com/things-to-do/category/events/",
+        town: "Lake Louise",
+      }
+    );
+
+    expect(events).to.have.length(2);
+    expect(events[0]).to.include({
+      title: "Parkway to Pint",
+      dateText: "Aug 1 - Sep 1 2026",
+      startDate: "Aug 1 2026",
+      endDate: "Sep 1 2026",
+      venue: "Lake Louise Ski Resort",
+      sourceUrl: "https://www.skilouise.com/things-to-do/parkway-to-pint26/",
+    });
+    expect(events[1]).to.include({
+      title: "Banded Peak Acoustic Afternoons are back!",
+      dateText: "Aug 15 2026",
+      category: "Music & Nightlife",
+      sourceUrl:
+        "https://www.skilouise.com/things-to-do/banded-peak-acoustic-afternoons-are-back/",
+    });
+  });
+
+  it("extracts Chateau Lake Louise recurring calendar cards", () => {
+    const events = extractEvents(
+      `
+        <article class="calendar-event">
+          <div>Resort Activities</div>
+          <div>Family-Friendly</div>
+          <div>DAILY</div>
+          <h2>Resort Activities Hub</h2>
+          <p>Gather, play, and unwind with daily resort activities.</p>
+          <div>Victoria Ballroom</div>
+          <div>DAILY</div>
+          <div>9:00AM</div>
+          <a href="#">View Details</a>
+        </article>
+        <article class="calendar-event">
+          <div>Fitness and Wellness</div>
+          <div>WEEKLY</div>
+          <h2>Silent Meditation Walk</h2>
+          <p>Begin your day with a sunrise Silent Meditation Walk.</p>
+          <div>Louise</div>
+          <div>WEEKLY</div>
+          <div>7:00AM</div>
+          <a href="#">View Details</a>
+        </article>
+      `,
+      {
+        url: "https://www.chateau-lake-louise.com/experience/events-calendar/",
+        town: "Lake Louise",
+      }
+    );
+
+    expect(events).to.have.length(2);
+    expect(events[0]).to.deep.include({
+      title: "Resort Activities Hub",
+      scheduleType: "recurring",
+      startTime: "9:00AM",
+      venue: "Fairmont Chateau Lake Louise - Victoria Ballroom",
+      category: "Family & Pets",
+      sourceUrl: "https://www.chateau-lake-louise.com/experience/events-calendar/",
+    });
+    expect(events[0].recurrence).to.deep.include({ frequency: "daily" });
+    expect(events[1]).to.deep.include({
+      title: "Silent Meditation Walk",
+      scheduleType: "recurring",
+      startTime: "7:00AM",
+      venue: "Fairmont Chateau Lake Louise - Louise",
+      category: "Wellness",
+    });
+    expect(events[1].recurrence).to.deep.include({ frequency: "weekly" });
+  });
+
+  it("extracts SkiBig3 dated cards with exact links", () => {
+    const events = extractEvents(
+      `
+        <article class="event-card">
+          <img src="/images/slush-cup.jpg" />
+          <time>Sat, 25 Apr 2026</time>
+          <h3>Mt. Slushmore at Lake Louise</h3>
+          <p>Lake Louise's season send-off with costumes, spring laps, and big mountain energy.</p>
+          <a href="/events/mt-slushmore/">Learn more</a>
+        </article>
+        <article class="event-card">
+          <time>Apr 25 - Apr 26 2026</time>
+          <h3>Spring Ski Festival</h3>
+          <p>Two days of music and spring skiing across Banff and Lake Louise.</p>
+          <a href="/events/spring-ski-festival/">View details</a>
+        </article>
+      `,
+      {
+        url: "https://www.skibig3.com/events/?page=1",
+        town: "Banff",
+      }
+    );
+
+    expect(events).to.have.length(2);
+    expect(events[0]).to.include({
+      title: "Mt. Slushmore at Lake Louise",
+      dateText: "Sat, 25 Apr 2026",
+      venue: "SkiBig3",
+      category: "Outdoors & Sports",
+      sourceUrl: "https://www.skibig3.com/events/mt-slushmore/",
+      imageUrl: "https://www.skibig3.com/images/slush-cup.jpg",
+    });
+    expect(events[1]).to.include({
+      title: "Spring Ski Festival",
+      dateText: "Apr 25 - Apr 26 2026",
+      startDate: "Apr 25 2026",
+      endDate: "Apr 26 2026",
+      category: "Music & Nightlife",
+      sourceUrl: "https://www.skibig3.com/events/spring-ski-festival/",
+    });
+  });
+
+  it("extracts Explore Canmore event listings and visit links", () => {
+    const events = extractEvents(
+      `
+        <article class="event-listing">
+          <a href="/events/canmore-mountain-market/">Canmore Mountain Market</a>
+          <div>Aug 13</div>
+          <a href="https://www.google.com/maps/place/700+Railway+Ave">700 Railway Ave #100 Canmore, Alberta, T1W 1N9</a>
+          <a href="/events/canmore-mountain-market/">More details</a>
+          <a href="https://canmore.ca/events/mountain-market">Visit Website</a>
+        </article>
+        <article class="event-listing">
+          <a href="/events/free-range-country/">Free Range Country</a>
+          <div>Aug 20 - Sep 6</div>
+          <a href="https://www.google.com/maps/place/705+8+St">705 8 St Canmore, Alberta, T1W 2B6</a>
+          <a href="/events/free-range-country/">More details</a>
+          <a href="https://www.carter-ryan.com/free-range-country">Visit Website</a>
+        </article>
+        <article class="story-card">
+          <a href="/stories/things-to-do-this-summer/">Things to do in Kananaskis this Summer</a>
+          <p>Featured Stories</p>
+          <a href="/stories/things-to-do-this-summer/">More Details</a>
+        </article>
+      `,
+      {
+        url: "https://www.explorecanmore.ca/events/",
+        town: "Canmore",
+      }
+    );
+
+    expect(events).to.have.length(2);
+    expect(events[0]).to.include({
+      title: "Canmore Mountain Market",
+      dateText: "Aug 13",
+      startDate: "Aug 13",
+      town: "Canmore",
+      address: "700 Railway Ave #100 Canmore, Alberta, T1W 1N9",
+      category: "Food & Drink",
+      sourceUrl: "https://www.explorecanmore.ca/events/canmore-mountain-market/",
+      ticketUrl: "https://canmore.ca/events/mountain-market",
+    });
+    expect(events[1]).to.include({
+      title: "Free Range Country",
+      dateText: "Aug 20 - Sep 6",
+      startDate: "Aug 20",
+      endDate: "Sep 6",
+      category: "Music & Nightlife",
+      sourceUrl: "https://www.explorecanmore.ca/events/free-range-country/",
+    });
+  });
+
+  it("keeps active no-year date ranges importable", () => {
+    const candidate = normalizeExtractedEvent(
+      {
+        title: "The Cheezie Musical",
+        description: "A Canmore theatre run.",
+        startDate: "Jun 26",
+        endDate: "Aug 16",
+        venue: "artsPlace",
+      },
+      {
+        ...source,
+        town: "Canmore",
+      },
+      { now: fixedNow }
+    );
+
+    expect(candidate).to.include({
+      title: "The Cheezie Musical",
+      town: "Canmore",
+      startDate: "2026-08-13",
+      endDate: "2026-08-16",
+    });
+  });
+
   it("normalizes recurring extracted events without fixed dates", () => {
     const candidate = normalizeExtractedEvent(
       {

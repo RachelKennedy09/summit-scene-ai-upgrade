@@ -47,4 +47,28 @@ export const STARTER_EVENT_SOURCES = [
     enabled: true,
     trusted: true,
   },
+  {
+    name: "Fairmont Chateau Lake Louise Events Calendar",
+    url: "https://www.chateau-lake-louise.com/experience/events-calendar/",
+    town: "Lake Louise",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
+  {
+    name: "SkiBig3 Events",
+    url: "https://www.skibig3.com/events/?page=1",
+    town: "Banff",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
+  {
+    name: "Explore Canmore Events",
+    url: "https://www.explorecanmore.ca/events/",
+    town: "Canmore",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
 ];
