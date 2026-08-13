@@ -11,6 +11,7 @@ import {
   getImportedEventHostLabel,
   isImportedEventListing,
 } from "../../utils/importedEventHost";
+import { getEventImageUrl } from "../../utils/eventImages";
 
 function normalizeExternalUrl(value) {
   const trimmed = String(value || "").trim();
@@ -61,6 +62,7 @@ function EventCard({ event, onPress }) {
   const bookingUrl = normalizeExternalUrl(event.bookingUrl);
   const duration = event.duration || "";
   const priceRange = event.priceRange || "";
+  const eventImageUrl = getEventImageUrl(event);
 
   function handleBookNow(pressEvent) {
     pressEvent?.stopPropagation?.();
@@ -89,9 +91,9 @@ function EventCard({ event, onPress }) {
           },
         ]}
       >
-        {event.imageUrl ? (
+        {eventImageUrl ? (
           <Image
-            source={{ uri: event.imageUrl }}
+            source={{ uri: eventImageUrl }}
             style={styles.cardImage}
             resizeMode="cover"
           />

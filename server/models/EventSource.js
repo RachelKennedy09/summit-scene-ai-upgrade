@@ -35,6 +35,15 @@ const eventSourceSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    permittedImageUrl: {
+      type: String,
+      trim: true,
+    },
+    imagePermissionNote: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+    },
     lastCheckedAt: Date,
     lastSuccessfulCheckAt: Date,
     consecutiveFailures: {

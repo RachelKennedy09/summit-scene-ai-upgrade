@@ -81,6 +81,24 @@ export default function BusinessHelpScreen() {
             Keep titles clear, add accurate time and location details, and update
             events if anything changes.
           </HelpText>
+          <HelpText theme={theme}>
+            Only upload event photos you own or have permission to use. Summit
+            Scene imported listings should not reuse third-party event images
+            unless permission is clear.
+          </HelpText>
+        </HelpSection>
+
+        <HelpSection title="Imported and curated listings" theme={theme}>
+          <HelpText theme={theme}>
+            Summit Scene may curate factual event details from publicly
+            accessible organizer/source webpages, including name, date, time,
+            venue, town, price, organizer, ticket URL, and source URL.
+          </HelpText>
+          <HelpText theme={theme}>
+            Imported listings use short original summaries, keep attribution to
+            the organizer/source, and should be confirmed on the organizer
+            website for the latest details.
+          </HelpText>
         </HelpSection>
 
         <HelpSection title="Permits and local rules" theme={theme}>

@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "July 10, 2026";
+const LAST_UPDATED = "August 13, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -157,6 +157,13 @@ export default function LegalScreen() {
             to share.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Imported event listings: factual event details from publicly
+            accessible organizer/source webpages, such as event name, date,
+            time, venue, town, price, organizer, ticket URL, and original source
+            URL. Imported listings use short original summaries and retain
+            attribution to the organizer or source.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             External booking links: organizers may link to their own website,
             booking page, Instagram, direct message option, FareHarbor, Viator,
             or another third-party service. Those services have their own
@@ -261,6 +268,13 @@ export default function LegalScreen() {
             social links, or LGBTQ+ related interests, may reveal personal or
             sensitive information. Only add details you are comfortable sharing
             with other users.
+          </LegalText>
+          <LegalText theme={theme}>
+            Some event listings may be imported or curated by Summit Scene from
+            public organizer/source webpages. Imported listings should retain
+            the original source URL, use factual event details, and avoid copied
+            full event descriptions or third-party event images unless
+            permission is clear.
           </LegalText>
         </LegalSection>
 
@@ -397,6 +411,12 @@ export default function LegalScreen() {
             outside Summit Scene unless Summit Scene clearly says otherwise.
           </LegalBullet>
           <LegalBullet theme={theme}>
+            Imported or curated listings are provided for discovery and
+            attribution. Users should confirm date, time, price, ticket
+            availability, venue rules, and accessibility details directly with
+            the organizer or original source before attending.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
             Summit Scene can remove content, restrict accounts, reject business
             verification, or report serious issues when needed for safety,
             compliance, or app integrity.
@@ -509,6 +529,11 @@ export default function LegalScreen() {
             booking providers are responsible for their own tours, events,
             cancellations, refunds, safety practices, communications, and
             customer experiences.
+          </LegalText>
+          <LegalText theme={theme}>
+            Summit Scene's event discovery tools should respect public access
+            limits, robots.txt and crawling restrictions, authentication,
+            CAPTCHAs, paywalls, and reasonable rate limits.
           </LegalText>
           <LegalBullet theme={theme}>
             Banff and Lake Louise activities may involve Parks Canada and Town

@@ -83,7 +83,7 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     latitude: merged.latitude,
     longitude: merged.longitude,
     location: [venue, address].filter(Boolean).join(" - ") || undefined,
-    imageUrl: undefined,
+    imageUrl: normalizeString(merged.imageUrl),
     bookingUrl: ticketUrl || sourceUrl,
     bookingRequired: false,
     priceRange: normalizeString(merged.price),
@@ -150,6 +150,7 @@ router.patch("/candidates/:id", authMiddleware, isAdmin, async (req, res) => {
       "recurrence",
       "price",
       "ticketUrl",
+      "imageUrl",
       "importNotes",
     ];
 

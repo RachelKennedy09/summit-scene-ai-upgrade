@@ -332,6 +332,8 @@ export default function EventImportReviewScreen() {
       sourceType: source?.sourceType || "html",
       enabled: source?.enabled !== false,
       trusted: Boolean(source?.trusted),
+      permittedImageUrl: source?.permittedImageUrl || "",
+      imagePermissionNote: source?.imagePermissionNote || "",
     });
   }
 
@@ -514,6 +516,12 @@ export default function EventImportReviewScreen() {
             <Text style={[styles.meta, { color: theme.textMuted }]}>
               Failures: {source.consecutiveFailures || 0}
             </Text>
+            {source.permittedImageUrl ? (
+              <Text style={[styles.meta, { color: theme.textMuted }]}>
+                Permitted photo set
+                {source.imagePermissionNote ? ` - ${source.imagePermissionNote}` : ""}
+              </Text>
+            ) : null}
             <View style={styles.rowActions}>
               <Pressable
                 disabled={working}
@@ -939,6 +947,8 @@ export default function EventImportReviewScreen() {
               {[
                 ["name", "Name"],
                 ["url", "URL"],
+                ["permittedImageUrl", "Permitted venue photo URL"],
+                ["imagePermissionNote", "Photo permission note"],
               ].map(([key, label]) => (
                 <View key={key} style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
@@ -949,7 +959,11 @@ export default function EventImportReviewScreen() {
                     onChangeText={(value) =>
                       setSourceForm((current) => ({ ...current, [key]: value }))
                     }
-                    autoCapitalize={key === "url" ? "none" : "sentences"}
+                    autoCapitalize={
+                      key === "url" || key === "permittedImageUrl"
+                        ? "none"
+                        : "sentences"
+                    }
                     style={[
                       styles.input,
                       {

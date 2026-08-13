@@ -257,7 +257,7 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     sourceUrl: cleanText(extracted?.sourceUrl || source?.url),
     sourceName,
     source: source?._id,
-    imageUrl: undefined,
+    imageUrl: cleanText(source?.permittedImageUrl) || undefined,
     rawExtractedData: buildFactualRawExtractedData(extracted, source),
   };
 

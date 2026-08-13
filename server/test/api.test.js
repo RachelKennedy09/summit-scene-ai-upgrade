@@ -1014,6 +1014,7 @@ describe("SummitScene API", function () {
         address: "100 Banff Avenue, Banff, AB",
         startDate: "2026-12-31",
         startTime: "7:00 PM",
+        imageUrl: `https://example.com/permitted-event-photo-${testRunId}.jpg`,
         sourceUrl: `https://example.com/imported-${testRunId}`,
         sourceName: "Example Import Source",
         confidenceScore: 95,
@@ -1029,6 +1030,7 @@ describe("SummitScene API", function () {
       expect(res.body.event).to.include({
         title: `Imported Candidate ${testRunId}`,
         importedBySummitScene: true,
+        imageUrl: `https://example.com/permitted-event-photo-${testRunId}.jpg`,
         sourceUrl: `https://example.com/imported-${testRunId}`,
         bookingUrl: `https://example.com/imported-${testRunId}`,
       });

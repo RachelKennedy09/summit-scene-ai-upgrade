@@ -55,6 +55,23 @@ describe("event importer helpers", () => {
     expect(candidate.confidenceScore).to.be.at.least(90);
   });
 
+  it("uses source-approved image URLs without extracting event images", () => {
+    const candidate = normalizeExtractedEvent(
+      {
+        title: "Venue Open Mic",
+        dateText: "September 24, 2026 at 8 PM",
+        venue: "Approved Venue",
+      },
+      {
+        ...source,
+        permittedImageUrl: "https://example.com/permitted-venue-photo.jpg",
+      },
+      { now: fixedNow }
+    );
+
+    expect(candidate.imageUrl).to.equal("https://example.com/permitted-venue-photo.jpg");
+  });
+
   it("keeps active date-range events importable when the original start passed", () => {
     const candidate = normalizeExtractedEvent(
       {

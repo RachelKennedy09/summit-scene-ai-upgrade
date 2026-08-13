@@ -41,6 +41,7 @@ import {
   formatDateShort,
   getNextOccurrenceDateString,
 } from "../../utils/eventSchedule";
+import { getEventImageUrl } from "../../utils/eventImages";
 import {
   EVENT_CATEGORIES,
   getEventCategoryGroups,
@@ -935,6 +936,7 @@ export default function HubScreen() {
         nextDate && nextDate !== todayContext.dateString
           ? formatDateShort(nextDate)
           : "";
+      const eventImageUrl = getEventImageUrl(event);
 
       return (
         <Pressable
@@ -945,9 +947,9 @@ export default function HubScreen() {
             { backgroundColor: theme.card, borderColor: theme.border },
           ]}
         >
-          {event.imageUrl && !compact ? (
+          {eventImageUrl && !compact ? (
             <Image
-              source={{ uri: event.imageUrl }}
+              source={{ uri: eventImageUrl }}
               style={styles.dashboardEventImage}
               resizeMode="cover"
             />

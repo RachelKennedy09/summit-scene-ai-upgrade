@@ -40,7 +40,7 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     ...(aiCandidate || {}),
   };
   candidate.description = deterministicCandidate.description;
-  candidate.imageUrl = undefined;
+  candidate.imageUrl = deterministicCandidate.imageUrl;
   candidate.rawExtractedData = deterministicCandidate.rawExtractedData;
 
   if (

@@ -5,7 +5,7 @@
 // - Gives the event owner/admin edit/delete actions (EventOwnerSection)
 // - Includes "Open in Maps" deep link for the event location
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -48,6 +48,7 @@ import {
   getDetailScheduleLabels,
   isEventUpcoming,
 } from "../../utils/eventSchedule";
+import { getEventImageUrl } from "../../utils/eventImages";
 import { getVisibleTags } from "../../utils/categoryVisuals";
 import {
   getImportedEventHostLabel,
@@ -283,6 +284,7 @@ export default function EventDetailScreen({ route }) {
   };
 
   const title = event?.title || "Untitled event";
+  const eventImageUrl = getEventImageUrl(event);
   const eventCategories =
     Array.isArray(event?.categories) && event.categories.length
       ? event.categories
@@ -309,6 +311,10 @@ export default function EventDetailScreen({ route }) {
   const bookingUrl = normalizeExternalUrl(event?.bookingUrl);
 
   const { dateLabel, timeLabel } = getDetailScheduleLabels(event || {});
+
+  useEffect(() => {
+    setHeroImageFailed(false);
+  }, [event?._id, eventImageUrl]);
 
   const loadEventBuddyPosts = useCallback(async () => {
     if (!eventId || !eventIsUpcoming) {
@@ -828,9 +834,9 @@ export default function EventDetailScreen({ route }) {
           ]}
         >
           {/* Hero image (optional)*/}
-          {event.imageUrl && !heroImageFailed ? (
+          {eventImageUrl && !heroImageFailed ? (
             <Image
-              source={{ uri: event.imageUrl }}
+              source={{ uri: eventImageUrl }}
               style={styles.heroImage}
               onError={() => setHeroImageFailed(true)}
             />

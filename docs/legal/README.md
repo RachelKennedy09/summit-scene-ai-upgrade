@@ -1,6 +1,6 @@
 # Summit Scene Legal Drafts
 
-Last updated: July 10, 2026
+Last updated: August 13, 2026
 
 These drafts are working product/legal copy for testing and launch preparation.
 They are not legal advice. Before publishing Summit Scene publicly, have a
@@ -49,6 +49,12 @@ Data collected may include:
   choices, saved event choices, reminder choices, and business information.
   Public content may be visible to account users and to people browsing without
   an account.
+- Imported event listings: factual event information collected from publicly
+  accessible organizer/source webpages, such as event name, date, time, venue,
+  town, price, organizer, ticket URL, and original source URL. Imported listings
+  should use original short summaries, retain source attribution, and avoid
+  copying full event descriptions or reusing third-party event images unless
+  permission is clear.
 - Optional location: device location for nearby event features after permission
   is granted. Event addresses may be sent to address lookup/geocoding services
   to place events on the map.
@@ -97,6 +103,12 @@ honestly.
 - Users must not post harassment, threats, scams, spam, misleading event details,
   unsafe instructions, illegal content, or content that violates another person's
   rights.
+- Users and organizers must only upload event photos they own or have permission
+  to use.
+- Imported or curated listings are for discovery and attribution. Users should
+  confirm event date, time, price, ticket availability, venue rules, and
+  accessibility details directly with the organizer or original source before
+  attending.
 - Summit Scene may remove content, restrict accounts, reject business
   verification, or take moderation action when needed for safety, compliance, or
   app integrity.
@@ -132,6 +144,11 @@ Third-party organizers, tour guides, tour companies, venues, and booking
 providers are responsible for their own tours, events, cancellations, refunds,
 safety practices, communications, and customer experiences.
 
+Summit Scene's event discovery tools should only collect from publicly
+accessible webpages, respect robots.txt and crawling restrictions, avoid
+authentication, CAPTCHAs, paywalls, and access controls, and rate-limit requests
+to reduce load on third-party websites.
+
 ## Launch Checklist
 
 - Confirm public web URLs for Privacy Policy and account deletion requests.
@@ -144,4 +161,6 @@ safety practices, communications, and customer experiences.
   match saved-event reminder behavior.
 - Add marketing email opt-in before sending newsletters or promotional emails.
 - Review event posting UI for local permit reminders.
+- Review imported event source attribution, crawler behavior, and image/content
+  reuse rules before adding new automated sources.
 - Have final policies reviewed by counsel before production launch.

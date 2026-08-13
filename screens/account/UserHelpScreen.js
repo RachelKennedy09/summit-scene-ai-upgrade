@@ -80,6 +80,7 @@ export default function UserHelpScreen() {
               "Use Date to switch from today or upcoming dates to All Dates when you want to plan farther ahead.",
               "Use Near me when you want events close to your current location. Location access is optional and can be turned off.",
               "Open an event to see the host, date, time, location, description, map actions, and attendance options.",
+              "Some listings are imported from public organizer/source webpages. Use the organizer website link to confirm the latest details before attending.",
               "Tap I'm Going to save your attendance, or use Find Event Buddies if you want to connect with others going to the same event.",
             ]}
           />
@@ -180,6 +181,11 @@ export default function UserHelpScreen() {
             theme={theme}
             question="Why did an old saved event disappear?"
             answer="Past events are removed from saved and going lists so your account stays focused on upcoming plans."
+          />
+          <Question
+            theme={theme}
+            question="Where do imported event details come from?"
+            answer="Imported listings use factual details from publicly accessible organizer or source webpages, keep the original source link, and use short Summit Scene summaries instead of copied full event descriptions."
           />
           <Question
             theme={theme}
