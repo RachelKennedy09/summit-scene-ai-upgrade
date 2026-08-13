@@ -21,7 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 
 import logo from "../../assets/logo-app-earth-transparent-alpha.png";
-import { AVATARS } from "../../assets/avatars/avatarConfig";
 
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -189,15 +188,6 @@ export default function HubScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
 
-  // Friendly greeting in the Hub header
-  const displayName = user?.name || user?.email || "User";
-  const avatarSource =
-    user?.avatarKey && AVATARS[user.avatarKey]
-      ? AVATARS[user.avatarKey]
-      : user?.profileImageUrl || user?.avatarUrl
-        ? { uri: user.profileImageUrl || user.avatarUrl }
-        : null;
-  const avatarInitial = (displayName && displayName.charAt(0).toUpperCase()) || "?";
   const userInterestCategories = useMemo(
     () => getUserInterestCategories(user),
     [user?.interests]
@@ -804,9 +794,6 @@ export default function HubScreen() {
     }, ${buddyCount} community post${buddyCount === 1 ? "" : "s"}.`;
   }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing]);
 
-  const hubSubtitle =
-    "Browse category, town, and date below to narrow the list, or open Map to explore nearby.";
-
   const hasActiveFilters =
     selectedTown !== "All" ||
     selectedListingType !== DEFAULT_LISTING_TYPE ||
@@ -1232,43 +1219,21 @@ export default function HubScreen() {
   const listHeader = useMemo(
     () => (
       <>
-        <View style={styles.logoHeader}>
-          <Image source={logo} style={styles.hubLogo} resizeMode="contain" />
-        </View>
-        <Pressable
-          onPress={() => {
-            handleClearFilters();
-            setIsBrowseMode(false);
-          }}
-          style={[styles.backHomeButton, { borderColor: theme.border }]}
-        >
-          <Text style={[styles.backHomeText, { color: theme.text }]}>
-            Back to Today
-          </Text>
-        </Pressable>
-        <View style={styles.greetingHeader}>
-          <View
-            style={[
-              styles.profileAvatar,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
+        <View style={styles.browseHeader}>
+          <Pressable
+            onPress={() => {
+              handleClearFilters();
+              setIsBrowseMode(false);
+            }}
+            style={[styles.backHomeButton, { borderColor: theme.border }]}
           >
-            {avatarSource ? (
-              <Image source={avatarSource} style={styles.profileAvatarImage} />
-            ) : (
-              <Text style={[styles.profileAvatarInitial, { color: theme.text }]}>
-                {avatarInitial}
-              </Text>
-            )}
-          </View>
-          <View style={styles.greetingCopy}>
-            <Text style={[styles.hubTitle, { color: theme.text || theme.textMain }]}>
-              Hello {displayName}! Today in the Bow Valley.
+            <Text style={[styles.backHomeText, { color: theme.text }]}>
+              Back to Today
             </Text>
-            <Text style={[styles.hubSubtitle, { color: theme.textMuted }]}>
-              {hubSubtitle}
-            </Text>
-          </View>
+          </Pressable>
+          <Text style={[styles.browseHeaderHint, { color: theme.textMuted }]}>
+            Search, pick a town, choose a category, or change the date range.
+          </Text>
         </View>
         <HubFilters
           selectedTown={selectedTown}
@@ -1304,9 +1269,6 @@ export default function HubScreen() {
     ),
     [
       activeSearch,
-      avatarInitial,
-      avatarSource,
-      displayName,
       error,
       handleApplySearch,
       handleClearFilters,
@@ -1318,7 +1280,6 @@ export default function HubScreen() {
       handleSelectTownFilter,
       handleToggleNearMe,
       hasActiveFilters,
-      hubSubtitle,
       isNearMeEnabled,
       nearMeLoading,
       nearMeMessage,
@@ -1479,16 +1440,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 6,
     marginBottom: 8,
-  },
-  greetingHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  hubLogo: {
-    width: 136,
-    height: 146,
   },
   dashboardLogo: {
     width: 112,
@@ -1651,6 +1602,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
+  browseHeader: {
+    paddingTop: 12,
+    marginBottom: 6,
+  },
+  browseHeaderHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
   backHomeButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
@@ -1662,39 +1622,6 @@ const styles = StyleSheet.create({
   backHomeText: {
     fontSize: 13,
     fontWeight: "900",
-  },
-  profileAvatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    flexShrink: 0,
-  },
-  profileAvatarImage: {
-    width: "100%",
-    height: "100%",
-  },
-  profileAvatarInitial: {
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: "900",
-  },
-  greetingCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  hubTitle: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "900",
-    marginBottom: 2,
-  },
-  hubSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   emptyText: {
     marginTop: 6,
