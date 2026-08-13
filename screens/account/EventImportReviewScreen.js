@@ -38,12 +38,10 @@ function getCandidateId(candidate) {
 }
 
 function formatDateTime(candidate) {
-  return [
-    candidate.startDate,
-    [candidate.startTime, candidate.endTime].filter(Boolean).join(" - "),
-  ]
+  const timeRange = [candidate.startTime, candidate.endTime]
     .filter(Boolean)
-    .join(" · ");
+    .join(" - ");
+  return [candidate.startDate, timeRange].filter(Boolean).join(" | ");
 }
 
 export default function EventImportReviewScreen() {
@@ -364,7 +362,7 @@ export default function EventImportReviewScreen() {
                 <Text style={[styles.meta, { color: theme.textMuted }]}>
                   {[candidate.town, candidate.venue, formatDateTime(candidate)]
                     .filter(Boolean)
-                    .join(" · ")}
+                    .join(" | ")}
                 </Text>
               </View>
               <Text style={[styles.score, { color: theme.accent }]}>
@@ -372,7 +370,7 @@ export default function EventImportReviewScreen() {
               </Text>
             </View>
             <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {[candidate.category, candidate.sourceName].filter(Boolean).join(" · ")}
+              {[candidate.category, candidate.sourceName].filter(Boolean).join(" | ")}
             </Text>
             {candidate.importNotes ? (
               <Text style={[styles.notes, { color: theme.textMuted }]}>
@@ -440,7 +438,11 @@ export default function EventImportReviewScreen() {
               Approval preview
             </Text>
             {previewing ? (
-              <View style={styles.previewSurface}>
+              <ScrollView
+                style={styles.modalBody}
+                contentContainerStyle={styles.previewSurface}
+                keyboardShouldPersistTaps="handled"
+              >
                 <EventCard
                   event={candidateToPreviewEvent(previewing)}
                   onPress={() => {}}
@@ -459,7 +461,7 @@ export default function EventImportReviewScreen() {
                     {previewing.description}
                   </Text>
                 ) : null}
-              </View>
+              </ScrollView>
             ) : null}
             <View style={styles.modalActions}>
               <Pressable
@@ -498,63 +500,86 @@ export default function EventImportReviewScreen() {
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               Edit imported event
             </Text>
-            <ScrollView style={styles.modalFields}>
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalFields}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
                   Town
                 </Text>
-                <View
-                  style={[
-                    styles.pickerWrap,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: theme.background,
-                    },
-                  ]}
-                >
-                  <Picker
-                    selectedValue={editForm.town || "Banff"}
-                    onValueChange={(value) =>
-                      setEditForm((current) => ({ ...current, town: value }))
-                    }
-                  >
-                    {["Banff", "Canmore", "Lake Louise"].map((town) => (
-                      <Picker.Item key={town} label={town} value={town} />
-                    ))}
-                  </Picker>
+                <View style={styles.optionRow}>
+                  {TOWNS.map((town) => {
+                    const selected = (editForm.town || "Banff") === town;
+                    return (
+                      <Pressable
+                        key={town}
+                        onPress={() =>
+                          setEditForm((current) => ({ ...current, town }))
+                        }
+                        style={[
+                          styles.optionChip,
+                          {
+                            borderColor: selected ? theme.accent : theme.border,
+                            backgroundColor: selected
+                              ? theme.accentSoft || theme.background
+                              : theme.background,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            { color: selected ? theme.accent : theme.text },
+                          ]}
+                        >
+                          {town}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </View>
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>
                   Category
                 </Text>
-                <View
-                  style={[
-                    styles.pickerWrap,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: theme.background,
-                    },
-                  ]}
-                >
-                  <Picker
-                    selectedValue={editForm.category || "Other"}
-                    onValueChange={(value) =>
-                      setEditForm((current) => ({
-                        ...current,
-                        category: value,
-                        categories: [value],
-                      }))
-                    }
-                  >
-                    {EVENT_MAIN_CATEGORIES.map((category) => (
-                      <Picker.Item
+                <View style={styles.optionGrid}>
+                  {EVENT_MAIN_CATEGORIES.map((category) => {
+                    const selected = (editForm.category || "Other") === category;
+                    return (
+                      <Pressable
                         key={category}
-                        label={category}
-                        value={category}
-                      />
-                    ))}
-                  </Picker>
+                        onPress={() =>
+                          setEditForm((current) => ({
+                            ...current,
+                            category,
+                            categories: [category],
+                          }))
+                        }
+                        style={[
+                          styles.optionChip,
+                          styles.categoryOptionChip,
+                          {
+                            borderColor: selected ? theme.accent : theme.border,
+                            backgroundColor: selected
+                              ? theme.accentSoft || theme.background
+                              : theme.background,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionChipText,
+                            { color: selected ? theme.accent : theme.text },
+                          ]}
+                        >
+                          {category}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </View>
               <View style={styles.fieldGroup}>
@@ -759,13 +784,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   modalCard: {
-    maxHeight: "86%",
+    width: "100%",
+    maxHeight: "90%",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
   },
   modalTitle: { fontSize: 18, fontWeight: "900", marginBottom: 12 },
-  modalFields: { maxHeight: 480 },
+  modalBody: { flexGrow: 0, flexShrink: 1 },
+  modalFields: { paddingBottom: 8 },
   previewSurface: {
     paddingVertical: 4,
     gap: 8,
@@ -775,11 +802,29 @@ const styles = StyleSheet.create({
   previewDescription: { fontSize: 14, lineHeight: 20, marginTop: 4 },
   fieldGroup: { marginBottom: 10 },
   fieldLabel: { fontSize: 12, fontWeight: "800", marginBottom: 5 },
-  pickerWrap: {
+  optionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  optionChip: {
     borderWidth: 1,
     borderRadius: 9,
-    overflow: "hidden",
+    minHeight: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
   },
+  categoryOptionChip: {
+    minWidth: "46%",
+    flexGrow: 1,
+  },
+  optionChipText: { fontSize: 13, fontWeight: "800" },
   inputButton: {
     minHeight: 42,
     borderWidth: 1,
