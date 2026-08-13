@@ -276,6 +276,17 @@ const eventSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Original public source retained for events approved through import review.
+    sourceUrl: {
+      type: String,
+      trim: true,
+    },
+
+    sourceName: {
+      type: String,
+      trim: true,
+    },
+
     // -------------------------------------------
     // CREATOR INFO
     // -------------------------------------------

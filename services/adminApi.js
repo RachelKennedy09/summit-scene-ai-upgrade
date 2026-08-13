@@ -194,3 +194,130 @@ export async function updateAdminAccount(email, isAdmin, token) {
     );
   }
 }
+
+export async function fetchImportCandidates(token, status = "pending") {
+  try {
+    const params = new URLSearchParams();
+    params.set("status", status);
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/event-import/candidates?${params.toString()}`,
+      { headers: buildHeaders(token) }
+    );
+    const data = await readJsonSafely(res);
+
+    if (!res.ok) {
+      throw new Error(data.message || `Failed to load import candidates (${res.status})`);
+    }
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    const normalized =
+      error?.name === "AbortError"
+        ? new Error("Import candidates timed out. Please try again.")
+        : error;
+    throw toUserFriendlyError(
+      normalized,
+      "We couldn't load event import candidates right now."
+    );
+  }
+}
+
+export async function approveImportCandidate(candidateId, token, event = {}) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/${candidateId}/approve`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+      body: JSON.stringify({ event }),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to approve candidate (${res.status})`),
+      "We couldn't approve that event right now."
+    );
+  }
+
+  return data;
+}
+
+export async function updateImportCandidate(candidateId, updates, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/${candidateId}`,
+    {
+      method: "PATCH",
+      headers: buildHeaders(token),
+      body: JSON.stringify(updates || {}),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to update candidate (${res.status})`),
+      "We couldn't save that imported event right now."
+    );
+  }
+
+  return data;
+}
+
+export async function rejectImportCandidate(candidateId, token, importNotes = "") {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/${candidateId}/reject`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+      body: JSON.stringify({ importNotes }),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to reject candidate (${res.status})`),
+      "We couldn't reject that event right now."
+    );
+  }
+
+  return data;
+}
+
+export async function approveHighConfidenceImportCandidates(token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/approve-high-confidence`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to approve high confidence events (${res.status})`),
+      "We couldn't approve high confidence events right now."
+    );
+  }
+
+  return data;
+}
+
+export async function runEventImporter(token) {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/run`, {
+    method: "POST",
+    headers: buildHeaders(token),
+  });
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to run event importer (${res.status})`),
+      "We couldn't run the event importer right now."
+    );
+  }
+
+  return data;
+}

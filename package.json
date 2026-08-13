@@ -9,7 +9,9 @@
     "start:tunnel": "expo start --tunnel",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "import-events": "npm --prefix server run import-events",
+    "seed:event-sources": "npm --prefix server run seed:event-sources"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

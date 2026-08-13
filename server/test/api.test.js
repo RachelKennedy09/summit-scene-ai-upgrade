@@ -4,6 +4,7 @@
 import { expect } from "chai";
 import request from "supertest";
 import app from "../index.js";
+import ImportCandidate from "../models/ImportCandidate.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
 import { getCategoryTagGroupsForCategories } from "../../constants/eventCategories.js";
@@ -920,6 +921,41 @@ describe("SummitScene API", function () {
       expect(updateRes.body).to.include({
         locationName: "Banff Music Hall",
         importedBySummitScene: true,
+      });
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
+  });
+
+  it("should let an admin approve an import candidate into an event", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    try {
+      const candidate = await ImportCandidate.create({
+        title: `Imported Candidate ${testRunId}`,
+        description: "Candidate approval flow test.",
+        town: "Banff",
+        category: "Live Music",
+        categories: ["Live Music"],
+        venue: "Candidate Venue",
+        address: "100 Banff Avenue, Banff, AB",
+        startDate: "2026-12-31",
+        startTime: "7:00 PM",
+        sourceUrl: `https://example.com/imported-${testRunId}`,
+        sourceName: "Example Import Source",
+        confidenceScore: 95,
+      });
+
+      const res = await request(app)
+        .post(`/api/event-import/candidates/${candidate._id}/approve`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send();
+
+      expect(res.status).to.equal(201);
+      expect(res.body.candidate.status).to.equal("approved");
+      expect(res.body.event).to.include({
+        title: `Imported Candidate ${testRunId}`,
+        importedBySummitScene: true,
+        sourceUrl: `https://example.com/imported-${testRunId}`,
       });
     } finally {
       process.env.ADMIN_EMAILS = originalAdminEmails;

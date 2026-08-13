@@ -40,6 +40,7 @@ import BusinessHelpScreen from "../screens/account/BusinessHelpScreen";
 import BusinessVerificationScreen from "../screens/account/BusinessVerificationScreen";
 import LegalScreen from "../screens/account/LegalScreen";
 import ModerationQueueScreen from "../screens/account/ModerationQueueScreen";
+import EventImportReviewScreen from "../screens/account/EventImportReviewScreen";
 import ReportBugScreen from "../screens/account/ReportBugScreen";
 import SavedEventsScreen from "../screens/account/SavedEventsScreen";
 import NotificationsScreen from "../screens/account/NotificationsScreen";
@@ -80,6 +81,7 @@ function getFallbackTab(routeName) {
       "Legal",
       "ReportBug",
       "ModerationQueue",
+      "EventImportReview",
       "BusinessVerification",
     ].includes(routeName)
   ) {
@@ -330,6 +332,11 @@ export default function RootNavigator() {
                   name="ModerationQueue"
                   component={ModerationQueueScreen}
                   options={{ title: "Moderation Queue" }}
+                />
+                <Stack.Screen
+                  name="EventImportReview"
+                  component={EventImportReviewScreen}
+                  options={{ title: "Event Imports" }}
                 />
                 <Stack.Screen
                   name="BusinessVerification"

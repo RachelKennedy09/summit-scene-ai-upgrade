@@ -1,0 +1,108 @@
+import {
+  EVENT_CATEGORY_VALUES,
+  getMainCategoryForTag,
+} from "../../../constants/eventCategories.js";
+import { TOWNS } from "./config.js";
+import { isValidFutureDateString, parseEventDate, parseEventTime } from "./dateParsing.js";
+
+function cleanText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTown(value, fallbackTown) {
+  const text = cleanText(value || fallbackTown);
+  return TOWNS.find((town) => town.toLowerCase() === text.toLowerCase());
+}
+
+function inferTown(text, fallbackTown) {
+  const lower = String(text || "").toLowerCase();
+  return TOWNS.find((town) => lower.includes(town.toLowerCase())) ||
+    normalizeTown(fallbackTown);
+}
+
+function normalizeCategory(value, text = "") {
+  const exact = cleanText(value);
+  if (EVENT_CATEGORY_VALUES.includes(exact)) {
+    return getMainCategoryForTag(exact) || exact;
+  }
+
+  const lower = `${exact} ${text}`.toLowerCase();
+  const keywordMap = [
+    { keywords: ["music", "concert", "dj", "band", "karaoke"], category: "Music & Nightlife" },
+    { keywords: ["market", "vendor", "maker"], category: "Food & Drink" },
+    { keywords: ["yoga", "wellness", "fitness"], category: "Wellness" },
+    { keywords: ["hike", "ski", "bike", "run", "outdoor"], category: "Outdoors & Sports" },
+    { keywords: ["workshop", "class", "course", "learn"], category: "Learning" },
+    { keywords: ["art", "gallery", "film", "theatre", "craft"], category: "Arts & Creativity" },
+    { keywords: ["food", "beer", "wine", "brunch", "restaurant"], category: "Food & Drink" },
+    { keywords: ["family", "kids", "pet"], category: "Family & Pets" },
+    { keywords: ["community", "fundraiser", "volunteer"], category: "Inclusive Community" },
+  ];
+
+  return keywordMap.find((item) =>
+    item.keywords.some((keyword) => lower.includes(keyword))
+  )?.category || "Other";
+}
+
+function scoreCandidate(candidate, notes) {
+  let score = 20;
+
+  if (candidate.title) score += 20;
+  if (isValidFutureDateString(candidate.startDate)) score += 25;
+  else notes.push("Missing or non-future date.");
+  if (candidate.town) score += 15;
+  else notes.push("Town could not be identified.");
+  if (candidate.venue) score += 10;
+  else notes.push("Venue is missing.");
+  if (candidate.sourceUrl) score += 10;
+  if (candidate.category && candidate.category !== "Other") score += 5;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+export function normalizeExtractedEvent(extracted, source, options = {}) {
+  const notes = [];
+  const text = cleanText(
+    [
+      extracted?.title,
+      extracted?.description,
+      extracted?.dateText,
+      extracted?.venue,
+      extracted?.address,
+    ].filter(Boolean).join(" ")
+  );
+  const startDate = parseEventDate(extracted?.startDate || extracted?.dateText || text, options);
+  const endDate = parseEventDate(extracted?.endDate, options);
+  const town = normalizeTown(extracted?.town) || inferTown(text, source?.town);
+  const category = normalizeCategory(extracted?.category, text);
+  const title = cleanText(extracted?.title);
+  const venue = cleanText(extracted?.venue);
+
+  const candidate = {
+    title,
+    description: cleanText(extracted?.description),
+    town,
+    category,
+    categories: [category],
+    venue,
+    address: cleanText(extracted?.address),
+    startDate,
+    endDate: endDate && endDate !== startDate ? endDate : undefined,
+    startTime: cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text),
+    endTime: cleanText(extracted?.endTime),
+    price: cleanText(extracted?.price),
+    ticketUrl: cleanText(extracted?.ticketUrl),
+    sourceUrl: cleanText(extracted?.sourceUrl || source?.url),
+    sourceName: cleanText(source?.name),
+    source: source?._id,
+    imageUrl: cleanText(extracted?.imageUrl),
+    rawExtractedData: extracted,
+  };
+
+  candidate.confidenceScore = scoreCandidate(candidate, notes);
+  candidate.importNotes = notes.join(" ");
+
+  return candidate;
+}

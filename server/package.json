@@ -10,13 +10,16 @@
     "test": "set NODE_ENV=test&& mocha --exit --timeout 10000 \"test/**/*.test.js\"",
     "cleanup:test-attendees": "node scripts/cleanupTestAttendees.js",
     "cleanup:generated-tests": "node scripts/cleanupGeneratedTestData.js",
-    "normalize:community-posts": "node scripts/normalizeCommunityPostFields.js"
+    "normalize:community-posts": "node scripts/normalizeCommunityPostFields.js",
+    "import-events": "node scripts/runEventImport.js",
+    "seed:event-sources": "node scripts/seedEventSources.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cheerio": "^1.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",

@@ -629,6 +629,12 @@ function AccountScreen() {
               theme={theme}
             />
             <AccountNavRow
+              title="Event import review"
+              subtitle="Review discovered events before publishing."
+              onPress={() => navigation.navigate("EventImportReview")}
+              theme={theme}
+            />
+            <AccountNavRow
               title="Official event tools"
               subtitle="Post events and manage Summit Scene business listings."
               onPress={() => navigation.navigate("MyEvents")}

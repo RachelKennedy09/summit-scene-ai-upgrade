@@ -12,6 +12,7 @@ import { connectDB } from "./config/db.js"; // MongoDB connection helper
 
 // Route modules
 import eventRoutes from "./routes/events.js";
+import eventImportRoutes from "./routes/eventImport.js";
 import authRouter from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import communityRoutes from "./routes/community.js";
@@ -101,6 +102,9 @@ app.use("/api/reports", reportRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);
+
+// Admin-only event discovery/import review routes
+app.use("/api/event-import", eventImportRoutes);
 
 // Free address autocomplete and place lookup helpers
 app.use("/api/places", placesRoutes);
