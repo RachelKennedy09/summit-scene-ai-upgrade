@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 
+import EventCard from "../../components/cards/EventCard";
 import DatePickerModal from "../../components/events/DatePickerModal";
 import PageHeader from "../../components/common/PageHeader";
 import TimePickerModal from "../../components/events/TimePickerModal";
@@ -439,41 +440,16 @@ export default function EventImportReviewScreen() {
             </Text>
             {previewing ? (
               <View style={styles.previewSurface}>
-                <Text style={[styles.previewCategory, { color: theme.accent }]}>
-                  {candidateToPreviewEvent(previewing).category}
-                </Text>
-                <Text style={[styles.previewTitle, { color: theme.text }]}>
-                  {candidateToPreviewEvent(previewing).title}
-                </Text>
+                <EventCard
+                  event={candidateToPreviewEvent(previewing)}
+                  onPress={() => {}}
+                />
                 <Text style={[styles.previewLine, { color: theme.textMuted }]}>
-                  {[
-                    candidateToPreviewEvent(previewing).town,
-                    candidateToPreviewEvent(previewing).date,
-                    [
-                      candidateToPreviewEvent(previewing).time,
-                      candidateToPreviewEvent(previewing).endTime,
-                    ]
-                      .filter(Boolean)
-                      .join(" - "),
-                  ]
-                    .filter(Boolean)
-                    .join(" | ")}
+                  Source: {previewing.sourceName || "Imported event"}
                 </Text>
-                <Text style={[styles.previewLine, { color: theme.textMuted }]}>
-                  {candidateToPreviewEvent(previewing).locationName ||
-                    candidateToPreviewEvent(previewing).address ||
-                    "Location TBA"}
+                <Text style={[styles.previewLink, { color: theme.accent }]}>
+                  Link: {candidateToPreviewEvent(previewing).bookingUrl || "No link found"}
                 </Text>
-                {candidateToPreviewEvent(previewing).priceRange ? (
-                  <Text style={[styles.previewLine, { color: theme.textMuted }]}>
-                    {candidateToPreviewEvent(previewing).priceRange}
-                  </Text>
-                ) : null}
-                {candidateToPreviewEvent(previewing).bookingUrl ? (
-                  <Text style={[styles.previewLink, { color: theme.accent }]}>
-                    Organizer link will open: {candidateToPreviewEvent(previewing).bookingUrl}
-                  </Text>
-                ) : null}
                 {previewing.description ? (
                   <Text
                     style={[styles.previewDescription, { color: theme.text }]}
@@ -691,6 +667,7 @@ export default function EventImportReviewScreen() {
         }}
       />
       <TimePickerModal
+        key={timePickerTarget || "event-import-time-picker"}
         visible={Boolean(timePickerTarget)}
         initialTime={parseTimeString(editForm[timePickerTarget])}
         title={
@@ -792,8 +769,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 8,
   },
-  previewCategory: { fontSize: 12, fontWeight: "900" },
-  previewTitle: { fontSize: 22, fontWeight: "900", lineHeight: 27 },
   previewLine: { fontSize: 13, lineHeight: 18 },
   previewLink: { fontSize: 12, lineHeight: 17, fontWeight: "800" },
   previewDescription: { fontSize: 14, lineHeight: 20, marginTop: 4 },
