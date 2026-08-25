@@ -888,13 +888,15 @@ function RegisterScreen() {
 
   async function handleChooseProfilePhoto() {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          "Photo access needed",
-          "Allow photo library access to choose a profile photo from your camera roll."
-        );
-        return;
+      if (Platform.OS === "ios") {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(
+            "Photo access needed",
+            "Allow photo library access to choose a profile photo from your camera roll."
+          );
+          return;
+        }
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
