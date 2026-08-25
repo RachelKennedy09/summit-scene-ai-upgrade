@@ -2,20 +2,31 @@ import { isImportedEventListing } from "./importedEventHost";
 import { getMainCategoryForTag } from "../constants/eventCategories";
 
 const CATEGORY_IMAGE_SOURCES = {
-  "Arts & Creativity": require("../assets/avatars/business_art_culture.png"),
-  "Family & Pets": require("../assets/avatars/business_community.png"),
-  "Food & Drink": require("../assets/avatars/business_food_drink.png"),
-  "Inclusive Community": require("../assets/avatars/business_community.png"),
-  Learning: require("../assets/avatars/business_general.png"),
-  "Music & Nightlife": require("../assets/avatars/business_music_nightlife.png"),
-  "Outdoors & Sports": require("../assets/avatars/business_outdoor_adventure.png"),
-  "Tours & Experiences": require("../assets/avatars/business_stay_lodging.png"),
-  Community: require("../assets/avatars/business_community.png"),
-  Wellness: require("../assets/avatars/business_wellness.png"),
-  Other: require("../assets/landing-hero-mobile.png"),
+  "Arts & Creativity": require("../assets/event-categories/art.png"),
+  "Family & Pets": require("../assets/event-categories/family.png"),
+  "Food & Drink": require("../assets/event-categories/food-drink.png"),
+  "Inclusive Community": require("../assets/event-categories/market.png"),
+  Learning: require("../assets/event-categories/workshop.png"),
+  "Music & Nightlife": require("../assets/event-categories/music.png"),
+  "Outdoors & Sports": require("../assets/event-categories/outdoors.png"),
+  "Tours & Experiences": require("../assets/event-categories/other.png"),
+  Community: require("../assets/event-categories/market.png"),
+  Wellness: require("../assets/event-categories/wellness.png"),
+  "Art Shows": require("../assets/event-categories/art.png"),
+  "Craft Markets": require("../assets/event-categories/market.png"),
+  "Creative Workshops": require("../assets/event-categories/workshop.png"),
+  "Farmers Markets": require("../assets/event-categories/market.png"),
+  "Makers Markets": require("../assets/event-categories/market.png"),
+  "Market": require("../assets/event-categories/market.png"),
+  "Markets": require("../assets/event-categories/market.png"),
+  "Painting Nights": require("../assets/event-categories/art.png"),
+  "Pottery": require("../assets/event-categories/workshop.png"),
+  "Shopping": require("../assets/event-categories/retail.png"),
+  "Workshops": require("../assets/event-categories/workshop.png"),
+  Other: require("../assets/event-categories/other.png"),
 };
 
-const DEFAULT_EVENT_IMAGE_SOURCE = require("../assets/landing-hero-mobile.png");
+const DEFAULT_EVENT_IMAGE_SOURCE = require("../assets/event-categories/other.png");
 
 function firstConnectedProfileImage(user) {
   if (!Array.isArray(user?.socialAccounts)) return "";

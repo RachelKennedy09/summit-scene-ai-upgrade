@@ -886,7 +886,7 @@ export function AuthProvider({ children }) {
     if (!response.ok) {
       throw new Error(data?.message || "Could not send verification email.");
     }
-    if (data.user) {
+    if (data.user && token) {
       setUser(buildUser(data.user));
     }
     return data;
@@ -907,7 +907,7 @@ export function AuthProvider({ children }) {
     if (!response.ok) {
       throw new Error(data?.message || "Could not verify email.");
     }
-    if (data.user) {
+    if (data.user && token) {
       setUser(buildUser(data.user));
     }
     return data;

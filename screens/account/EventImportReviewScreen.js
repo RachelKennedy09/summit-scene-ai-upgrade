@@ -71,6 +71,7 @@ export default function EventImportReviewScreen() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
+  const [workingLabel, setWorkingLabel] = useState("");
   const [error, setError] = useState("");
   const [sources, setSources] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -109,6 +110,7 @@ export default function EventImportReviewScreen() {
 
     try {
       setWorking(true);
+      setWorkingLabel("Approving event...");
       await approveImportCandidate(candidateId, token);
       setCandidates((current) =>
         current.filter((item) => getCandidateId(item) !== candidateId)
@@ -117,6 +119,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not approve event", approveError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -215,6 +218,7 @@ export default function EventImportReviewScreen() {
 
     try {
       setWorking(true);
+      setWorkingLabel("Saving event changes...");
       const updated = await updateImportCandidate(candidateId, editForm, token);
       setCandidates((current) =>
         current.map((item) =>
@@ -226,6 +230,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not save event", saveError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -241,6 +246,7 @@ export default function EventImportReviewScreen() {
         onPress: async () => {
           try {
             setWorking(true);
+            setWorkingLabel("Rejecting imported event...");
             await rejectImportCandidate(candidateId, token);
             setCandidates((current) =>
               current.filter((item) => getCandidateId(item) !== candidateId)
@@ -249,6 +255,7 @@ export default function EventImportReviewScreen() {
             Alert.alert("Could not reject event", rejectError.message);
           } finally {
             setWorking(false);
+            setWorkingLabel("");
           }
         },
       },
@@ -258,6 +265,7 @@ export default function EventImportReviewScreen() {
   async function handleRunImporter() {
     try {
       setWorking(true);
+      setWorkingLabel("Running importer. This can take a minute...");
       const summary = await runEventImporter(token);
       const sourceErrorText = Array.isArray(summary.sourceErrors) && summary.sourceErrors.length
         ? `\nSource errors: ${summary.sourceErrors
@@ -273,12 +281,14 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not run importer", runError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
   async function handleSeedSources() {
     try {
       setWorking(true);
+      setWorkingLabel("Adding starter sources...");
       const result = await seedStarterEventSources(token);
       Alert.alert(
         "Sources ready",
@@ -288,12 +298,14 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not add sources", seedError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
   async function handleApproveHighConfidence() {
     try {
       setWorking(true);
+      setWorkingLabel("Approving high confidence events...");
       const result = await approveHighConfidenceImportCandidates(token);
       Alert.alert(
         "High confidence events approved",
@@ -304,12 +316,14 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not approve events", approveError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
   async function handleCleanupStale() {
     try {
       setWorking(true);
+      setWorkingLabel("Cleaning bad imports...");
       const result = await cleanupStaleImportCandidates(token);
       Alert.alert(
         "Bad imports cleaned",
@@ -320,6 +334,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not clean imports", cleanupError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -340,6 +355,7 @@ export default function EventImportReviewScreen() {
   async function handleSaveSource() {
     try {
       setWorking(true);
+      setWorkingLabel("Saving event source...");
       if (sourceEditing?.isNew) {
         const created = await createEventSource(sourceForm, token);
         setSources((current) => [...current, created].sort((a, b) =>
@@ -359,6 +375,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not save source", sourceError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -368,6 +385,7 @@ export default function EventImportReviewScreen() {
 
     try {
       setWorking(true);
+      setWorkingLabel(source.enabled === false ? "Enabling source..." : "Disabling source...");
       const updated = await updateEventSource(
         sourceId,
         { enabled: source.enabled === false },
@@ -382,6 +400,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not update source", sourceError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -391,6 +410,7 @@ export default function EventImportReviewScreen() {
 
     try {
       setWorking(true);
+      setWorkingLabel("Retrying source import...");
       const summary = await retryEventSource(sourceId, token);
       Alert.alert(
         "Source retry completed",
@@ -401,6 +421,7 @@ export default function EventImportReviewScreen() {
       Alert.alert("Could not retry source", sourceError.message);
     } finally {
       setWorking(false);
+      setWorkingLabel("");
     }
   }
 
@@ -431,20 +452,42 @@ export default function EventImportReviewScreen() {
           <Pressable
             disabled={working}
             onPress={handleSeedSources}
-            style={[styles.secondaryButton, { borderColor: theme.border }]}
+            style={[
+              styles.secondaryButton,
+              { borderColor: theme.border },
+              working && styles.buttonDisabled,
+            ]}
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-              Add Starter Sources
-            </Text>
+            <View style={styles.buttonContent}>
+              {workingLabel === "Adding starter sources..." ? (
+                <ActivityIndicator size="small" color={theme.text} />
+              ) : null}
+              <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                {workingLabel === "Adding starter sources..."
+                  ? "Adding Sources..."
+                  : "Add Starter Sources"}
+              </Text>
+            </View>
           </Pressable>
           <Pressable
             disabled={working}
             onPress={handleRunImporter}
-            style={[styles.primaryButton, { backgroundColor: theme.accent }]}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: theme.accent },
+              working && styles.buttonDisabled,
+            ]}
           >
-            <Text style={[styles.primaryButtonText, { color: theme.textOnAccent }]}>
-              Run Importer
-            </Text>
+            <View style={styles.buttonContent}>
+              {workingLabel.startsWith("Running importer") ? (
+                <ActivityIndicator size="small" color={theme.textOnAccent} />
+              ) : null}
+              <Text style={[styles.primaryButtonText, { color: theme.textOnAccent }]}>
+                {workingLabel.startsWith("Running importer")
+                  ? "Running Importer..."
+                  : "Run Importer"}
+              </Text>
+            </View>
           </Pressable>
           <Pressable
             disabled={working || highConfidenceCount === 0}
@@ -452,22 +495,58 @@ export default function EventImportReviewScreen() {
             style={[
               styles.secondaryButton,
               { borderColor: theme.border, opacity: highConfidenceCount ? 1 : 0.5 },
+              working && styles.buttonDisabled,
             ]}
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-              Approve All High Confidence ({highConfidenceCount})
-            </Text>
+            <View style={styles.buttonContent}>
+              {workingLabel === "Approving high confidence events..." ? (
+                <ActivityIndicator size="small" color={theme.text} />
+              ) : null}
+              <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                {workingLabel === "Approving high confidence events..."
+                  ? "Approving Events..."
+                  : `Approve All High Confidence (${highConfidenceCount})`}
+              </Text>
+            </View>
           </Pressable>
           <Pressable
             disabled={working}
             onPress={handleCleanupStale}
-            style={[styles.secondaryButton, { borderColor: theme.border }]}
+            style={[
+              styles.secondaryButton,
+              { borderColor: theme.border },
+              working && styles.buttonDisabled,
+            ]}
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
-              Clean Bad Imports
-            </Text>
+            <View style={styles.buttonContent}>
+              {workingLabel === "Cleaning bad imports..." ? (
+                <ActivityIndicator size="small" color={theme.text} />
+              ) : null}
+              <Text style={[styles.secondaryButtonText, { color: theme.text }]}>
+                {workingLabel === "Cleaning bad imports..."
+                  ? "Cleaning Imports..."
+                  : "Clean Bad Imports"}
+              </Text>
+            </View>
           </Pressable>
         </View>
+
+        {workingLabel ? (
+          <View
+            style={[
+              styles.workingBanner,
+              {
+                backgroundColor: theme.accentSoft || theme.card,
+                borderColor: theme.accent,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={theme.accent} />
+            <Text style={[styles.workingBannerText, { color: theme.text }]}>
+              {workingLabel}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -526,7 +605,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => handleToggleSource(source)}
-                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+                style={[
+                  styles.smallButton,
+                  { backgroundColor: theme.accent },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
                   {source.enabled === false ? "Enable" : "Disable"}
@@ -535,7 +618,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => openSourceEditor(source)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Edit
@@ -544,7 +631,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => handleRetrySource(source)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Retry
@@ -611,7 +702,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => handleApprove(candidate)}
-                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+                style={[
+                  styles.smallButton,
+                  { backgroundColor: theme.accent },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
                   Approve
@@ -620,7 +715,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => setPreviewing(candidate)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Preview
@@ -629,7 +728,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => openEdit(candidate)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Edit
@@ -638,7 +741,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => handleReject(candidate)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Reject
@@ -909,7 +1016,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => setEditing(null)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Cancel
@@ -918,11 +1029,20 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={handleSaveEdit}
-                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+                style={[
+                  styles.smallButton,
+                  { backgroundColor: theme.accent },
+                  working && styles.buttonDisabled,
+                ]}
               >
-                <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
-                  Save
-                </Text>
+                <View style={styles.buttonContent}>
+                  {workingLabel === "Saving event changes..." ? (
+                    <ActivityIndicator size="small" color={theme.textOnAccent} />
+                  ) : null}
+                  <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                    {workingLabel === "Saving event changes..." ? "Saving..." : "Save"}
+                  </Text>
+                </View>
               </Pressable>
             </View>
           </View>
@@ -1089,7 +1209,11 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={() => setSourceEditing(null)}
-                style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.border },
+                  working && styles.buttonDisabled,
+                ]}
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Cancel
@@ -1098,11 +1222,20 @@ export default function EventImportReviewScreen() {
               <Pressable
                 disabled={working}
                 onPress={handleSaveSource}
-                style={[styles.smallButton, { backgroundColor: theme.accent }]}
+                style={[
+                  styles.smallButton,
+                  { backgroundColor: theme.accent },
+                  working && styles.buttonDisabled,
+                ]}
               >
-                <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
-                  Save
-                </Text>
+                <View style={styles.buttonContent}>
+                  {workingLabel === "Saving event source..." ? (
+                    <ActivityIndicator size="small" color={theme.textOnAccent} />
+                  ) : null}
+                  <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                    {workingLabel === "Saving event source..." ? "Saving..." : "Save"}
+                  </Text>
+                </View>
               </Pressable>
             </View>
           </View>
@@ -1150,6 +1283,31 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   content: { padding: 16, paddingBottom: 32 },
   actions: { gap: 10, marginBottom: 16 },
+  workingBanner: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  workingBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.62,
+  },
   primaryButton: {
     minHeight: 46,
     borderRadius: 10,

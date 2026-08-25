@@ -90,6 +90,7 @@
           statusMessage.textContent = "Email changed.";
           statusDetail.textContent =
             "Your Summit Scene login email has been updated. Return to the app and log in with your new email.";
+          appLink.setAttribute("href", "summitscene://");
         } catch (error) {
           statusMessage.textContent = "Could not confirm this email change.";
           statusDetail.textContent =

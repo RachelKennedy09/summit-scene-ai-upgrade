@@ -6,12 +6,23 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function VerifyEmailScreen({ navigation, route }) {
-  const { verifyEmail, confirmEmailChange } = useAuth();
+  const { token: authToken, verifyEmail, confirmEmailChange } = useAuth();
   const { theme } = useTheme();
   const [token] = useState(route?.params?.token || "");
   const mode = route?.params?.mode || "verify";
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("idle");
+  const [statusMessage, setStatusMessage] = useState("");
   const autoSubmittedRef = useRef(false);
+
+  function openAccountOrLogin() {
+    if (authToken) {
+      navigation.navigate("tabs", { screen: "Account" });
+      return;
+    }
+
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+  }
 
   async function handleSubmit() {
     const trimmedToken = token.trim();
@@ -25,8 +36,14 @@ export default function VerifyEmailScreen({ navigation, route }) {
 
     try {
       setLoading(true);
+      setStatus("loading");
+      setStatusMessage("");
       if (mode === "emailChange") {
         await confirmEmailChange(trimmedToken);
+        setStatus("success");
+        setStatusMessage(
+          "Your new email has been confirmed. Please log in again with your new email."
+        );
         Alert.alert(
           "Email changed",
           "Your new email has been confirmed. Please log in again with your new email."
@@ -34,10 +51,14 @@ export default function VerifyEmailScreen({ navigation, route }) {
         navigation.reset({ index: 0, routes: [{ name: "Login" }] });
       } else {
         await verifyEmail(trimmedToken);
+        setStatus("success");
+        setStatusMessage("Your account email is now verified.");
         Alert.alert("Email verified", "Your account email is now verified.");
-        navigation.navigate("tabs", { screen: "Account" });
+        openAccountOrLogin();
       }
     } catch (error) {
+      setStatus("error");
+      setStatusMessage(error.message || "Please try again.");
       Alert.alert("Could not verify email", error.message || "Please try again.");
     } finally {
       setLoading(false);
@@ -60,13 +81,21 @@ export default function VerifyEmailScreen({ navigation, route }) {
           {mode === "emailChange" ? "Confirm email change" : "Verify email"}
         </Text>
         <Text style={[styles.copy, { color: theme.textMuted }]}>
-          {token.trim()
-            ? mode === "emailChange"
-              ? "Confirming your new email from the link..."
-              : "Verifying your email from the link..."
-            : mode === "emailChange"
-              ? "Open the latest email-change confirmation link from your inbox. It works from your phone or a browser."
-              : "Open the latest verification link from your inbox. It works from your phone or a browser."}
+          {status === "success"
+            ? statusMessage
+            : status === "error"
+              ? statusMessage
+              : token.trim()
+                ? loading
+                  ? mode === "emailChange"
+                    ? "Confirming your new email from the link..."
+                    : "Verifying your email from the link..."
+                  : mode === "emailChange"
+                    ? "Ready to confirm your new email."
+                    : "Ready to verify your email."
+                : mode === "emailChange"
+                  ? "Open the latest email-change confirmation link from your inbox. It works from your phone or a browser."
+                  : "Open the latest verification link from your inbox. It works from your phone or a browser."}
         </Text>
         {token.trim() ? (
           <AppButton
@@ -75,12 +104,26 @@ export default function VerifyEmailScreen({ navigation, route }) {
                 ? mode === "emailChange"
                   ? "Confirming..."
                   : "Verifying..."
+                : status === "success"
+                  ? "Open Account"
                 : mode === "emailChange"
                   ? "Confirm Email Change"
                   : "Verify Email"
             }
-            onPress={handleSubmit}
+            onPress={
+              status === "success"
+                ? openAccountOrLogin
+                : handleSubmit
+            }
             loading={loading}
+            size="lg"
+          />
+        ) : null}
+        {status === "error" ? (
+          <AppButton
+            title="Open Account"
+            onPress={openAccountOrLogin}
+            variant="outline"
             size="lg"
           />
         ) : null}

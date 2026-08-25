@@ -89,6 +89,7 @@
           statusMessage.textContent = "Email verified.";
           statusDetail.textContent =
             "Your Summit Scene account email is verified. Open Summit Scene and refresh your account page if needed.";
+          appLink.setAttribute("href", "summitscene://");
         } catch (error) {
           statusMessage.textContent = "Could not verify this email.";
           statusDetail.textContent =
