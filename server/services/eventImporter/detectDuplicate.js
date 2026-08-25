@@ -69,6 +69,10 @@ export function findDuplicateEvent(candidate, existingEvents = []) {
       sameText(candidate?.venue, event?.location);
     const titleScore = jaccardSimilarity(candidate?.title, event?.title);
 
+    if (sameTown && sameText(candidate?.title, event?.title)) {
+      return { event, reason: "same title and town", score: 1 };
+    }
+
     if (
       candidateUrl &&
       eventUrl &&

@@ -5,6 +5,7 @@ import isAdmin from "../middleware/isAdmin.js";
 import Event from "../models/Event.js";
 import EventSource from "../models/EventSource.js";
 import ImportCandidate from "../models/ImportCandidate.js";
+import { findDuplicateEvent } from "../services/eventImporter/detectDuplicate.js";
 import { runEventImport } from "../services/eventImporter/runEventImport.js";
 import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
@@ -91,6 +92,22 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     sourceUrl,
     sourceName: normalizeString(merged.sourceName),
     createdBy: userId,
+  };
+}
+
+function candidateToDuplicateComparable(candidate) {
+  return {
+    _id: candidate._id,
+    title: candidate.title,
+    town: candidate.town,
+    date: candidate.startDate,
+    time: candidate.startTime,
+    locationName: candidate.venue,
+    location: candidate.venue,
+    bookingUrl: candidate.ticketUrl,
+    sourceUrl: candidate.sourceUrl,
+    scheduleType: candidate.scheduleType,
+    recurrence: candidate.recurrence,
   };
 }
 
@@ -260,6 +277,72 @@ router.post("/candidates/cleanup-stale", authMiddleware, isAdmin, async (req, re
   } catch (error) {
     console.error("Error cleaning stale import candidates:", error);
     return res.status(500).json({ message: "Could not clean stale import candidates." });
+  }
+});
+
+router.post("/candidates/cleanup-duplicates", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const candidates = await ImportCandidate.find({ status: "pending" })
+      .sort({ discoveredAt: -1 })
+      .limit(500);
+
+    const deletedCandidateIds = [];
+    const markedDuplicateIds = [];
+
+    for (const candidate of candidates) {
+      const existingEvents = await Event.find({
+        town: candidate.town,
+        $or: [
+          { date: candidate.startDate },
+          { sourceUrl: candidate.sourceUrl },
+          { bookingUrl: candidate.ticketUrl || candidate.sourceUrl },
+          { scheduleType: "recurring" },
+        ],
+      })
+        .select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence")
+        .limit(500);
+
+      const duplicate = findDuplicateEvent(
+        candidateToDuplicateComparable(candidate),
+        existingEvents
+      );
+
+      if (duplicate) {
+        candidate.status = "duplicate";
+        candidate.duplicateOf = duplicate.event?._id;
+        candidate.reviewedAt = new Date();
+        candidate.reviewedBy = req.user.userId;
+        candidate.importNotes = `Removed from review queue: ${duplicate.reason}`;
+        await candidate.save();
+        markedDuplicateIds.push(candidate._id);
+        continue;
+      }
+
+      const olderMatchingCandidate = await ImportCandidate.findOne({
+        _id: { $ne: candidate._id },
+        status: { $in: ["pending", "approved", "duplicate"] },
+        town: candidate.town,
+        title: candidate.title,
+      }).sort({ discoveredAt: 1 });
+
+      if (olderMatchingCandidate) {
+        candidate.status = "duplicate";
+        candidate.reviewedAt = new Date();
+        candidate.reviewedBy = req.user.userId;
+        candidate.importNotes = "Removed from review queue: same title already exists in imports.";
+        await candidate.save();
+        markedDuplicateIds.push(candidate._id);
+      }
+    }
+
+    return res.json({
+      message: "Duplicate import candidates removed from the pending queue.",
+      deletedCount: deletedCandidateIds.length,
+      markedDuplicateCount: markedDuplicateIds.length,
+    });
+  } catch (error) {
+    console.error("Error cleaning duplicate import candidates:", error);
+    return res.status(500).json({ message: "Could not clean duplicate import candidates." });
   }
 });
 

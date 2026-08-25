@@ -30,6 +30,18 @@ function candidateToDuplicateComparable(candidate) {
   };
 }
 
+function buildExistingEventDuplicateQuery(candidate) {
+  return {
+    town: candidate.town,
+    $or: [
+      { date: candidate.startDate },
+      { sourceUrl: candidate.sourceUrl },
+      { bookingUrl: candidate.ticketUrl || candidate.sourceUrl },
+      { scheduleType: "recurring" },
+    ],
+  };
+}
+
 export async function importExtractedEvent(extracted, source, options = {}) {
   const aiCandidate = await normalizeWithAi(extracted).catch((error) => ({
     importNotes: `AI normalization failed: ${error.message}`,
@@ -58,16 +70,15 @@ export async function importExtractedEvent(extracted, source, options = {}) {
   const existingCandidate = await ImportCandidate.findOne(buildCandidateQuery(candidate));
   if (existingCandidate) {
     const [existingEvents, existingCandidates] = await Promise.all([
-      Event.find({
-        town: candidate.town,
-        date: candidate.startDate,
-      }).select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence"),
+      Event.find(buildExistingEventDuplicateQuery(candidate))
+        .select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence")
+        .limit(500),
       ImportCandidate.find({
         _id: { $ne: existingCandidate._id },
         town: candidate.town,
-        startDate: candidate.startDate,
         status: { $in: ["pending", "approved", "duplicate"] },
-      }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence"),
+      }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence")
+        .limit(500),
     ]);
     const duplicate =
       findDuplicateEvent(candidate, existingEvents) ||
@@ -94,15 +105,14 @@ export async function importExtractedEvent(extracted, source, options = {}) {
   }
 
   const [existingEvents, existingCandidates] = await Promise.all([
-    Event.find({
-      town: candidate.town,
-      date: candidate.startDate,
-    }).select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence"),
+    Event.find(buildExistingEventDuplicateQuery(candidate))
+      .select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence")
+      .limit(500),
     ImportCandidate.find({
       town: candidate.town,
-      startDate: candidate.startDate,
       status: { $in: ["pending", "approved", "duplicate"] },
-    }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence"),
+    }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence")
+      .limit(500),
   ]);
   const duplicate =
     findDuplicateEvent(candidate, existingEvents) ||
