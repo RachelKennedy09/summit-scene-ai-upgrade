@@ -19,6 +19,11 @@
     }
   },
   "submit": {
+    "closedTesting": {
+      "android": {
+        "track": "alpha"
+      }
+    },
     "production": {}
   }
 }
