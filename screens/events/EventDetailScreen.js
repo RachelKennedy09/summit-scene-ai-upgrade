@@ -5,7 +5,7 @@
 // - Gives the event owner/admin edit/delete actions (EventOwnerSection)
 // - Includes "Open in Maps" deep link for the event location
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -61,6 +61,7 @@ import {
   updateEventReminderNotification,
 } from "../../utils/eventReminderNotifications";
 import { recordConnectEngagementForReviewPrompt } from "../../utils/appReviewPrompt";
+import { trackAnalytics } from "../../services/analyticsApi";
 
 import EventHostSection from "../../components/events/EventHostSection";
 import EventOwnerSection from "../../components/events/EventOwnerSection";
@@ -204,6 +205,7 @@ export default function EventDetailScreen({ route }) {
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [eventPreference, setEventPreference] = useState(null);
   const [updatingPreference, setUpdatingPreference] = useState(false);
+  const trackedEventViewsRef = useRef(new Set());
 
   const isImportedListing = isImportedEventListing(event);
   const host = isImportedListing ? null : getEventHost(event);
@@ -317,6 +319,15 @@ export default function EventDetailScreen({ route }) {
     setHeroImageFailed(false);
   }, [event?._id, eventImageUrl]);
 
+  useEffect(() => {
+    if (!eventId || !event?._id || trackedEventViewsRef.current.has(eventId)) {
+      return;
+    }
+
+    trackedEventViewsRef.current.add(eventId);
+    trackAnalytics("event_view", { eventId });
+  }, [event?._id, eventId]);
+
   const loadEventBuddyPosts = useCallback(async () => {
     if (!eventId || !eventIsUpcoming) {
       setBuddyPosts([]);
@@ -427,6 +438,10 @@ export default function EventDetailScreen({ route }) {
       if (result.event) {
         setEvent(result.event);
       }
+      trackAnalytics("event_going", {
+        eventId,
+        metadata: { action: result.isGoing ? "added" : "removed" },
+      });
     } catch (error) {
       Alert.alert("Could not update", error.message || "Please try again.");
     } finally {
@@ -458,6 +473,10 @@ export default function EventDetailScreen({ route }) {
         token
       );
       setEventPreference(preference);
+      trackAnalytics("event_save", {
+        eventId,
+        metadata: { action: isSaved ? "removed" : "added" },
+      });
       if (isSaved) {
         await cancelEventReminderNotification({ eventId, source: "saved" });
       } else if (preference.savedReminderEnabled) {
@@ -718,10 +737,13 @@ export default function EventDetailScreen({ route }) {
       .join("\n");
 
     try {
-      await Share.share({
+      const result = await Share.share({
         title: `Invite to ${title}`,
         message: `Want to go to this event?\n\n${details}`,
       });
+      if (result.action !== Share.dismissedAction) {
+        trackAnalytics("event_share", { eventId });
+      }
     } catch (error) {
       console.warn("Share event issue:", error?.message);
       Alert.alert("Could not share", "Please try inviting friends again.");
@@ -798,6 +820,10 @@ export default function EventDetailScreen({ route }) {
   const handleOpenBookingUrl = () => {
     if (!bookingUrl) return;
 
+    trackAnalytics("website_click", {
+      eventId,
+      metadata: { destination: "event_website" },
+    });
     Linking.openURL(bookingUrl).catch((error) => {
       console.warn("Open booking link issue:", error?.message);
       Alert.alert("Could not open booking link", "Please try again.");

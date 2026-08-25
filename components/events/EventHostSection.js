@@ -2,7 +2,7 @@
 // Shows the "Hosted by" business card + modal profile for the event host.
 // This uses avatarKey from the User document to render one of our local avatar PNGs.
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useTheme } from "../../context/ThemeContext";
 
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 import TrustBadgeRow from "../common/TrustBadges";
+import { trackAnalytics } from "../../services/analyticsApi";
 
 const PROFILE_TOWN_OPTIONS = ["Banff", "Canmore", "Lake Louise"];
 
@@ -59,6 +60,12 @@ export default function EventHostSection({
 }) {
   const { theme } = useTheme();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const hostId = host?._id || host?.id || "";
+
+  useEffect(() => {
+    if (!isProfileOpen || host?.role !== "business" || !hostId) return;
+    trackAnalytics("business_view", { businessId: hostId });
+  }, [host?.role, hostId, isProfileOpen]);
 
   if (!host) return null;
 
@@ -72,7 +79,6 @@ export default function EventHostSection({
   const hasConnectedInstagram = visibleSocialAccounts.some(
     (account) => account.provider === "instagram"
   );
-  const hostId = host._id || host.id || "";
   const businessTags = Array.isArray(host.businessTags)
     ? host.businessTags
     : [];

@@ -21,6 +21,7 @@ import eventPreferenceRoutes from "./routes/eventPreferences.js";
 import reportRoutes from "./routes/reports.js";
 import placesRoutes from "./routes/placesRoutes.js";
 import notificationRoutes from "./routes/notifications.js";
+import analyticsRoutes from "./routes/analytics.js";
 import { startDailyEventsNotificationJob } from "./services/dailyEventsNotificationService.js";
 
 // ---------------------------
@@ -109,6 +110,9 @@ app.use("/api/event-import", eventImportRoutes);
 
 // Free address autocomplete and place lookup helpers
 app.use("/api/places", placesRoutes);
+
+// Lightweight aggregate analytics for event/business reporting.
+app.use("/api/analytics", analyticsRoutes);
 
 // ---------------------------
 // SERVER STARTUP

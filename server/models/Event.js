@@ -287,6 +287,16 @@ const eventSchema = new mongoose.Schema(
       trim: true,
     },
 
+    sourceType: {
+      type: String,
+      enum: ["manual", "business", "website", "summit_scene_import"],
+      default: undefined,
+    },
+
+    lastSyncedAt: {
+      type: Date,
+    },
+
     // -------------------------------------------
     // CREATOR INFO
     // -------------------------------------------

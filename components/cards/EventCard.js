@@ -19,7 +19,7 @@ function normalizeExternalUrl(value) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function EventCard({ event, onPress }) {
+function EventCard({ event, onPress, onWebsitePress }) {
   const { theme } = useTheme();
 
   if (!event) return null;
@@ -68,6 +68,7 @@ function EventCard({ event, onPress }) {
     pressEvent?.stopPropagation?.();
     if (!bookingUrl) return;
 
+    onWebsitePress?.(event);
     Linking.openURL(bookingUrl).catch((error) => {
       console.warn("Open booking link issue:", error?.message);
       Alert.alert("Could not open booking link", "Please try again.");
@@ -285,7 +286,11 @@ function EventCard({ event, onPress }) {
 }
 
 export default React.memo(EventCard, (prevProps, nextProps) => {
-  return prevProps.event === nextProps.event;
+  return (
+    prevProps.event === nextProps.event &&
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.onWebsitePress === nextProps.onWebsitePress
+  );
 });
 
 const styles = StyleSheet.create({

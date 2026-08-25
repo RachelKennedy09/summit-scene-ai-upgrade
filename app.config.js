@@ -39,7 +39,7 @@ export default {
     version: "1.0.6",
     orientation: "portrait",
     scheme: "summitscene",
-    icon: "./assets/app-icon.png",
+    icon: "./assets/app-icon-ios-padded.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {

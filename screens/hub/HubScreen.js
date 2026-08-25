@@ -35,6 +35,7 @@ import {
 } from "../../services/eventsApi";
 import { fetchBuddyPosts } from "../../services/buddyPostsApi";
 import { requestCurrentLocation } from "../../services/locationService";
+import { trackAnalytics } from "../../services/analyticsApi";
 import { colors } from "../../theme/colors";
 import {
   formatEventTimeLabel,
@@ -885,6 +886,27 @@ export default function HubScreen({ route }) {
     return item._id?.toString() || `${item.title}-${item.date}-${item.time}`;
   }, []);
 
+  const viewabilityConfigRef = useRef({
+    itemVisiblePercentThreshold: 55,
+    minimumViewTime: 700,
+  });
+  const onViewableItemsChangedRef = useRef(({ viewableItems }) => {
+    viewableItems.forEach(({ item, isViewable }) => {
+      if (!isViewable || item?._listType || !item?._id) return;
+      trackAnalytics("event_impression", { eventId: item._id });
+    });
+  });
+
+  const handleEventWebsiteClick = useCallback((event) => {
+    const eventId = event?._id || event?.id;
+    if (!eventId) return;
+
+    trackAnalytics("website_click", {
+      eventId,
+      metadata: { destination: "event_card_website" },
+    });
+  }, []);
+
   const renderEvent = useCallback(
     ({ item }) => {
       if (item?._listType === "sectionHeader") {
@@ -920,9 +942,15 @@ export default function HubScreen({ route }) {
         );
       }
 
-      return <EventCard event={item} onPress={() => handleOpenEvent(item)} />;
+      return (
+        <EventCard
+          event={item}
+          onPress={() => handleOpenEvent(item)}
+          onWebsitePress={handleEventWebsiteClick}
+        />
+      );
     },
-    [handleOpenEvent, theme, user?._id, user?.id]
+    [handleEventWebsiteClick, handleOpenEvent, theme, user?._id, user?.id]
   );
 
   const renderFooter = useCallback(() => {
@@ -1445,6 +1473,8 @@ export default function HubScreen({ route }) {
           data={listData}
           keyExtractor={keyExtractor}
           renderItem={renderEvent}
+          viewabilityConfig={viewabilityConfigRef.current}
+          onViewableItemsChanged={onViewableItemsChangedRef.current}
           initialNumToRender={8}
           maxToRenderPerBatch={6}
           updateCellsBatchingPeriod={80}

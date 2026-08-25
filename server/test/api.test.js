@@ -6,6 +6,7 @@ import request from "supertest";
 import app from "../index.js";
 import ImportCandidate from "../models/ImportCandidate.js";
 import EventSource from "../models/EventSource.js";
+import AnalyticsEvent from "../models/AnalyticsEvent.js";
 import { countEventsHappeningOnDate } from "../services/dailyEventsNotificationService.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
@@ -74,6 +75,7 @@ describe("SummitScene API", function () {
 
   after(async () => {
     process.env.ADMIN_EMAILS = originalAdminEmails;
+    await AnalyticsEvent.deleteMany({ "metadata.testRunId": testRunId });
     await cleanupGeneratedTestData();
   });
 
@@ -234,6 +236,82 @@ describe("SummitScene API", function () {
     expect(res.body.token).to.be.a("string");
 
     authToken = res.body.token;
+  });
+
+  it("should track logged-out event analytics with server-side event context", async () => {
+    const eventId = await ensureSharedTestEvent();
+
+    const res = await request(app)
+      .post("/api/analytics/track")
+      .send({
+        type: "event_view",
+        eventId,
+        sessionId: `test-session-${testRunId}`,
+        metadata: { testRunId },
+      });
+
+    expect(res.status).to.equal(202);
+
+    const saved = await AnalyticsEvent.findOne({
+      type: "event_view",
+      eventId,
+      "metadata.testRunId": testRunId,
+    });
+    expect(saved).to.exist;
+    expect(saved.userId).to.equal(null);
+    expect(saved.town).to.equal("Banff");
+    expect(saved.businessId).to.exist;
+  });
+
+  it("should dedupe event impressions by session, event, and day", async () => {
+    const eventId = await ensureSharedTestEvent();
+    const body = {
+      type: "event_impression",
+      eventId,
+      sessionId: `impression-session-${testRunId}`,
+      metadata: { testRunId },
+    };
+
+    const first = await request(app).post("/api/analytics/track").send(body);
+    const second = await request(app).post("/api/analytics/track").send(body);
+
+    expect(first.status).to.equal(202);
+    expect(second.status).to.equal(202);
+
+    const count = await AnalyticsEvent.countDocuments({
+      type: "event_impression",
+      eventId,
+      sessionId: body.sessionId,
+    });
+    expect(count).to.equal(1);
+  });
+
+  it("should protect admin analytics summary and return totals for admins", async () => {
+    const denied = await request(app)
+      .get("/api/analytics/summary?days=30")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(denied.status).to.equal(403);
+
+    process.env.ADMIN_EMAILS = testEmail;
+    try {
+      const res = await request(app)
+        .get("/api/analytics/summary?days=30")
+        .set("Authorization", `Bearer ${authToken}`);
+
+      expect(res.status).to.equal(200);
+      expect(res.body).to.include.keys([
+        "eventImpressions",
+        "eventViews",
+        "businessViews",
+        "websiteClicks",
+        "saves",
+        "going",
+        "shares",
+      ]);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
   });
 
   it("should request and complete a password reset", async () => {

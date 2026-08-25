@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { colors } from "../../theme/colors";
 import { AVATARS } from "../../assets/avatars/avatarConfig";
 import TrustBadgeRow from "../common/TrustBadges";
+import { trackAnalytics } from "../../services/analyticsApi";
 
 function titleCase(value) {
   return String(value || "")
@@ -54,6 +55,12 @@ function getSocialUrl(account) {
     default:
       return "";
   }
+}
+
+function normalizeExternalUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 function Chip({ label, theme }) {
@@ -105,6 +112,12 @@ export default function MemberProfileModal({
   blockedUserIds = [],
 }) {
   const [showAllInterests, setShowAllInterests] = useState(false);
+  const userId = user?._id || user?.id || "";
+
+  useEffect(() => {
+    if (!visible || user?.role !== "business" || !userId) return;
+    trackAnalytics("business_view", { businessId: userId });
+  }, [user?.role, userId, visible]);
 
   if (!visible || !user) return null;
 
@@ -116,7 +129,6 @@ export default function MemberProfileModal({
       : null;
 
   const displayName = user.name || "SummitScene member";
-  const userId = user._id || user.id || "";
   const isOwnProfile =
     Boolean(currentUserId) && userId?.toString() === currentUserId?.toString();
   const isBlocked = blockedUserIds.some(
@@ -335,7 +347,13 @@ export default function MemberProfileModal({
                     <Pressable
                       key={`${account.provider}-${value}`}
                       onPress={() => {
-                        if (url) Linking.openURL(url);
+                        if (url) {
+                          trackAnalytics("website_click", {
+                            businessId: userId,
+                            metadata: { destination: "business_social" },
+                          });
+                          Linking.openURL(url);
+                        }
                       }}
                       disabled={!url}
                       style={styles.socialRow}
@@ -370,17 +388,37 @@ export default function MemberProfileModal({
 
             {businessLinks.length ? (
               <Section label="Business proof links" theme={theme}>
-                {businessLinks.map(([label, value]) => (
-                  <Text
+                {businessLinks.map(([label, value]) => {
+                  const url = normalizeExternalUrl(value);
+                  return (
+                  <Pressable
                     key={label}
-                    style={[
-                      styles.profileLinkText,
-                      { color: theme.accent || colors.accent },
-                    ]}
+                    disabled={!url}
+                    onPress={() => {
+                      if (!url) return;
+                      trackAnalytics("website_click", {
+                        businessId: userId,
+                        metadata: {
+                          destination:
+                            label === "Website"
+                              ? "business_website"
+                              : "business_social",
+                        },
+                      });
+                      Linking.openURL(url);
+                    }}
                   >
-                    {label}: {value}
-                  </Text>
-                ))}
+                    <Text
+                      style={[
+                        styles.profileLinkText,
+                        { color: theme.accent || colors.accent },
+                      ]}
+                    >
+                      {label}: {value}
+                    </Text>
+                  </Pressable>
+                  );
+                })}
               </Section>
             ) : null}
 
