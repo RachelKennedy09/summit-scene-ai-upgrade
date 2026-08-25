@@ -191,6 +191,8 @@ export function AuthProvider({ children }) {
       businessVerifiedAt: rawUser?.businessVerifiedAt ?? null,
       isAdmin: Boolean(rawUser?.isAdmin),
       hasSeenSafetyTips: Boolean(rawUser?.hasSeenSafetyTips),
+      onboardingCompleted: rawUser?.onboardingCompleted !== false,
+      onboardingCompletedAt: rawUser?.onboardingCompletedAt ?? null,
       userType: rawUser?.userType ?? "local",
       originallyFrom: rawUser?.originallyFrom ?? "",
       towns: Array.isArray(rawUser?.towns) ? rawUser.towns : [],
@@ -764,11 +766,13 @@ export function AuthProvider({ children }) {
         throw new Error(data?.message || "Could not sign in with Google.");
       }
 
-      return setLoggedInState(
+      const mergedUser = await setLoggedInState(
         data.token,
         data.user || {},
         "Google sign-in successful. Opening app."
       );
+
+      return { ...data, user: mergedUser };
     } catch (error) {
       console.error("Error in signInWithGoogle:", error);
       const normalizedError = normalizeNetworkError(

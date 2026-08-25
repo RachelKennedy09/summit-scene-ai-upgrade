@@ -18,6 +18,7 @@ import {
   NativeModules,
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
@@ -114,6 +115,18 @@ function LoginScreen() {
 
   // ----- HANDLERS -----
 
+  function finishAuthNavigation(result) {
+    const nextUser = result?.user || {};
+    if (result?.isNewUser && nextUser.onboardingCompleted === false) {
+      if (nextUser.hasSeenSafetyTips) {
+        navigation.reset({ index: 0, routes: [{ name: "SocialOnboarding" }] });
+        return;
+      }
+    }
+
+    navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
+  }
+
   // Runs when user taps "Log In"
   async function handleLogin() {
     // Prevent sending empty requests
@@ -146,6 +159,8 @@ function LoginScreen() {
   }
 
   async function handleAppleSignIn() {
+    if (isSubmitting || isAuthLoading) return;
+
     try {
       setErrorMessage("");
       clearAuthNoticeMessage?.();
@@ -169,11 +184,11 @@ function LoginScreen() {
         throw new Error("Apple did not return an identity token.");
       }
 
-      await signInWithApple({
+      const result = await signInWithApple({
         identityToken: credential.identityToken,
         fullName: credential.fullName,
       });
-      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
+      finishAuthNavigation(result);
     } catch (error) {
       if (error?.code === "ERR_REQUEST_CANCELED") {
         return;
@@ -190,6 +205,8 @@ function LoginScreen() {
   }
 
   async function handleGoogleSignIn() {
+    if (isSubmitting || isAuthLoading) return;
+
     try {
       setErrorMessage("");
       clearAuthNoticeMessage?.();
@@ -214,8 +231,8 @@ function LoginScreen() {
         return;
       }
 
-      await signInWithGoogle({ idToken: result.data.idToken });
-      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
+      const authResult = await signInWithGoogle({ idToken: result.data.idToken });
+      finishAuthNavigation(authResult);
     } catch (error) {
       if (error?.code === "SIGN_IN_CANCELLED") {
         return;
@@ -272,6 +289,53 @@ function LoginScreen() {
                 </Text>
               </View>
             ) : null}
+
+            <View style={styles.socialAuthGroup}>
+              {Platform.OS === "ios" && isAppleAuthAvailable ? (
+                <>
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={
+                      AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+                    }
+                    buttonStyle={
+                      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                    }
+                    cornerRadius={8}
+                    style={[
+                      styles.appleButton,
+                      { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
+                    ]}
+                    onPress={handleAppleSignIn}
+                  />
+                  <Text style={[styles.termsNote, { color: theme.textMuted }]}>
+                    By continuing, you confirm you are 18+ and agree to Summit
+                    Scene's Privacy & Terms.
+                  </Text>
+                </>
+              ) : null}
+
+              <Pressable
+                style={[
+                  styles.googleButton,
+                  { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
+                ]}
+                disabled={isSubmitting || isAuthLoading}
+                onPress={handleGoogleSignIn}
+              >
+                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                <Text style={styles.googleButtonText}>
+                  Continue with Google
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <Text style={[styles.dividerText, { color: theme.textMuted }]}>
+                or
+              </Text>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
 
             {/* EMAIL FIELD */}
             <View style={styles.inputGroup}>
@@ -415,43 +479,6 @@ function LoginScreen() {
               }}
             />
 
-            {Platform.OS === "ios" && isAppleAuthAvailable ? (
-              <>
-                <Text style={[styles.termsNote, { color: theme.textMuted }]}>
-                  By continuing with Apple, you confirm you are 18+ and agree to
-                  Summit Scene's Privacy & Terms.
-                </Text>
-                <AppleAuthentication.AppleAuthenticationButton
-                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                  cornerRadius={8}
-                  style={styles.appleButton}
-                  onPress={handleAppleSignIn}
-                />
-              </>
-            ) : null}
-
-            {Platform.OS === "android" ? (
-              <>
-                <Text style={[styles.termsNote, { color: theme.textMuted }]}>
-                  By continuing with Google, you confirm you are 18+ and agree
-                  to Summit Scene's Privacy & Terms.
-                </Text>
-                <Pressable
-                  style={[
-                    styles.googleButton,
-                    { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
-                  ]}
-                  disabled={isSubmitting || isAuthLoading}
-                  onPress={handleGoogleSignIn}
-                >
-                  <Text style={styles.googleButtonText}>
-                    Sign in with Google
-                  </Text>
-                </Pressable>
-              </>
-            ) : null}
-
             <AppButton
               title="Sign Up"
               onPress={() => navigation.navigate("Register")}
@@ -525,6 +552,26 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "700",
     textAlign: "center",
+  },
+  socialAuthGroup: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase",
   },
   label: {
     marginBottom: 6,
@@ -618,8 +665,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   termsNote: {
-    marginTop: 14,
-    marginBottom: 8,
+    marginBottom: 2,
     textAlign: "center",
     fontSize: 11,
     lineHeight: 16,
@@ -634,6 +680,8 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 4,
     borderRadius: 8,
+    flexDirection: "row",
+    gap: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#1F1F1F",

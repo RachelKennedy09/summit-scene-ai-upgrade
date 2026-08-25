@@ -50,6 +50,7 @@ import UserHelpScreen from "../screens/account/UserHelpScreen";
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
 import SafetyTipsScreen from "../screens/auth/SafetyTipsScreen";
+import SocialOnboardingScreen from "../screens/auth/SocialOnboardingScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
@@ -211,11 +212,18 @@ export default function RootNavigator() {
       })}
     >
       {user && !user.hasSeenSafetyTips ? (
-        <Stack.Screen
-          name="SafetyTips"
-          component={SafetyTipsScreen}
-          options={{ headerShown: false }}
-        />
+        <>
+          <Stack.Screen
+            name="SafetyTips"
+            component={SafetyTipsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="SocialOnboarding"
+            component={SocialOnboardingScreen}
+            options={{ headerShown: false }}
+          />
+        </>
       ) : (
         <>
             <Stack.Screen
@@ -270,6 +278,11 @@ export default function RootNavigator() {
             {/* Account flow */}
             {user ? (
               <>
+                <Stack.Screen
+                  name="SocialOnboarding"
+                  component={SocialOnboardingScreen}
+                  options={{ headerShown: false }}
+                />
                 <Stack.Screen
                   name="EditProfile"
                   component={EditProfileScreen}

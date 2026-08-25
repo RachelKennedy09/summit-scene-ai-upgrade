@@ -328,6 +328,15 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    onboardingCompleted: {
+      type: Boolean,
+      default: true,
+    },
+
+    onboardingCompletedAt: {
+      type: Date,
+    },
+
     lastActiveAt: {
       type: Date,
     },
@@ -378,6 +387,8 @@ userSchema.virtual("safeProfile").get(function () {
     isAdmin: Boolean(this.isAdmin),
     businessVerificationStatus: this.businessVerificationStatus || "none",
     hasSeenSafetyTips: Boolean(this.hasSeenSafetyTips),
+    onboardingCompleted: this.onboardingCompleted !== false,
+    onboardingCompletedAt: this.onboardingCompletedAt,
     avatarKey: this.avatarKey,
     profileImageUrl: this.profileImageUrl,
     town: this.town,

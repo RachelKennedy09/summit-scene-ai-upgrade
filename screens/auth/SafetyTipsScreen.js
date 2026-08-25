@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Alert, Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
@@ -14,14 +15,20 @@ const TIPS = [
 ];
 
 export default function SafetyTipsScreen() {
-  const { markSafetyTipsSeen, isAuthLoading } = useAuth();
+  const { markSafetyTipsSeen, isAuthLoading, user } = useAuth();
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const [submitting, setSubmitting] = useState(false);
 
   async function handleContinue() {
     try {
       setSubmitting(true);
-      await markSafetyTipsSeen();
+      const nextUser = await markSafetyTipsSeen();
+      if (!(nextUser || user)?.onboardingCompleted) {
+        navigation.reset({ index: 0, routes: [{ name: "SocialOnboarding" }] });
+        return;
+      }
+      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
     } catch (error) {
       Alert.alert("Please try again", error.message || "Could not continue.");
     } finally {

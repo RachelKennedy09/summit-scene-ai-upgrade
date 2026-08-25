@@ -586,6 +586,11 @@ router.patch("/me", authMiddleware, async (req, res) => {
       updates.name = normalizePublicName(updates.name);
     }
 
+    if (req.body?.onboardingCompleted === true) {
+      updates.onboardingCompleted = true;
+      updates.onboardingCompletedAt = new Date();
+    }
+
     const moderationIssue = findContentModerationIssue({
       name: updates.name,
       bio: updates.bio,

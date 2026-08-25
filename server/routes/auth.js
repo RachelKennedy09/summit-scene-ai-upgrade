@@ -218,6 +218,10 @@ function normalizeAppleName(fullName = {}) {
   return parts.length ? parts.join(" ") : "";
 }
 
+function isProviderEmailVerified(value) {
+  return value === true || value === "true";
+}
+
 async function verifyGoogleIdentityToken(idToken) {
   if (!idToken || typeof idToken !== "string") {
     throw new Error("Google ID token is required.");
@@ -323,6 +327,9 @@ router.post("/apple", async (req, res) => {
     const appleProfile = await verifyAppleIdentityToken(identityToken);
     const appleUserId = appleProfile.sub;
     const email = String(appleProfile.email || "").trim().toLowerCase();
+    const appleEmailVerified = isProviderEmailVerified(
+      appleProfile.email_verified
+    );
 
     if (!appleUserId) {
       return res.status(400).json({ message: "Apple account was not found." });
@@ -333,9 +340,11 @@ router.post("/apple", async (req, res) => {
       "socialAccounts.providerUserId": appleUserId,
     });
 
-    if (!user && email) {
+    if (!user && email && appleEmailVerified) {
       user = await User.findOne({ email });
     }
+
+    let isNewUser = false;
 
     if (!user) {
       if (!email) {
@@ -357,7 +366,9 @@ router.post("/apple", async (req, res) => {
         passwordHash,
         name: normalizePublicName(displayName),
         role: "local",
-        emailVerified: Boolean(appleProfile.email_verified),
+        emailVerified: appleEmailVerified,
+        emailVerifiedAt: appleEmailVerified ? new Date() : undefined,
+        onboardingCompleted: false,
         socialAccounts: [
           {
             provider: "apple",
@@ -368,6 +379,7 @@ router.post("/apple", async (req, res) => {
           },
         ],
       });
+      isNewUser = true;
     } else {
       const accounts = Array.isArray(user.socialAccounts)
         ? user.socialAccounts
@@ -396,8 +408,9 @@ router.post("/apple", async (req, res) => {
       }
 
       user.socialAccounts = accounts;
-      if (appleProfile.email_verified) {
+      if (appleEmailVerified) {
         user.emailVerified = true;
+        user.emailVerifiedAt = user.emailVerifiedAt || new Date();
       }
       await user.save();
     }
@@ -405,6 +418,8 @@ router.post("/apple", async (req, res) => {
     return res.json({
       token: createToken(user),
       user: buildSafeUser(user),
+      isNewUser,
+      authProvider: "apple",
     });
   } catch (error) {
     console.error("Error in POST /api/auth/apple:", error);
@@ -442,6 +457,8 @@ router.post("/google", async (req, res) => {
       user = await User.findOne({ email });
     }
 
+    let isNewUser = false;
+
     if (!user) {
       const fallbackPassword = crypto.randomBytes(32).toString("hex");
       const passwordHash = await bcrypt.hash(fallbackPassword, 10);
@@ -457,6 +474,7 @@ router.post("/google", async (req, res) => {
         role: "local",
         emailVerified: true,
         emailVerifiedAt: new Date(),
+        onboardingCompleted: false,
         profileImageUrl: googleProfile.picture || "",
         socialAccounts: [
           {
@@ -469,6 +487,7 @@ router.post("/google", async (req, res) => {
           },
         ],
       });
+      isNewUser = true;
     } else {
       const accounts = Array.isArray(user.socialAccounts)
         ? user.socialAccounts
@@ -509,6 +528,8 @@ router.post("/google", async (req, res) => {
     return res.json({
       token: createToken(user),
       user: buildSafeUser(user),
+      isNewUser,
+      authProvider: "google",
     });
   } catch (error) {
     console.error("Error in POST /api/auth/google:", error);

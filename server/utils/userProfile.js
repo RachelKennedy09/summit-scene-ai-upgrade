@@ -106,6 +106,8 @@ export function buildSafeUser(user) {
     businessVerificationRequestedAt: user.businessVerificationRequestedAt,
     businessVerifiedAt: user.businessVerifiedAt,
     hasSeenSafetyTips: Boolean(user.hasSeenSafetyTips),
+    onboardingCompleted: user.onboardingCompleted !== false,
+    onboardingCompletedAt: user.onboardingCompletedAt,
     createdAt: user.createdAt,
     avatarKey: user.avatarKey,
     profileImageUrl: user.profileImageUrl,

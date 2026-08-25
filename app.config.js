@@ -1,10 +1,21 @@
 const googleServicesFile =
   process.env.GOOGLE_SERVICES_JSON ||
   process.env.EXPO_PUBLIC_GOOGLE_SERVICES_JSON;
+const googleIosUrlScheme =
+  process.env.GOOGLE_IOS_URL_SCHEME ||
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
 
 const plugins = [
   "expo-notifications",
   "expo-apple-authentication",
+  googleIosUrlScheme
+    ? [
+        "@react-native-google-signin/google-signin",
+        {
+          iosUrlScheme: googleIosUrlScheme,
+        },
+      ]
+    : "@react-native-google-signin/google-signin",
   [
     "expo-location",
     {
