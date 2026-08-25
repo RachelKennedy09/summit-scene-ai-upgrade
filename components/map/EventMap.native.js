@@ -27,6 +27,7 @@ const EventMap = React.forwardRef(function EventMap(
     Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY);
 
   useEffect(() => {
+    if (Platform.OS === "android") return undefined;
     if (!selectedMarkerId) return;
 
     const markerRef = markerRefs.current[selectedMarkerId];
@@ -90,9 +91,7 @@ const EventMap = React.forwardRef(function EventMap(
             onSelect={() => onSelectMarker(marker.id)}
             onPress={() => {
               onSelectMarker(marker.id);
-              if (hasMultipleEvents) {
-                onPressMarker(marker);
-              }
+              onPressMarker(marker);
             }}
           >
             <View
@@ -129,7 +128,7 @@ const EventMap = React.forwardRef(function EventMap(
               )}
             </View>
 
-            {!hasMultipleEvents ? (
+            {Platform.OS !== "android" && !hasMultipleEvents ? (
               <Callout tooltip={false} onPress={() => onPressMarker(marker)}>
               <View
                 style={[

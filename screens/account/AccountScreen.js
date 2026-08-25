@@ -25,6 +25,7 @@ import { useTheme } from "../../context/ThemeContext";
 import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
+import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 import { fetchAdminDashboardStats } from "../../services/adminApi";
 import {
   fetchNotificationPreferences,
@@ -315,6 +316,24 @@ function AccountScreen() {
             post, comment, like, save events, receive notifications, report,
             block, or manage a profile.
           </Text>
+          <SocialSignInButtons disabled={isAuthLoading} />
+          <View style={styles.signedOutDividerRow}>
+            <View
+              style={[
+                styles.signedOutDividerLine,
+                { backgroundColor: theme.border },
+              ]}
+            />
+            <Text style={[styles.signedOutDividerText, { color: theme.textMuted }]}>
+              or
+            </Text>
+            <View
+              style={[
+                styles.signedOutDividerLine,
+                { backgroundColor: theme.border },
+              ]}
+            />
+          </View>
           <AppButton
             title="Log In"
             onPress={() => navigation.navigate("Login")}
@@ -873,6 +892,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textMuted,
+  },
+  signedOutDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  signedOutDividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  signedOutDividerText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "900",
+    textTransform: "uppercase",
   },
   accountSection: {
     marginBottom: 22,

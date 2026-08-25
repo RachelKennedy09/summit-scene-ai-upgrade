@@ -9,42 +9,26 @@ import {
   StyleSheet,
   Pressable,
   KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
   Image,
   ScrollView,
   Alert,
-  NativeModules,
+  Platform,
 } from "react-native";
-import * as AppleAuthentication from "expo-apple-authentication";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
+import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 
 const REMEMBERED_EMAIL_KEY = "rememberedLoginEmail";
-
-function getGoogleSignInModule() {
-  if (!NativeModules.RNGoogleSignin) {
-    return null;
-  }
-
-  try {
-    return require("@react-native-google-signin/google-signin");
-  } catch {
-    return null;
-  }
-}
 
 function LoginScreen() {
   const {
     login,
-    signInWithApple,
-    signInWithGoogle,
     isAuthLoading,
     authNoticeMessage,
     clearAuthNoticeMessage,
@@ -58,8 +42,6 @@ function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false); // local loading flag for this screen
   const [errorMessage, setErrorMessage] = useState("");
   const [rememberEmail, setRememberEmail] = useState(true);
-  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
-  const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
   useEffect(() => {
     let isMounted = true;
@@ -76,56 +58,14 @@ function LoginScreen() {
       }
     }
 
-    async function checkAppleAuthAvailability() {
-      if (Platform.OS !== "ios") {
-        return;
-      }
-
-      try {
-        const available = await AppleAuthentication.isAvailableAsync();
-        if (isMounted) {
-          setIsAppleAuthAvailable(Boolean(available));
-        }
-      } catch {
-        if (isMounted) {
-          setIsAppleAuthAvailable(false);
-        }
-      }
-    }
-
     loadRememberedEmail();
-    checkAppleAuthAvailability();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (!googleWebClientId) {
-      return;
-    }
-
-    const googleModule = getGoogleSignInModule();
-    googleModule?.GoogleSignin?.configure({
-      webClientId: googleWebClientId,
-      offlineAccess: false,
-    });
-  }, [googleWebClientId]);
-
   // ----- HANDLERS -----
-
-  function finishAuthNavigation(result) {
-    const nextUser = result?.user || {};
-    if (result?.isNewUser && nextUser.onboardingCompleted === false) {
-      if (nextUser.hasSeenSafetyTips) {
-        navigation.reset({ index: 0, routes: [{ name: "SocialOnboarding" }] });
-        return;
-      }
-    }
-
-    navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
-  }
 
   // Runs when user taps "Log In"
   async function handleLogin() {
@@ -153,95 +93,6 @@ function LoginScreen() {
       const message = error.message || "Please try again.";
       setErrorMessage(message);
       Alert.alert("Login failed", message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleAppleSignIn() {
-    if (isSubmitting || isAuthLoading) return;
-
-    try {
-      setErrorMessage("");
-      clearAuthNoticeMessage?.();
-      setIsSubmitting(true);
-
-      const isAvailable = await AppleAuthentication.isAvailableAsync();
-      if (!isAvailable) {
-        throw new Error(
-          "Sign in with Apple is not available on this device. Please use email login."
-        );
-      }
-
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-
-      if (!credential.identityToken) {
-        throw new Error("Apple did not return an identity token.");
-      }
-
-      const result = await signInWithApple({
-        identityToken: credential.identityToken,
-        fullName: credential.fullName,
-      });
-      finishAuthNavigation(result);
-    } catch (error) {
-      if (error?.code === "ERR_REQUEST_CANCELED") {
-        return;
-      }
-
-      Alert.alert(
-        "Apple sign-in failed",
-        error.message || "Please try again or use email login."
-      );
-      clearAuthNoticeMessage?.();
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleGoogleSignIn() {
-    if (isSubmitting || isAuthLoading) return;
-
-    try {
-      setErrorMessage("");
-      clearAuthNoticeMessage?.();
-      setIsSubmitting(true);
-
-      if (!googleWebClientId) {
-        throw new Error("Google sign-in is not configured yet.");
-      }
-
-      const googleModule = getGoogleSignInModule();
-      const googleSignIn = googleModule?.GoogleSignin;
-      if (!googleSignIn) {
-        throw new Error("Google sign-in requires a development or store build.");
-      }
-
-      await googleSignIn.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-      const result = await googleSignIn.signIn();
-
-      if (result.type !== "success" || !result.data?.idToken) {
-        return;
-      }
-
-      const authResult = await signInWithGoogle({ idToken: result.data.idToken });
-      finishAuthNavigation(authResult);
-    } catch (error) {
-      if (error?.code === "SIGN_IN_CANCELLED") {
-        return;
-      }
-
-      Alert.alert(
-        "Google sign-in failed",
-        error.message || "Please try again or use email login."
-      );
     } finally {
       setIsSubmitting(false);
     }
@@ -290,44 +141,11 @@ function LoginScreen() {
               </View>
             ) : null}
 
-            <View style={styles.socialAuthGroup}>
-              {Platform.OS === "ios" && isAppleAuthAvailable ? (
-                <>
-                  <AppleAuthentication.AppleAuthenticationButton
-                    buttonType={
-                      AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
-                    }
-                    buttonStyle={
-                      AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                    }
-                    cornerRadius={8}
-                    style={[
-                      styles.appleButton,
-                      { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
-                    ]}
-                    onPress={handleAppleSignIn}
-                  />
-                  <Text style={[styles.termsNote, { color: theme.textMuted }]}>
-                    By continuing, you confirm you are 18+ and agree to Summit
-                    Scene's Privacy & Terms.
-                  </Text>
-                </>
-              ) : null}
-
-              <Pressable
-                style={[
-                  styles.googleButton,
-                  { opacity: isSubmitting || isAuthLoading ? 0.65 : 1 },
-                ]}
-                disabled={isSubmitting || isAuthLoading}
-                onPress={handleGoogleSignIn}
-              >
-                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
-                <Text style={styles.googleButtonText}>
-                  Continue with Google
-                </Text>
-              </Pressable>
-            </View>
+            <SocialSignInButtons
+              disabled={isSubmitting || isAuthLoading}
+              onBeforeSubmit={() => setErrorMessage("")}
+              onBusyChange={setIsSubmitting}
+            />
 
             <View style={styles.dividerRow}>
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />

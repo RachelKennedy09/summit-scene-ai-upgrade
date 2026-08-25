@@ -461,6 +461,7 @@ function EventChoiceModal({
     const bDate = getNextOccurrenceDateString(b) || b?.date || "";
     return String(aDate).localeCompare(String(bDate));
   });
+  const isSingleEvent = events.length === 1;
 
   return (
     <Modal
@@ -480,7 +481,9 @@ function EventChoiceModal({
           <View style={styles.eventPickerHeader}>
             <View style={styles.eventPickerHeaderCopy}>
               <Text style={[styles.eventPickerTitle, { color: theme.text }]}>
-                {events.length} events at this location
+                {isSingleEvent
+                  ? "Event preview"
+                  : `${events.length} events at this location`}
               </Text>
               {marker?.locationLabel ? (
                 <Text
@@ -1209,15 +1212,25 @@ export default function MapScreen({ route }) {
   }
 
   function handleMarkerPress(marker) {
-    const groupedEvents = marker?.events || [];
+    const groupedEvents =
+      marker?.events?.length > 0
+        ? marker.events
+        : [marker?.event].filter(Boolean);
 
-    if (groupedEvents.length > 1) {
-      setSelectedEventGroup(marker);
-      setSelectedMarkerId(marker.id);
+    if (groupedEvents.length > 0) {
+      setSelectedEventGroup({
+        ...marker,
+        events: groupedEvents,
+      });
+      if (marker?.id) {
+        setSelectedMarkerId(marker.id);
+      }
       return;
     }
 
-    handleEventPress(groupedEvents[0] || marker.event || marker);
+    if (marker) {
+      handleEventPress(marker);
+    }
   }
 
   const handleCreateBusinessEvent = useCallback(() => {
