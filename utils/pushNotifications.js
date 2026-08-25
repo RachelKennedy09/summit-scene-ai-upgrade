@@ -40,6 +40,32 @@ export async function registerDeviceForPushNotifications(authToken) {
   return { registered: true };
 }
 
+export async function requestAndRegisterDeviceForPushNotifications(authToken) {
+  if (!authToken || Platform.OS === "web" || !Device.isDevice) {
+    return { registered: false, reason: "unsupported-platform" };
+  }
+
+  const current = await Notifications.getPermissionsAsync();
+  let finalStatus = current.status;
+  if (finalStatus !== "granted") {
+    const requested = await Notifications.requestPermissionsAsync();
+    finalStatus = requested.status;
+  }
+
+  if (finalStatus !== "granted") {
+    return { registered: false, reason: "permission-denied" };
+  }
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("daily-events", {
+      name: "Daily What's Happening",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+
+  return registerDeviceForPushNotifications(authToken);
+}
+
 export async function unregisterDeviceForPushNotifications(authToken) {
   if (!authToken || Platform.OS === "web" || !Device.isDevice) {
     return { unregistered: false, reason: "unsupported-platform" };

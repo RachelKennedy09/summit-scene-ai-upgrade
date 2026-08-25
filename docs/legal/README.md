@@ -59,10 +59,11 @@ Data collected may include:
   is granted. Event addresses may be sent to address lookup/geocoding services
   to place events on the map.
 - Optional notifications: device notification permission may be requested for
-  saved-event and going-event reminders. Users can disable notifications in
-  device settings.
+  saved-event reminders, going-event reminders, Daily What's Happening alerts,
+  and post activity alerts. Users can disable notifications in device settings.
 - Event preferences: saved events, going status, interest signals, reminder
-  preferences, reminder times, and local notification scheduling records.
+  preferences, daily notification preferences, reminder times, and local
+  notification scheduling records.
 - Safety and moderation data: reports about fake events, scams, inappropriate
   content, misleading businesses, posts, replies, users, or business profiles;
   blocks; moderation notes; review status; and admin review actions.
@@ -74,7 +75,8 @@ address lookup/geocoding, authentication including Sign in with Apple and
 Google Sign-In, analytics, email delivery if
 enabled, support, and app operations.
 Event reminder notifications are optional and are scheduled by the app on the
-user's device after notification permission is granted.
+user's device after notification permission is granted. Daily What's Happening
+alerts are optional server-generated push notifications.
 External booking links may send users to organizer websites, Instagram, direct
 message options, FareHarbor, Viator, or other third-party services. Those
 services have their own privacy policies and terms.
@@ -124,9 +126,10 @@ honestly.
   availability, refunds, or experiences. Users book and attend third-party
   offerings at their own discretion and should confirm details directly with the
   organizer.
-- Saved-event and going-event reminders are optional convenience features.
-  Notification timing depends on device settings, operating system behavior,
-  timezone, event details, and notification permission.
+- Saved-event reminders, going-event reminders, and Daily What's Happening
+  alerts are optional convenience features. Notification timing depends on
+  device settings, operating system behavior, timezone, event details, and
+  notification permission.
 
 ## Local Compliance Notice Draft
 
@@ -158,7 +161,7 @@ to reduce load on third-party websites.
 - Keep the in-app account deletion button working.
 - Add email verification before public launch.
 - Confirm notification permission copy and app store privacy/data safety answers
-  match saved-event reminder behavior.
+  match saved-event reminders, daily alerts, and post activity notifications.
 - Add marketing email opt-in before sending newsletters or promotional emails.
 - Review event posting UI for local permit reminders.
 - Review imported event source attribution, crawler behavior, and image/content

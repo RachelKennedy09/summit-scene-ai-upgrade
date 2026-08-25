@@ -44,6 +44,7 @@ import EventImportReviewScreen from "../screens/account/EventImportReviewScreen"
 import ReportBugScreen from "../screens/account/ReportBugScreen";
 import SavedEventsScreen from "../screens/account/SavedEventsScreen";
 import NotificationsScreen from "../screens/account/NotificationsScreen";
+import DailyEventsNotificationScreen from "../screens/account/DailyEventsNotificationScreen";
 import UserHelpScreen from "../screens/account/UserHelpScreen";
 
 import LoginScreen from "../screens/auth/LoginScreen";
@@ -303,6 +304,11 @@ export default function RootNavigator() {
                   name="Notifications"
                   component={NotificationsScreen}
                   options={{ title: "Notifications" }}
+                />
+                <Stack.Screen
+                  name="DailyEventsNotification"
+                  component={DailyEventsNotificationScreen}
+                  options={{ title: "Daily What's Happening" }}
                 />
               </>
             ) : null}

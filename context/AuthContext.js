@@ -205,6 +205,7 @@ export function AuthProvider({ children }) {
       blockedUsers: Array.isArray(rawUser?.blockedUsers)
         ? rawUser.blockedUsers
         : [],
+      notificationPreferences: rawUser?.notificationPreferences ?? {},
     };
   }
 

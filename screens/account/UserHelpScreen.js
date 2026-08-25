@@ -82,6 +82,7 @@ export default function UserHelpScreen() {
               "Open an event to see the host, date, time, location, description, map actions, and attendance options.",
               "Some listings are imported from public organizer/source webpages. Use the organizer website link to confirm the latest details before attending.",
               "Tap I'm Going to save your attendance, or use Find Event Buddies if you want to connect with others going to the same event.",
+              "Turn on Daily What's Happening from Account if you want one daily notification with today's event count for your chosen area.",
             ]}
           />
         </HelpSection>

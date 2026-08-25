@@ -48,7 +48,7 @@ import {
   getDetailScheduleLabels,
   isEventUpcoming,
 } from "../../utils/eventSchedule";
-import { getEventImageUrl } from "../../utils/eventImages";
+import { getEventImageSource, getEventImageUrl } from "../../utils/eventImages";
 import { getVisibleTags } from "../../utils/categoryVisuals";
 import {
   getImportedEventHostLabel,
@@ -285,6 +285,7 @@ export default function EventDetailScreen({ route }) {
 
   const title = event?.title || "Untitled event";
   const eventImageUrl = getEventImageUrl(event);
+  const eventImageSource = getEventImageSource(event);
   const eventCategories =
     Array.isArray(event?.categories) && event.categories.length
       ? event.categories
@@ -834,9 +835,9 @@ export default function EventDetailScreen({ route }) {
           ]}
         >
           {/* Hero image (optional)*/}
-          {eventImageUrl && !heroImageFailed ? (
+          {eventImageSource && !heroImageFailed ? (
             <Image
-              source={{ uri: eventImageUrl }}
+              source={eventImageSource}
               style={styles.heroImage}
               onError={() => setHeroImageFailed(true)}
             />
@@ -855,7 +856,7 @@ export default function EventDetailScreen({ route }) {
               >
                 {heroImageFailed
                   ? "Event image could not be loaded."
-                  : "No event image provided."}
+                  : "Event image"}
               </Text>
             </View>
           )}

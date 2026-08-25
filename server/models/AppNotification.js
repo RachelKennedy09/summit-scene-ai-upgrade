@@ -9,6 +9,7 @@ export const APP_NOTIFICATION_TYPES = [
   "buddy-reply-like",
   "community-post-reply",
   "community-post-like",
+  "daily-events",
 ];
 
 const appNotificationSchema = new Schema(

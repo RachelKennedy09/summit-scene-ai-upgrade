@@ -14,15 +14,17 @@ function getId(value) {
 }
 
 function isExpoPushToken(value) {
-  return /^ExponentPushToken\[[^\]]+\]$/.test(String(value || ""));
+  return /^Expo(nent)?PushToken\[[^\]]+\]$/.test(String(value || ""));
 }
 
 export function getDisplayName(user) {
   return user?.name || user?.email || "Someone";
 }
 
-async function sendExpoPushNotifications({ recipientId, title, message, data }) {
-  if (!PUSH_ENABLED || typeof fetch !== "function") return;
+export async function sendPushToUser({ recipientId, title, message, data, channelId }) {
+  if (!PUSH_ENABLED || typeof fetch !== "function") {
+    return { sent: false, count: 0, reason: "push-disabled" };
+  }
 
   const tokens = await PushToken.find({
     user: recipientId,
@@ -38,9 +40,12 @@ async function sendExpoPushNotifications({ recipientId, title, message, data }) 
       title,
       body: message,
       data,
+      ...(channelId ? { channelId } : {}),
     }));
 
-  if (!messages.length) return;
+  if (!messages.length) {
+    return { sent: false, count: 0, reason: "no-enabled-tokens" };
+  }
 
   try {
     const response = await fetch(EXPO_PUSH_URL, {
@@ -55,9 +60,13 @@ async function sendExpoPushNotifications({ recipientId, title, message, data }) 
 
     if (!response.ok) {
       console.warn("Expo push send failed:", response.status);
+      return { sent: false, count: 0, reason: `expo-${response.status}` };
     }
+
+    return { sent: true, count: messages.length };
   } catch (error) {
     console.warn("Expo push send issue:", error.message);
+    return { sent: false, count: 0, reason: error.message };
   }
 }
 
@@ -72,6 +81,7 @@ export async function createAppNotification({
   replyId,
   data = {},
   sendPush = false,
+  channelId,
 }) {
   const recipient = getId(recipientId);
   const actor = getId(actorId);
@@ -93,10 +103,11 @@ export async function createAppNotification({
   });
 
   if (sendPush) {
-    sendExpoPushNotifications({
+    sendPushToUser({
       recipientId: recipient,
       title,
       message,
+      channelId,
       data: {
         notificationId: notification._id.toString(),
         type,

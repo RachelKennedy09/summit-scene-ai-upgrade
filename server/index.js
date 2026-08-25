@@ -21,6 +21,7 @@ import eventPreferenceRoutes from "./routes/eventPreferences.js";
 import reportRoutes from "./routes/reports.js";
 import placesRoutes from "./routes/placesRoutes.js";
 import notificationRoutes from "./routes/notifications.js";
+import { startDailyEventsNotificationJob } from "./services/dailyEventsNotificationService.js";
 
 // ---------------------------
 // APP SETUP
@@ -130,6 +131,7 @@ async function startServer() {
       if (process.env.NODE_ENV) {
         console.log(`🌲 Environment: ${process.env.NODE_ENV}`);
       }
+      startDailyEventsNotificationJob();
     });
   } catch (error) {
     // If DB connection fails, there is no point in running the API

@@ -165,3 +165,51 @@ export async function unregisterPushToken({ token: pushToken }, authToken) {
     );
   }
 }
+
+export async function fetchNotificationPreferences(token) {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/notifications/preferences`,
+      {
+        headers: buildHeaders(token),
+      }
+    );
+    const data = await readJsonSafely(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not load notification settings.");
+    }
+
+    return data.notificationPreferences || {};
+  } catch (error) {
+    throw toUserFriendlyError(
+      normalizeError(error, "Notification settings request timed out."),
+      "We couldn't load notification settings right now."
+    );
+  }
+}
+
+export async function updateNotificationPreferences(updates, token) {
+  try {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/api/notifications/preferences`,
+      {
+        method: "PATCH",
+        headers: buildHeaders(token),
+        body: JSON.stringify(updates || {}),
+      }
+    );
+    const data = await readJsonSafely(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not update notification settings.");
+    }
+
+    return data;
+  } catch (error) {
+    throw toUserFriendlyError(
+      normalizeError(error, "Notification settings update timed out."),
+      "We couldn't update notification settings right now."
+    );
+  }
+}

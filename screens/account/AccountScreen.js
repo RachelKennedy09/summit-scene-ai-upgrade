@@ -26,7 +26,10 @@ import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { fetchAdminDashboardStats } from "../../services/adminApi";
-import { fetchNotifications } from "../../services/notificationsApi";
+import {
+  fetchNotificationPreferences,
+  fetchNotifications,
+} from "../../services/notificationsApi";
 
 const ANDROID_PACKAGE_NAME = "com.rachellauren.summitscene";
 const IOS_APP_STORE_ID = "";
@@ -189,6 +192,9 @@ function AccountScreen() {
   const [adminCountsLoading, setAdminCountsLoading] = useState(false);
   const [adminCountsError, setAdminCountsError] = useState("");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [dailyEventsPreference, setDailyEventsPreference] = useState(
+    user?.notificationPreferences || {}
+  );
 
   const loadAdminCounts = useCallback(async () => {
     if (!user?.isAdmin || !token) return;
@@ -226,11 +232,23 @@ function AccountScreen() {
     }
   }, [token]);
 
+  const loadDailyEventsPreference = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const data = await fetchNotificationPreferences(token);
+      setDailyEventsPreference(data || {});
+    } catch {
+      setDailyEventsPreference(user?.notificationPreferences || {});
+    }
+  }, [token, user?.notificationPreferences]);
+
   useFocusEffect(
     useCallback(() => {
       loadAdminCounts();
       loadNotificationCount();
-    }, [loadAdminCounts, loadNotificationCount])
+      loadDailyEventsPreference();
+    }, [loadAdminCounts, loadNotificationCount, loadDailyEventsPreference])
   );
 
   function handleEmailSummitScene() {
@@ -670,6 +688,14 @@ function AccountScreen() {
             subtitle="View saved events and upcoming reminders."
             onPress={() => navigation.navigate("SavedEvents")}
             theme={theme}
+          />
+          <AccountNavRow
+            title="Daily What's Happening"
+            subtitle="Get a daily notification with what's happening near you."
+            onPress={() => navigation.navigate("DailyEventsNotification")}
+            theme={theme}
+            badge={dailyEventsPreference?.dailyEventsEnabled ? "On" : "Off"}
+            actionLabel="Settings"
           />
         </AccountSection>
 

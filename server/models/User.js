@@ -14,6 +14,7 @@ import mongoose from "mongoose";
 export const PROFILE_TOWNS = ["Banff", "Canmore", "Lake Louise", "LL", "All"];
 export const USER_TYPES = ["local", "seasonal", "visitor"];
 export const ACTIVITY_SKILL_LEVELS = ["beginner", "casual", "experienced"];
+export const DAILY_EVENTS_TIME_OF_DAY_OPTIONS = ["morning", "afternoon", "evening"];
 export const BUSINESS_VERIFICATION_STATUSES = [
   "none",
   "pending",
@@ -43,6 +44,37 @@ const skillLevelSchema = new mongoose.Schema(
     discGolf: {
       type: String,
       enum: ACTIVITY_SKILL_LEVELS,
+    },
+  },
+  { _id: false }
+);
+
+const notificationPreferencesSchema = new mongoose.Schema(
+  {
+    dailyEventsEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    dailyEventsTimeOfDay: {
+      type: String,
+      enum: DAILY_EVENTS_TIME_OF_DAY_OPTIONS,
+      default: "morning",
+    },
+    dailyEventsTime: {
+      type: String,
+      trim: true,
+      default: "09:00",
+      match: [/^\d{2}:\d{2}$/, "Daily notification time must be HH:mm"],
+    },
+    dailyEventsTimezone: {
+      type: String,
+      trim: true,
+      default: "America/Edmonton",
+    },
+    dailyEventsTown: {
+      type: String,
+      enum: ["Banff", "Canmore", "Lake Louise", "All"],
+      default: "All",
     },
   },
   { _id: false }
@@ -311,6 +343,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    notificationPreferences: {
+      type: notificationPreferencesSchema,
+      default: () => ({}),
+    },
   },
   {
     // Automatically create createdAt / updatedAt timestamps
@@ -358,6 +395,7 @@ userSchema.virtual("safeProfile").get(function () {
     googleBusinessUrl: this.googleBusinessUrl,
     phone: this.phone,
     socialAccounts: this.socialAccounts,
+    notificationPreferences: this.notificationPreferences,
   };
 });
 

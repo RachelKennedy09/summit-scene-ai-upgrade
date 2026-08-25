@@ -113,6 +113,18 @@ export default function NotificationsScreen() {
       return;
     }
 
+    if (notification.data?.type === "daily-events") {
+      navigation.navigate("tabs", {
+        screen: "Hub",
+        params: {
+          dailyEventsOpenedAt: Date.now(),
+          town: notification.data?.town || "All",
+          dateFilter: "Today",
+        },
+      });
+      return;
+    }
+
     await loadNotifications({ silent: true });
   }
 

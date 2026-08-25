@@ -241,7 +241,12 @@ export default function CommunityScreen({ navigation, route }) {
     setActiveSearch("");
     setCommunityEventsError("");
     setError("");
-  }, [route?.params?.resetToHomeAt]);
+    navigation.setParams({
+      initialSection: undefined,
+      openedAt: undefined,
+      openBuddyPostId: undefined,
+    });
+  }, [navigation, route?.params?.resetToHomeAt]);
 
   useEffect(() => {
     const initialSection = route?.params?.initialSection;

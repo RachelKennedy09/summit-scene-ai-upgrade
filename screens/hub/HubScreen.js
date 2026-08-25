@@ -41,7 +41,7 @@ import {
   formatDateShort,
   getNextOccurrenceDateString,
 } from "../../utils/eventSchedule";
-import { getEventImageUrl } from "../../utils/eventImages";
+import { getEventImageSource } from "../../utils/eventImages";
 import {
   EVENT_CATEGORIES,
   getEventCategoryGroups,
@@ -198,7 +198,7 @@ function getFirstName(user) {
   return source.trim().split(/\s+/)[0] || "";
 }
 
-export default function HubScreen() {
+export default function HubScreen({ route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const navigation = useNavigation();
@@ -532,6 +532,16 @@ export default function HubScreen() {
     },
     [prepareFilterRefresh]
   );
+
+  useEffect(() => {
+    if (!route?.params?.dailyEventsOpenedAt) return;
+
+    showEventBrowser({
+      town: route.params.town || "All",
+      dateFilter: route.params.dateFilter || "Today",
+      listingType: "events",
+    });
+  }, [route?.params?.dailyEventsOpenedAt, route?.params?.dateFilter, route?.params?.town, showEventBrowser]);
 
   const todayContext = useMemo(() => getAlbertaTodayContext(), []);
   const weekendRange = useMemo(
@@ -936,7 +946,7 @@ export default function HubScreen() {
         nextDate && nextDate !== todayContext.dateString
           ? formatDateShort(nextDate)
           : "";
-      const eventImageUrl = getEventImageUrl(event);
+      const eventImageSource = getEventImageSource(event);
 
       return (
         <Pressable
@@ -947,10 +957,13 @@ export default function HubScreen() {
             { backgroundColor: theme.card, borderColor: theme.border },
           ]}
         >
-          {eventImageUrl && !compact ? (
+          {eventImageSource ? (
             <Image
-              source={{ uri: eventImageUrl }}
-              style={styles.dashboardEventImage}
+              source={eventImageSource}
+              style={[
+                styles.dashboardEventImage,
+                compact && styles.compactEventImage,
+              ]}
               resizeMode="cover"
             />
           ) : null}
@@ -1599,12 +1612,15 @@ const styles = StyleSheet.create({
   compactEventCard: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
     marginBottom: 10,
+    overflow: "hidden",
   },
   dashboardEventImage: {
     width: "100%",
     height: 112,
+  },
+  compactEventImage: {
+    height: 96,
   },
   dashboardEventBody: {
     padding: 12,

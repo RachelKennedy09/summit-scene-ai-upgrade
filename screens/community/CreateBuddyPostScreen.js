@@ -972,7 +972,11 @@ export default function CreateBuddyPostScreen({ navigation, route }) {
         [
         {
           text: "OK",
-          onPress: () => navigation.goBack(),
+          onPress: () =>
+            navigation.navigate("tabs", {
+              screen: "Community",
+              params: { resetToHomeAt: Date.now() },
+            }),
         },
         ]
       );

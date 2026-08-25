@@ -1,11 +1,109 @@
 import AppNotification from "../models/AppNotification.js";
 import PushToken from "../models/PushToken.js";
+import User, { DAILY_EVENTS_TIME_OF_DAY_OPTIONS } from "../models/User.js";
+import { buildSafeUser } from "../utils/userProfile.js";
 
 const NOTIFICATION_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl";
 
+const DAILY_EVENTS_TIMES = {
+  morning: "09:00",
+  afternoon: "13:00",
+  evening: "17:00",
+};
+const DAILY_EVENTS_TOWNS = ["Banff", "Canmore", "Lake Louise", "All"];
+
 function getUserId(req) {
   return req.user?.userId;
+}
+
+function normalizeDailyEventsPreferences(body = {}, current = {}) {
+  const updates = {};
+
+  if (typeof body.dailyEventsEnabled === "boolean") {
+    updates.dailyEventsEnabled = body.dailyEventsEnabled;
+  }
+
+  if (DAILY_EVENTS_TIME_OF_DAY_OPTIONS.includes(body.dailyEventsTimeOfDay)) {
+    updates.dailyEventsTimeOfDay = body.dailyEventsTimeOfDay;
+    updates.dailyEventsTime =
+      DAILY_EVENTS_TIMES[body.dailyEventsTimeOfDay] || DAILY_EVENTS_TIMES.morning;
+  }
+
+  if (
+    typeof body.dailyEventsTime === "string" &&
+    /^\d{2}:\d{2}$/.test(body.dailyEventsTime.trim())
+  ) {
+    updates.dailyEventsTime = body.dailyEventsTime.trim();
+  }
+
+  if (typeof body.dailyEventsTimezone === "string" && body.dailyEventsTimezone.trim()) {
+    updates.dailyEventsTimezone = body.dailyEventsTimezone.trim();
+  }
+
+  if (DAILY_EVENTS_TOWNS.includes(body.dailyEventsTown)) {
+    updates.dailyEventsTown = body.dailyEventsTown;
+  }
+
+  return {
+    dailyEventsEnabled: Boolean(current.dailyEventsEnabled),
+    dailyEventsTimeOfDay: current.dailyEventsTimeOfDay || "morning",
+    dailyEventsTime: current.dailyEventsTime || DAILY_EVENTS_TIMES.morning,
+    dailyEventsTimezone: current.dailyEventsTimezone || "America/Edmonton",
+    dailyEventsTown: current.dailyEventsTown || "All",
+    ...updates,
+  };
+}
+
+export async function getNotificationPreferences(req, res) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Not authorized." });
+
+    const user = await User.findById(userId).select("notificationPreferences");
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    return res.json({
+      notificationPreferences: normalizeDailyEventsPreferences(
+        {},
+        user.notificationPreferences || {}
+      ),
+    });
+  } catch (error) {
+    console.error("Error in GET /api/notifications/preferences:", error);
+    return res.status(500).json({
+      message: "Failed to load notification preferences.",
+      error: error.message,
+    });
+  }
+}
+
+export async function updateNotificationPreferences(req, res) {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: "Not authorized." });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const preferences = normalizeDailyEventsPreferences(
+      req.body || {},
+      user.notificationPreferences || {}
+    );
+    user.notificationPreferences = preferences;
+    await user.save();
+
+    return res.json({
+      notificationPreferences: preferences,
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Error in PATCH /api/notifications/preferences:", error);
+    return res.status(500).json({
+      message: "Failed to update notification preferences.",
+      error: error.message,
+    });
+  }
 }
 
 export async function getNotifications(req, res) {

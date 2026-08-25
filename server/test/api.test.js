@@ -6,6 +6,7 @@ import request from "supertest";
 import app from "../index.js";
 import ImportCandidate from "../models/ImportCandidate.js";
 import EventSource from "../models/EventSource.js";
+import { countEventsHappeningOnDate } from "../services/dailyEventsNotificationService.js";
 import { getAdminEmails, isAdminEmail } from "../utils/adminAccess.js";
 import { cleanupGeneratedTestData } from "../utils/generatedTestDataCleanup.js";
 import { getCategoryTagGroupsForCategories } from "../../constants/eventCategories.js";
@@ -637,6 +638,107 @@ describe("SummitScene API", function () {
           notification.reminderTime === "3h"
       )
     ).to.equal(true);
+  });
+
+  it("should let a user manage daily event notification preferences", async () => {
+    const defaultsRes = await request(app)
+      .get("/api/notifications/preferences")
+      .set("Authorization", `Bearer ${authToken}`);
+
+    expect(defaultsRes.status).to.equal(200);
+    expect(defaultsRes.body.notificationPreferences).to.include({
+      dailyEventsEnabled: false,
+      dailyEventsTimeOfDay: "morning",
+      dailyEventsTime: "09:00",
+      dailyEventsTown: "All",
+    });
+
+    const updateRes = await request(app)
+      .patch("/api/notifications/preferences")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        dailyEventsEnabled: true,
+        dailyEventsTimeOfDay: "evening",
+        dailyEventsTimezone: "America/Edmonton",
+        dailyEventsTown: "Banff",
+      });
+
+    expect(updateRes.status).to.equal(200);
+    expect(updateRes.body.notificationPreferences).to.include({
+      dailyEventsEnabled: true,
+      dailyEventsTimeOfDay: "evening",
+      dailyEventsTime: "17:00",
+      dailyEventsTimezone: "America/Edmonton",
+      dailyEventsTown: "Banff",
+    });
+    expect(updateRes.body.user.notificationPreferences).to.include({
+      dailyEventsEnabled: true,
+      dailyEventsTown: "Banff",
+    });
+  });
+
+  it("should count one-time and recurring events happening today for daily notifications", async () => {
+    process.env.ADMIN_EMAILS = testEmail;
+    const today = formatTestDate(0);
+    const tomorrow = formatTestDate(1);
+    try {
+      const oneTimeRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: `Daily Notification One Time ${testRunId}`,
+          description: "Counts for today's daily notification.",
+          town: "Banff",
+          category: "Live Music",
+          date: today,
+          time: "7:00 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+      const recurringRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: `Daily Notification Recurring ${testRunId}`,
+          description: "Counts for today's daily notification.",
+          town: "Banff",
+          category: "Restaurant Specials",
+          date: today,
+          time: "5:00 PM",
+          scheduleType: "recurring",
+          recurrence: {
+            frequency: "daily",
+            untilDate: tomorrow,
+            weekdays: [],
+            dates: [],
+          },
+          address: "100 Banff Avenue, Banff, AB",
+        });
+      const tomorrowRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: `Daily Notification Tomorrow ${testRunId}`,
+          description: "Should not count today.",
+          town: "Banff",
+          category: "Live Music",
+          date: tomorrow,
+          time: "7:00 PM",
+          address: "100 Banff Avenue, Banff, AB",
+        });
+
+      expect(oneTimeRes.status).to.equal(201);
+      expect(recurringRes.status).to.equal(201);
+      expect(tomorrowRes.status).to.equal(201);
+
+      const count = await countEventsHappeningOnDate({
+        dateString: today,
+        town: "Banff",
+      });
+
+      expect(count).to.be.at.least(2);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
   });
 
   it("should hide event attendees from users they blocked or were blocked by", async () => {

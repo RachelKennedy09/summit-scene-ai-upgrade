@@ -125,6 +125,7 @@ export function buildSafeUser(user) {
     googleBusinessUrl: user.googleBusinessUrl,
     phone: user.phone,
     socialAccounts: user.socialAccounts || [],
+    notificationPreferences: user.notificationPreferences || {},
     blockedUsers: (user.blockedUsers || []).map((id) => id.toString()),
   };
 }

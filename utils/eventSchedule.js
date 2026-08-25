@@ -305,6 +305,62 @@ export function getNextOccurrenceDateString(event, fromDate = new Date()) {
   return next ? formatDateOnly(next) : null;
 }
 
+export function eventOccursOnDate(event, dateString) {
+  const targetDate = parseDateOnly(dateString);
+  if (!event || !targetDate) return false;
+
+  const scheduleType = event?.scheduleType || "single";
+  if (scheduleType !== "recurring") {
+    return event?.date === dateString;
+  }
+
+  const startDate = getScheduleStartDate(event);
+  if (!startDate || targetDate < startDate) return false;
+
+  const untilDate = getScheduleUntilDate(event);
+  if (untilDate && targetDate > untilDate) return false;
+
+  const frequency = event?.recurrence?.frequency || "daily";
+  if (frequency === "daily") return true;
+
+  if (frequency === "weekly") {
+    return targetDate.getDay() === startDate.getDay();
+  }
+
+  if (frequency === "biweekly") {
+    const daysSinceStart = Math.floor(
+      (targetDate.getTime() - startDate.getTime()) / 86400000
+    );
+    return daysSinceStart >= 0 && daysSinceStart % 14 === 0;
+  }
+
+  if (frequency === "monthly") {
+    let monthsToAdd =
+      (targetDate.getFullYear() - startDate.getFullYear()) * 12 +
+      (targetDate.getMonth() - startDate.getMonth());
+    if (monthsToAdd < 0) return false;
+
+    const occurrenceDate = addMonthsClamped(startDate, monthsToAdd);
+    return formatDateOnly(occurrenceDate) === dateString;
+  }
+
+  if (frequency === "selected_weekdays") {
+    const weekdays = Array.isArray(event?.recurrence?.weekdays)
+      ? event.recurrence.weekdays
+      : [];
+    return weekdays.includes(WEEKDAY_ORDER[targetDate.getDay()]);
+  }
+
+  if (frequency === "selected_dates") {
+    const dates = Array.isArray(event?.recurrence?.dates)
+      ? event.recurrence.dates
+      : [];
+    return dates.includes(dateString);
+  }
+
+  return false;
+}
+
 export function isEventUpcoming(event, fromDate = new Date()) {
   const next = getNextOccurrenceDate(event, fromDate);
   if (!next) return false;

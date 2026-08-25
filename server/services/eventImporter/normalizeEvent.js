@@ -174,11 +174,11 @@ function normalizeRecurrence(recurrence, options = {}) {
   };
 }
 
-function scoreCandidate(candidate, notes) {
+function scoreCandidate(candidate, notes, options = {}) {
   let score = 20;
 
   if (candidate.title) score += 20;
-  if (isValidFutureDateString(candidate.startDate)) score += 25;
+  if (isValidFutureDateString(candidate.startDate, options.now)) score += 25;
   else notes.push("Missing or non-future date.");
   if (candidate.town) score += 15;
   else notes.push("Town could not be identified.");
@@ -261,7 +261,7 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     rawExtractedData: buildFactualRawExtractedData(extracted, source),
   };
 
-  candidate.confidenceScore = scoreCandidate(candidate, notes);
+  candidate.confidenceScore = scoreCandidate(candidate, notes, options);
   candidate.importNotes = notes.join(" ");
 
   return candidate;

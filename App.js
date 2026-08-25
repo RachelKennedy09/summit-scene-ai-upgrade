@@ -66,17 +66,30 @@ function AppNavigation() {
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
+        const data = response.notification.request.content.data || {};
+        if (data.type === "daily-events" && navigationRef.isReady()) {
+          navigationRef.navigate("tabs", {
+            screen: "Hub",
+            params: {
+              dailyEventsOpenedAt: Date.now(),
+              town: data.town || "All",
+              dateFilter: "Today",
+            },
+          });
+          return;
+        }
+
         const eventId =
-          response.notification.request.content.data?.eventId || "";
+          data.eventId || "";
         if (eventId && navigationRef.isReady()) {
           navigationRef.navigate("EventDetail", { eventId });
           return;
         }
 
         const buddyPostId =
-          response.notification.request.content.data?.buddyPostId || "";
+          data.buddyPostId || "";
         const communityPostId =
-          response.notification.request.content.data?.communityPostId || "";
+          data.communityPostId || "";
         if ((buddyPostId || communityPostId) && navigationRef.isReady()) {
           navigationRef.navigate("Notifications");
         }
