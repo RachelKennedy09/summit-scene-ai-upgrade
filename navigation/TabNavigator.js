@@ -71,7 +71,16 @@ export default function TabNavigator() {
       })}
     >
       {/* Everyone gets Hub and Map */}
-      <Tab.Screen name="Hub" component={HubScreen} options={{ title: "Home" }} />
+      <Tab.Screen
+        name="Hub"
+        component={HubScreen}
+        options={{ title: "Home" }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate("Hub", { resetHomeAt: Date.now() });
+          },
+        })}
+      />
 
       <Tab.Screen name="Map" component={MapScreen} options={{ title: "Map" }} />
 

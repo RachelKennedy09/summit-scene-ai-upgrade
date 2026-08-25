@@ -728,6 +728,13 @@ export default function HubScreen({ route }) {
     setBuddySearchResults([]);
   }, []);
 
+  useEffect(() => {
+    if (!route?.params?.resetHomeAt) return;
+
+    handleClearFilters();
+    setIsBrowseMode(false);
+  }, [handleClearFilters, route?.params?.resetHomeAt]);
+
   const selectedDateLabel = useMemo(
     () => getDateFilterLabel(selectedDateFilter, selectedStartDate, selectedEndDate),
     [selectedDateFilter, selectedStartDate, selectedEndDate]
