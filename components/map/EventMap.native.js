@@ -76,6 +76,31 @@ const EventMap = React.forwardRef(function EventMap(
         const isSelected = marker.id === selectedMarkerId;
         const eventCount = marker.markerCount || marker.events?.length || 1;
         const hasMultipleEvents = eventCount > 1;
+        const isAndroid = Platform.OS === "android";
+
+        if (isAndroid && !hasMultipleEvents) {
+          return (
+            <Marker
+              key={marker.id}
+              ref={(markerRef) => {
+                if (markerRef) {
+                  markerRefs.current[marker.id] = markerRef;
+                } else {
+                  delete markerRefs.current[marker.id];
+                }
+              }}
+              coordinate={marker.coordinate}
+              pinColor={theme.accent}
+              tracksViewChanges={false}
+              tracksInfoWindowChanges={false}
+              onSelect={() => onSelectMarker(marker.id)}
+              onPress={() => {
+                onSelectMarker(marker.id);
+                onPressMarker(marker);
+              }}
+            />
+          );
+        }
 
         return (
           <Marker
@@ -88,6 +113,8 @@ const EventMap = React.forwardRef(function EventMap(
               }
             }}
             coordinate={marker.coordinate}
+            tracksViewChanges={!isAndroid}
+            tracksInfoWindowChanges={!isAndroid}
             onSelect={() => onSelectMarker(marker.id)}
             onPress={() => {
               onSelectMarker(marker.id);
