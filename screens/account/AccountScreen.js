@@ -27,6 +27,7 @@ import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 import { fetchAdminDashboardStats } from "../../services/adminApi";
+import { fetchAnalyticsSummary } from "../../services/analyticsApi";
 import {
   fetchNotificationPreferences,
   fetchNotifications,
@@ -54,6 +55,11 @@ const EMPTY_ADMIN_STATS = {
   },
   openReports: 0,
   pendingBusinesses: 0,
+  eventImpressions: 0,
+  eventViews: 0,
+  websiteClicks: 0,
+  saves: 0,
+  shares: 0,
 };
 const ADMIN_DASHBOARD_GROUPS = [
   {
@@ -65,10 +71,13 @@ const ADMIN_DASHBOARD_GROUPS = [
     ],
   },
   {
-    title: "Count Audit",
+    title: "Analytics - 30 days",
     metrics: [
-      { key: "totalDatabaseUsers", label: "Database Users" },
-      { key: "generatedTestUsers", label: "Test/Review Accounts" },
+      { key: "eventImpressions", label: "Event Impressions" },
+      { key: "eventViews", label: "Event Views" },
+      { key: "websiteClicks", label: "Website Clicks" },
+      { key: "saves", label: "Saves" },
+      { key: "shares", label: "Shares" },
     ],
   },
   {
@@ -203,11 +212,15 @@ function AccountScreen() {
     try {
       setAdminCountsLoading(true);
       setAdminCountsError("");
-      const stats = await fetchAdminDashboardStats(token);
+      const [stats, analytics] = await Promise.all([
+        fetchAdminDashboardStats(token),
+        fetchAnalyticsSummary(token, "30"),
+      ]);
 
       setAdminCounts({
         ...EMPTY_ADMIN_STATS,
         ...stats,
+        ...analytics,
         locations: {
           ...EMPTY_ADMIN_STATS.locations,
           ...(stats.locations || {}),
@@ -658,6 +671,12 @@ function AccountScreen() {
                   ? `${adminCounts.pendingBusinesses} pending`
                   : "Clear"
               }
+            />
+            <AccountNavRow
+              title="Analytics"
+              subtitle="View aggregate event and business activity."
+              onPress={() => navigation.navigate("AdminAnalytics")}
+              theme={theme}
             />
             <AccountNavRow
               title="Admin accounts"

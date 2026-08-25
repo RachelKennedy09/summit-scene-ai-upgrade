@@ -36,7 +36,7 @@ export default {
   expo: {
     name: "Summit Scene",
     slug: "summit-scene",
-    version: "1.0.6",
+    version: "1.0.7",
     orientation: "portrait",
     scheme: "summitscene",
     icon: "./assets/app-icon-ios-padded.png",
@@ -50,7 +50,7 @@ export default {
     plugins,
     ios: {
       bundleIdentifier: "com.rachellauren.summitscene",
-      buildNumber: "1",
+      buildNumber: "2",
       icon: "./assets/app-icon-ios-padded.png",
       supportsTablet: true,
       usesAppleSignIn: true,

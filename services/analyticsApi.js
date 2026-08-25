@@ -8,6 +8,13 @@ const AUTH_TOKEN_KEY = "authToken";
 const REQUEST_TIMEOUT_MS = 5000;
 const impressionCache = new Set();
 
+function buildHeaders(token) {
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 function buildSessionId() {
   const randomPart = Math.random().toString(36).slice(2, 12);
   return `anon_${Date.now().toString(36)}_${randomPart}`;
@@ -63,10 +70,7 @@ export function trackAnalytics(type, payload = {}) {
 
       const res = await fetchWithTimeout(`${API_BASE_URL}/api/analytics/track`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: buildHeaders(token),
         body: JSON.stringify({
           type,
           ...payload,
@@ -84,4 +88,51 @@ export function trackAnalytics(type, payload = {}) {
         console.log("Analytics tracking issue", type, error?.message);
       }
     });
+}
+
+async function readJsonSafely(response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+export async function fetchAnalyticsSummary(token, days = "30") {
+  const params = new URLSearchParams();
+  params.set("days", String(days || "30"));
+
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/analytics/summary?${params.toString()}`,
+    { headers: buildHeaders(token) }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw new Error(data.message || `Failed to load analytics (${res.status})`);
+  }
+
+  return data;
+}
+
+export async function fetchBusinessAnalytics(businessId, token, days = "30") {
+  const params = new URLSearchParams();
+  params.set("days", String(days || "30"));
+
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/analytics/business/${businessId}?${params.toString()}`,
+    { headers: buildHeaders(token) }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || `Failed to load business analytics (${res.status})`
+    );
+  }
+
+  return data;
 }
