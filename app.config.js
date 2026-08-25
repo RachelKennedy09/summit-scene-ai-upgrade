@@ -51,6 +51,7 @@ export default {
     ios: {
       bundleIdentifier: "com.rachellauren.summitscene",
       buildNumber: "1",
+      icon: "./assets/app-icon-ios-padded.png",
       supportsTablet: true,
       usesAppleSignIn: true,
       infoPlist: {
@@ -64,7 +65,7 @@ export default {
     android: {
       versionCode: 3,
       adaptiveIcon: {
-        foregroundImage: "./assets/android-adaptive-foreground-extra-safe.png",
+        foregroundImage: "./assets/android-adaptive-icon-foreground.png",
         backgroundColor: "#F5F3EE",
       },
       edgeToEdgeEnabled: true,

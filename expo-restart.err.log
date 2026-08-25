@@ -1,0 +1,21 @@
+C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\expo\node_modules\@expo\cli\build\src\utils\errors.js:130
+    throw error;
+    ^
+
+Error: ENOENT: no such file or directory, watch 'C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\react-native-screens\android\.cxx\Debug\2g5qs5a5\x86\CMakeFiles\CMakeTmp\CMakeFiles\cmTC_70cf8.dir'
+    at FSWatcher.<computed> (node:internal/fs/watchers:254:19)
+    at Object.watch (node:fs:2539:36)
+    at FallbackWatcher._watchdir (C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\@expo\metro\node_modules\metro-file-map\src\watchers\FallbackWatcher.js:119:33)
+    at C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\@expo\metro\node_modules\metro-file-map\src\watchers\FallbackWatcher.js:219:22
+    at Walker.<anonymous> (C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\@expo\metro\node_modules\metro-file-map\src\watchers\FallbackWatcher.js:358:5)
+    at Walker.emit (node:events:508:28)
+    at C:\SummitSceneUpgrade\summit-scene-ai-upgrade\node_modules\walker\lib\walker.js:69:16
+    at FSReqCallback.oncomplete (node:fs:185:23) {
+  errno: -4058,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: 'C:\\SummitSceneUpgrade\\summit-scene-ai-upgrade\\node_modules\\react-native-screens\\android\\.cxx\\Debug\\2g5qs5a5\\x86\\CMakeFiles\\CMakeTmp\\CMakeFiles\\cmTC_70cf8.dir',
+  filename: 'C:\\SummitSceneUpgrade\\summit-scene-ai-upgrade\\node_modules\\react-native-screens\\android\\.cxx\\Debug\\2g5qs5a5\\x86\\CMakeFiles\\CMakeTmp\\CMakeFiles\\cmTC_70cf8.dir'
+}
+
+Node.js v24.12.0

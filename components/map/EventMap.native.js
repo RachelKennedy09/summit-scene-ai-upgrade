@@ -22,6 +22,9 @@ const EventMap = React.forwardRef(function EventMap(
   ref
 ) {
   const markerRefs = useRef({});
+  const hasAndroidMapsKey =
+    Platform.OS !== "android" ||
+    Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY);
 
   useEffect(() => {
     if (!selectedMarkerId) return;
@@ -35,6 +38,28 @@ const EventMap = React.forwardRef(function EventMap(
 
     return () => clearTimeout(timeoutId);
   }, [selectedMarkerId, markers]);
+
+  if (!hasAndroidMapsKey) {
+    return (
+      <View
+        style={[
+          styles.unavailable,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <Text style={[styles.unavailableTitle, { color: theme.text }]}>
+          Map setup needed
+        </Text>
+        <Text style={[styles.unavailableText, { color: theme.textMuted }]}>
+          Add the Android Google Maps API key and rebuild the app to show the
+          event map here.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <MapView
@@ -173,6 +198,26 @@ export default EventMap;
 const styles = StyleSheet.create({
   map: {
     flex: 1,
+  },
+  unavailable: {
+    flex: 1,
+    minHeight: 220,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 22,
+  },
+  unavailableTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  unavailableText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
   },
   markerPin: {
     width: 24,
