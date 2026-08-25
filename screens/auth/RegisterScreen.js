@@ -547,6 +547,7 @@ function RegisterScreen() {
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
   const [phone, setPhone] = useState("");
   const profileImageUploadRef = useRef("");
+  const allowExitRef = useRef(false);
   const [hasProfileImage, setHasProfileImage] = useState(false);
   const [profileImagePreviewUri, setProfileImagePreviewUri] = useState("");
   const [hasAcceptedAgreements, setHasAcceptedAgreements] = useState(false);
@@ -563,6 +564,37 @@ function RegisterScreen() {
       setStepIndex(steps.length - 1);
     }
   }, [stepIndex, steps.length]);
+
+  function confirmExitProfileCreation(onConfirm) {
+    Alert.alert(
+      "Exit profile creation?",
+      "Are you sure you want to exit? Everything will be deleted and you will have to restart.",
+      [
+        { text: "Keep editing", style: "cancel" },
+        {
+          text: "Exit",
+          style: "destructive",
+          onPress: () => {
+            allowExitRef.current = true;
+            onConfirm?.();
+          },
+        },
+      ]
+    );
+  }
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (allowExitRef.current || isSubmitting || isAuthLoading) {
+        return;
+      }
+
+      event.preventDefault();
+      confirmExitProfileCreation(() => navigation.dispatch(event.data.action));
+    });
+
+    return unsubscribe;
+  }, [isAuthLoading, isSubmitting, navigation]);
 
   function handleToggleInterest(interest) {
     setInterests((current) => {
@@ -820,6 +852,7 @@ function RegisterScreen() {
     }
 
     setIsSubmitting(true);
+    allowExitRef.current = true;
 
     try {
       const profileImageUpload = profileImageUploadRef.current;
@@ -854,6 +887,7 @@ function RegisterScreen() {
         );
       }
     } catch (error) {
+      allowExitRef.current = false;
       Alert.alert(
         "Registration failed",
         error.message || "Please check your details and try again."
@@ -1783,7 +1817,9 @@ function RegisterScreen() {
 
                 <AppButton
                   title="Log In"
-                  onPress={() => navigation.navigate("Login")}
+                  onPress={() =>
+                    confirmExitProfileCreation(() => navigation.navigate("Login"))
+                  }
                   disabled={isSubmitting || isAuthLoading}
                   variant="outline"
                   size="lg"
@@ -1791,7 +1827,11 @@ function RegisterScreen() {
                 />
                 <AppButton
                   title="Continue browsing without an account"
-                  onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
+                  onPress={() =>
+                    confirmExitProfileCreation(() =>
+                      navigation.navigate("tabs", { screen: "Hub" })
+                    )
+                  }
                   disabled={isSubmitting || isAuthLoading}
                   variant="soft"
                   size="lg"
