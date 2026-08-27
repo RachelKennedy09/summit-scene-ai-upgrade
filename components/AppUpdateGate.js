@@ -37,10 +37,6 @@ function isVersionOlder(currentVersion, minimumVersion) {
   return false;
 }
 
-function isVersionNewer(latestVersion, currentVersion) {
-  return isVersionOlder(currentVersion, latestVersion);
-}
-
 export default function AppUpdateGate({ children }) {
   const { theme } = useTheme();
   const [checking, setChecking] = useState(true);
@@ -61,9 +57,11 @@ export default function AppUpdateGate({ children }) {
         if (cancelled) return;
 
         setVersionInfo(info);
+        // Only the minimum supported version should block users from opening
+        // the app. A newer latestVersion is useful for optional messaging, but
+        // it should not turn every normal release into a forced upgrade.
         setRequiresUpdate(
-          isVersionOlder(currentVersion, info.minimumSupportedVersion) ||
-            isVersionNewer(info.latestVersion, currentVersion)
+          isVersionOlder(currentVersion, info.minimumSupportedVersion)
         );
       } catch {
         if (!cancelled) {
