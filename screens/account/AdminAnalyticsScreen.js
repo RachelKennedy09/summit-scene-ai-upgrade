@@ -15,7 +15,9 @@ import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
+  fetchAnalyticsAttributions,
   fetchAnalyticsSummary,
+  fetchAttributionAnalytics,
   fetchBusinessAnalytics,
 } from "../../services/analyticsApi";
 
@@ -93,9 +95,12 @@ export default function AdminAnalyticsScreen() {
   const { theme } = useTheme();
   const [days, setDays] = useState("30");
   const [summary, setSummary] = useState(null);
+  const [attributions, setAttributions] = useState([]);
+  const [attributionAnalytics, setAttributionAnalytics] = useState(null);
   const [businessId, setBusinessId] = useState("");
   const [businessAnalytics, setBusinessAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [attributionLoadingKey, setAttributionLoadingKey] = useState("");
   const [businessLoading, setBusinessLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -110,7 +115,12 @@ export default function AdminAnalyticsScreen() {
     try {
       setLoading(true);
       setError("");
-      setSummary(await fetchAnalyticsSummary(token, days));
+      const [nextSummary, nextAttributions] = await Promise.all([
+        fetchAnalyticsSummary(token, days),
+        fetchAnalyticsAttributions(token, days),
+      ]);
+      setSummary(nextSummary);
+      setAttributions(nextAttributions.attributions || []);
     } catch (loadError) {
       setError(loadError.message || "Could not load analytics.");
     } finally {
@@ -139,6 +149,23 @@ export default function AdminAnalyticsScreen() {
       );
     } finally {
       setBusinessLoading(false);
+    }
+  }
+
+  async function handleLoadAttributionAnalytics(attribution) {
+    const key = attribution?.attributionKey;
+    if (!key) return;
+
+    try {
+      setAttributionLoadingKey(key);
+      setAttributionAnalytics(await fetchAttributionAnalytics(key, token, days));
+    } catch (loadError) {
+      Alert.alert(
+        "Could not load source analytics",
+        loadError.message || "Please try again."
+      );
+    } finally {
+      setAttributionLoadingKey("");
     }
   }
 
@@ -217,6 +244,73 @@ export default function AdminAnalyticsScreen() {
 
         <MetricGrid data={summary} theme={theme} />
 
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Source / organizer reports
+          </Text>
+          <Text style={[styles.lookupHelp, { color: theme.textMuted }]}>
+            Imported events are grouped by their original organizer or source, even when Summit Scene posted them.
+          </Text>
+          {attributions.length ? (
+            attributions.map((attribution) => {
+              const loadingSource =
+                attributionLoadingKey === attribution.attributionKey;
+              return (
+                <Pressable
+                  key={attribution.attributionKey}
+                  onPress={() => handleLoadAttributionAnalytics(attribution)}
+                  disabled={Boolean(attributionLoadingKey)}
+                  style={[
+                    styles.sourceRow,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    loadingSource && styles.disabled,
+                  ]}
+                >
+                  <View style={styles.eventCopy}>
+                    <Text
+                      style={[styles.eventTitle, { color: theme.text }]}
+                      numberOfLines={1}
+                    >
+                      {attribution.attributionName || "Source"}
+                    </Text>
+                    <Text style={[styles.eventMeta, { color: theme.textMuted }]}>
+                      {attribution.attributionType || "source"} | {formatCount(attribution.total)} tracked actions
+                    </Text>
+                  </View>
+                  <Text style={[styles.eventValue, { color: theme.accent }]}>
+                    {loadingSource ? "..." : "View"}
+                  </Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <Text style={[styles.statusText, { color: theme.textMuted }]}>
+              No source analytics yet. New activity will appear here after the updated backend is deployed.
+            </Text>
+          )}
+        </View>
+
+        {attributionAnalytics ? (
+          <>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {attributionAnalytics.attributionName || "Source"} totals
+            </Text>
+            <MetricGrid data={attributionAnalytics} theme={theme} />
+            <TopEventsList
+              title="Top source events by views"
+              events={attributionAnalytics.topEventsByViews}
+              theme={theme}
+              valueKey="views"
+            />
+            <TopEventsList
+              title="Top source events by saves"
+              events={attributionAnalytics.topEventsBySaves}
+              theme={theme}
+              valueKey="saves"
+            />
+          </>
+        ) : null}
+
         <View
           style={[
             styles.lookupCard,
@@ -224,10 +318,10 @@ export default function AdminAnalyticsScreen() {
           ]}
         >
           <Text style={[styles.lookupTitle, { color: theme.text }]}>
-            Business report lookup
+            Business account lookup
           </Text>
           <Text style={[styles.lookupHelp, { color: theme.textMuted }]}>
-            Paste a business user ID to see totals and top events for that business.
+            Paste a business user ID for events posted directly by that business account.
           </Text>
           <TextInput
             value={businessId}
@@ -400,6 +494,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   eventRow: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sourceRow: {
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,

@@ -136,3 +136,43 @@ export async function fetchBusinessAnalytics(businessId, token, days = "30") {
 
   return data;
 }
+
+export async function fetchAnalyticsAttributions(token, days = "30") {
+  const params = new URLSearchParams();
+  params.set("days", String(days || "30"));
+
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/analytics/attributions?${params.toString()}`,
+    { headers: buildHeaders(token) }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || `Failed to load analytics sources (${res.status})`
+    );
+  }
+
+  return data;
+}
+
+export async function fetchAttributionAnalytics(attributionKey, token, days = "30") {
+  const params = new URLSearchParams();
+  params.set("days", String(days || "30"));
+
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/analytics/attribution/${encodeURIComponent(
+      attributionKey
+    )}?${params.toString()}`,
+    { headers: buildHeaders(token) }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || `Failed to load source analytics (${res.status})`
+    );
+  }
+
+  return data;
+}

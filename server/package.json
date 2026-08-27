@@ -13,6 +13,7 @@
     "normalize:community-posts": "node scripts/normalizeCommunityPostFields.js",
     "import-events": "node scripts/runEventImport.js",
     "seed:event-sources": "node scripts/seedEventSources.js",
+    "backfill:analytics-attribution": "node scripts/backfillAnalyticsAttribution.js",
     "repair:imported-event-ranges": "node scripts/repairImportedEventRanges.js",
     "repair:imported-event-compliance": "node scripts/repairImportedEventCompliance.js"
   },

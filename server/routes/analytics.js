@@ -1,6 +1,8 @@
 import express from "express";
 import {
+  getAnalyticsAttributions,
   getAnalyticsSummary,
+  getAttributionAnalytics,
   getBusinessAnalytics,
   trackAnalytics,
 } from "../controllers/analyticsController.js";
@@ -11,6 +13,8 @@ const router = express.Router();
 
 router.post("/track", optionalAuth, trackAnalytics);
 router.get("/summary", authMiddleware, getAnalyticsSummary);
+router.get("/attributions", authMiddleware, getAnalyticsAttributions);
+router.get("/attribution/:attributionKey", authMiddleware, getAttributionAnalytics);
 router.get("/business/:businessId", authMiddleware, getBusinessAnalytics);
 
 export default router;

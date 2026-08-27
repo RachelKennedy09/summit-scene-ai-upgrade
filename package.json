@@ -12,6 +12,7 @@
     "web": "expo start --web",
     "import-events": "npm --prefix server run import-events",
     "seed:event-sources": "npm --prefix server run seed:event-sources",
+    "backfill:analytics-attribution": "npm --prefix server run backfill:analytics-attribution",
     "repair:imported-event-ranges": "npm --prefix server run repair:imported-event-ranges",
     "repair:imported-event-compliance": "npm --prefix server run repair:imported-event-compliance"
   },

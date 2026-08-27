@@ -99,20 +99,82 @@ async function aggregateSummary(match) {
   return buildSummaryFromRows(rows);
 }
 
+function normalizeAttributionKey(type, value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/$/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized ? `${type}:${normalized}` : null;
+}
+
+function getUrlHost(value) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function resolveAttribution({ event, business }) {
+  if (event?.importedBySummitScene) {
+    const sourceName =
+      event.sourceName ||
+      event.locationName ||
+      getUrlHost(event.sourceUrl) ||
+      "Imported source";
+    const type = event.sourceName || event.sourceUrl ? "source" : "venue";
+
+    return {
+      attributionType: type,
+      attributionName: sourceName,
+      attributionKey: normalizeAttributionKey(type, sourceName),
+      sourceName: event.sourceName || null,
+      sourceUrl: event.sourceUrl || null,
+    };
+  }
+
+  if (business) {
+    const name = business.name || "Business";
+    return {
+      attributionType: "business",
+      attributionName: name,
+      attributionKey: normalizeAttributionKey("business", business._id),
+      sourceName: event?.sourceName || null,
+      sourceUrl: event?.sourceUrl || null,
+    };
+  }
+
+  const fallbackName = event?.sourceName || event?.locationName || null;
+  return {
+    attributionType: fallbackName ? "source" : "unknown",
+    attributionName: fallbackName,
+    attributionKey: fallbackName
+      ? normalizeAttributionKey("source", fallbackName)
+      : null,
+    sourceName: event?.sourceName || null,
+    sourceUrl: event?.sourceUrl || null,
+  };
+}
+
 async function resolveAnalyticsContext({ eventId, businessId }) {
   let event = null;
   let business = null;
 
   if (eventId && isObjectId(eventId)) {
     event = await Event.findById(eventId).select(
-      "_id createdBy town category categories"
+      "_id createdBy town category categories importedBySummitScene sourceName sourceUrl locationName"
     );
   }
 
   if (event?.createdBy) {
-    business = await User.findById(event.createdBy).select("_id role");
+    business = await User.findById(event.createdBy).select("_id role name");
   } else if (businessId && isObjectId(businessId)) {
-    business = await User.findById(businessId).select("_id role");
+    business = await User.findById(businessId).select("_id role name");
   }
 
   return {
@@ -145,6 +207,7 @@ export async function trackAnalytics(req, res) {
       eventId,
       businessId,
     });
+    const attribution = resolveAttribution({ event, business });
 
     const resolvedEventId = event?._id || null;
     const resolvedBusinessId = event?.createdBy || business?._id || null;
@@ -167,6 +230,7 @@ export async function trackAnalytics(req, res) {
         event?.category ||
         (Array.isArray(event?.categories) ? event.categories[0] : null) ||
         null,
+      ...attribution,
       sessionId,
       metadata: sanitizeMetadata(req.body?.metadata),
       dedupeKey,
@@ -284,5 +348,144 @@ export async function getBusinessAnalytics(req, res) {
   } catch (error) {
     console.error("Business analytics issue:", error.message);
     return res.status(500).json({ message: "Could not load business analytics." });
+  }
+}
+
+export async function getAttributionAnalytics(req, res) {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const attributionKey = String(req.params.attributionKey || "")
+      .trim()
+      .toLowerCase();
+    if (!attributionKey) {
+      return res.status(400).json({ message: "Attribution key is required." });
+    }
+
+    const days = normalizeDays(req.query?.days);
+    const match = {
+      ...buildDateMatch(days),
+      attributionKey,
+    };
+    const summary = await aggregateSummary(match);
+
+    const topRows = await AnalyticsEvent.aggregate([
+      {
+        $match: {
+          ...match,
+          eventId: { $ne: null },
+          type: { $in: ["event_view", "event_save"] },
+        },
+      },
+      {
+        $group: {
+          _id: { eventId: "$eventId", type: "$type" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.eventId",
+          counts: {
+            $push: {
+              type: "$_id.type",
+              count: "$count",
+            },
+          },
+        },
+      },
+      { $limit: 50 },
+    ]);
+
+    const eventIds = topRows.map((row) => row._id);
+    const events = await Event.find({ _id: { $in: eventIds } }).select("title");
+    const eventTitleMap = new Map(
+      events.map((event) => [event._id.toString(), event.title])
+    );
+    const topEvents = topRows
+      .map((row) => {
+        const counts = Object.fromEntries(
+          row.counts.map((entry) => [entry.type, entry.count])
+        );
+        return {
+          eventId: row._id,
+          title: eventTitleMap.get(row._id.toString()) || "Event",
+          views: counts.event_view || 0,
+          saves: counts.event_save || 0,
+        };
+      })
+      .sort((a, b) => b.views - a.views || b.saves - a.saves);
+
+    const sample = await AnalyticsEvent.findOne(match)
+      .sort({ createdAt: -1 })
+      .select("attributionType attributionName attributionKey sourceName sourceUrl")
+      .lean();
+
+    return res.json({
+      days,
+      attributionKey,
+      attributionType: sample?.attributionType || null,
+      attributionName: sample?.attributionName || null,
+      sourceName: sample?.sourceName || null,
+      sourceUrl: sample?.sourceUrl || null,
+      ...summary,
+      topEventsByViews: topEvents.filter((event) => event.views > 0).slice(0, 10),
+      topEventsBySaves: [...topEvents]
+        .filter((event) => event.saves > 0)
+        .sort((a, b) => b.saves - a.saves || b.views - a.views)
+        .slice(0, 10),
+    });
+  } catch (error) {
+    console.error("Attribution analytics issue:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Could not load source analytics." });
+  }
+}
+
+export async function getAnalyticsAttributions(req, res) {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const days = normalizeDays(req.query?.days);
+    const rows = await AnalyticsEvent.aggregate([
+      {
+        $match: {
+          ...buildDateMatch(days),
+          attributionKey: { $type: "string", $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$attributionKey",
+          attributionType: { $first: "$attributionType" },
+          attributionName: { $first: "$attributionName" },
+          sourceName: { $first: "$sourceName" },
+          sourceUrl: { $first: "$sourceUrl" },
+          total: { $sum: 1 },
+        },
+      },
+      { $sort: { total: -1, attributionName: 1 } },
+      { $limit: 100 },
+    ]);
+
+    return res.json({
+      days,
+      attributions: rows.map((row) => ({
+        attributionKey: row._id,
+        attributionType: row.attributionType,
+        attributionName: row.attributionName || row.sourceName || "Source",
+        sourceName: row.sourceName,
+        sourceUrl: row.sourceUrl,
+        total: row.total,
+      })),
+    });
+  } catch (error) {
+    console.error("Analytics attribution list issue:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Could not load analytics sources." });
   }
 }

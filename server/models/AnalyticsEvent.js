@@ -48,6 +48,35 @@ const analyticsEventSchema = new Schema(
       trim: true,
       default: null,
     },
+    attributionType: {
+      type: String,
+      enum: ["business", "source", "venue", "unknown"],
+      default: "unknown",
+      index: true,
+    },
+    attributionName: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
+    attributionKey: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: null,
+      index: true,
+    },
+    sourceName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    sourceUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     sessionId: {
       type: String,
       trim: true,
@@ -69,6 +98,7 @@ const analyticsEventSchema = new Schema(
 );
 
 analyticsEventSchema.index({ businessId: 1, type: 1, createdAt: -1 });
+analyticsEventSchema.index({ attributionKey: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index({ eventId: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index({ type: 1, createdAt: -1 });
 analyticsEventSchema.index(
