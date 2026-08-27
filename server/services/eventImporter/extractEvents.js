@@ -53,6 +53,14 @@ function getKnownSourceDetails(sourceUrl) {
     };
   }
 
+  if (lower.includes("thebossbanff.com")) {
+    return {
+      venue: "THE BOSS Kitchen & Bar",
+      address: "229 Banff Avenue, Banff, AB",
+      category: "Food & Drink",
+    };
+  }
+
   if (lower.includes("fatoxbanff.ca")) {
     return {
       venue: "The Fat Ox",
@@ -738,6 +746,7 @@ function buildRecurringSourceEvent({
   startTime,
   endTime,
   weekdays,
+  price,
   category = "Music & Nightlife",
 }) {
   const knownDetails = getKnownSourceDetails(sourceUrl);
@@ -757,6 +766,7 @@ function buildRecurringSourceEvent({
     venue: knownDetails.venue,
     address: knownDetails.address,
     category,
+    price,
     ticketUrl: sourceUrl,
     sourceUrl,
     extractionMethod: "known-recurring-source",
@@ -830,6 +840,33 @@ function readKnownRecurringEvents($, sourceUrl) {
         })
       );
     }
+  }
+
+  if (lower.includes("thebossbanff.com") && /happy\s+hour/i.test(text)) {
+    const bossHappyHourUrl = "https://thebossbanff.com/menu/";
+
+    events.push(
+      buildRecurringSourceEvent({
+        title: "THE BOSS Happy Hour - Afternoon",
+        description:
+          "Lounge-only happy hour with food and drink specials daily from 3:00 PM to 6:00 PM.",
+        sourceUrl: bossHappyHourUrl,
+        startTime: "3:00 PM",
+        endTime: "6:00 PM",
+        price: "Items from $5",
+        category: "Food & Drink",
+      }),
+      buildRecurringSourceEvent({
+        title: "THE BOSS Happy Hour - Late Night",
+        description:
+          "Lounge-only happy hour with food and drink specials daily from 9:00 PM to 11:00 PM.",
+        sourceUrl: bossHappyHourUrl,
+        startTime: "9:00 PM",
+        endTime: "11:00 PM",
+        price: "Items from $5",
+        category: "Food & Drink",
+      })
+    );
   }
 
   return events;

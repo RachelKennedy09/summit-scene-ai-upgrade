@@ -198,6 +198,55 @@ describe("event importer helpers", () => {
     ]);
   });
 
+  it("extracts THE BOSS happy hour as daily recurring import events", () => {
+    const events = extractEvents(
+      `
+        <h2>Happy Hour</h2>
+        <p>Lounge Only</p>
+        <p>Daily: 3 - 6 PM & 9 PM - 11 PM</p>
+        <h3>Happy Hour Drinks</h3>
+        <p>Well Highballs 1oz $5</p>
+        <h3>Happy Hour Food</h3>
+        <p>Tacos $5 each</p>
+      `,
+      {
+        url: "https://thebossbanff.com/menu/",
+        town: "Banff",
+      }
+    );
+
+    const afternoon = events.find((event) =>
+      event.title.includes("Afternoon")
+    );
+    const lateNight = events.find((event) =>
+      event.title.includes("Late Night")
+    );
+
+    expect(afternoon).to.deep.include({
+      title: "THE BOSS Happy Hour - Afternoon",
+      scheduleType: "recurring",
+      startTime: "3:00 PM",
+      endTime: "6:00 PM",
+      venue: "THE BOSS Kitchen & Bar",
+      address: "229 Banff Avenue, Banff, AB",
+      category: "Food & Drink",
+      price: "Items from $5",
+      sourceUrl: "https://thebossbanff.com/menu/",
+    });
+    expect(afternoon.recurrence).to.deep.include({ frequency: "daily" });
+
+    expect(lateNight).to.deep.include({
+      title: "THE BOSS Happy Hour - Late Night",
+      scheduleType: "recurring",
+      startTime: "9:00 PM",
+      endTime: "11:00 PM",
+      venue: "THE BOSS Kitchen & Bar",
+      price: "Items from $5",
+      sourceUrl: "https://thebossbanff.com/menu/",
+    });
+    expect(lateNight.recurrence).to.deep.include({ frequency: "daily" });
+  });
+
   it("extracts Ski Louise listing cards with exact detail links", () => {
     const events = extractEvents(
       `
