@@ -45,6 +45,7 @@ import {
 import { getEventImageSource } from "../../utils/eventImages";
 import {
   EVENT_CATEGORIES,
+  EVENT_MAIN_CATEGORIES,
   getEventCategoryGroups,
 } from "../../constants/eventCategories";
 
@@ -74,15 +75,8 @@ const DEFAULT_LISTING_TYPE = "All";
 const DEFAULT_DATE_FILTER = "Today";
 const EVENT_TIME_ZONE = "America/Edmonton";
 const DISCOVERY_CATEGORIES = [
-  "Live Music",
-  "Food & Drink",
-  "Outdoors & Sports",
-  "Wellness",
-  "Markets",
-  "Family & Pets",
-  "Arts & Creativity",
-  "Learning",
-].filter((category) => CATEGORIES.includes(category));
+  ...EVENT_MAIN_CATEGORIES.filter((category) => category !== "Other"),
+];
 
 function getUserInterestCategories(user) {
   const interests = Array.isArray(user?.interests) ? user.interests : [];

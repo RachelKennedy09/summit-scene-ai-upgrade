@@ -104,7 +104,6 @@ function AppNavigation() {
       {/*  Status bar follows theme */}
       <StatusBar
         barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={theme.background}
       />
       <AppUpdateGate>
         <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>

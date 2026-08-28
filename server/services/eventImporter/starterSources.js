@@ -48,6 +48,14 @@ export const STARTER_EVENT_SOURCES = [
     trusted: true,
   },
   {
+    name: "Banff Social Happy Hour",
+    url: "https://banffsocial.ca/menus",
+    town: "Banff",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
+  {
     name: "Lake Louise Ski Resort Events",
     url: "https://www.skilouise.com/things-to-do/category/events/",
     town: "Lake Louise",

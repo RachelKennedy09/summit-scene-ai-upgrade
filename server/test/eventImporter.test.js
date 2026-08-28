@@ -247,6 +247,50 @@ describe("event importer helpers", () => {
     expect(lateNight.recurrence).to.deep.include({ frequency: "daily" });
   });
 
+  it("extracts Banff Social happy hour as daily recurring import events", () => {
+    const events = extractEvents(
+      `
+        <nav>PATIO BRUNCH HAPPY HOUR ALL DAY MENU DINNER DRINKS</nav>
+        <h2>Happy Hour</h2>
+        <p>Happy Hour Menu | 3pm to 6pm & 8pm to Close</p>
+        <p>Rail Liquor 1oz $5</p>
+        <p>221 Bear St, Banff, AB T1L 1B3</p>
+      `,
+      {
+        url: "https://banffsocial.ca/menus",
+        town: "Banff",
+      }
+    );
+
+    const afternoon = events.find((event) =>
+      event.title.includes("Afternoon")
+    );
+    const evening = events.find((event) => event.title.includes("Evening"));
+
+    expect(afternoon).to.deep.include({
+      title: "Banff Social Happy Hour - Afternoon",
+      scheduleType: "recurring",
+      startTime: "3:00 PM",
+      endTime: "6:00 PM",
+      venue: "Banff Social",
+      address: "221 Bear St, Banff, AB",
+      category: "Food & Drink",
+      price: "Items from $5",
+      sourceUrl: "https://banffsocial.ca/menus",
+    });
+    expect(afternoon.recurrence).to.deep.include({ frequency: "daily" });
+
+    expect(evening).to.deep.include({
+      title: "Banff Social Happy Hour - Evening",
+      scheduleType: "recurring",
+      startTime: "8:00 PM",
+      venue: "Banff Social",
+      price: "Items from $5",
+      sourceUrl: "https://banffsocial.ca/menus",
+    });
+    expect(evening.recurrence).to.deep.include({ frequency: "daily" });
+  });
+
   it("extracts Ski Louise listing cards with exact detail links", () => {
     const events = extractEvents(
       `

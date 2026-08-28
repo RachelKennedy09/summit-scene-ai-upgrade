@@ -61,6 +61,17 @@ function getKnownSourceDetails(sourceUrl) {
     };
   }
 
+  if (
+    lower.includes("banffsocial.ca") ||
+    lower.includes("sphere-aardvark-r8rf.squarespace.com")
+  ) {
+    return {
+      venue: "Banff Social",
+      address: "221 Bear St, Banff, AB",
+      category: "Food & Drink",
+    };
+  }
+
   if (lower.includes("fatoxbanff.ca")) {
     return {
       venue: "The Fat Ox",
@@ -863,6 +874,36 @@ function readKnownRecurringEvents($, sourceUrl) {
         sourceUrl: bossHappyHourUrl,
         startTime: "9:00 PM",
         endTime: "11:00 PM",
+        price: "Items from $5",
+        category: "Food & Drink",
+      })
+    );
+  }
+
+  if (
+    (lower.includes("banffsocial.ca") ||
+      lower.includes("sphere-aardvark-r8rf.squarespace.com")) &&
+    /happy\s+hour/i.test(text)
+  ) {
+    const banffSocialMenuUrl = "https://banffsocial.ca/menus";
+
+    events.push(
+      buildRecurringSourceEvent({
+        title: "Banff Social Happy Hour - Afternoon",
+        description:
+          "Happy hour food and drink specials at Banff Social from 3:00 PM to 6:00 PM.",
+        sourceUrl: banffSocialMenuUrl,
+        startTime: "3:00 PM",
+        endTime: "6:00 PM",
+        price: "Items from $5",
+        category: "Food & Drink",
+      }),
+      buildRecurringSourceEvent({
+        title: "Banff Social Happy Hour - Evening",
+        description:
+          "Happy hour food and drink specials at Banff Social from 8:00 PM to close.",
+        sourceUrl: banffSocialMenuUrl,
+        startTime: "8:00 PM",
         price: "Items from $5",
         category: "Food & Drink",
       })
