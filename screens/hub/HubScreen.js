@@ -44,6 +44,7 @@ import {
 } from "../../utils/eventSchedule";
 import { getEventImageSource } from "../../utils/eventImages";
 import {
+  CATEGORY_ACCENTS,
   EVENT_CATEGORIES,
   EVENT_MAIN_CATEGORIES,
   getEventCategoryGroups,
@@ -74,9 +75,16 @@ const NEAR_ME_RADIUS_KM = 15;
 const DEFAULT_LISTING_TYPE = "All";
 const DEFAULT_DATE_FILTER = "Today";
 const EVENT_TIME_ZONE = "America/Edmonton";
-const DISCOVERY_CATEGORIES = [
+const FEATURED_DISCOVERY_CATEGORIES = [
+  "Food & Drink",
+  "Music & Nightlife",
+  "Outdoors & Sports",
+];
+const ORDERED_DISCOVERY_CATEGORIES = [
+  ...FEATURED_DISCOVERY_CATEGORIES,
   ...EVENT_MAIN_CATEGORIES.filter((category) => category !== "Other"),
 ];
+const DISCOVERY_CATEGORIES = [...new Set(ORDERED_DISCOVERY_CATEGORIES)];
 
 function getUserInterestCategories(user) {
   const interests = Array.isArray(user?.interests) ? user.interests : [];
@@ -218,6 +226,8 @@ export default function HubScreen({ route }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [isBrowseMode, setIsBrowseMode] = useState(false);
+  const [showAllDiscoveryCategories, setShowAllDiscoveryCategories] =
+    useState(false);
 
   // Events + loading state
   const [events, setEvents] = useState([]);
@@ -235,6 +245,13 @@ export default function HubScreen({ route }) {
   const [page, setPage] = useState(1);
   const loadRequestIdRef = useRef(0);
   const dashboardRequestIdRef = useRef(0);
+  const visibleDiscoveryCategories = showAllDiscoveryCategories
+    ? DISCOVERY_CATEGORIES
+    : FEATURED_DISCOVERY_CATEGORIES;
+  const hiddenDiscoveryCategoryCount = Math.max(
+    DISCOVERY_CATEGORIES.length - FEATURED_DISCOVERY_CATEGORIES.length,
+    0
+  );
 
   const loadDashboardData = useCallback(async () => {
     const requestId = dashboardRequestIdRef.current + 1;
@@ -1159,23 +1176,61 @@ export default function HubScreen({ route }) {
           <Text style={[styles.dashboardSectionTitle, { color: theme.text }]}>
             What are you feeling?
           </Text>
-          <View style={styles.quickChipRow}>
-            {DISCOVERY_CATEGORIES.map((category) => (
+          <View style={styles.discoveryChipRow}>
+            {visibleDiscoveryCategories.map((category) => {
+              const accent = CATEGORY_ACCENTS[category] || CATEGORY_ACCENTS.Other;
+              const featured = FEATURED_DISCOVERY_CATEGORIES.includes(category);
+
+              return (
+                <Pressable
+                  key={category}
+                  onPress={() =>
+                    showEventBrowser({ category, dateFilter: "All Dates" })
+                  }
+                  style={[
+                    styles.discoveryChip,
+                    featured && styles.featuredDiscoveryChip,
+                    {
+                      backgroundColor: featured ? accent.tint : theme.card,
+                      borderColor: featured ? accent.border : theme.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.discoveryChipText,
+                      { color: featured ? accent.text : theme.text },
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {hiddenDiscoveryCategoryCount ? (
               <Pressable
-                key={category}
                 onPress={() =>
-                  showEventBrowser({ category, dateFilter: "All Dates" })
+                  setShowAllDiscoveryCategories((current) => !current)
                 }
                 style={[
-                  styles.quickChip,
+                  styles.discoveryMoreChip,
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
               >
-                <Text style={[styles.quickChipText, { color: theme.text }]}>
-                  {category}
+                <Text
+                  style={[styles.discoveryMoreText, { color: theme.accent }]}
+                >
+                  {showAllDiscoveryCategories
+                    ? "Show less"
+                    : `See ${hiddenDiscoveryCategoryCount} more`}
                 </Text>
+                <Ionicons
+                  name={showAllDiscoveryCategories ? "chevron-up" : "chevron-down"}
+                  size={15}
+                  color={theme.accent}
+                />
               </Pressable>
-            ))}
+            ) : null}
           </View>
         </View>
 
@@ -1696,6 +1751,40 @@ const styles = StyleSheet.create({
   quickChipText: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  discoveryChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 9,
+  },
+  discoveryChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  featuredDiscoveryChip: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  discoveryChipText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  discoveryMoreChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+  },
+  discoveryMoreText: {
+    fontSize: 13,
+    fontWeight: "900",
   },
   communityPreviewCard: {
     borderWidth: 1,

@@ -10,6 +10,7 @@
     "test": "set NODE_ENV=test&& mocha --exit --timeout 10000 \"test/**/*.test.js\"",
     "cleanup:test-attendees": "node scripts/cleanupTestAttendees.js",
     "cleanup:generated-tests": "node scripts/cleanupGeneratedTestData.js",
+    "cleanup:admin-analytics": "node scripts/cleanupAdminAnalytics.js",
     "normalize:community-posts": "node scripts/normalizeCommunityPostFields.js",
     "import-events": "node scripts/runEventImport.js",
     "seed:event-sources": "node scripts/seedEventSources.js",

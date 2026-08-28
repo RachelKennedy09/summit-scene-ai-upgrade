@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteAttributionAnalytics,
   getAnalyticsAttributions,
   getAnalyticsSummary,
   getAttributionAnalytics,
@@ -15,6 +16,7 @@ router.post("/track", optionalAuth, trackAnalytics);
 router.get("/summary", authMiddleware, getAnalyticsSummary);
 router.get("/attributions", authMiddleware, getAnalyticsAttributions);
 router.get("/attribution/:attributionKey", authMiddleware, getAttributionAnalytics);
+router.delete("/attribution/:attributionKey", authMiddleware, deleteAttributionAnalytics);
 router.get("/business/:businessId", authMiddleware, getBusinessAnalytics);
 
 export default router;

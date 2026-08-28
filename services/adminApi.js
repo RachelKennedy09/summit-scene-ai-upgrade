@@ -418,6 +418,26 @@ export async function updateEventSource(sourceId, updates, token) {
   return data;
 }
 
+export async function deleteEventSource(sourceId, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/sources/${sourceId}`,
+    {
+      method: "DELETE",
+      headers: buildHeaders(token),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to delete event source (${res.status})`),
+      "We couldn't delete that event source right now."
+    );
+  }
+
+  return data;
+}
+
 export async function retryEventSource(sourceId, token) {
   const res = await fetchWithTimeout(
     `${API_BASE_URL}/api/event-import/sources/${sourceId}/retry`,

@@ -112,6 +112,14 @@ function getKnownSourceDetails(sourceUrl) {
     };
   }
 
+  if (lower.includes("carter-ryan.com")) {
+    return {
+      venue: "Carter-Ryan Theatre",
+      address: "705 Main Street, Canmore, AB",
+      category: "Arts & Creativity",
+    };
+  }
+
   return {};
 }
 
@@ -415,6 +423,209 @@ function inferExploreCanmoreCategory(text) {
   if (/(disc golf|biathlon|race|sport|run|bike|trail)/i.test(lower)) return "Outdoors & Sports";
   if (/(family|kids|children)/i.test(lower)) return "Family & Pets";
   return "Inclusive Community";
+}
+
+function resolveFirstLinkByText($, sourceUrl, pattern) {
+  const link = $("a[href]")
+    .filter((_, element) => pattern.test(cleanText($(element).text())))
+    .first()
+    .attr("href");
+
+  return resolveUrl(link, sourceUrl);
+}
+
+function getUniqueEventbriteLinks($, sourceUrl) {
+  const seen = new Set();
+  const links = [];
+
+  $("a[href*='eventbrite']").each((_, element) => {
+    const url = resolveUrl($(element).attr("href"), sourceUrl);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    links.push(url);
+  });
+
+  return links;
+}
+
+function buildCarterRyanRun({
+  title,
+  description,
+  startDate,
+  endDate,
+  startTime,
+  weekdays,
+  venue,
+  address,
+  town = "Canmore",
+  ticketUrl,
+  sourceUrl,
+}) {
+  return {
+    title,
+    description,
+    dateText: `${startDate} - ${endDate}`,
+    startDate,
+    endDate,
+    startTime,
+    scheduleType: "recurring",
+    recurrence: {
+      frequency: weekdays?.length ? "selected_weekdays" : "daily",
+      weekdays: weekdays || [],
+      dates: [],
+      untilDate: endDate,
+    },
+    venue,
+    address,
+    town,
+    category: "Arts & Creativity",
+    ticketUrl: ticketUrl || sourceUrl,
+    sourceUrl: ticketUrl || sourceUrl,
+    extractionMethod: "carter-ryan-season",
+  };
+}
+
+function readCarterRyanTheatreEvents($, sourceUrl) {
+  if (!String(sourceUrl || "").toLowerCase().includes("carter-ryan.com")) {
+    return [];
+  }
+
+  const text = cleanText($.root().text());
+  const eventbriteLinks = getUniqueEventbriteLinks($, sourceUrl);
+  const ohAnneLink =
+    resolveFirstLinkByText($, sourceUrl, /tickets\s+for\s+oh,\s*anne.*canmore/i) ||
+    eventbriteLinks[0];
+  const freeRangeLink =
+    resolveFirstLinkByText($, sourceUrl, /^buy tickets$/i) ||
+    eventbriteLinks[1] ||
+    sourceUrl;
+  const aintFunLink =
+    resolveFirstLinkByText($, sourceUrl, /ain.?t\s+we\s+got\s+fun/i) ||
+    sourceUrl;
+  const banffLakeLouiseLink =
+    resolveFirstLinkByText($, sourceUrl, /^event details$/i) || sourceUrl;
+  const events = [];
+
+  if (/OH ANNE!/i.test(text) && /AUG\s+21\s*-\s*SEPT\s+6,\s*2026/i.test(text)) {
+    events.push(
+      buildCarterRyanRun({
+        title: "OH ANNE!",
+        description:
+          "A musical adaptation of Anne from Green Gables in Canmore.",
+        startDate: "August 21 2026",
+        endDate: "September 6 2026",
+        venue: "Canmore Collegiate High School",
+        address: "Canmore Collegiate High School, Canmore, AB",
+        ticketUrl: ohAnneLink,
+        sourceUrl,
+      })
+    );
+  }
+
+  if (/FREE RANGE COUNTRY/i.test(text) && /August\s+20\s*-\s*September\s+6,\s*2026/i.test(text)) {
+    const shared = {
+      description:
+        "A live theatre celebration of country music history at Carter-Ryan Theatre.",
+      startDate: "August 20 2026",
+      endDate: "September 6 2026",
+      venue: "Carter-Ryan Theatre",
+      address: "705 Main Street, Canmore, AB",
+      ticketUrl: freeRangeLink,
+      sourceUrl,
+    };
+    events.push(
+      buildCarterRyanRun({
+        ...shared,
+        title: "Free Range Country - Evening performances",
+        startTime: "7:30 PM",
+        weekdays: ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      }),
+      buildCarterRyanRun({
+        ...shared,
+        title: "Free Range Country - Matinee performances",
+        startTime: "3:00 PM",
+        weekdays: ["Wednesday", "Sunday"],
+      })
+    );
+  }
+
+  if (/AIN.?T WE GOT FUN/i.test(text) && /September\s+24\s*-\s*November\s+8,\s*2026/i.test(text)) {
+    const shared = {
+      description:
+        "A new musical at Carter-Ryan Theatre in Canmore.",
+      startDate: "September 24 2026",
+      endDate: "November 8 2026",
+      venue: "Carter-Ryan Theatre",
+      address: "705 Main Street, Canmore, AB",
+      ticketUrl: aintFunLink,
+      sourceUrl,
+    };
+    events.push(
+      buildCarterRyanRun({
+        ...shared,
+        title: "Ain't We Got Fun? - Evening performances",
+        startTime: "7:30 PM",
+        weekdays: ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      }),
+      buildCarterRyanRun({
+        ...shared,
+        title: "Ain't We Got Fun? - Matinee performances",
+        startTime: "3:00 PM",
+        weekdays: ["Saturday", "Sunday"],
+      })
+    );
+  }
+
+  if (/A Christmas Carol/i.test(text) && /November\s+27\s*-\s*December\s+27,\s*2026/i.test(text)) {
+    events.push(
+      buildCarterRyanRun({
+        title: "A Christmas Carol",
+        description:
+          "A holiday theatre production at Carter-Ryan Theatre in Canmore.",
+        startDate: "November 27 2026",
+        endDate: "December 27 2026",
+        venue: "Carter-Ryan Theatre",
+        address: "705 Main Street, Canmore, AB",
+        ticketUrl: sourceUrl,
+        sourceUrl,
+      })
+    );
+  }
+
+  if (/Bridget Ryan.?s CHRISTMAS PARTY/i.test(text) && /December\s+2\s*-\s*January\s+3,\s*2027/i.test(text)) {
+    events.push(
+      buildCarterRyanRun({
+        title: "Bridget Ryan's Christmas Party",
+        description:
+          "A holiday cabaret at Carter-Ryan Theatre in Canmore.",
+        startDate: "December 2 2026",
+        endDate: "January 3 2027",
+        venue: "Carter-Ryan Theatre",
+        address: "705 Main Street, Canmore, AB",
+        ticketUrl: sourceUrl,
+        sourceUrl,
+      })
+    );
+  }
+
+  if (/In Search Of Christmas Spirit/i.test(text) && /NOVEMBER\s+14\s*-\s*DECEMBER\s+31,\s*2026/i.test(text)) {
+    events.push(
+      buildCarterRyanRun({
+        title: "In Search Of Christmas Spirit",
+        description:
+          "A self-guided Christmas experience at Cascade of Time Gardens in Banff.",
+        startDate: "November 14 2026",
+        endDate: "December 31 2026",
+        venue: "Cascade of Time Gardens",
+        address: "Cascade of Time Gardens, Banff, AB",
+        town: "Banff",
+        ticketUrl: banffLakeLouiseLink,
+        sourceUrl: banffLakeLouiseLink,
+      })
+    );
+  }
+
+  return events;
 }
 
 function readExploreCanmoreDateText(text) {
@@ -973,6 +1184,16 @@ export function extractEvents(html, source) {
   const skiLouiseEvents = readSkiLouiseEvents($, sourceUrl);
   const skiBig3Events = readSkiBig3Events($, sourceUrl);
   const chateauCalendarEvents = readChateauCalendarEvents($, sourceUrl);
+  const carterRyanEvents = readCarterRyanTheatreEvents($, sourceUrl);
+  if (carterRyanEvents.length) {
+    return [
+      ...jsonLdEvents,
+      ...nextDataEvents,
+      ...carterRyanEvents,
+      ...knownRecurringEvents,
+    ].filter((event) => event.title);
+  }
+
   if (chateauCalendarEvents.length) {
     return [
       ...jsonLdEvents,

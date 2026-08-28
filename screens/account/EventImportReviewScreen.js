@@ -25,6 +25,7 @@ import {
   approveImportCandidate,
   cleanupStaleImportCandidates,
   createEventSource,
+  deleteEventSource,
   fetchEventSources,
   fetchImportCandidates,
   rejectImportCandidate,
@@ -425,6 +426,38 @@ export default function EventImportReviewScreen() {
     }
   }
 
+  function handleDeleteSource(source) {
+    const sourceId = getCandidateId(source);
+    if (!sourceId) return;
+
+    Alert.alert(
+      "Delete event source?",
+      `This removes "${source.name || "this source"}" from future importer runs. Existing approved events will stay in the app.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setWorking(true);
+              setWorkingLabel("Deleting event source...");
+              await deleteEventSource(sourceId, token);
+              setSources((current) =>
+                current.filter((item) => getCandidateId(item) !== sourceId)
+              );
+            } catch (sourceError) {
+              Alert.alert("Could not delete source", sourceError.message);
+            } finally {
+              setWorking(false);
+              setWorkingLabel("");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   if (!user?.isAdmin) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -647,6 +680,24 @@ export default function EventImportReviewScreen() {
               >
                 <Text style={[styles.smallOutlineText, { color: theme.text }]}>
                   Open
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={working}
+                onPress={() => handleDeleteSource(source)}
+                style={[
+                  styles.smallOutlineButton,
+                  { borderColor: theme.danger || "#B42318" },
+                  working && styles.buttonDisabled,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.smallOutlineText,
+                    { color: theme.danger || "#B42318" },
+                  ]}
+                >
+                  Delete
                 </Text>
               </Pressable>
             </View>

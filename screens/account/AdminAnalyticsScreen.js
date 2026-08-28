@@ -15,6 +15,7 @@ import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
+  deleteAttributionAnalytics,
   fetchAnalyticsAttributions,
   fetchAnalyticsSummary,
   fetchAttributionAnalytics,
@@ -23,6 +24,7 @@ import {
 
 const DAY_OPTIONS = ["7", "30", "90", "all"];
 const METRICS = [
+  ["uniqueSessions", "Unique sessions"],
   ["eventImpressions", "Event impressions"],
   ["eventViews", "Event views"],
   ["businessViews", "Business views"],
@@ -169,6 +171,43 @@ export default function AdminAnalyticsScreen() {
     }
   }
 
+  function handleDeleteAttributionAnalytics(attribution) {
+    const key = attribution?.attributionKey;
+    if (!key) return;
+
+    Alert.alert(
+      "Delete source analytics?",
+      `This removes tracked analytics rows for "${attribution.attributionName || "this source"}". It will not delete events or importer sources.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setAttributionLoadingKey(key);
+              await deleteAttributionAnalytics(key, token);
+              setAttributions((current) =>
+                current.filter((item) => item.attributionKey !== key)
+              );
+              setAttributionAnalytics((current) =>
+                current?.attributionKey === key ? null : current
+              );
+              await loadSummary();
+            } catch (deleteError) {
+              Alert.alert(
+                "Could not delete analytics",
+                deleteError.message || "Please try again."
+              );
+            } finally {
+              setAttributionLoadingKey("");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   if (!user?.isAdmin) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -256,10 +295,8 @@ export default function AdminAnalyticsScreen() {
               const loadingSource =
                 attributionLoadingKey === attribution.attributionKey;
               return (
-                <Pressable
+                <View
                   key={attribution.attributionKey}
-                  onPress={() => handleLoadAttributionAnalytics(attribution)}
-                  disabled={Boolean(attributionLoadingKey)}
                   style={[
                     styles.sourceRow,
                     { backgroundColor: theme.card, borderColor: theme.border },
@@ -277,10 +314,38 @@ export default function AdminAnalyticsScreen() {
                       {attribution.attributionType || "source"} | {formatCount(attribution.total)} tracked actions
                     </Text>
                   </View>
-                  <Text style={[styles.eventValue, { color: theme.accent }]}>
-                    {loadingSource ? "..." : "View"}
-                  </Text>
-                </Pressable>
+                  <View style={styles.sourceActions}>
+                    <Pressable
+                      onPress={() => handleLoadAttributionAnalytics(attribution)}
+                      disabled={Boolean(attributionLoadingKey)}
+                      style={[
+                        styles.sourceActionButton,
+                        { borderColor: theme.border },
+                      ]}
+                    >
+                      <Text style={[styles.sourceActionText, { color: theme.accent }]}>
+                        {loadingSource ? "..." : "View"}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleDeleteAttributionAnalytics(attribution)}
+                      disabled={Boolean(attributionLoadingKey)}
+                      style={[
+                        styles.sourceActionButton,
+                        { borderColor: theme.danger || "#B42318" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.sourceActionText,
+                          { color: theme.danger || "#B42318" },
+                        ]}
+                      >
+                        Delete
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
               );
             })
           ) : (
@@ -510,6 +575,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+  sourceActions: {
+    gap: 6,
+  },
+  sourceActionButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    minWidth: 64,
+    minHeight: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  sourceActionText: {
+    fontSize: 12,
+    fontWeight: "900",
   },
   eventCopy: {
     flex: 1,

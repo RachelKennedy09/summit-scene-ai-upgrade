@@ -486,6 +486,123 @@ describe("event importer helpers", () => {
     });
   });
 
+  it("extracts Carter-Ryan theatre runs with recurring performance times", () => {
+    const events = extractEvents(
+      `
+        <main>
+          <h2>OH ANNE!</h2>
+          <h2>AUG 21 - SEPT 6, 2026 Canmore</h2>
+          <p>NOTE LOCATION: At CANMORE COLLEGIATE HIGH SCHOOL (CANMORE)</p>
+          <a href="https://www.eventbrite.ca/e/oh-anne-canmore">CLICK HERE FOR TICKETS FOR OH, ANNE! CANMORE</a>
+          <hr />
+          <h2>FREE RANGE COUNTRY</h2>
+          <p>August 20 - September 6, 2026</p>
+          <p>Tuesday, Wednesday, Thursday, Friday, Saturday at 7:30 PM</p>
+          <p>Wednesdays & Sundays at 3 PM</p>
+          <p>Carter-Ryan Theatre (705 Main Street Canmore, Alberta)</p>
+          <a href="https://www.eventbrite.ca/e/free-range-country">Buy Tickets</a>
+          <hr />
+          <h2>AIN'T WE GOT FUN? (A New Musical)</h2>
+          <p>September 24 - November 8, 2026</p>
+          <p>Tuesday, Wednesday, Thursday, Friday, Saturday at 7:30PM</p>
+          <p>Saturdays & Sundays at 3 PM</p>
+          <p>Carter-Ryan Theatre (705 Main Street Canmore, Alberta)</p>
+          <h2>A Christmas Carol</h2>
+          <p>November 27 - December 27, 2026</p>
+          <p>Carter-Ryan Theatre (705 Main Street Canmore, Alberta)</p>
+          <h2>Bridget Ryan's CHRISTMAS PARTY</h2>
+          <p>December 2 - January 3, 2027</p>
+          <p>Carter-Ryan Theatre (705 Main Street Canmore, Alberta)</p>
+          <h2>PAST SHOWS</h2>
+          <h3>Dolly: Here She Comes Again</h3>
+          <p>March 3 - March 29, 2026</p>
+          <h2>In Search Of Christmas Spirit</h2>
+          <p>NOVEMBER 14 - DECEMBER 31, 2026</p>
+          <p>Cascade Of Time Gardens, Banff AB</p>
+          <a href="https://www.banfflakelouise.com/events/in-search-of-christmas-spirit">EVENT DETAILS</a>
+        </main>
+      `,
+      {
+        url: "https://www.carter-ryan.com/theatre",
+        town: "Canmore",
+      }
+    );
+
+    const titles = events.map((event) => event.title);
+    expect(titles).to.include("OH ANNE!");
+    expect(titles).to.include("Free Range Country - Evening performances");
+    expect(titles).to.include("Free Range Country - Matinee performances");
+    expect(titles).to.include("Ain't We Got Fun? - Evening performances");
+    expect(titles).to.include("Ain't We Got Fun? - Matinee performances");
+    expect(titles).to.include("A Christmas Carol");
+    expect(titles).to.include("Bridget Ryan's Christmas Party");
+    expect(titles).to.include("In Search Of Christmas Spirit");
+    expect(titles).to.not.include("Dolly: Here She Comes Again");
+
+    const freeRangeEvening = events.find((event) =>
+      event.title.includes("Free Range Country - Evening")
+    );
+    expect(freeRangeEvening).to.deep.include({
+      startDate: "August 20 2026",
+      endDate: "September 6 2026",
+      startTime: "7:30 PM",
+      venue: "Carter-Ryan Theatre",
+      address: "705 Main Street, Canmore, AB",
+      category: "Arts & Creativity",
+      ticketUrl: "https://www.eventbrite.ca/e/free-range-country",
+      sourceUrl: "https://www.eventbrite.ca/e/free-range-country",
+    });
+    expect(freeRangeEvening.recurrence).to.deep.include({
+      frequency: "selected_weekdays",
+      untilDate: "September 6 2026",
+    });
+    expect(freeRangeEvening.recurrence.weekdays).to.deep.equal([
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
+
+    const aintFunEvening = events.find((event) =>
+      event.title.includes("Ain't We Got Fun? - Evening")
+    );
+    expect(aintFunEvening).to.include({
+      ticketUrl: "https://www.carter-ryan.com/theatre",
+      sourceUrl: "https://www.carter-ryan.com/theatre",
+    });
+
+    const christmasSpirit = events.find((event) =>
+      event.title === "In Search Of Christmas Spirit"
+    );
+    expect(christmasSpirit).to.include({
+      town: "Banff",
+      venue: "Cascade of Time Gardens",
+      sourceUrl:
+        "https://www.banfflakelouise.com/events/in-search-of-christmas-spirit",
+    });
+
+    const normalized = normalizeExtractedEvent(freeRangeEvening, {
+      name: "Carter-Ryan Theatre",
+      url: "https://www.carter-ryan.com/theatre",
+      town: "Canmore",
+    }, { now: fixedNow });
+    expect(normalized).to.include({
+      title: "Free Range Country - Evening performances",
+      startDate: "2026-08-20",
+      endDate: "2026-09-06",
+      startTime: "7:30 PM",
+      scheduleType: "recurring",
+    });
+    expect(normalized.recurrence.weekdays).to.deep.equal([
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ]);
+  });
+
   it("keeps active no-year date ranges importable", () => {
     const candidate = normalizeExtractedEvent(
       {

@@ -410,6 +410,21 @@ router.patch("/sources/:id", authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
+router.delete("/sources/:id", authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const source = await EventSource.findByIdAndDelete(req.params.id);
+    if (!source) return res.status(404).json({ message: "Source not found." });
+
+    return res.json({
+      message: "Event source deleted.",
+      sourceId: source._id,
+      sourceName: source.name,
+    });
+  } catch (error) {
+    return res.status(400).json({ message: error.message || "Could not delete source." });
+  }
+});
+
 router.post("/sources/:id/retry", authMiddleware, isAdmin, async (req, res) => {
   try {
     const source = await EventSource.findById(req.params.id);

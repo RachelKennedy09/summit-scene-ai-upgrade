@@ -99,6 +99,21 @@ async function aggregateSummary(match) {
   return buildSummaryFromRows(rows);
 }
 
+async function countUniqueSessions(match) {
+  const rows = await AnalyticsEvent.aggregate([
+    {
+      $match: {
+        ...match,
+        sessionId: { $type: "string", $ne: "" },
+      },
+    },
+    { $group: { _id: "$sessionId" } },
+    { $count: "count" },
+  ]);
+
+  return rows[0]?.count || 0;
+}
+
 function normalizeAttributionKey(type, value) {
   const normalized = String(value || "")
     .trim()
@@ -203,6 +218,18 @@ export async function trackAnalytics(req, res) {
     const businessId = isObjectId(req.body?.businessId)
       ? req.body.businessId
       : null;
+    const userId = getUserId(req);
+    if (userId) {
+      const trackingUser = await User.findById(userId).select("email isAdmin");
+      const isAdmin =
+        Boolean(trackingUser?.isAdmin) ||
+        isAdminEmail(trackingUser?.email || req.user?.email);
+
+      if (isAdmin) {
+        return res.status(202).json({ ok: true, skipped: "admin" });
+      }
+    }
+
     const { event, business } = await resolveAnalyticsContext({
       eventId,
       businessId,
@@ -224,7 +251,6 @@ export async function trackAnalytics(req, res) {
       type,
       eventId: resolvedEventId,
       businessId: resolvedBusinessId,
-      userId: getUserId(req),
       town: event?.town || null,
       category:
         event?.category ||
@@ -232,6 +258,7 @@ export async function trackAnalytics(req, res) {
         null,
       ...attribution,
       sessionId,
+      userId,
       metadata: sanitizeMetadata(req.body?.metadata),
       dedupeKey,
     };
@@ -263,8 +290,10 @@ export async function getAnalyticsSummary(req, res) {
     if (!admin) return;
 
     const days = normalizeDays(req.query?.days);
-    const summary = await aggregateSummary(buildDateMatch(days));
-    return res.json({ days, ...summary });
+    const match = buildDateMatch(days);
+    const summary = await aggregateSummary(match);
+    const uniqueSessions = await countUniqueSessions(match);
+    return res.json({ days, uniqueSessions, ...summary });
   } catch (error) {
     console.error("Analytics summary issue:", error.message);
     return res.status(500).json({ message: "Could not load analytics summary." });
@@ -287,6 +316,7 @@ export async function getBusinessAnalytics(req, res) {
       businessId: new mongoose.Types.ObjectId(businessId),
     };
     const summary = await aggregateSummary(match);
+    const uniqueSessions = await countUniqueSessions(match);
 
     const topRows = await AnalyticsEvent.aggregate([
       {
@@ -338,6 +368,7 @@ export async function getBusinessAnalytics(req, res) {
     return res.json({
       days,
       businessId,
+      uniqueSessions,
       ...summary,
       topEventsByViews: topEvents.filter((event) => event.views > 0).slice(0, 10),
       topEventsBySaves: [...topEvents]
@@ -369,6 +400,7 @@ export async function getAttributionAnalytics(req, res) {
       attributionKey,
     };
     const summary = await aggregateSummary(match);
+    const uniqueSessions = await countUniqueSessions(match);
 
     const topRows = await AnalyticsEvent.aggregate([
       {
@@ -425,6 +457,7 @@ export async function getAttributionAnalytics(req, res) {
     return res.json({
       days,
       attributionKey,
+      uniqueSessions,
       attributionType: sample?.attributionType || null,
       attributionName: sample?.attributionName || null,
       sourceName: sample?.sourceName || null,
@@ -487,5 +520,32 @@ export async function getAnalyticsAttributions(req, res) {
     return res
       .status(500)
       .json({ message: "Could not load analytics sources." });
+  }
+}
+
+export async function deleteAttributionAnalytics(req, res) {
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const attributionKey = String(req.params.attributionKey || "")
+      .trim()
+      .toLowerCase();
+    if (!attributionKey) {
+      return res.status(400).json({ message: "Attribution key is required." });
+    }
+
+    const result = await AnalyticsEvent.deleteMany({ attributionKey });
+
+    return res.json({
+      message: "Analytics source deleted.",
+      attributionKey,
+      deletedCount: result.deletedCount || 0,
+    });
+  } catch (error) {
+    console.error("Delete attribution analytics issue:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Could not delete source analytics." });
   }
 }

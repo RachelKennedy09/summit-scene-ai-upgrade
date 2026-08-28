@@ -176,3 +176,24 @@ export async function fetchAttributionAnalytics(attributionKey, token, days = "3
 
   return data;
 }
+
+export async function deleteAttributionAnalytics(attributionKey, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/analytics/attribution/${encodeURIComponent(
+      attributionKey
+    )}`,
+    {
+      method: "DELETE",
+      headers: buildHeaders(token),
+    }
+  );
+  const data = await readJsonSafely(res);
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || `Failed to delete source analytics (${res.status})`
+    );
+  }
+
+  return data;
+}

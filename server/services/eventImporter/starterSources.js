@@ -87,4 +87,12 @@ export const STARTER_EVENT_SOURCES = [
     enabled: true,
     trusted: true,
   },
+  {
+    name: "Carter-Ryan Theatre",
+    url: "https://www.carter-ryan.com/theatre",
+    town: "Canmore",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
 ];
