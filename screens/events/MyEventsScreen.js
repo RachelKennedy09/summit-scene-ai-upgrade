@@ -3,7 +3,7 @@
 // Business users can manage(view / edit / delete) their own events in one place.
 // Also splits events into "Upcoming" vs "Past" based on today's date.
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
@@ -31,6 +31,7 @@ import { isSummitSceneAdmin } from "../../utils/adminAccess";
 export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
+  const isFocused = useIsFocused();
   const canUseBusinessTools =
     isSummitSceneAdmin(user) ||
     (user?.role === "business" &&
@@ -46,6 +47,11 @@ export default function MyEventsScreen({ navigation, route }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const listRef = useRef(null);
+  const scrollOffsetRef = useRef(0);
+  const hasLoadedEventsRef = useRef(false);
+  const lastRefreshKeyRef = useRef("");
+  const shouldRestoreScrollRef = useRef(false);
 
   const clearSuccessState = useCallback(() => {
     navigation.setParams({
@@ -71,11 +77,14 @@ export default function MyEventsScreen({ navigation, route }) {
         );
       }
 
-      setIsLoading(true);
+      if (!hasLoadedEventsRef.current) {
+        setIsLoading(true);
+      }
       const data = await fetchMyEventsFromApi(token);
 
       // Sort events by date (earlier first) so the list feels chronological
       setEvents(sortEventsByUpcomingDate(data));
+      hasLoadedEventsRef.current = true;
     } catch (err) {
       setError(err.message);
     } finally {
@@ -87,14 +96,47 @@ export default function MyEventsScreen({ navigation, route }) {
   useFocusEffect(
     useCallback(() => {
       if (token && canUseBusinessTools) {
-        fetchMyEvents();
+        const refreshKey = [postedEventId, updatedEventId]
+          .filter(Boolean)
+          .join(":");
+        const shouldRefresh =
+          !hasLoadedEventsRef.current ||
+          (refreshKey && refreshKey !== lastRefreshKeyRef.current);
+
+        if (shouldRefresh) {
+          lastRefreshKeyRef.current = refreshKey;
+          fetchMyEvents();
+        }
       } else {
         setEvents([]);
         setError(null);
         setIsLoading(false);
+        hasLoadedEventsRef.current = false;
+        lastRefreshKeyRef.current = "";
       }
-    }, [token, canUseBusinessTools, fetchMyEvents])
+    }, [token, canUseBusinessTools, fetchMyEvents, postedEventId, updatedEventId])
   );
+
+  useEffect(() => {
+    if (
+      !isFocused ||
+      !shouldRestoreScrollRef.current ||
+      isLoading ||
+      events.length === 0
+    ) {
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      listRef.current?.scrollToOffset({
+        offset: scrollOffsetRef.current,
+        animated: false,
+      });
+      shouldRestoreScrollRef.current = false;
+    }, 80);
+
+    return () => clearTimeout(timeoutId);
+  }, [events.length, isFocused, isLoading]);
 
   // Pull-to-refresh handler wraps fetchMyEvents and toggles a refreshing spinner.
   const onRefresh = useCallback(async () => {
@@ -139,6 +181,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
   function handleEdit(event) {
     // Navigate to the shared EditEvent screen, passing the event to pre-fill the form.
+    shouldRestoreScrollRef.current = true;
     navigation.navigate("EditEvent", { event });
   }
 
@@ -196,12 +239,13 @@ export default function MyEventsScreen({ navigation, route }) {
       >
         {/* Tap the main card to open EventDetail */}
         <Pressable
-          onPress={() =>
+          onPress={() => {
+            shouldRestoreScrollRef.current = true;
             navigation.navigate("EventDetail", {
               event: item,
               onUpdated: fetchMyEvents,
-            })
-          }
+            });
+          }}
         >
           <Text style={[styles.title, { color: theme.text }]}>
             {item.title}
@@ -381,6 +425,7 @@ export default function MyEventsScreen({ navigation, route }) {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <FlatList
+          ref={listRef}
           data={listData}
           keyExtractor={(item) => item.id}
           style={styles.list}
@@ -515,6 +560,10 @@ export default function MyEventsScreen({ navigation, route }) {
               tintColor={theme.accent}
             />
           }
+          onScroll={(event) => {
+            scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={64}
         />
       </View>
     </SafeAreaView>

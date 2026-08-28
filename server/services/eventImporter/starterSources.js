@@ -95,4 +95,12 @@ export const STARTER_EVENT_SOURCES = [
     enabled: true,
     trusted: true,
   },
+  {
+    name: "Rocky Mountain Live",
+    url: "https://rockymountainlive.ca",
+    town: "Banff",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
 ];

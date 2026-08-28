@@ -243,6 +243,10 @@ export default function HubScreen({ route }) {
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const listRef = useRef(null);
+  const browseScrollOffsetRef = useRef(0);
+  const shouldRestoreBrowseScrollRef = useRef(false);
+  const hasLoadedEventsRef = useRef(false);
   const loadRequestIdRef = useRef(0);
   const dashboardRequestIdRef = useRef(0);
   const visibleDiscoveryCategories = showAllDiscoveryCategories
@@ -362,6 +366,7 @@ export default function HubScreen({ route }) {
       setPage(data.page || nextPage);
       setHasMore(Boolean(data.hasMore));
       setTotalCount(Number.isFinite(data.totalCount) ? data.totalCount : 0);
+      hasLoadedEventsRef.current = true;
     } catch (error) {
       if (!isCurrentRequest()) {
         return;
@@ -386,7 +391,9 @@ export default function HubScreen({ route }) {
     if (!isFocused) return undefined;
 
     loadDashboardData();
-    loadEvents({ nextPage: 1, mode: "initial" });
+    if (!hasLoadedEventsRef.current) {
+      loadEvents({ nextPage: 1, mode: "initial" });
+    }
 
     return () => {
       loadRequestIdRef.current += 1;
@@ -408,6 +415,9 @@ export default function HubScreen({ route }) {
   }, [loading, refreshing, loadingMore, hasMore, page, loadEvents]);
 
   const prepareFilterRefresh = useCallback(() => {
+    browseScrollOffsetRef.current = 0;
+    shouldRestoreBrowseScrollRef.current = false;
+    hasLoadedEventsRef.current = false;
     setEvents([]);
     setBuddySearchResults([]);
     setTotalCount(0);
@@ -469,6 +479,9 @@ export default function HubScreen({ route }) {
     if (nearMeLoading) return;
 
     if (isNearMeEnabled) {
+      browseScrollOffsetRef.current = 0;
+      shouldRestoreBrowseScrollRef.current = false;
+      hasLoadedEventsRef.current = false;
       setIsNearMeEnabled(false);
       setNearMeLocation(null);
       setNearMeMessage("");
@@ -479,6 +492,9 @@ export default function HubScreen({ route }) {
       setNearMeLoading(true);
       setNearMeMessage("");
       const location = await requestCurrentLocation();
+      browseScrollOffsetRef.current = 0;
+      shouldRestoreBrowseScrollRef.current = false;
+      hasLoadedEventsRef.current = false;
       setNearMeLocation(location);
       setIsNearMeEnabled(true);
       setNearMeMessage(`Showing events within ${NEAR_ME_RADIUS_KM} km of you.`);
@@ -493,6 +509,9 @@ export default function HubScreen({ route }) {
 
   const handleApplySearch = useCallback(() => {
     const trimmedSearch = searchQuery.trim();
+    browseScrollOffsetRef.current = 0;
+    shouldRestoreBrowseScrollRef.current = false;
+    hasLoadedEventsRef.current = false;
     if (!trimmedSearch) {
       setActiveSearch("");
       setBuddySearchResults([]);
@@ -512,6 +531,9 @@ export default function HubScreen({ route }) {
   }, [searchQuery]);
 
   const handleClearSearch = useCallback(() => {
+    browseScrollOffsetRef.current = 0;
+    shouldRestoreBrowseScrollRef.current = false;
+    hasLoadedEventsRef.current = false;
     setSearchQuery("");
     setActiveSearch("");
     setSelectedDateFilter(DEFAULT_DATE_FILTER);
@@ -726,6 +748,9 @@ export default function HubScreen({ route }) {
   }, [events, isShowingInterestFirst, userInterestCategories, activeSearch, buddySearchResults]);
 
   const handleClearFilters = useCallback(() => {
+    browseScrollOffsetRef.current = 0;
+    shouldRestoreBrowseScrollRef.current = false;
+    hasLoadedEventsRef.current = false;
     setSelectedTown("All");
     setSelectedListingType(DEFAULT_LISTING_TYPE);
     setSelectedCategory("All");
@@ -744,8 +769,32 @@ export default function HubScreen({ route }) {
     if (!route?.params?.resetHomeAt) return;
 
     handleClearFilters();
+    browseScrollOffsetRef.current = 0;
+    shouldRestoreBrowseScrollRef.current = false;
     setIsBrowseMode(false);
   }, [handleClearFilters, route?.params?.resetHomeAt]);
+
+  useEffect(() => {
+    if (
+      !isFocused ||
+      !isBrowseMode ||
+      !shouldRestoreBrowseScrollRef.current ||
+      loading ||
+      eventsToShow.length === 0
+    ) {
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      listRef.current?.scrollToOffset({
+        offset: browseScrollOffsetRef.current,
+        animated: false,
+      });
+      shouldRestoreBrowseScrollRef.current = false;
+    }, 80);
+
+    return () => clearTimeout(timeoutId);
+  }, [eventsToShow.length, isBrowseMode, isFocused, loading]);
 
   const selectedDateLabel = useMemo(
     () => getDateFilterLabel(selectedDateFilter, selectedStartDate, selectedEndDate),
@@ -884,9 +933,12 @@ export default function HubScreen({ route }) {
 
   const handleOpenEvent = useCallback(
     (event) => {
+      if (isBrowseMode) {
+        shouldRestoreBrowseScrollRef.current = true;
+      }
       navigation.navigate("EventDetail", { event, eventId: event._id });
     },
-    [navigation]
+    [isBrowseMode, navigation]
   );
 
   const keyExtractor = useCallback((item) => {
@@ -1212,9 +1264,10 @@ export default function HubScreen({ route }) {
                 onPress={() =>
                   setShowAllDiscoveryCategories((current) => !current)
                 }
-                style={[
+                style={({ pressed }) => [
                   styles.discoveryMoreChip,
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  pressed && styles.pressed,
                 ]}
               >
                 <Text
@@ -1354,11 +1407,14 @@ export default function HubScreen({ route }) {
     dashboardSections,
     firstName,
     greetingLabel,
+    hiddenDiscoveryCategoryCount,
     loadDashboardData,
     navigation,
     renderDashboardEventCard,
+    showAllDiscoveryCategories,
     showEventBrowser,
     theme,
+    visibleDiscoveryCategories,
   ]);
 
   const listHeader = useMemo(
@@ -1519,6 +1575,7 @@ export default function HubScreen({ route }) {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <FlatList
+          ref={listRef}
           data={listData}
           keyExtractor={keyExtractor}
           renderItem={renderEvent}
@@ -1575,6 +1632,15 @@ export default function HubScreen({ route }) {
           ListFooterComponent={isBrowseMode ? renderFooter : null}
           onEndReached={isBrowseMode ? handleLoadMore : undefined}
           onEndReachedThreshold={0.6}
+          onScroll={
+            isBrowseMode
+              ? (event) => {
+                  browseScrollOffsetRef.current =
+                    event.nativeEvent.contentOffset.y;
+                }
+              : undefined
+          }
+          scrollEventThrottle={64}
           showsVerticalScrollIndicator={false}
         />
 
@@ -1591,6 +1657,10 @@ export default function HubScreen({ route }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.98 }],
   },
   container: {
     flex: 1,

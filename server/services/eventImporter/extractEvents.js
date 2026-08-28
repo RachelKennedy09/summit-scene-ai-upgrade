@@ -120,6 +120,14 @@ function getKnownSourceDetails(sourceUrl) {
     };
   }
 
+  if (lower.includes("rockymountainlive.ca")) {
+    return {
+      venue: "Rocky Mountain Live",
+      address: "Canadian Rockies",
+      category: "Music & Nightlife",
+    };
+  }
+
   return {};
 }
 
@@ -423,6 +431,93 @@ function inferExploreCanmoreCategory(text) {
   if (/(disc golf|biathlon|race|sport|run|bike|trail)/i.test(lower)) return "Outdoors & Sports";
   if (/(family|kids|children)/i.test(lower)) return "Family & Pets";
   return "Inclusive Community";
+}
+
+function inferRockyMountainLiveTown(venue, text) {
+  const haystack = `${venue || ""} ${text || ""}`.toLowerCase();
+  const venueTownMap = [
+    { pattern: /artsplace|canmore collegiate|carter-ryan|bayleaf|drake pub|tavern 1883|wild life distillery/i, town: "Canmore" },
+    { pattern: /banff gondola|clvb|dusty boot|melissa's|rose and crown|high rollers|banff centre|banff/i, town: "Banff" },
+    { pattern: /lake louise/i, town: "Lake Louise" },
+  ];
+
+  const match = venueTownMap.find((item) => item.pattern.test(haystack));
+  if (match) return match.town;
+  if (/\bcanmore\b/i.test(haystack)) return "Canmore";
+  if (/\bbanff\b/i.test(haystack)) return "Banff";
+  if (/\blake louise\b/i.test(haystack)) return "Lake Louise";
+  return "";
+}
+
+function parseRockyMountainLiveTime(value) {
+  const match = String(value || "").match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (!match) return "";
+
+  const hour24 = Number(match[1]);
+  const minutes = match[2] || "00";
+  if (!Number.isFinite(hour24) || hour24 < 0 || hour24 > 23) return "";
+
+  const meridiem = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minutes} ${meridiem}`;
+}
+
+function readRockyMountainLiveEvents($, sourceUrl) {
+  if (!String(sourceUrl || "").toLowerCase().includes("rockymountainlive.ca")) {
+    return [];
+  }
+
+  const events = [];
+  const seen = new Set();
+
+  $(".EventSummaryClean").each((_, element) => {
+    const card = $(element);
+    const title = cleanText(card.find(".EventTitle").first().text());
+    const subtitle = cleanText(card.find(".EventSubtitle").first().text());
+    const day = cleanText(card.find(".Day").first().text());
+    const month = cleanText(card.find(".Month").first().text());
+    const timeValues = card
+      .find(".Time span, .EventTime span, span")
+      .map((__, timeNode) => cleanText($(timeNode).text()))
+      .get()
+      .filter((value) => /^\d{1,2}:\d{2}$/.test(value));
+    const startTime = parseRockyMountainLiveTime(timeValues[0]);
+    const endTime = parseRockyMountainLiveTime(timeValues[1]);
+    const price = cleanText(card.find(".Cost").first().text());
+    const showLink = resolveUrl(
+      card.find("a[href*='/show/']").first().attr("href"),
+      sourceUrl
+    );
+    const venueLink = card
+      .find("a[href*='/resource/']")
+      .filter((__, link) => cleanText($(link).text()).length > 2)
+      .last();
+    const venue = cleanText(venueLink.text());
+    const rowText = cleanText(card.text());
+    const town = inferRockyMountainLiveTown(venue, rowText);
+    const key = `${showLink || title}|${month}|${day}|${startTime}|${venue}`.toLowerCase();
+
+    if (!title || !day || !month || !showLink || seen.has(key)) return;
+    if (!town) return;
+    seen.add(key);
+
+    events.push({
+      title,
+      description: subtitle,
+      dateText: cleanText(`${month} ${day}`),
+      startTime,
+      endTime,
+      venue,
+      town,
+      category: "Music & Nightlife",
+      price,
+      ticketUrl: showLink,
+      sourceUrl: showLink,
+      extractionMethod: "rocky-mountain-live-card",
+    });
+  });
+
+  return events;
 }
 
 function resolveFirstLinkByText($, sourceUrl, pattern) {
@@ -1180,6 +1275,16 @@ export function extractEvents(html, source) {
 
   const datedLinkEvents = readDatedLinkEvents($, sourceUrl);
   const knownRecurringEvents = readKnownRecurringEvents($, sourceUrl);
+  const rockyMountainLiveEvents = readRockyMountainLiveEvents($, sourceUrl);
+  if (rockyMountainLiveEvents.length) {
+    return [
+      ...jsonLdEvents,
+      ...nextDataEvents,
+      ...rockyMountainLiveEvents,
+      ...knownRecurringEvents,
+    ].filter((event) => event.title);
+  }
+
   const exploreCanmoreEvents = readExploreCanmoreEvents($, sourceUrl);
   const skiLouiseEvents = readSkiLouiseEvents($, sourceUrl);
   const skiBig3Events = readSkiBig3Events($, sourceUrl);

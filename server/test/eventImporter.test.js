@@ -603,6 +603,74 @@ describe("event importer helpers", () => {
     ]);
   });
 
+  it("extracts Rocky Mountain Live rows with date, time, venue and price", () => {
+    const events = extractEvents(
+      `
+        <div class="EventSummaryClean EventSummary" id="shows-938693">
+          <div class="Day">28</div>
+          <div class="Month">Aug</div>
+          <div class="Time"><span>19:30</span><span>21:00</span></div>
+          <div class="EventDetailsClean">
+            <div class="Titles">
+              <a href="/show/938693/view">
+                <h6 class="EventTitle">Live Folk & Roots with Michaela Slinfer & Amelie Patterson</h6>
+                <div class="EventSubtitle">Join acclaimed Canadian singer-songwriters.</div>
+              </a>
+            </div>
+            <span class="Cost">$15-$30</span>
+            <a href="/resource/1277454/view">artsPlace</a>
+          </div>
+        </div>
+        <div class="EventSummaryClean EventSummary" id="shows-940440">
+          <div class="Day">28</div>
+          <div class="Month">Aug</div>
+          <span>20:00</span>
+          <div class="EventDetailsClean">
+            <a href="/show/940440/view">
+              <h6 class="EventTitle">Jam Night at The Stand Easy!</h6>
+              <div class="EventSubtitle">In house instruments available.</div>
+            </a>
+            <span class="Cost PriceFree">Free</span>
+            <a href="/resource/1388885/view">The Stand Easy Jasper Legion</a>
+          </div>
+        </div>
+      `,
+      {
+        url: "https://rockymountainlive.ca",
+        town: "Banff",
+      }
+    );
+
+    expect(events).to.have.length(1);
+    expect(events[0]).to.deep.include({
+      title: "Live Folk & Roots with Michaela Slinfer & Amelie Patterson",
+      description: "Join acclaimed Canadian singer-songwriters.",
+      dateText: "Aug 28",
+      startTime: "7:30 PM",
+      endTime: "9:00 PM",
+      venue: "artsPlace",
+      town: "Canmore",
+      category: "Music & Nightlife",
+      price: "$15-$30",
+      ticketUrl: "https://rockymountainlive.ca/show/938693/view",
+      sourceUrl: "https://rockymountainlive.ca/show/938693/view",
+    });
+
+    const normalized = normalizeExtractedEvent(events[0], {
+      name: "Rocky Mountain Live",
+      url: "https://rockymountainlive.ca",
+      town: "Banff",
+    }, { now: fixedNow });
+    expect(normalized).to.include({
+      startDate: "2026-08-28",
+      startTime: "7:30 PM",
+      endTime: "9:00 PM",
+      venue: "artsPlace",
+      town: "Canmore",
+      confidenceScore: 100,
+    });
+  });
+
   it("keeps active no-year date ranges importable", () => {
     const candidate = normalizeExtractedEvent(
       {
