@@ -671,6 +671,66 @@ describe("event importer helpers", () => {
     });
   });
 
+  it("extracts Canmore Brewing announcement event details", () => {
+    const events = extractEvents(
+      `
+        <script data-name="static-context">
+          Static.SQUARESPACE_CONTEXT = {
+            "websiteSettings": {
+              "announcementBarSettings": {
+                "text": "<p>BACKLOT BASH - AUGUST 29TH</p><p>LIVE MUSIC 2:30-10:00PM - FREE ADMISSION</p>",
+                "clickthroughUrl": {
+                  "url": "https://www.canmorebrewing.com/upcoming-events#calendar-f5719c54-event-07d54f4e"
+                }
+              }
+            }
+          };
+        </script>
+        <h2>UPCOMING EVENTS</h2>
+        <p>Click on event for details</p>
+      `,
+      {
+        url: "https://www.canmorebrewing.com/upcoming-events",
+        town: "Canmore",
+      }
+    );
+
+    expect(events).to.have.length(1);
+    expect(events[0]).to.deep.include({
+      title: "Backlot Bash",
+      description:
+        "Live music at Canmore Brewing Company with free admission.",
+      dateText: "August 29",
+      startTime: "2:30 PM",
+      endTime: "10:00 PM",
+      venue: "Canmore Brewing Company",
+      address: "1460 Railway Ave., Canmore, AB",
+      town: "Canmore",
+      category: "Music & Nightlife",
+      price: "Free",
+      ticketUrl:
+        "https://www.canmorebrewing.com/upcoming-events#calendar-f5719c54-event-07d54f4e",
+      sourceUrl:
+        "https://www.canmorebrewing.com/upcoming-events#calendar-f5719c54-event-07d54f4e",
+    });
+
+    const normalized = normalizeExtractedEvent(events[0], {
+      name: "Canmore Brewing Company Upcoming Events",
+      url: "https://www.canmorebrewing.com/upcoming-events",
+      town: "Canmore",
+    }, { now: fixedNow });
+    expect(normalized).to.include({
+      title: "Backlot Bash",
+      startDate: "2026-08-29",
+      startTime: "2:30 PM",
+      endTime: "10:00 PM",
+      venue: "Canmore Brewing Company",
+      town: "Canmore",
+      price: "Free",
+      confidenceScore: 100,
+    });
+  });
+
   it("keeps active no-year date ranges importable", () => {
     const candidate = normalizeExtractedEvent(
       {

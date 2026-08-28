@@ -128,6 +128,14 @@ function getKnownSourceDetails(sourceUrl) {
     };
   }
 
+  if (lower.includes("canmorebrewing.com")) {
+    return {
+      venue: "Canmore Brewing Company",
+      address: "1460 Railway Ave., Canmore, AB",
+      category: "Food & Drink",
+    };
+  }
+
   return {};
 }
 
@@ -460,6 +468,56 @@ function parseRockyMountainLiveTime(value) {
   const meridiem = hour24 >= 12 ? "PM" : "AM";
   const hour12 = hour24 % 12 || 12;
   return `${hour12}:${minutes} ${meridiem}`;
+}
+
+function normalizeMeridiemTime(value, fallbackMeridiem = "PM") {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (!match) return "";
+
+  const hour = Number(match[1]);
+  const minutes = match[2] || "00";
+  const meridiem = (match[3] || fallbackMeridiem).toUpperCase();
+  if (!hour || hour > 12) return "";
+
+  return `${hour}:${minutes} ${meridiem}`;
+}
+
+function readCanmoreBrewingEvents($, sourceUrl) {
+  if (!String(sourceUrl || "").toLowerCase().includes("canmorebrewing.com")) {
+    return [];
+  }
+
+  const html = String($.root().html() || "");
+  const text = cleanText(html.replace(/\\u2013|\\u2014|&ndash;|&mdash;/gi, "-"));
+  const announcementMatch = text.match(
+    /BACKLOT\s+BASH\s*-\s*AUGUST\s+29(?:ST|ND|RD|TH)?[\s\S]{0,240}?LIVE\s+MUSIC\s+(\d{1,2}(?::\d{2})?)\s*-\s*(\d{1,2}(?::\d{2})?)\s*(AM|PM)\s*-\s*FREE\s+ADMISSION/i
+  );
+  if (!announcementMatch) return [];
+
+  const [, rawStartTime, rawEndTime, endMeridiem] = announcementMatch;
+  const sourceLinkMatch = html.match(/https:\/\/www\.canmorebrewing\.com\/upcoming-events#[^"\\]+/i);
+  const eventUrl = sourceLinkMatch?.[0] || sourceUrl;
+
+  return [
+    {
+      title: "Backlot Bash",
+      description:
+        "Live music at Canmore Brewing Company with free admission.",
+      dateText: "August 29",
+      startTime: normalizeMeridiemTime(rawStartTime, endMeridiem),
+      endTime: normalizeMeridiemTime(rawEndTime, endMeridiem),
+      venue: "Canmore Brewing Company",
+      address: "1460 Railway Ave., Canmore, AB",
+      town: "Canmore",
+      category: "Music & Nightlife",
+      price: "Free",
+      ticketUrl: eventUrl,
+      sourceUrl: eventUrl,
+      extractionMethod: "canmore-brewing-announcement",
+    },
+  ];
 }
 
 function readRockyMountainLiveEvents($, sourceUrl) {
@@ -1275,6 +1333,16 @@ export function extractEvents(html, source) {
 
   const datedLinkEvents = readDatedLinkEvents($, sourceUrl);
   const knownRecurringEvents = readKnownRecurringEvents($, sourceUrl);
+  const canmoreBrewingEvents = readCanmoreBrewingEvents($, sourceUrl);
+  if (canmoreBrewingEvents.length || lowerSourceUrl.includes("canmorebrewing.com")) {
+    return [
+      ...jsonLdEvents,
+      ...nextDataEvents,
+      ...canmoreBrewingEvents,
+      ...knownRecurringEvents,
+    ].filter((event) => event.title);
+  }
+
   const rockyMountainLiveEvents = readRockyMountainLiveEvents($, sourceUrl);
   if (rockyMountainLiveEvents.length) {
     return [

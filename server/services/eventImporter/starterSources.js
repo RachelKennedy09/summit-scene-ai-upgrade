@@ -103,4 +103,12 @@ export const STARTER_EVENT_SOURCES = [
     enabled: true,
     trusted: true,
   },
+  {
+    name: "Canmore Brewing Company Upcoming Events",
+    url: "https://www.canmorebrewing.com/upcoming-events",
+    town: "Canmore",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
 ];
