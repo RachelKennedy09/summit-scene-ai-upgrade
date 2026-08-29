@@ -15,6 +15,8 @@ import { connectDB } from "./config/db.js"; // MongoDB connection helper
 import eventRoutes from "./routes/events.js";
 import eventImportRoutes from "./routes/eventImport.js";
 import authRouter from "./routes/auth.js";
+import authMiddleware from "./middleware/auth.js";
+import isAdmin from "./middleware/isAdmin.js";
 import userRoutes from "./routes/users.js";
 import communityRoutes from "./routes/community.js";
 import buddyPostRoutes from "./routes/buddyPosts.js";
@@ -36,6 +38,8 @@ const BANDWIDTH_LOG_INTERVAL_MS = Number(
   process.env.BANDWIDTH_LOG_INTERVAL_MS || 5 * 60 * 1000
 );
 const bandwidthStats = new Map();
+const bandwidthStatsSinceBoot = new Map();
+let lastBandwidthSummary = [];
 
 function normalizeBandwidthPath(path = "") {
   return String(path)
@@ -72,21 +76,40 @@ function responseBandwidthLogger(req, res, next) {
 
   res.on("finish", () => {
     const key = `${req.method} ${normalizeBandwidthPath(req.path)} ${res.statusCode}`;
-    const current = bandwidthStats.get(key) || {
-      requests: 0,
-      bytes: 0,
-      maxBytes: 0,
-      totalMs: 0,
+    const updateStats = (statsMap) => {
+      const current = statsMap.get(key) || {
+        requests: 0,
+        bytes: 0,
+        maxBytes: 0,
+        totalMs: 0,
+      };
+
+      current.requests += 1;
+      current.bytes += responseBytes;
+      current.maxBytes = Math.max(current.maxBytes, responseBytes);
+      current.totalMs += Date.now() - startedAt;
+      statsMap.set(key, current);
     };
 
-    current.requests += 1;
-    current.bytes += responseBytes;
-    current.maxBytes = Math.max(current.maxBytes, responseBytes);
-    current.totalMs += Date.now() - startedAt;
-    bandwidthStats.set(key, current);
+    updateStats(bandwidthStats);
+    updateStats(bandwidthStatsSinceBoot);
   });
 
   return next();
+}
+
+function formatBandwidthRows(statsMap, limit = 20) {
+  return [...statsMap.entries()]
+    .map(([key, value]) => ({
+      endpoint: key,
+      requests: value.requests,
+      bytes: value.bytes,
+      avgBytes: Math.round(value.bytes / Math.max(1, value.requests)),
+      maxBytes: value.maxBytes,
+      avgMs: Math.round(value.totalMs / Math.max(1, value.requests)),
+    }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, limit);
 }
 
 function startBandwidthSummaryLogger() {
@@ -95,32 +118,21 @@ function startBandwidthSummaryLogger() {
   const interval = setInterval(() => {
     if (!bandwidthStats.size) return;
 
-    const rows = [...bandwidthStats.entries()]
-      .map(([key, value]) => ({
-        key,
-        ...value,
-        avgBytes: Math.round(value.bytes / Math.max(1, value.requests)),
-        avgMs: Math.round(value.totalMs / Math.max(1, value.requests)),
-      }))
-      .sort((a, b) => b.bytes - a.bytes)
-      .slice(0, 12);
+    const rows = formatBandwidthRows(bandwidthStats, 12);
+    lastBandwidthSummary = rows;
 
     console.info(
       "[bandwidth] endpoint summary",
-      rows.map(({ key, requests, bytes, avgBytes, maxBytes, avgMs }) => ({
-        endpoint: key,
-        requests,
-        bytes,
-        avgBytes,
-        maxBytes,
-        avgMs,
-      }))
+      rows
     );
 
     bandwidthStats.clear();
   }, BANDWIDTH_LOG_INTERVAL_MS);
 
   interval.unref?.();
+  console.info(
+    `[bandwidth] summary logging enabled every ${BANDWIDTH_LOG_INTERVAL_MS}ms`
+  );
 }
 
 // Global middleware
@@ -165,6 +177,22 @@ app.get("/api/app-version", (req, res) => {
     message:
       process.env.APP_UPDATE_MESSAGE ||
       "Newer version available - please download the latest Summit Scene update before using the app.",
+  });
+});
+
+app.get("/api/admin/bandwidth", authMiddleware, isAdmin, (req, res) => {
+  const limit = Math.min(
+    Math.max(Number.parseInt(req.query?.limit, 10) || 20, 1),
+    50
+  );
+
+  res.json({
+    message:
+      "Approximate API response bytes by endpoint. Query strings, request bodies, auth tokens, and user data are not logged.",
+    currentWindow: formatBandwidthRows(bandwidthStats, limit),
+    lastLoggedWindow: lastBandwidthSummary.slice(0, limit),
+    sinceBoot: formatBandwidthRows(bandwidthStatsSinceBoot, limit),
+    logIntervalMs: BANDWIDTH_LOG_INTERVAL_MS,
   });
 });
 
