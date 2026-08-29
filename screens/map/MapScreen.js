@@ -641,9 +641,20 @@ export default function MapScreen({ route }) {
       }
       setError(null);
 
-      const data = await fetchEventsFromApi();
+      const data = await fetchEventsFromApi({
+        page: 1,
+        limit: 250,
+        dateFilter: "Next 12 months",
+        compact: true,
+        forceRefresh: mode === "refresh",
+      });
+      const nextEvents = Array.isArray(data?.events)
+        ? data.events
+        : Array.isArray(data)
+          ? data
+          : [];
 
-      setEvents(sortEventsByUpcomingDate(data));
+      setEvents(sortEventsByUpcomingDate(nextEvents));
     } catch (error) {
       setError("Could not load events for the map.");
     } finally {

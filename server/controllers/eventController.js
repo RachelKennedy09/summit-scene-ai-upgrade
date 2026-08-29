@@ -60,6 +60,37 @@ const EVENT_TIME_ZONE = process.env.EVENT_TIME_ZONE || "America/Edmonton";
 
 const USER_POPULATE_FIELDS =
   "name email role isAdmin businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt";
+const COMPACT_EVENT_LIST_FIELDS = [
+  "title",
+  "date",
+  "time",
+  "endTime",
+  "scheduleType",
+  "isAllDay",
+  "recurrence",
+  "timeSlots",
+  "town",
+  "category",
+  "categories",
+  "categoryTags",
+  "vibeTags",
+  "audience",
+  "communityTags",
+  "locationName",
+  "location",
+  "address",
+  "latitude",
+  "longitude",
+  "imageUrl",
+  "bookingUrl",
+  "priceRange",
+  "sourceUrl",
+  "sourceName",
+  "sourceType",
+  "importedBySummitScene",
+  "createdBy",
+  "createdAt",
+].join(" ");
 
 function getUserId(value) {
   if (!value) return "";
@@ -476,6 +507,26 @@ function decorateEventForResponse(event) {
   return eventObject;
 }
 
+function isTruthyQueryValue(value) {
+  return ["1", "true", "yes"].includes(String(value || "").toLowerCase());
+}
+
+function decorateCompactEventForResponse(event) {
+  const eventObject = decorateEventForResponse(event);
+
+  if (!eventObject || typeof eventObject !== "object") {
+    return eventObject;
+  }
+
+  const imageUrl =
+    typeof eventObject.imageUrl === "string" ? eventObject.imageUrl : "";
+
+  return {
+    ...eventObject,
+    imageUrl: imageUrl.startsWith("data:") ? "" : imageUrl,
+  };
+}
+
 function parsePositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -720,9 +771,11 @@ export async function getAllEvents(req, res) {
     const normalizedAudience = normalizeRequiredString(req.query?.audience);
     const normalizedListingType = normalizeRequiredString(req.query?.listingType);
     const communityOnly = String(req.query?.communityOnly || "") === "true";
+    const useCompactResponse = isTruthyQueryValue(req.query?.compact);
     const searchTerms = buildSearchTerms(req.query?.search);
     const requestedPage = parsePositiveInt(req.query?.page, 1);
-    const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), 50);
+    const maxLimit = useCompactResponse ? 250 : 50;
+    const requestedLimit = Math.min(parsePositiveInt(req.query?.limit, 20), maxLimit);
     const nearLat = parseCoordinate(req.query?.nearLat);
     const nearLng = parseCoordinate(req.query?.nearLng);
     const radiusKm = parseCoordinate(req.query?.radiusKm);
@@ -884,12 +937,18 @@ export async function getAllEvents(req, res) {
       ];
     }
 
-    const events = await Event.find(baseQuery)
-      .sort({ date: 1, createdAt: -1 })
-      .populate(
+    const eventQuery = Event.find(baseQuery).sort({ date: 1, createdAt: -1 });
+
+    if (useCompactResponse) {
+      eventQuery.select(COMPACT_EVENT_LIST_FIELDS).lean({ virtuals: true });
+    } else {
+      eventQuery.populate(
         "createdBy",
         "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio lookingFor instagram facebook website googleBusinessUrl phone createdAt"
       );
+    }
+
+    const events = await eventQuery;
 
     const filteredEvents =
       (normalizedDateFilter && normalizedDateFilter !== "All") || normalizedStartDate
@@ -926,8 +985,12 @@ export async function getAllEvents(req, res) {
         ? nearMeEvents
         : sortEventsByNextOccurrence(nearMeEvents);
 
+    const responseDecorator = useCompactResponse
+      ? decorateCompactEventForResponse
+      : decorateEventForResponse;
+
     if (!shouldPaginate) {
-      return res.json(sortedEvents.map(decorateEventForResponse));
+      return res.json(sortedEvents.map(responseDecorator));
     }
 
     const totalCount = sortedEvents.length;
@@ -935,7 +998,7 @@ export async function getAllEvents(req, res) {
     const pagedEvents = sortedEvents.slice(
       startIndex,
       startIndex + requestedLimit
-    ).map(decorateEventForResponse);
+    ).map(responseDecorator);
     const totalPages = Math.max(1, Math.ceil(totalCount / requestedLimit));
 
     return res.json({

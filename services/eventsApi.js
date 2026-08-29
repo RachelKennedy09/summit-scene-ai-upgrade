@@ -18,6 +18,9 @@ const EVENTS_REQUEST_TIMEOUT_MS = 15000;
 const EVENTS_LIST_REQUEST_TIMEOUT_MS = 30000;
 const EVENTS_LIST_RETRY_ATTEMPTS = 3;
 const EVENTS_LIST_RETRY_DELAY_MS = 1200;
+const EVENTS_LIST_CACHE_TTL_MS = 90 * 1000;
+const EVENTS_LIST_CACHE_MAX_ENTRIES = 30;
+const eventsListCache = new Map();
 
 // Build headers helper (optional token)
 function buildHeaders(token) {
@@ -269,6 +272,36 @@ function isInvalidListingTypeResponse(response, data, listingType) {
   return response?.status === 400 && message.includes("invalid listing type");
 }
 
+function getCachedEventsList(url) {
+  const cached = eventsListCache.get(url);
+  if (!cached) return null;
+
+  if (Date.now() - cached.fetchedAt > EVENTS_LIST_CACHE_TTL_MS) {
+    eventsListCache.delete(url);
+    return null;
+  }
+
+  return cached.data;
+}
+
+function setCachedEventsList(url, data) {
+  if (eventsListCache.size >= EVENTS_LIST_CACHE_MAX_ENTRIES) {
+    const oldestKey = eventsListCache.keys().next().value;
+    if (oldestKey) {
+      eventsListCache.delete(oldestKey);
+    }
+  }
+
+  eventsListCache.set(url, {
+    data,
+    fetchedAt: Date.now(),
+  });
+}
+
+export function clearEventsCache() {
+  eventsListCache.clear();
+}
+
 function buildEventsQueryString(options = {}) {
   const params = new URLSearchParams();
 
@@ -320,6 +353,9 @@ function buildEventsQueryString(options = {}) {
   if (options.communityOnly) {
     params.set("communityOnly", "true");
   }
+  if (options.compact) {
+    params.set("compact", "true");
+  }
   if (
     options.listingType &&
     options.listingType !== "All" &&
@@ -340,6 +376,11 @@ export async function fetchEvents(options = {}) {
   const queryString = buildEventsQueryString(options);
   const url = `${BASE_URL}/api/events${queryString}`;
   const expectsPaginatedResponse = Boolean(options.page || options.limit);
+  const cachedData = options.forceRefresh ? null : getCachedEventsList(url);
+
+  if (cachedData) {
+    return cachedData;
+  }
 
   try {
     const res = await fetchWithRetry(url, {}, {
@@ -371,7 +412,7 @@ export async function fetchEvents(options = {}) {
     }
 
     if (expectsPaginatedResponse) {
-      return {
+      const result = {
         events: sortEventsByUpcomingDate(data.events),
         page: data.page || options.page || 1,
         limit: data.limit || options.limit || 20,
@@ -379,9 +420,13 @@ export async function fetchEvents(options = {}) {
         totalPages: Number.isFinite(data.totalPages) ? data.totalPages : 1,
         hasMore: Boolean(data.hasMore),
       };
+      setCachedEventsList(url, result);
+      return result;
     }
 
-    return sortEventsByUpcomingDate(data);
+    const result = sortEventsByUpcomingDate(data);
+    setCachedEventsList(url, result);
+    return result;
   } catch (error) {
     const normalizedError = normalizeEventsError(
       error,
@@ -459,6 +504,10 @@ export async function createEvent(eventData, token) {
 
     const data = await readJsonSafely(res);
 
+    if (res.ok) {
+      clearEventsCache();
+    }
+
     return {
       ok: res.ok,
       status: res.status,
@@ -499,6 +548,7 @@ export async function deleteEvent(eventId, token) {
       throw new Error(text || `Failed to delete event (${res.status})`);
     }
 
+    clearEventsCache();
     return true;
   } catch (error) {
     const normalizedError = normalizeEventsError(
@@ -534,6 +584,7 @@ export async function updateEvent(eventId, eventData, token) {
       throw new Error(message);
     }
 
+    clearEventsCache();
     return data;
   } catch (error) {
     const normalizedError = normalizeEventsError(

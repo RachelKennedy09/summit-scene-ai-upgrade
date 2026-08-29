@@ -28,6 +28,7 @@ import {
 const USER_POPULATE_FIELDS =
   "name email role businessVerificationStatus avatarKey profileImageUrl town towns userType languages originallyFrom interests businessVibeTags skillLevel socialAccounts bio instagram facebook website googleBusinessUrl phone createdAt";
 const DATE_EXPIRING_COMMUNITY_TYPES = new Set(["local-plan", "notice", "update"]);
+const MAX_BUDDY_POST_LIST_LIMIT = 50;
 const COMMUNITY_TYPE_DEFAULTS = {
   "new-in-town": {
     type: "general",
@@ -53,6 +54,11 @@ const COMMUNITY_TYPE_DEFAULTS = {
     scheduleType: "single",
   },
 };
+
+function parsePositiveInt(value, fallback = 0) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function buildListFilter(query = {}) {
   const filter = {};
@@ -555,9 +561,19 @@ async function validateBuddyPostPayload(payload) {
 export async function getBuddyPosts(req, res) {
   try {
     const blockContext = await getViewerBlockContext(req);
-    const posts = await populateBuddyPost(
+    const requestedLimit = Math.min(
+      parsePositiveInt(req.query?.limit, 0),
+      MAX_BUDDY_POST_LIST_LIMIT
+    );
+    let query = populateBuddyPost(
       BuddyPost.find(buildListFilter(req.query))
     ).sort({ date: 1, createdAt: -1 });
+
+    if (requestedLimit) {
+      query = query.limit(requestedLimit);
+    }
+
+    const posts = await query;
 
     const freshPosts = shouldIncludeExpiredPosts(req.query.includeExpired)
       ? posts

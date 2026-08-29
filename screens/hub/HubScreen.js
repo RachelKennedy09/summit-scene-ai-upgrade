@@ -341,6 +341,7 @@ export default function HubScreen({ route }) {
         nearLng: isNearMeEnabled ? nearMeLocation?.longitude : undefined,
         radiusKm: isNearMeEnabled ? NEAR_ME_RADIUS_KM : undefined,
         search: activeSearch || undefined,
+        forceRefresh: mode === "refresh",
       });
 
       const nextEvents = Array.isArray(data?.events) ? data.events : [];

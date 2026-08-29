@@ -8,6 +8,7 @@
 import "dotenv/config";
 import express from "express"; // Web framework: routing + middleware
 import cors from "cors"; // Allows Expo / web clients on other origins
+import compression from "compression";
 import { connectDB } from "./config/db.js"; // MongoDB connection helper
 
 // Route modules
@@ -31,9 +32,104 @@ import { startDailyEventsNotificationJob } from "./services/dailyEventsNotificat
 // Create the Express application instance
 const app = express();
 
+const BANDWIDTH_LOG_INTERVAL_MS = Number(
+  process.env.BANDWIDTH_LOG_INTERVAL_MS || 5 * 60 * 1000
+);
+const bandwidthStats = new Map();
+
+function normalizeBandwidthPath(path = "") {
+  return String(path)
+    .replace(/[a-f\d]{24}/gi, ":id")
+    .replace(/\d{5,}/g, ":num");
+}
+
+function getChunkSize(chunk, encoding) {
+  if (!chunk) return 0;
+  if (Buffer.isBuffer(chunk)) return chunk.length;
+  if (typeof chunk === "string") return Buffer.byteLength(chunk, encoding);
+  return Buffer.byteLength(String(chunk));
+}
+
+function responseBandwidthLogger(req, res, next) {
+  if (!req.path?.startsWith("/api")) {
+    return next();
+  }
+
+  const startedAt = Date.now();
+  let responseBytes = 0;
+  const originalWrite = res.write.bind(res);
+  const originalEnd = res.end.bind(res);
+
+  res.write = (chunk, encoding, callback) => {
+    responseBytes += getChunkSize(chunk, encoding);
+    return originalWrite(chunk, encoding, callback);
+  };
+
+  res.end = (chunk, encoding, callback) => {
+    responseBytes += getChunkSize(chunk, encoding);
+    return originalEnd(chunk, encoding, callback);
+  };
+
+  res.on("finish", () => {
+    const key = `${req.method} ${normalizeBandwidthPath(req.path)} ${res.statusCode}`;
+    const current = bandwidthStats.get(key) || {
+      requests: 0,
+      bytes: 0,
+      maxBytes: 0,
+      totalMs: 0,
+    };
+
+    current.requests += 1;
+    current.bytes += responseBytes;
+    current.maxBytes = Math.max(current.maxBytes, responseBytes);
+    current.totalMs += Date.now() - startedAt;
+    bandwidthStats.set(key, current);
+  });
+
+  return next();
+}
+
+function startBandwidthSummaryLogger() {
+  if (process.env.BANDWIDTH_LOG_ENABLED === "false") return;
+
+  const interval = setInterval(() => {
+    if (!bandwidthStats.size) return;
+
+    const rows = [...bandwidthStats.entries()]
+      .map(([key, value]) => ({
+        key,
+        ...value,
+        avgBytes: Math.round(value.bytes / Math.max(1, value.requests)),
+        avgMs: Math.round(value.totalMs / Math.max(1, value.requests)),
+      }))
+      .sort((a, b) => b.bytes - a.bytes)
+      .slice(0, 12);
+
+    console.info(
+      "[bandwidth] endpoint summary",
+      rows.map(({ key, requests, bytes, avgBytes, maxBytes, avgMs }) => ({
+        endpoint: key,
+        requests,
+        bytes,
+        avgBytes,
+        maxBytes,
+        avgMs,
+      }))
+    );
+
+    bandwidthStats.clear();
+  }, BANDWIDTH_LOG_INTERVAL_MS);
+
+  interval.unref?.();
+}
+
 // Global middleware
 // Enable CORS so the mobile app / web client can talk to this API
 app.use(cors());
+
+app.use(responseBandwidthLogger);
+
+app.use(compression({ threshold: 1024 }));
 
 // Automatically parse JSON request bodies into req.body.
 // Profile photo uploads are compressed data URLs during testing, so the limit
@@ -135,6 +231,7 @@ async function startServer() {
       if (process.env.NODE_ENV) {
         console.log(`🌲 Environment: ${process.env.NODE_ENV}`);
       }
+      startBandwidthSummaryLogger();
       startDailyEventsNotificationJob();
     });
   } catch (error) {
