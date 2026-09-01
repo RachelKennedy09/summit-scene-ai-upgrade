@@ -36,7 +36,7 @@ export default {
   expo: {
     name: "Summit Scene",
     slug: "summit-scene",
-    version: "1.0.7",
+    version: "1.0.8",
     scheme: "summitscene",
     icon: "./assets/app-icon-ios-padded.png",
     userInterfaceStyle: "light",
@@ -62,6 +62,8 @@ export default {
       },
     },
     android: {
+
+
       adaptiveIcon: {
         foregroundImage: "./assets/android-adaptive-icon-foreground.png",
         backgroundColor: "#F5F3EE",

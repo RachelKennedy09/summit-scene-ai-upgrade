@@ -11,12 +11,13 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {
-      "autoIncrement": true,
-      "android": {
-        "credentialsSource": "remote"
-      }
-    }
+"production": {
+  "autoIncrement": true,
+  "environment": "production",
+  "android": {
+    "credentialsSource": "remote"
+  }
+}
   },
   "submit": {
     "closedTesting": {
