@@ -36,7 +36,7 @@ export default {
   expo: {
     name: "Summit Scene",
     slug: "summit-scene",
-    version: "1.0.8",
+    version: "1.0.9",
     scheme: "summitscene",
     icon: "./assets/app-icon-ios-padded.png",
     userInterfaceStyle: "light",
