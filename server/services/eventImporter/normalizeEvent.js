@@ -52,6 +52,7 @@ function normalizeCategory(value, text = "") {
 
 export function buildOriginalSummary({
   title,
+  originalDescription,
   startDate,
   endDate,
   startTime,
@@ -59,36 +60,87 @@ export function buildOriginalSummary({
   venue,
   town,
   price,
-  sourceName,
+  category,
 }) {
   const where = [venue, town].filter(Boolean).join(" in ");
   const timeText = [startTime, endTime].filter(Boolean).join(" to ");
   const dateText = endDate && endDate !== startDate
     ? `${startDate} to ${endDate}`
     : startDate;
+  const themeText = buildThemeText({
+    title,
+    originalDescription,
+    category,
+    price,
+  });
   const parts = [];
 
-  if (title && dateText && where) {
-    parts.push(`${title} is listed for ${dateText}${timeText ? `, ${timeText}` : ""} at ${where}.`);
+  if (title && themeText && dateText && where) {
+    parts.push(`${title} is a ${themeText} happening on ${dateText}${timeText ? ` from ${timeText}` : ""} at ${where}.`);
+  } else if (title && themeText && dateText) {
+    parts.push(`${title} is a ${themeText} happening on ${dateText}${timeText ? ` from ${timeText}` : ""}.`);
+  } else if (title && themeText && where) {
+    parts.push(`${title} is a ${themeText} at ${where}.`);
+  } else if (title && dateText && where) {
+    parts.push(`${title} happens on ${dateText}${timeText ? ` from ${timeText}` : ""} at ${where}.`);
   } else if (title && dateText) {
-    parts.push(`${title} is listed for ${dateText}${timeText ? `, ${timeText}` : ""}.`);
+    parts.push(`${title} happens on ${dateText}${timeText ? ` from ${timeText}` : ""}.`);
   } else if (title && where) {
-    parts.push(`${title} is listed at ${where}.`);
+    parts.push(`${title} takes place at ${where}.`);
   } else if (title) {
-    parts.push(`${title} is listed as an upcoming event.`);
+    parts.push(`${title} is an upcoming local event.`);
   }
 
   if (price) {
-    parts.push(`Price: ${price}.`);
+    parts.push(price.toLowerCase() === "free" ? "Admission is listed as free." : `Price details: ${price}.`);
   }
 
-  if (sourceName) {
-    parts.push(`Details are attributed to ${sourceName}; view the organizer website for the latest information.`);
-  } else {
-    parts.push("View the organizer website for the latest information.");
+  const extraContext = buildExtraContext(originalDescription);
+  if (extraContext) {
+    parts.push(extraContext);
   }
 
   return parts.join(" ");
+}
+
+function buildThemeText({ title, originalDescription, category, price }) {
+  const text = cleanText([title, originalDescription, category, price].filter(Boolean).join(" ")).toLowerCase();
+  const themes = [
+    { pattern: /\b(live music|concert|band|dj|karaoke|acoustic|songwriter|jam night)\b/, text: "live music event" },
+    { pattern: /\b(theatre|theater|musical|performance|show|play)\b/, text: "performance" },
+    { pattern: /\b(market|vendor|makers?|artisan|craft fair)\b/, text: "market" },
+    { pattern: /\b(workshop|class|course|lesson|learn)\b/, text: "workshop" },
+    { pattern: /\b(yoga|meditation|wellness|fitness|run club)\b/, text: "wellness activity" },
+    { pattern: /\b(hike|ski|bike|ride|race|outdoor|trail|mountain)\b/, text: "mountain activity" },
+    { pattern: /\b(family|kids|children|all ages)\b/, text: "family-friendly outing" },
+    { pattern: /\b(food|drink|beer|wine|cocktail|brunch|dinner|tasting|happy hour)\b/, text: "food and drink event" },
+    { pattern: /\b(fundraiser|community|volunteer|charity)\b/, text: "community event" },
+    { pattern: /\b(art|gallery|exhibition|film|creative)\b/, text: "arts event" },
+  ];
+
+  return themes.find((theme) => theme.pattern.test(text))?.text || "local event";
+}
+
+function buildExtraContext(description) {
+  const text = cleanText(description)
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\b(learn more|more details|view details|visit website|buy tickets|book now|click here)\b/gi, "")
+    .trim();
+
+  if (!text || text.length < 20) return "";
+
+  const lower = text.toLowerCase();
+  const notes = [];
+  if (/\bfree admission\b|\bfree\b/.test(lower)) notes.push("free admission");
+  if (/\blocal\b/.test(lower)) notes.push("a local focus");
+  if (/\bfamily|kids|children|all ages\b/.test(lower)) notes.push("family-friendly programming");
+  if (/\bpatio|outdoor|outside|rooftop\b/.test(lower)) notes.push("an outdoor setting");
+  if (/\bfood|drink|beer|wine|cocktail|dinner|brunch\b/.test(lower)) notes.push("food or drink options");
+  if (/\blive music|concert|band|dj|acoustic|songwriter\b/.test(lower)) notes.push("live entertainment");
+
+  if (!notes.length) return "";
+
+  return `The listing highlights ${notes.slice(0, 3).join(", ")}.`;
 }
 
 export function buildFactualRawExtractedData(extracted, source) {
@@ -230,6 +282,7 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     title,
     description: buildOriginalSummary({
       title,
+      originalDescription: extracted?.description,
       startDate,
       endDate,
       startTime,
@@ -237,7 +290,7 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
       venue,
       town,
       price,
-      sourceName,
+      category,
     }),
     town,
     category,

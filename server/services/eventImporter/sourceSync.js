@@ -246,10 +246,18 @@ export async function reconcileSourceSync({
 export async function recordSeenSourceCandidate(candidate, source, { checkedAt = new Date() } = {}) {
   const sourceKey = buildSourceKey(candidate, source);
   const nextSnapshot = buildSourceSnapshot(candidate);
+  const sourceUrl = normalizeUrl(candidate?.sourceUrl);
+  const sourceRootUrl = normalizeUrl(source?.url);
+  const lookupConditions = [];
+  if (sourceKey) {
+    lookupConditions.push({ source: source?._id, sourceKey });
+  }
+  if (sourceUrl && sourceUrl !== sourceRootUrl) {
+    lookupConditions.push({ source: source?._id, sourceUrl });
+  }
   const existingCandidate = sourceKey
     ? await ImportCandidate.findOne({
-        source: source?._id,
-        sourceKey,
+        $or: lookupConditions,
         status: { $in: ["pending", "approved", "duplicate", "error"] },
       })
     : null;
@@ -258,10 +266,12 @@ export async function recordSeenSourceCandidate(candidate, source, { checkedAt =
   const hasDiff = Object.keys(diff).length > 0;
 
   return {
+    existingCandidateId: existingCandidate?._id,
     sourceKey,
     sourceSnapshot: nextSnapshot,
-    sourceChangeDiff: hasDiff ? diff : undefined,
+    sourceChangeDiff: hasDiff ? diff : existingCandidate?.sourceChangeDiff,
     sourceLastChangedAt: hasDiff ? checkedAt : existingCandidate?.sourceLastChangedAt,
+    sourceChangedThisRun: hasDiff,
     lastSeenAt: checkedAt,
     sourceMissingSince: undefined,
     sourceMissingChecks: 0,

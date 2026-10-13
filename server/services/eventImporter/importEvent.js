@@ -9,6 +9,7 @@ import { buildSourceKey, recordSeenSourceCandidate } from "./sourceSync.js";
 function buildCandidateQuery(candidate) {
   return {
     $or: [
+      ...(candidate.existingCandidateId ? [{ _id: candidate.existingCandidateId }] : []),
       { source: candidate.source, sourceKey: candidate.sourceKey },
       {
         sourceUrl: candidate.sourceUrl,
@@ -64,8 +65,9 @@ export async function importExtractedEvent(extracted, source, options = {}) {
   const syncFields = await recordSeenSourceCandidate(candidate, source, {
     checkedAt: options.checkedAt || new Date(),
   });
-  const sourceChanged = Boolean(syncFields.sourceChangeDiff);
+  const sourceChanged = Boolean(syncFields.sourceChangedThisRun);
   Object.assign(candidate, syncFields);
+  delete candidate.sourceChangedThisRun;
 
   if (
     !candidate.title ||

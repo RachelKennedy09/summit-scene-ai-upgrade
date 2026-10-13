@@ -6,6 +6,7 @@ const googleIosUrlScheme =
   process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
 
 const plugins = [
+  "expo-status-bar",
   "expo-notifications",
   "expo-apple-authentication",
   googleIosUrlScheme

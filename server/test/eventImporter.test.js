@@ -5,6 +5,10 @@ import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/de
 import { extractEvents } from "../services/eventImporter/extractEvents.js";
 import { mapTourismDetailToExtractedEvent } from "../services/eventImporter/banffLakeLouiseSource.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
+import {
+  buildSourceKey,
+  diffSourceSnapshots,
+} from "../services/eventImporter/sourceSync.js";
 
 describe("event importer helpers", () => {
   const fixedNow = new Date(2026, 7, 13);
@@ -49,11 +53,37 @@ describe("event importer helpers", () => {
       sourceName: "Banff Test Calendar",
     });
     expect(candidate.description).to.equal(
-      "Live Music at the Lodge is listed for 2026-09-20, 7:00 PM at The Lodge in Canmore. Details are attributed to Banff Test Calendar; view the organizer website for the latest information."
+      "Live Music at the Lodge is a live music event happening on 2026-09-20 from 7:00 PM at The Lodge in Canmore. The listing highlights a local focus, live entertainment."
     );
     expect(candidate.imageUrl).to.equal(undefined);
     expect(candidate.rawExtractedData).to.not.have.property("description");
     expect(candidate.confidenceScore).to.be.at.least(90);
+  });
+
+  it("summarizes imported descriptions without storing source copy", () => {
+    const candidate = normalizeExtractedEvent(
+      {
+        title: "Backlot Bash",
+        description:
+          "Join us for an unforgettable evening of live music, craft beer, mountain views, and free admission. Learn more on our website.",
+        dateText: "August 29, 2026 at 6 PM",
+        venue: "Canmore Brewing Company",
+        price: "Free",
+      },
+      {
+        ...source,
+        name: "Canmore Brewing Company Upcoming Events",
+        town: "Canmore",
+      },
+      { now: fixedNow }
+    );
+
+    expect(candidate.description).to.equal(
+      "Backlot Bash is a live music event happening on 2026-08-29 from 6:00 PM at Canmore Brewing Company in Canmore. Admission is listed as free. The listing highlights free admission, food or drink options, live entertainment."
+    );
+    expect(candidate.description).to.not.include("unforgettable evening");
+    expect(candidate.description).to.not.include("Learn more");
+    expect(candidate.rawExtractedData).to.not.have.property("description");
   });
 
   it("uses source-approved image URLs without extracting event images", () => {
@@ -915,6 +945,54 @@ describe("event importer helpers", () => {
       ticketUrl:
         "https://www.banff-springs-hotel.com/events/halloween-at-the-castle",
       extractionMethod: "banff-lake-louise-detail",
+    });
+  });
+
+  it("uses detail URLs as stable source sync keys when source event details change", () => {
+    const source = {
+      _id: "507f1f77bcf86cd799439011",
+      url: "https://www.banfflakelouise.com/events",
+    };
+    const originalKey = buildSourceKey(
+      {
+        title: "Halloween at the Castle",
+        sourceUrl: "https://www.banfflakelouise.com/events/halloween-at-the-castle",
+        startDate: "2026-10-31",
+      },
+      source
+    );
+    const changedKey = buildSourceKey(
+      {
+        title: "Halloween at the Castle: A Dark Fairytale",
+        sourceUrl: "https://www.banfflakelouise.com/events/halloween-at-the-castle",
+        startDate: "2026-11-01",
+      },
+      source
+    );
+
+    expect(changedKey).to.equal(originalKey);
+  });
+
+  it("captures source detail changes for admin review", () => {
+    const diff = diffSourceSnapshots(
+      {
+        title: "Halloween at the Castle",
+        startDate: "2026-10-31",
+        venue: "Fairmont Banff Springs",
+      },
+      {
+        title: "Halloween at the Castle",
+        startDate: "2026-11-01",
+        venue: "Rundle Bar at Fairmont Banff Springs",
+      }
+    );
+
+    expect(diff).to.deep.equal({
+      startDate: { previous: "2026-10-31", next: "2026-11-01" },
+      venue: {
+        previous: "Fairmont Banff Springs",
+        next: "Rundle Bar at Fairmont Banff Springs",
+      },
     });
   });
 
