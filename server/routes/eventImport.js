@@ -91,6 +91,14 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
     importedBySummitScene: true,
     sourceUrl,
     sourceName: normalizeString(merged.sourceName),
+    sourceMissingSince: merged.sourceMissingSince,
+    sourceMissingChecks: merged.sourceMissingChecks || 0,
+    needsImportReview: Boolean(merged.needsReview),
+    importReviewReason: normalizeString(merged.reviewReason),
+    sourceSnapshot: merged.sourceSnapshot,
+    sourceChangeDiff: merged.sourceChangeDiff,
+    sourceLastChangedAt: merged.sourceLastChangedAt,
+    lastSyncedAt: merged.lastSeenAt,
     createdBy: userId,
   };
 }
@@ -114,9 +122,16 @@ function candidateToDuplicateComparable(candidate) {
 router.get("/candidates", authMiddleware, isAdmin, async (req, res) => {
   try {
     const status = normalizeString(req.query?.status) || "pending";
-    const query = status === "all" ? {} : { status };
+    const query =
+      status === "all"
+        ? {}
+        : status === "review" || status === "needs-review"
+          ? { needsReview: true }
+          : status === "pending"
+            ? { $or: [{ status: "pending" }, { needsReview: true }] }
+            : { status };
     const candidates = await ImportCandidate.find(query)
-      .sort({ discoveredAt: -1 })
+      .sort({ needsReview: -1, sourceLastChangedAt: -1, discoveredAt: -1 })
       .limit(100)
       .populate("duplicateOf", "title town date locationName")
       .populate("approvedEvent", "title town date");
@@ -209,6 +224,41 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
   try {
     const candidate = await ImportCandidate.findById(req.params.id);
     if (!candidate) return res.status(404).json({ message: "Candidate not found." });
+
+    if (candidate.status === "approved" && candidate.approvedEvent) {
+      const updatePayload = candidateToEventPayload(
+        candidate,
+        req.body?.event || {},
+        req.user.userId
+      );
+      delete updatePayload.createdBy;
+
+      const event = await Event.findByIdAndUpdate(
+        candidate.approvedEvent,
+        {
+          $set: {
+            ...updatePayload,
+            needsImportReview: false,
+          },
+          $unset: {
+            sourceMissingSince: "",
+            importReviewReason: "",
+          },
+        },
+        { new: true, runValidators: true }
+      );
+
+      candidate.needsReview = false;
+      candidate.reviewReason = undefined;
+      candidate.sourceMissingSince = undefined;
+      candidate.sourceMissingChecks = 0;
+      candidate.reviewedAt = new Date();
+      candidate.reviewedBy = req.user.userId;
+      await candidate.save();
+
+      return res.json({ candidate, event });
+    }
+
     if (candidate.status !== "pending") {
       return res.status(400).json({ message: "Only pending candidates can be approved." });
     }
@@ -236,6 +286,7 @@ router.post("/candidates/approve-high-confidence", authMiddleware, isAdmin, asyn
   try {
     const candidates = await ImportCandidate.find({
       status: "pending",
+      needsReview: { $ne: true },
       confidenceScore: { $gte: 90 },
       duplicateOf: { $exists: false },
     }).limit(25);

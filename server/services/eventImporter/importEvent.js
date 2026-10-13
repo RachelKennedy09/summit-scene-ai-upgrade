@@ -4,13 +4,19 @@ import { findDuplicateEvent } from "./detectDuplicate.js";
 import { isValidFutureDateString } from "./dateParsing.js";
 import { normalizeWithAi } from "./aiNormalizer.js";
 import { normalizeExtractedEvent } from "./normalizeEvent.js";
+import { buildSourceKey, recordSeenSourceCandidate } from "./sourceSync.js";
 
 function buildCandidateQuery(candidate) {
   return {
-    sourceUrl: candidate.sourceUrl,
-    startDate: candidate.startDate,
-    title: candidate.title,
-    status: { $in: ["pending", "duplicate", "error"] },
+    $or: [
+      { source: candidate.source, sourceKey: candidate.sourceKey },
+      {
+        sourceUrl: candidate.sourceUrl,
+        startDate: candidate.startDate,
+        title: candidate.title,
+      },
+    ],
+    status: { $in: ["pending", "approved", "duplicate", "error"] },
   };
 }
 
@@ -54,6 +60,12 @@ export async function importExtractedEvent(extracted, source, options = {}) {
   candidate.description = deterministicCandidate.description;
   candidate.imageUrl = deterministicCandidate.imageUrl;
   candidate.rawExtractedData = deterministicCandidate.rawExtractedData;
+  candidate.sourceKey = buildSourceKey(candidate, source);
+  const syncFields = await recordSeenSourceCandidate(candidate, source, {
+    checkedAt: options.checkedAt || new Date(),
+  });
+  const sourceChanged = Boolean(syncFields.sourceChangeDiff);
+  Object.assign(candidate, syncFields);
 
   if (
     !candidate.title ||
@@ -69,6 +81,35 @@ export async function importExtractedEvent(extracted, source, options = {}) {
 
   const existingCandidate = await ImportCandidate.findOne(buildCandidateQuery(candidate));
   if (existingCandidate) {
+    if (existingCandidate.status === "approved") {
+      existingCandidate.set({
+        ...candidate,
+        status: "approved",
+        approvedEvent: existingCandidate.approvedEvent,
+        reviewedAt: existingCandidate.reviewedAt,
+        reviewedBy: existingCandidate.reviewedBy,
+      });
+      await existingCandidate.save();
+
+      if (existingCandidate.approvedEvent) {
+        await Event.findByIdAndUpdate(existingCandidate.approvedEvent, {
+          $set: {
+            sourceSnapshot: existingCandidate.sourceSnapshot,
+            sourceChangeDiff: existingCandidate.sourceChangeDiff,
+            sourceLastChangedAt: existingCandidate.sourceLastChangedAt,
+            needsImportReview: Boolean(existingCandidate.needsReview),
+            importReviewReason: existingCandidate.reviewReason,
+            lastSyncedAt: existingCandidate.lastSeenAt,
+          },
+          $unset: {
+            sourceMissingSince: "",
+          },
+        });
+      }
+
+      return { status: "updated", candidate: existingCandidate, sourceChanged };
+    }
+
     const [existingEvents, existingCandidates] = await Promise.all([
       Event.find(buildExistingEventDuplicateQuery(candidate))
         .select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence")
@@ -101,7 +142,7 @@ export async function importExtractedEvent(extracted, source, options = {}) {
         : candidate.importNotes,
     });
     await existingCandidate.save();
-    return { status: "updated", candidate: existingCandidate, duplicate };
+    return { status: "updated", candidate: existingCandidate, duplicate, sourceChanged };
   }
 
   const [existingEvents, existingCandidates] = await Promise.all([
@@ -139,5 +180,6 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     status: duplicate ? "duplicate" : "created",
     candidate: savedCandidate,
     duplicate,
+    sourceChanged,
   };
 }

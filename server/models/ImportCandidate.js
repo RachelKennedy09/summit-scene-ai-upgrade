@@ -155,6 +155,40 @@ const importCandidateSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "EventSource",
     },
+    sourceKey: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    lastSeenAt: {
+      type: Date,
+    },
+    sourceMissingSince: {
+      type: Date,
+    },
+    sourceMissingChecks: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    needsReview: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    reviewReason: {
+      type: String,
+      trim: true,
+    },
+    sourceSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    sourceChangeDiff: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    sourceLastChangedAt: {
+      type: Date,
+    },
     imageUrl: {
       type: String,
       trim: true,
@@ -202,6 +236,8 @@ const importCandidateSchema = new mongoose.Schema(
 
 importCandidateSchema.index({ status: 1, discoveredAt: -1 });
 importCandidateSchema.index({ sourceUrl: 1, startDate: 1, title: 1 });
+importCandidateSchema.index({ source: 1, sourceKey: 1 });
+importCandidateSchema.index({ source: 1, status: 1, startDate: 1 });
 
 importCandidateSchema.pre("validate", function normalizeCandidate(next) {
   if (this.category && !this.categories?.length) {

@@ -4,6 +4,7 @@ import { fetchSource } from "./fetchSource.js";
 import { extractEvents } from "./extractEvents.js";
 import { importExtractedEvent } from "./importEvent.js";
 import { fetchBanffLakeLouiseEvents } from "./banffLakeLouiseSource.js";
+import { reconcileSourceSync } from "./sourceSync.js";
 
 let isImportRunning = false;
 
@@ -21,7 +22,27 @@ function emptySummary() {
     skipped: 0,
     errors: 0,
     sourceErrors: [],
+    sourceSync: {
+      seenTracked: 0,
+      missingFirstSeen: 0,
+      missingStill: 0,
+      needsReview: 0,
+      changed: 0,
+    },
   };
+}
+
+function buildTodayString(now = new Date()) {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addSourceSyncSummary(summary, nextSummary) {
+  Object.keys(summary.sourceSync).forEach((key) => {
+    summary.sourceSync[key] += nextSummary?.[key] || 0;
+  });
 }
 
 export async function runEventImport(options = {}) {
@@ -49,7 +70,8 @@ export async function runEventImport(options = {}) {
     for (const source of sources) {
       if (summary.eventsDiscovered >= maxEvents) break;
 
-      source.lastCheckedAt = new Date();
+      const checkedAt = new Date();
+      source.lastCheckedAt = checkedAt;
       try {
         const { html } = await fetchSource(source, options);
         const sourceSpecificEvents = await fetchBanffLakeLouiseEvents(
@@ -64,15 +86,33 @@ export async function runEventImport(options = {}) {
         summary.sourcesChecked += 1;
         summary.eventsDiscovered += extractedEvents.length;
 
+        const seenCandidates = [];
+
         for (const extractedEvent of extractedEvents) {
-          const result = await importExtractedEvent(extractedEvent, source, options);
+          const result = await importExtractedEvent(extractedEvent, source, {
+            ...options,
+            checkedAt,
+          });
           if (result.status === "created") summary.newCandidates += 1;
           else if (result.status === "updated") summary.updatedCandidates += 1;
           else if (result.status === "duplicate") summary.duplicates += 1;
           else summary.skipped += 1;
+          if (result.sourceChanged) summary.sourceSync.changed += 1;
+
+          if (result.candidate) {
+            seenCandidates.push(result.candidate);
+          }
         }
 
-        source.lastSuccessfulCheckAt = new Date();
+        const sourceSyncSummary = await reconcileSourceSync({
+          source,
+          seenCandidates,
+          todayString: buildTodayString(options.now || checkedAt),
+          checkedAt,
+        });
+        addSourceSyncSummary(summary, sourceSyncSummary);
+
+        source.lastSuccessfulCheckAt = checkedAt;
         source.consecutiveFailures = 0;
         await source.save();
       } catch (error) {

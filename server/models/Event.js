@@ -297,6 +297,39 @@ const eventSchema = new mongoose.Schema(
       type: Date,
     },
 
+    sourceMissingSince: {
+      type: Date,
+    },
+
+    sourceMissingChecks: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    needsImportReview: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    importReviewReason: {
+      type: String,
+      trim: true,
+    },
+
+    sourceSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+
+    sourceChangeDiff: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+
+    sourceLastChangedAt: {
+      type: Date,
+    },
+
     // -------------------------------------------
     // CREATOR INFO
     // -------------------------------------------

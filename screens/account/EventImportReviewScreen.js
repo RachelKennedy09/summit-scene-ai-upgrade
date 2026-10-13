@@ -108,16 +108,20 @@ export default function EventImportReviewScreen() {
   async function handleApprove(candidate) {
     const candidateId = getCandidateId(candidate);
     if (!candidateId) return;
+    const isApprovedReview = candidate.status === "approved";
 
     try {
       setWorking(true);
-      setWorkingLabel("Approving event...");
+      setWorkingLabel(isApprovedReview ? "Applying source update..." : "Approving event...");
       await approveImportCandidate(candidateId, token);
       setCandidates((current) =>
         current.filter((item) => getCandidateId(item) !== candidateId)
       );
     } catch (approveError) {
-      Alert.alert("Could not approve event", approveError.message);
+      Alert.alert(
+        isApprovedReview ? "Could not apply update" : "Could not approve event",
+        approveError.message
+      );
     } finally {
       setWorking(false);
       setWorkingLabel("");
@@ -470,7 +474,10 @@ export default function EventImportReviewScreen() {
 
   const highConfidenceCount = candidates.filter(
     (candidate) =>
-      Number(candidate.confidenceScore) >= 90 && !candidate.duplicateOf
+      candidate.status === "pending" &&
+      !candidate.needsReview &&
+      Number(candidate.confidenceScore) >= 90 &&
+      !candidate.duplicateOf
   ).length;
 
   return (
@@ -728,6 +735,26 @@ export default function EventImportReviewScreen() {
             key={getCandidateId(candidate)}
             style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
           >
+            {candidate.needsReview ? (
+              <View
+                style={[
+                  styles.reviewBanner,
+                  {
+                    borderColor: theme.accent,
+                    backgroundColor: theme.accentSoft || theme.background,
+                  },
+                ]}
+              >
+                <Text style={[styles.reviewBannerText, { color: theme.text }]}>
+                  {candidate.sourceMissingSince
+                    ? "Possibly deleted/cancelled from source"
+                    : "Source details changed"}
+                </Text>
+                <Text style={[styles.reviewBannerMeta, { color: theme.textMuted }]}>
+                  {candidate.reviewReason || "Review this imported event before changing the live listing."}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleWrap}>
                 <Text style={[styles.title, { color: theme.text }]}>{candidate.title}</Text>
@@ -749,6 +776,12 @@ export default function EventImportReviewScreen() {
                 {candidate.importNotes}
               </Text>
             ) : null}
+            {candidate.sourceChangeDiff &&
+            Object.keys(candidate.sourceChangeDiff).length ? (
+              <Text style={[styles.notes, { color: theme.textMuted }]}>
+                Changed fields: {Object.keys(candidate.sourceChangeDiff).join(", ")}
+              </Text>
+            ) : null}
             <View style={styles.rowActions}>
               <Pressable
                 disabled={working}
@@ -760,7 +793,7 @@ export default function EventImportReviewScreen() {
                 ]}
               >
                 <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
-                  Approve
+                  {candidate.status === "approved" ? "Apply Update" : "Approve"}
                 </Text>
               </Pressable>
               <Pressable
@@ -1409,6 +1442,22 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: "900", marginBottom: 4 },
   meta: { fontSize: 12, lineHeight: 17 },
   notes: { fontSize: 12, lineHeight: 17, marginTop: 8 },
+  reviewBanner: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  reviewBannerText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "900",
+  },
+  reviewBannerMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
   score: { fontSize: 22, fontWeight: "900" },
   sourceStatus: { fontSize: 12, fontWeight: "900" },
   rowActions: {
