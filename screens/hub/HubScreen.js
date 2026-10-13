@@ -270,6 +270,7 @@ export default function HubScreen({ route }) {
         fetchEventsFromApi({
           page: 1,
           limit: DASHBOARD_EVENTS_LIMIT,
+          compact: true,
           listingType: "events",
           dateFilter: "Next 12 months",
           forceRefresh,

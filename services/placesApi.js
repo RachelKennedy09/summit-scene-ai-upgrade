@@ -1,4 +1,8 @@
 import { toUserFriendlyError } from "../utils/friendlyErrors";
+import {
+  getPopularPlaceSuggestions,
+  mergePlaceSuggestions,
+} from "../utils/placeSuggestions";
 
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -115,10 +119,12 @@ function buildManualAddressSuggestion(query, town) {
 }
 
 export async function searchAddressSuggestions(query, town) {
+  const popularSuggestions = getPopularPlaceSuggestions(query, town);
+
   try {
     const trimmedQuery = typeof query === "string" ? query.trim() : "";
     if (trimmedQuery.length < 3) {
-      return [];
+      return popularSuggestions;
     }
 
     const params = new URLSearchParams({
@@ -140,11 +146,18 @@ export async function searchAddressSuggestions(query, town) {
       );
     }
 
-    return Array.isArray(data) ? data : [];
+    return mergePlaceSuggestions(
+      popularSuggestions,
+      Array.isArray(data) ? data : []
+    ).slice(0, 8);
   } catch (error) {
     const manualSuggestion = buildManualAddressSuggestion(query, town);
-    if (manualSuggestion.length) {
-      return manualSuggestion;
+    const fallbackSuggestions = mergePlaceSuggestions(
+      popularSuggestions,
+      manualSuggestion
+    );
+    if (fallbackSuggestions.length) {
+      return fallbackSuggestions.slice(0, 8);
     }
 
     throw toUserFriendlyError(

@@ -1,3 +1,8 @@
+import {
+  getPopularPlaceSuggestions,
+  mergePlaceSuggestions,
+} from "../../utils/placeSuggestions.js";
+
 const GEOCODING_TIMEOUT_MS = 12000;
 const DEFAULT_GEOCODER_USER_AGENT = "SummitScene/1.0";
 const AUTOCOMPLETE_LIMIT = 5;
@@ -179,8 +184,9 @@ function buildManualAddressSuggestion(query, town) {
 
 export async function autocompleteEventAddresses({ query, town }) {
   const normalizedQuery = normalizeSearchQuery(query);
+  const popularSuggestions = getPopularPlaceSuggestions(query, town);
   if (!normalizedQuery || normalizedQuery.length < 3) {
-    return [];
+    return popularSuggestions;
   }
 
   const queries = buildAutocompleteQueries(normalizedQuery, town);
@@ -244,18 +250,28 @@ export async function autocompleteEventAddresses({ query, town }) {
       }
     }
 
-    const trimmedSuggestions = suggestions.slice(0, AUTOCOMPLETE_LIMIT);
-    if (trimmedSuggestions.length) {
-      return trimmedSuggestions;
+    const mergedSuggestions = mergePlaceSuggestions(
+      popularSuggestions,
+      suggestions
+    ).slice(0, AUTOCOMPLETE_LIMIT);
+    if (mergedSuggestions.length) {
+      return mergedSuggestions;
     }
 
     const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
-    return manualSuggestion ? [manualSuggestion] : [];
+    return mergePlaceSuggestions(popularSuggestions, manualSuggestion).slice(
+      0,
+      AUTOCOMPLETE_LIMIT
+    );
   } catch (error) {
     if (error?.name === "AbortError") {
       const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
-      if (manualSuggestion) {
-        return [manualSuggestion];
+      const fallbackSuggestions = mergePlaceSuggestions(
+        popularSuggestions,
+        manualSuggestion
+      ).slice(0, AUTOCOMPLETE_LIMIT);
+      if (fallbackSuggestions.length) {
+        return fallbackSuggestions;
       }
 
       throw new Error("Address suggestions timed out. Please try again.");
@@ -263,7 +279,10 @@ export async function autocompleteEventAddresses({ query, town }) {
 
     console.warn("Autocomplete failed:", error.message);
     const manualSuggestion = buildManualAddressSuggestion(normalizedQuery, town);
-    return manualSuggestion ? [manualSuggestion] : [];
+    return mergePlaceSuggestions(popularSuggestions, manualSuggestion).slice(
+      0,
+      AUTOCOMPLETE_LIMIT
+    );
   } finally {
     clearTimeout(timeoutId);
   }
