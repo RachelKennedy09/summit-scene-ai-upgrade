@@ -427,14 +427,14 @@ export default function BuddyPostCard({
   }
 
   function handleOpenProfile(profile) {
-    if (requireAccount("Log in or create an account to view profiles.")) {
+    if (requireAccount("Log in with an existing account to view profiles.")) {
       return;
     }
     onOpenProfile?.(profile);
   }
 
   async function handleToggleInterested() {
-    if (requireAccount("Log in or create an account to show interest.")) return;
+    if (requireAccount("Log in with an existing account to show interest.")) return;
     if (!onToggleInterested || updatingInterest) return;
 
     try {
@@ -446,14 +446,14 @@ export default function BuddyPostCard({
   }
 
   function handleStartReply() {
-    if (requireAccount("Log in or create an account to reply.")) {
+    if (requireAccount("Log in with an existing account to reply.")) {
       return;
     }
     setReplyOpen((current) => !current);
   }
 
   async function handleSubmitReply() {
-    if (requireAccount("Log in or create an account to reply.")) return;
+    if (requireAccount("Log in with an existing account to reply.")) return;
     const trimmedReply = replyText.trim();
     if (!trimmedReply || !onSubmitReply || submittingReply) return;
 
@@ -758,7 +758,7 @@ export default function BuddyPostCard({
       <Pressable
         style={({ pressed }) => [styles.reportLink, pressed && styles.pressed]}
         onPress={() => {
-          if (requireAccount("Log in or create an account to submit a report.")) {
+          if (requireAccount("Log in with an existing account to submit a report.")) {
             return;
           }
           onReport?.({

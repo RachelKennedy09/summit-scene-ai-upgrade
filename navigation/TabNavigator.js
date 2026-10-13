@@ -1,5 +1,5 @@
 // navigation/TabNavigator.js
-// Bottom tab navigation for the app - Hub, Map, Community, Account
+// Bottom tab navigation for the app - Hub, Map, Account
 // Verified businesses also get a Create tab for official events.
 
 import React from "react";
@@ -9,9 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import HubScreen from "../screens/hub/HubScreen";
 import MapScreen from "../screens/map/MapScreen";
 import MyEventsScreen from "../screens/events/MyEventsScreen";
-import CommunityScreen from "../screens/community/CommunityScreen";
 import AccountScreen from "../screens/account/AccountScreen";
-import AuthGateScreen from "../screens/auth/AuthGateScreen";
 
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -55,8 +53,6 @@ export default function TabNavigator() {
             iconName = focused ? "map" : "map-outline";
           } else if (route.name === "MyEvents") {
             iconName = focused ? "calendar" : "calendar-outline";
-          } else if (route.name === "Community") {
-            iconName = focused ? "chatbubbles" : "chatbubbles-outline";
           } else if (route.name === "Account") {
             iconName = focused ? "person" : "person-outline";
           }
@@ -92,13 +88,6 @@ export default function TabNavigator() {
           options={{ title: "Manage" }}
         />
       )}
-
-      <Tab.Screen
-        name="Community"
-        component={user ? CommunityScreen : AuthGateScreen}
-        options={{ title: "Community" }}
-        initialParams={{ mode: "community" }}
-      />
 
       {/* Everyone gets Account */}
       <Tab.Screen

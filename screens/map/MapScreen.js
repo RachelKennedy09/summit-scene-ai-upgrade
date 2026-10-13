@@ -1442,8 +1442,8 @@ export default function MapScreen({ route }) {
                   {isBusinessMyEventsEmpty
                     ? "Your business events do not match these filters. You can post a new official event."
                     : selectedDateFilter === "Today"
-                      ? "No events on the map today. Try upcoming dates, browse all dates, or check the Community tab for local plans and intros."
-                      : "No events match this town + date range. Try another date range or check the Community tab for local plans and intros."}
+                      ? "No events on the map today. Try upcoming dates or browse all dates."
+                      : "No events match this town + date range. Try another date range."}
                 </Text>
                 {isBusinessMyEventsEmpty ? (
                   <View style={styles.emptyActions}>
@@ -1490,26 +1490,6 @@ export default function MapScreen({ route }) {
                         </Text>
                       </Pressable>
                     ))}
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.emptyAction,
-                        {
-                          backgroundColor: theme.card,
-                          borderColor: theme.border,
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                      onPress={() => navigation.navigate("Community")}
-                    >
-                      <Text
-                        style={[
-                          styles.emptyActionText,
-                          { color: theme.text },
-                        ]}
-                      >
-                        Open Community
-                      </Text>
-                    </Pressable>
                   </View>
                 )}
               </View>

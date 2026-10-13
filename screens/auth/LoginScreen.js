@@ -22,7 +22,6 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
-import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 
 const REMEMBERED_EMAIL_KEY = "rememberedLoginEmail";
 
@@ -120,9 +119,8 @@ function LoginScreen() {
             </View>
 
             <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-              Log in to discover local events, connect with the community, and
-              manage your Summit Scene profile across Banff, Canmore, and Lake
-              Louise.
+              Log in only if you manage Summit Scene, business tools, or event
+              imports. Everyone can browse and share events without an account.
             </Text>
 
             {authNoticeMessage ? (
@@ -140,20 +138,6 @@ function LoginScreen() {
                 </Text>
               </View>
             ) : null}
-
-            <SocialSignInButtons
-              disabled={isSubmitting || isAuthLoading}
-              onBeforeSubmit={() => setErrorMessage("")}
-              onBusyChange={setIsSubmitting}
-            />
-
-            <View style={styles.dividerRow}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: theme.textMuted }]}>
-                or
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            </View>
 
             {/* EMAIL FIELD */}
             <View style={styles.inputGroup}>
@@ -295,15 +279,6 @@ function LoginScreen() {
               textStyle={{
                 color: theme.onAccent || theme.textOnAccent || "#FFFFFF",
               }}
-            />
-
-            <AppButton
-              title="Sign Up"
-              onPress={() => navigation.navigate("Register")}
-              disabled={isSubmitting || isAuthLoading}
-              variant="outline"
-              size="lg"
-              style={styles.secondaryAuthButton}
             />
 
             <AppButton

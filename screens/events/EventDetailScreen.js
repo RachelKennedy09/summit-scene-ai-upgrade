@@ -231,10 +231,6 @@ export default function EventDetailScreen({ route }) {
     Alert.alert("Account required", message, [
       { text: "Not now", style: "cancel" },
       { text: "Log In", onPress: () => navigation.navigate("Login") },
-      {
-        text: "Create Account",
-        onPress: () => navigation.navigate("Register"),
-      },
     ]);
   }
 
@@ -391,7 +387,7 @@ export default function EventDetailScreen({ route }) {
 
     if (!token) {
       showAccountRequired(
-        "Log in or create an account to create buddy posts and make plans with other people."
+        "Log in with an existing admin or business account to create buddy posts."
       );
       return;
     }
@@ -425,7 +421,7 @@ export default function EventDetailScreen({ route }) {
 
     if (!token) {
       showAccountRequired(
-        "Log in or create an account to mark that you're going."
+        "Log in with an existing account to mark that you're going."
       );
       return;
     }
@@ -459,7 +455,7 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      showAccountRequired("Log in or create an account to save events.");
+      showAccountRequired("Log in with an existing account to save events.");
       return;
     }
 
@@ -510,7 +506,7 @@ export default function EventDetailScreen({ route }) {
     }
 
     if (!token) {
-      showAccountRequired("Log in or create an account to set reminders.");
+      showAccountRequired("Log in with an existing account to set reminders.");
       return;
     }
 
@@ -555,7 +551,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleToggleInterested = async (post) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to show interest.");
+      showAccountRequired("Log in with an existing account to show interest.");
       return;
     }
 
@@ -570,7 +566,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleSubmitBuddyReply = async (post, text) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to reply.");
+      showAccountRequired("Log in with an existing account to reply.");
       return;
     }
 
@@ -585,7 +581,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleSubmitBuddyReplyResponse = async (post, reply, text) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to reply.");
+      showAccountRequired("Log in with an existing account to reply.");
       return;
     }
 
@@ -605,7 +601,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleToggleBuddyReplyLike = async (post, reply) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to like comments.");
+      showAccountRequired("Log in with an existing account to like comments.");
       return;
     }
 
@@ -624,7 +620,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleUpdateBuddyReply = async (post, reply, text) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to edit replies.");
+      showAccountRequired("Log in with an existing account to edit replies.");
       return;
     }
 
@@ -643,7 +639,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleDeleteBuddyReply = (post, reply) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to manage replies.");
+      showAccountRequired("Log in with an existing account to manage replies.");
       return;
     }
 
@@ -671,7 +667,7 @@ export default function EventDetailScreen({ route }) {
   const handleReport = (target) => {
     if (!token) {
       showAccountRequired(
-        "Log in or create an account to report content and use safety tools."
+        "Log in with an existing account to report content and use safety tools."
       );
       return;
     }
@@ -691,7 +687,7 @@ export default function EventDetailScreen({ route }) {
 
   const handleBlockProfile = (targetUser) => {
     if (!token) {
-      showAccountRequired("Log in or create an account to block users.");
+      showAccountRequired("Log in with an existing account to block users.");
       return;
     }
 

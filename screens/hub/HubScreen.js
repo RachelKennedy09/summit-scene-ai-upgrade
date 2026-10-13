@@ -27,13 +27,11 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 import EventCard from "../../components/cards/EventCard";
-import BuddyPostCard from "../../components/cards/BuddyPostCard";
 import HubFilters from "../../components/hub/HubFilters";
 
 import {
   fetchEvents as fetchEventsFromApi,
 } from "../../services/eventsApi";
-import { fetchBuddyPosts } from "../../services/buddyPostsApi";
 import { requestCurrentLocation } from "../../services/locationService";
 import { trackAnalytics } from "../../services/analyticsApi";
 import { colors } from "../../theme/colors";
@@ -202,7 +200,7 @@ function getFirstName(user) {
 }
 
 export default function HubScreen({ route }) {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
@@ -231,9 +229,7 @@ export default function HubScreen({ route }) {
 
   // Events + loading state
   const [events, setEvents] = useState([]);
-  const [buddySearchResults, setBuddySearchResults] = useState([]);
   const [dashboardEvents, setDashboardEvents] = useState([]);
-  const [communityPreviewPosts, setCommunityPreviewPosts] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -265,7 +261,7 @@ export default function HubScreen({ route }) {
       setDashboardLoading(true);
       setDashboardError("");
 
-      const [todayData, eventData, posts] = await Promise.all([
+      const [todayData, eventData] = await Promise.all([
         fetchEventsFromApi({
           listingType: "events",
           dateFilter: "Today",
@@ -278,7 +274,6 @@ export default function HubScreen({ route }) {
           dateFilter: "Next 12 months",
           forceRefresh,
         }),
-        fetchBuddyPosts({ status: "open", limit: 3 }, token).catch(() => []),
       ]);
 
       if (dashboardRequestIdRef.current !== requestId) {
@@ -296,7 +291,6 @@ export default function HubScreen({ route }) {
       });
 
       setDashboardEvents(mergedEvents);
-      setCommunityPreviewPosts(Array.isArray(posts) ? posts.slice(0, 3) : []);
     } catch (error) {
       if (dashboardRequestIdRef.current !== requestId) {
         return;
@@ -306,13 +300,12 @@ export default function HubScreen({ route }) {
         error.message || "Could not load today's Bow Valley snapshot."
       );
       setDashboardEvents([]);
-      setCommunityPreviewPosts([]);
     } finally {
       if (dashboardRequestIdRef.current === requestId) {
         setDashboardLoading(false);
       }
     }
-  }, [token]);
+  }, []);
 
   const loadEvents = useCallback(async ({ nextPage = 1, mode = "initial" } = {}) => {
     const requestId = loadRequestIdRef.current + 1;
@@ -347,14 +340,6 @@ export default function HubScreen({ route }) {
       });
 
       const nextEvents = Array.isArray(data?.events) ? data.events : [];
-      let nextBuddyPosts = [];
-
-      if (activeSearch && nextPage === 1) {
-        nextBuddyPosts = await fetchBuddyPosts(
-          { search: activeSearch, status: "open" },
-          token
-        );
-      }
 
       if (!isCurrentRequest()) {
         return;
@@ -363,9 +348,6 @@ export default function HubScreen({ route }) {
       setEvents((current) =>
         mode === "loadMore" ? [...current, ...nextEvents] : nextEvents
       );
-      if (mode !== "loadMore") {
-        setBuddySearchResults(nextBuddyPosts);
-      }
       setPage(data.page || nextPage);
       setHasMore(Boolean(data.hasMore));
       setTotalCount(Number.isFinite(data.totalCount) ? data.totalCount : 0);
@@ -387,7 +369,7 @@ export default function HubScreen({ route }) {
         setLoadingMore(false);
       }
     }
-  }, [selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedStartDate, selectedEndDate, isNearMeEnabled, nearMeLocation, activeSearch, token]);
+  }, [selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedStartDate, selectedEndDate, isNearMeEnabled, nearMeLocation, activeSearch]);
 
   // Reload when the Hub is focused and whenever filters/search change.
   useEffect(() => {
@@ -422,7 +404,6 @@ export default function HubScreen({ route }) {
     shouldRestoreBrowseScrollRef.current = false;
     hasLoadedEventsRef.current = false;
     setEvents([]);
-    setBuddySearchResults([]);
     setTotalCount(0);
     setHasMore(false);
     setPage(1);
@@ -517,7 +498,6 @@ export default function HubScreen({ route }) {
     hasLoadedEventsRef.current = false;
     if (!trimmedSearch) {
       setActiveSearch("");
-      setBuddySearchResults([]);
       return;
     }
 
@@ -542,7 +522,6 @@ export default function HubScreen({ route }) {
     setSelectedDateFilter(DEFAULT_DATE_FILTER);
     setSelectedStartDate("");
     setSelectedEndDate("");
-    setBuddySearchResults([]);
   }, []);
 
   const showEventBrowser = useCallback(
@@ -564,7 +543,6 @@ export default function HubScreen({ route }) {
       setNearMeMessage("");
       setSearchQuery("");
       setActiveSearch("");
-      setBuddySearchResults([]);
       setIsBrowseMode(true);
     },
     [prepareFilterRefresh]
@@ -722,33 +700,8 @@ export default function HubScreen({ route }) {
           ];
         })();
 
-    if (!activeSearch || !buddySearchResults.length) {
-      return eventItems;
-    }
-
-    return [
-      {
-        _listType: "sectionHeader",
-        id: "event-search-results",
-        title: "Event results",
-        subtitle: `${events.length} matching event${events.length === 1 ? "" : "s"}.`,
-      },
-      ...eventItems,
-      {
-        _listType: "sectionHeader",
-        id: "buddy-search-results",
-        title: "Community and buddy posts",
-        subtitle: `${buddySearchResults.length} matching post${
-          buddySearchResults.length === 1 ? "" : "s"
-        }.`,
-      },
-      ...buddySearchResults.map((post) => ({
-        ...post,
-        _listType: "buddyPost",
-        _searchKey: `buddy-${post._id}`,
-      })),
-    ];
-  }, [events, isShowingInterestFirst, userInterestCategories, activeSearch, buddySearchResults]);
+    return eventItems;
+  }, [events, isShowingInterestFirst, userInterestCategories]);
 
   const handleClearFilters = useCallback(() => {
     browseScrollOffsetRef.current = 0;
@@ -765,7 +718,6 @@ export default function HubScreen({ route }) {
     setNearMeMessage("");
     setSearchQuery("");
     setActiveSearch("");
-    setBuddySearchResults([]);
   }, []);
 
   useEffect(() => {
@@ -810,8 +762,7 @@ export default function HubScreen({ route }) {
 
     if (
       activeSearch &&
-      events.length === 0 &&
-      buddySearchResults.length === 0
+      events.length === 0
     ) {
       return `No matches found for "${activeSearch}". Try a simpler word like music, book, club, yoga, concert, or ride share.`;
     }
@@ -822,7 +773,7 @@ export default function HubScreen({ route }) {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No nearby events found right now. Try turning off Near me, choosing a town, or checking Community for local plans and questions.";
+      return "No nearby events found right now. Try turning off Near me, choosing a town, or widening the date range.";
     }
 
     if (
@@ -830,23 +781,23 @@ export default function HubScreen({ route }) {
       selectedTown === "All" &&
       selectedDateFilter === "All Dates"
     ) {
-      return "No events available yet. Check back soon, or open Community for local plans, questions, groups, jobs, and notices.";
+      return "No events available yet. Check back soon or try a wider date range.";
     }
 
     if (selectedCategory === "All" && selectedTown !== "All") {
-      return `No ${listingPlural} found in ${selectedTown}. Try another town, a wider date range, or Community.`;
+      return `No ${listingPlural} found in ${selectedTown}. Try another town or a wider date range.`;
     }
 
     if (selectedTown === "All" && selectedCategory !== "All") {
-      return `No ${selectedCategory} ${listingPlural} found. Try another category, a wider date range, or Community.`;
+      return `No ${selectedCategory} ${listingPlural} found. Try another category or a wider date range.`;
     }
 
     if (selectedDateFilter !== "All Dates") {
-      return `No ${listingPlural} match your filters for ${selectedDateLabel.toLowerCase()}. Try a wider date range or open Community.`;
+      return `No ${listingPlural} match your filters for ${selectedDateLabel.toLowerCase()}. Try a wider date range.`;
     }
 
     return `No ${selectedCategory} ${listingPlural} found in ${selectedTown}.`;
-  }, [selectedCategory, selectedListingType, selectedTown, selectedDateFilter, selectedDateLabel, isNearMeEnabled, activeSearch, events.length, buddySearchResults.length]);
+  }, [selectedCategory, selectedListingType, selectedTown, selectedDateFilter, selectedDateLabel, isNearMeEnabled, activeSearch, events.length]);
 
   // Human-readable summary of the filtered results.
   const resultSummary = useMemo(() => {
@@ -866,24 +817,13 @@ export default function HubScreen({ route }) {
         : ` (${selectedDateLabel.toLowerCase()})`;
 
     if (count === 0) {
-      if (activeSearch && buddySearchResults.length) {
-        return `No events found for "${activeSearch}", but ${buddySearchResults.length} community post${
-          buddySearchResults.length === 1 ? "" : "s"
-        } matched.`;
-      }
-
       return isNearMeEnabled
         ? `No ${listingPlural} found within ${NEAR_ME_RADIUS_KM} km of you.`
         : `No ${listingPlural} match your current filters.`;
     }
 
     if (activeSearch) {
-      const buddyText = buddySearchResults.length
-        ? ` and ${buddySearchResults.length} community post${
-            buddySearchResults.length === 1 ? "" : "s"
-          }`
-        : "";
-      return `Showing ${count} ${count === 1 ? listingSingular : listingPlural}${buddyText} for "${activeSearch}".`;
+      return `Showing ${count} ${count === 1 ? listingSingular : listingPlural} for "${activeSearch}".`;
     }
 
     if (isShowingInterestFirst) {
@@ -899,27 +839,24 @@ export default function HubScreen({ route }) {
     return isNearMeEnabled
       ? `Showing ${count} ${listingPlural} near you in ${townLabel} for ${categoryLabel}${dateLabel}.`
       : `Showing ${count} ${listingPlural} in ${townLabel} for ${categoryLabel}${dateLabel}.`;
-  }, [totalCount, selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedDateLabel, isNearMeEnabled, isShowingInterestFirst, activeSearch, buddySearchResults.length]);
+  }, [totalCount, selectedTown, selectedListingType, selectedCategory, selectedDateFilter, selectedDateLabel, isNearMeEnabled, isShowingInterestFirst, activeSearch]);
 
   const searchStatus = useMemo(() => {
     if (!activeSearch) return "";
 
     const eventCount = totalCount;
-    const buddyCount = buddySearchResults.length;
-    const totalMatches = eventCount + buddyCount;
-
     if (loading && !refreshing) {
       return `Searching for "${activeSearch}"...`;
     }
 
-    if (totalMatches === 0) {
+    if (eventCount === 0) {
       return `0 results found for "${activeSearch}". Try a broader word or clear filters.`;
     }
 
-    return `${totalMatches} result${totalMatches === 1 ? "" : "s"} found: ${eventCount} event${
+    return `${eventCount} event${
       eventCount === 1 ? "" : "s"
-    }, ${buddyCount} community post${buddyCount === 1 ? "" : "s"}.`;
-  }, [activeSearch, totalCount, buddySearchResults.length, loading, refreshing]);
+    } found for "${activeSearch}".`;
+  }, [activeSearch, totalCount, loading, refreshing]);
 
   const hasActiveFilters =
     selectedTown !== "All" ||
@@ -997,17 +934,6 @@ export default function HubScreen({ route }) {
         );
       }
 
-      if (item._listType === "buddyPost") {
-        return (
-          <BuddyPostCard
-            post={item}
-            theme={theme}
-            currentUserId={user?._id || user?.id}
-            onOpenEvent={handleOpenEvent}
-          />
-        );
-      }
-
       return (
         <EventCard
           event={item}
@@ -1016,7 +942,7 @@ export default function HubScreen({ route }) {
         />
       );
     },
-    [handleEventWebsiteClick, handleOpenEvent, theme, user?._id, user?.id]
+    [handleEventWebsiteClick, handleOpenEvent, theme]
   );
 
   const renderFooter = useCallback(() => {
@@ -1338,61 +1264,6 @@ export default function HubScreen({ route }) {
           </View>
         ) : null}
 
-        <View style={styles.dashboardSection}>
-          <View style={styles.dashboardSectionHeader}>
-            <Text style={[styles.dashboardSectionTitle, { color: theme.text }]}>
-              Around the Community
-            </Text>
-            <Pressable
-              onPress={() =>
-                navigation.navigate("Community", { resetToHomeAt: Date.now() })
-              }
-            >
-              <Text style={[styles.sectionActionText, { color: theme.accent }]}>
-                View Community
-              </Text>
-            </Pressable>
-          </View>
-          {communityPreviewPosts.length ? (
-            communityPreviewPosts.map((post) => (
-              <Pressable
-                key={post._id}
-                onPress={() =>
-                  navigation.navigate("Community", { resetToHomeAt: Date.now() })
-                }
-                style={[
-                  styles.communityPreviewCard,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                ]}
-              >
-                <Text
-                  style={[styles.communityPreviewTitle, { color: theme.text }]}
-                  numberOfLines={1}
-                >
-                  {post.title || post.headline || "Community post"}
-                </Text>
-                <Text
-                  style={[styles.communityPreviewMeta, { color: theme.textMuted }]}
-                  numberOfLines={2}
-                >
-                  {[post.type, post.town, post.date].filter(Boolean).join(" | ")}
-                </Text>
-              </Pressable>
-            ))
-          ) : (
-            <View
-              style={[
-                styles.emptyDashboardCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <Text style={[styles.emptyDashboardText, { color: theme.textMuted }]}>
-                Community posts will appear here when locals are looking to connect.
-              </Text>
-            </View>
-          )}
-        </View>
-
         <Pressable
           onPress={() =>
             showEventBrowser({ dateFilter: "All Dates", listingType: "events" })
@@ -1406,7 +1277,6 @@ export default function HubScreen({ route }) {
       </View>
     );
   }, [
-    communityPreviewPosts,
     dashboardError,
     dashboardLoading,
     dashboardSections,
@@ -1414,7 +1284,6 @@ export default function HubScreen({ route }) {
     greetingLabel,
     hiddenDiscoveryCategoryCount,
     loadDashboardData,
-    navigation,
     renderDashboardEventCard,
     showAllDiscoveryCategories,
     showEventBrowser,
@@ -1623,13 +1492,9 @@ export default function HubScreen({ route }) {
                     styles.emptyAction,
                     { backgroundColor: theme.accent },
                   ]}
-                  onPress={() =>
-                    navigation.navigate("Community", {
-                      resetToHomeAt: Date.now(),
-                    })
-                  }
+                  onPress={handleClearFilters}
                 >
-                  <Text style={styles.emptyActionText}>Open Community</Text>
+                  <Text style={styles.emptyActionText}>Clear filters</Text>
                 </Pressable>
               </View>
             </View>

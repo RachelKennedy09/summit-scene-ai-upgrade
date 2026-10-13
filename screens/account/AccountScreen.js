@@ -25,7 +25,6 @@ import { useTheme } from "../../context/ThemeContext";
 import ProfileCard from "../../components/account/ProfileCard";
 import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
-import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 import { fetchAdminDashboardStats } from "../../services/adminApi";
 import { fetchAnalyticsSummary } from "../../services/analyticsApi";
 import {
@@ -322,43 +321,16 @@ function AccountScreen() {
         style={[styles.safeArea, { backgroundColor: theme.background }]}
       >
         <View style={styles.container}>
-          <Text style={[styles.title, { color: theme.text }]}>Hello User!</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Admin Login</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            You can browse events, tours, specials, jobs, businesses, and
-            community posts without an account. Log in or create an account to
-            post, comment, like, save events, receive notifications, report,
-            block, or manage a profile.
+            You can browse and share events without an account. Log in only if
+            you manage Summit Scene, business tools, or event imports.
           </Text>
-          <SocialSignInButtons disabled={isAuthLoading} />
-          <View style={styles.signedOutDividerRow}>
-            <View
-              style={[
-                styles.signedOutDividerLine,
-                { backgroundColor: theme.border },
-              ]}
-            />
-            <Text style={[styles.signedOutDividerText, { color: theme.textMuted }]}>
-              or
-            </Text>
-            <View
-              style={[
-                styles.signedOutDividerLine,
-                { backgroundColor: theme.border },
-              ]}
-            />
-          </View>
           <AppButton
             title="Log In"
             onPress={() => navigation.navigate("Login")}
             size="lg"
             style={{ marginTop: 16 }}
-          />
-          <AppButton
-            title="Create Account"
-            onPress={() => navigation.navigate("Register")}
-            variant="outline"
-            size="lg"
-            style={{ marginTop: 10 }}
           />
           <Pressable onPress={() => navigation.navigate("Legal")}>
             <Text style={[styles.legalLinkText, { color: theme.textMuted }]}>
