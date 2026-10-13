@@ -666,6 +666,13 @@ function buildCategoryListingConditions(values) {
   ];
 }
 
+function buildRestaurantSpecialTextConditions() {
+  return [
+    { title: { $regex: /\b(happy\s*hour|daily\s+specials?|drink\s+specials?|food\s+specials?)\b/i } },
+    { description: { $regex: /\b(happy\s*hour|daily\s+specials?|drink\s+specials?|food\s+specials?)\b/i } },
+  ];
+}
+
 const TOUR_EVENT_TAG_EXCLUSIONS = [
   "Canada Day",
   "Christmas Markets",
@@ -711,14 +718,17 @@ function buildToursListingConditions() {
 }
 
 function buildRestaurantSpecialListingConditions() {
-  return buildCategoryListingConditions([
-    "Restaurant Specials",
-    "Brunch",
-    "Cocktail Nights",
-    "Coffee",
-    "Breweries",
-    "Wine Tastings",
-  ]);
+  return [
+    ...buildCategoryListingConditions([
+      "Restaurant Specials",
+      "Brunch",
+      "Cocktail Nights",
+      "Coffee",
+      "Breweries",
+      "Wine Tastings",
+    ]),
+    ...buildRestaurantSpecialTextConditions(),
+  ];
 }
 
 function buildClassListingConditions() {

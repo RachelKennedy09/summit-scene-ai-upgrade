@@ -172,6 +172,20 @@ function eventHasAnyTextValue(event, values) {
   return eventValues.some((eventValue) => normalizedValues.includes(eventValue));
 }
 
+function eventHasRestaurantSpecialText(event) {
+  const text = [
+    event?.title,
+    event?.description,
+    event?.locationName,
+    event?.location,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /\b(happy\s*hour|daily\s+specials?|drink\s+specials?|food\s+specials?)\b/.test(text);
+}
+
 const TOUR_LISTING_VALUES = [
   "Canoe Tours",
   "Distillery Tours",
@@ -204,14 +218,16 @@ function isTourListing(event) {
 }
 
 function isRestaurantSpecialListing(event) {
-  return eventHasAnyTextValue(event, [
-    "Restaurant Specials",
-    "Brunch",
-    "Cocktail Nights",
-    "Coffee",
-    "Breweries",
-    "Wine Tastings",
-  ]);
+  return (
+    eventHasAnyTextValue(event, [
+      "Restaurant Specials",
+      "Brunch",
+      "Cocktail Nights",
+      "Coffee",
+      "Breweries",
+      "Wine Tastings",
+    ]) || eventHasRestaurantSpecialText(event)
+  );
 }
 
 function isClassListing(event) {
@@ -411,20 +427,26 @@ export async function fetchEvents(options = {}) {
       );
     }
 
+    const filteredData = filterFetchedEventsByListingType(data, options.listingType);
+
     if (expectsPaginatedResponse) {
       const result = {
-        events: sortEventsByUpcomingDate(data.events),
-        page: data.page || options.page || 1,
-        limit: data.limit || options.limit || 20,
-        totalCount: Number.isFinite(data.totalCount) ? data.totalCount : 0,
-        totalPages: Number.isFinite(data.totalPages) ? data.totalPages : 1,
-        hasMore: Boolean(data.hasMore),
+        events: sortEventsByUpcomingDate(filteredData.events),
+        page: filteredData.page || options.page || 1,
+        limit: filteredData.limit || options.limit || 20,
+        totalCount: Number.isFinite(filteredData.totalCount)
+          ? filteredData.totalCount
+          : 0,
+        totalPages: Number.isFinite(filteredData.totalPages)
+          ? filteredData.totalPages
+          : 1,
+        hasMore: Boolean(filteredData.hasMore),
       };
       setCachedEventsList(url, result);
       return result;
     }
 
-    const result = sortEventsByUpcomingDate(data);
+    const result = sortEventsByUpcomingDate(filteredData);
     setCachedEventsList(url, result);
     return result;
   } catch (error) {

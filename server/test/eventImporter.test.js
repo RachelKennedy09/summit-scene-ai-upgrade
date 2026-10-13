@@ -3,6 +3,7 @@ import ImportCandidate from "../models/ImportCandidate.js";
 import { parseEventDate, parseEventTime } from "../services/eventImporter/dateParsing.js";
 import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/detectDuplicate.js";
 import { extractEvents } from "../services/eventImporter/extractEvents.js";
+import { mapTourismDetailToExtractedEvent } from "../services/eventImporter/banffLakeLouiseSource.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
 
 describe("event importer helpers", () => {
@@ -875,6 +876,46 @@ describe("event importer helpers", () => {
     expect(events[0].sourceUrl).to.equal(
       "https://www.banfflakelouise.com/events/winter-festival"
     );
+  });
+
+  it("maps current Banff Lake Louise detail fields into venue and ticket info", () => {
+    const event = mapTourismDetailToExtractedEvent(
+      {
+        type: "event",
+        title: "Halloween at the Castle",
+        dateInfo: "Oct 31, 2026",
+        dates: [{ start: "2026-10-31T21:00:00-06:00" }],
+        locationLabel: "Rundle Bar at Fairmont Banff Springs",
+        memberTicketLink: {
+          link: "https://www.banff-springs-hotel.com/events/halloween-at-the-castle",
+          title: "Fairmont Banff Springs",
+        },
+      },
+      "https://www.banfflakelouise.com/events/halloween-at-the-castle",
+      "https://www.banfflakelouise.com/events",
+      {
+        "@type": "Event",
+        location: {
+          name: "Rundle Bar at Fairmont Banff Springs",
+          address: {
+            streetAddress: "405 Spray Ave",
+            addressLocality: "Banff",
+            addressRegion: "AB",
+            postalCode: "T1L1J4",
+          },
+        },
+      }
+    );
+
+    expect(event).to.include({
+      title: "Halloween at the Castle",
+      venue: "Rundle Bar at Fairmont Banff Springs",
+      address: "405 Spray Ave, Banff, AB, T1L1J4",
+      startTime: "9:00 PM",
+      ticketUrl:
+        "https://www.banff-springs-hotel.com/events/halloween-at-the-castle",
+      extractionMethod: "banff-lake-louise-detail",
+    });
   });
 
   it("detects likely duplicate existing events", () => {

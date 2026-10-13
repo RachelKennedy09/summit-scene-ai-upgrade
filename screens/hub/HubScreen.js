@@ -72,7 +72,7 @@ const DATE_FILTERS = [
 const EVENTS_PAGE_SIZE = 20;
 const DASHBOARD_EVENTS_LIMIT = 80;
 const NEAR_ME_RADIUS_KM = 15;
-const DEFAULT_LISTING_TYPE = "All";
+const DEFAULT_LISTING_TYPE = "events";
 const DEFAULT_DATE_FILTER = "Today";
 const EVENT_TIME_ZONE = "America/Edmonton";
 const FEATURED_DISCOVERY_CATEGORIES = [
@@ -257,7 +257,7 @@ export default function HubScreen({ route }) {
     0
   );
 
-  const loadDashboardData = useCallback(async () => {
+  const loadDashboardData = useCallback(async ({ forceRefresh = false } = {}) => {
     const requestId = dashboardRequestIdRef.current + 1;
     dashboardRequestIdRef.current = requestId;
 
@@ -269,12 +269,14 @@ export default function HubScreen({ route }) {
         fetchEventsFromApi({
           listingType: "events",
           dateFilter: "Today",
+          forceRefresh,
         }),
         fetchEventsFromApi({
           page: 1,
           limit: DASHBOARD_EVENTS_LIMIT,
           listingType: "events",
           dateFilter: "Next 12 months",
+          forceRefresh,
         }),
         fetchBuddyPosts({ status: "open", limit: 3 }, token).catch(() => []),
       ]);
@@ -403,7 +405,7 @@ export default function HubScreen({ route }) {
   }, [isFocused, loadDashboardData, loadEvents]);
 
   const handleRefresh = useCallback(() => {
-    loadDashboardData();
+    loadDashboardData({ forceRefresh: true });
     loadEvents({ nextPage: 1, mode: "refresh" });
   }, [loadDashboardData, loadEvents]);
 
@@ -1392,7 +1394,9 @@ export default function HubScreen({ route }) {
         </View>
 
         <Pressable
-          onPress={() => showEventBrowser({ dateFilter: "All Dates" })}
+          onPress={() =>
+            showEventBrowser({ dateFilter: "All Dates", listingType: "events" })
+          }
           style={[styles.browseAllButton, { backgroundColor: theme.accent }]}
         >
           <Text style={[styles.browseAllButtonText, { color: theme.textOnAccent }]}>

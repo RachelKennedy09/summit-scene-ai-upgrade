@@ -43,27 +43,112 @@ function formatAddress(address) {
   if (!address || typeof address !== "object") return "";
   return [
     address.address_1,
+    address.streetAddress,
     address.address_2,
-    address.city,
-    address.province,
-    address.postcode,
+    address.city || address.addressLocality,
+    address.province || address.addressRegion,
+    address.postcode || address.postalCode,
   ]
     .map(cleanText)
     .filter(Boolean)
     .join(", ");
 }
 
-function readDetailData(html) {
+function flattenJsonLdItems(item) {
+  if (!item) return [];
+  if (Array.isArray(item)) return item.flatMap(flattenJsonLdItems);
+  if (Array.isArray(item?.["@graph"])) return item["@graph"].flatMap(flattenJsonLdItems);
+  return [item];
+}
+
+function readJsonLdEvent($) {
+  let event = null;
+
+  $("script[type='application/ld+json']").each((_, element) => {
+    if (event) return;
+
+    try {
+      const parsed = JSON.parse($(element).contents().text());
+      event = flattenJsonLdItems(parsed).find((item) =>
+        String(item?.["@type"] || "").includes("Event")
+      );
+    } catch {
+      // Ignore malformed JSON-LD; the Next.js payload is still the primary source.
+    }
+  });
+
+  return event;
+}
+
+function readDetailPayload(html) {
   const $ = cheerio.load(html || "");
   const rawJson = $("#__NEXT_DATA__").text();
-  if (!rawJson) return null;
+  const jsonLdEvent = readJsonLdEvent($);
+  if (!rawJson) return { data: null, jsonLdEvent };
 
   try {
     const data = JSON.parse(rawJson)?.props?.pageProps?.data;
-    return data?._type === "event" ? data : null;
+    const isEvent = data?._type === "event" || data?.type === "event";
+    return { data: isEvent ? data : null, jsonLdEvent };
   } catch {
-    return null;
+    return { data: null, jsonLdEvent };
   }
+}
+
+function getPrimaryLocation(data) {
+  const contentLocations = Array.isArray(data?.content)
+    ? data.content.flatMap((section) => section?.locations || [])
+    : [];
+  const calloutLocations = Array.isArray(data?.locationCallOuts)
+    ? data.locationCallOuts.flatMap((item) => item?.locations || item || [])
+    : [];
+
+  return [...contentLocations, ...calloutLocations].find(
+    (item) => Number.isFinite(item?.lat) && Number.isFinite(item?.lng)
+  );
+}
+
+function mapTourismDetailToExtractedEvent(data, detailUrl, sourceUrl, jsonLdEvent) {
+  if (!data) return null;
+
+  const firstDate = Array.isArray(data.dates) ? data.dates[0] : null;
+  const button = Array.isArray(data.buttons) ? data.buttons[0] : null;
+  const memberTicketLink = data.memberTicketLink || {};
+  const exactLink =
+    memberTicketLink.link ||
+    button?.memberLink?.link ||
+    button?.external ||
+    button?.customButton?.url ||
+    jsonLdEvent?.offers?.url ||
+    "";
+  const location = getPrimaryLocation(data);
+  const jsonLdLocation = jsonLdEvent?.location || {};
+  const venue =
+    cleanText(data.displayVenue) ||
+    cleanText(data.venue) ||
+    cleanText(data.locationLabel) ||
+    cleanText(jsonLdLocation.name) ||
+    cleanText(memberTicketLink.title) ||
+    cleanText(button?.memberLink?.entity?.title);
+  const address =
+    formatAddress(data.address) ||
+    formatAddress(jsonLdLocation.address);
+
+  return {
+    title: cleanText(data.title),
+    dateText: cleanText(data.dateInfo || firstDate?.start),
+    startDate: firstDate?.start,
+    endDate: firstDate?.end,
+    startTime: formatTimeFromIso(firstDate?.start),
+    endTime: formatTimeFromIso(firstDate?.end),
+    venue,
+    address,
+    ticketUrl: resolveUrl(exactLink, sourceUrl),
+    sourceUrl: detailUrl,
+    latitude: location?.lat,
+    longitude: location?.lng,
+    extractionMethod: "banff-lake-louise-detail",
+  };
 }
 
 async function fetchEventDetail(item, sourceUrl) {
@@ -81,34 +166,8 @@ async function fetchEventDetail(item, sourceUrl) {
   });
   if (!response.ok) return null;
 
-  const data = readDetailData(await response.text());
-  if (!data) return null;
-
-  const firstDate = Array.isArray(data.dates) ? data.dates[0] : null;
-  const button = Array.isArray(data.buttons) ? data.buttons[0] : null;
-  const exactLink =
-    button?.memberLink?.link ||
-    button?.external ||
-    button?.customButton?.url ||
-    "";
-  const location = data.content
-    ?.flatMap((section) => section?.locations || [])
-    ?.find((item) => Number.isFinite(item?.lat) && Number.isFinite(item?.lng));
-
-  return {
-    title: cleanText(data.title),
-    dateText: cleanText(data.dateInfo || firstDate?.start),
-    startDate: firstDate?.start,
-    endDate: firstDate?.end,
-    startTime: formatTimeFromIso(firstDate?.start),
-    endTime: formatTimeFromIso(firstDate?.end),
-    venue: cleanText(data.displayVenue || data.venue || button?.memberLink?.entity?.title),
-    address: formatAddress(data.address),
-    ticketUrl: resolveUrl(exactLink, sourceUrl),
-    sourceUrl: detailUrl,
-    latitude: location?.lat,
-    longitude: location?.lng,
-  };
+  const { data, jsonLdEvent } = readDetailPayload(await response.text());
+  return mapTourismDetailToExtractedEvent(data, detailUrl, sourceUrl, jsonLdEvent);
 }
 
 function mapTourismItemToExtractedEvent(item, sourceUrl) {
@@ -116,6 +175,7 @@ function mapTourismItemToExtractedEvent(item, sourceUrl) {
 
   return {
     title: cleanText(item?.title),
+    description: cleanText(item?.cardSummary),
     category: cleanText(item?.tag),
     dateText: cleanText(item?.dateInfo || firstDate?.start),
     startDate: firstDate?.start,
@@ -224,4 +284,4 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
   return events;
 }
 
-export { mapTourismItemToExtractedEvent };
+export { mapTourismDetailToExtractedEvent, mapTourismItemToExtractedEvent };
