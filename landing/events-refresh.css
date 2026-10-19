@@ -68,7 +68,7 @@
 .events-home .organizer-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
 .events-home .button { font-size: 14px; gap: 18px; padding: 16px 22px; height: auto; text-align: center; }
 .events-home .download-refresh { text-align: center; background: #e5e8dc; }
-.events-home .download-icon { border-radius: 22px; margin-bottom: 25px; }
+.events-home .download-logo { width: 112px; height: 112px; object-fit: contain; margin-bottom: 25px; }
 .events-home .download-refresh h2 { font-size: clamp(40px, 5vw, 68px); }
 .events-home .download-refresh > p:not(.eyebrow):not(.availability) { max-width: 550px; margin-inline: auto; }
 .events-home .download-refresh .app-store-badge { justify-content: center; margin-top: 12px; }
