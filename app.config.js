@@ -37,7 +37,7 @@ export default {
   expo: {
     name: "Summit Scene",
     slug: "summit-scene",
-    version: "1.0.9",
+    version: "1.0.10",
     scheme: "summitscene",
     icon: "./assets/app-icon-ios-padded.png",
     userInterfaceStyle: "light",
@@ -63,6 +63,8 @@ export default {
       },
     },
     android: {
+      // Local baseline only; production EAS builds auto-increment remotely.
+      versionCode: 3,
 
 
       adaptiveIcon: {

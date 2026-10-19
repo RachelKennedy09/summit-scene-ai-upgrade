@@ -1,23 +1,23 @@
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
-  "https://summit-scene-backend.onrender.com";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "https://summit-scene-backend.onrender.com";
 
-export async function fetchAppVersionInfo({ timeoutMs = 8000 } = {}) {
+export async function fetchAppVersionInfo({ timeoutMs = 8000, fetchImpl = fetch } = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Update check timed out."));
+    }, timeoutMs);
+  });
   try {
-    const response = await fetch(`${API_BASE_URL}/api/app-version`, {
-      signal: controller.signal,
-    });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data?.message || "Could not check app version.");
-    }
-
-    return data;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+    return await Promise.race([
+      (async () => {
+        const response = await fetchImpl(`${API_BASE_URL}/api/app-version`, {
+          signal: controller.signal, cache: "no-store", headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Could not check app version.");
+        return response.json();
+      })(), timeout,
+    ]);
+  } finally { clearTimeout(timeoutId); }
 }

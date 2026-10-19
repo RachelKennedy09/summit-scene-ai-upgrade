@@ -1,188 +1,88 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import Constants from "expo-constants";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, BackHandler, Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as Application from "expo-application";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { useTheme } from "../context/ThemeContext";
+import AppButton from "./common/AppButton";
 import { fetchAppVersionInfo } from "../services/appVersionApi";
-
-function parseVersion(value) {
-  return String(value || "")
-    .split(".")
-    .map((part) => Number.parseInt(part, 10))
-    .map((part) => (Number.isFinite(part) ? part : 0));
-}
-
-function isVersionOlder(currentVersion, minimumVersion) {
-  const current = parseVersion(currentVersion);
-  const minimum = parseVersion(minimumVersion);
-  const length = Math.max(current.length, minimum.length, 3);
-
-  for (let index = 0; index < length; index += 1) {
-    const currentPart = current[index] || 0;
-    const minimumPart = minimum[index] || 0;
-
-    if (currentPart < minimumPart) return true;
-    if (currentPart > minimumPart) return false;
-  }
-
-  return false;
-}
+import { attachUpdateLifecycle, createAppUpdateController, openUpdateStore } from "../utils/appUpdateController";
+import { UPDATE_MESSAGE } from "../utils/appUpdatePolicy";
 
 export default function AppUpdateGate({ children }) {
   const { theme } = useTheme();
-  const [checking, setChecking] = useState(true);
-  const [versionInfo, setVersionInfo] = useState(null);
-  const [requiresUpdate, setRequiresUpdate] = useState(false);
-
-  const currentVersion = useMemo(
-    () => Constants.expoConfig?.version || "0.0.0",
-    []
-  );
+  const [state, setState] = useState({ checking: true, required: false });
+  const [storeError, setStoreError] = useState("");
+  const [opening, setOpening] = useState(false);
+  const controllerRef = useRef(null);
+  // Read the installed native binary, never a JS manifest or OTA version.
+  // Expo Go and web do not represent the installed Summit Scene application.
+  const installed = {
+    version: Application.applicationId === "com.rachellauren.summitscene" ? Application.nativeApplicationVersion : null,
+    build: Application.nativeBuildVersion,
+  };
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = createAppUpdateController({ platform: Platform.OS, installed, fetchInfo: fetchAppVersionInfo, onChange: setState });
+    controllerRef.current = controller;
+    const detach = attachUpdateLifecycle(controller, AppState);
+    return () => { detach(); controller.dispose(); controllerRef.current = null; };
+  }, [installed.version, installed.build]);
 
-    async function checkVersion() {
-      try {
-        const info = await fetchAppVersionInfo();
-        if (cancelled) return;
+  useEffect(() => {
+    if (!state.required) return undefined;
+    const back = BackHandler.addEventListener("hardwareBackPress", () => true);
+    // Fresh checks permit prompt remote rollback while blocked.
+    const interval = setInterval(() => {
+      if (AppState.currentState === "active") controllerRef.current?.check();
+    }, 60000);
+    return () => { back.remove(); clearInterval(interval); };
+  }, [state.required]);
 
-        setVersionInfo(info);
-        // Only the minimum supported version should block users from opening
-        // the app. A newer latestVersion is useful for optional messaging, but
-        // it should not turn every normal release into a forced upgrade.
-        setRequiresUpdate(
-          isVersionOlder(currentVersion, info.minimumSupportedVersion)
-        );
-      } catch {
-        if (!cancelled) {
-          setRequiresUpdate(false);
-        }
-      } finally {
-        if (!cancelled) {
-          setChecking(false);
-        }
-      }
-    }
+  useEffect(() => {
+    if (!state.required || !state.expiresAt) return undefined;
+    const timer = setTimeout(() => controllerRef.current?.expire(), Math.max(0, state.expiresAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [state.required, state.expiresAt]);
 
-    checkVersion();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentVersion]);
-
-  async function handleUpdatePress() {
-    const storeUrl =
-      Platform.OS === "android"
-        ? versionInfo?.androidStoreUrl
-        : versionInfo?.iosStoreUrl;
-
-    if (storeUrl) {
-      Linking.openURL(storeUrl).catch(() => {});
-    }
+  async function handleUpdate() {
+    setOpening(true);
+    setStoreError("");
+    const error = await openUpdateStore(state.policy, (url) => Linking.openURL(url));
+    setStoreError(error);
+    setOpening(false);
   }
 
-  if (checking) {
-    return (
-      <SafeAreaView
-        style={[styles.safeArea, { backgroundColor: theme.background }]}
-      >
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.accent} size="large" />
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Checking app version...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!requiresUpdate) {
-    return children;
-  }
-
+  if (!state.required && (state.ready || !state.checking)) return children;
+  // No navigation container is mounted while required. Back, deep links and
+  // notification navigation cannot dismiss the confirmed update requirement.
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <View style={styles.updateContainer}>
-        <Text style={[styles.title, { color: theme.text }]}>
-          Update Summit Scene
-        </Text>
-        <Text style={[styles.body, { color: theme.textMuted }]}>
-          {versionInfo?.message ||
-            "Newer version available - please download the latest Summit Scene update before using the app."}
-        </Text>
-        <Text style={[styles.versionText, { color: theme.textMuted }]}>
-          Installed version {currentVersion}
-          {versionInfo?.latestVersion ? ` | Latest ${versionInfo.latestVersion}` : ""}
-        </Text>
-        <Pressable
-          style={[styles.updateButton, { backgroundColor: theme.accent }]}
-          onPress={handleUpdatePress}
-        >
-          <Text style={styles.updateButtonText}>
-            {Platform.OS === "android" ? "Update in Google Play" : "Update in App Store"}
-          </Text>
-        </Pressable>
-      </View>
+      {!state.required ? (
+        <View style={styles.center} accessibilityLiveRegion="polite">
+          <ActivityIndicator color={theme.accent} size="large" accessibilityLabel="Checking for updates" />
+          <Text style={[styles.helper, { color: theme.textMuted }]}>Checking app version…</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text accessibilityRole="header" style={[styles.title, { color: theme.text }]}>Update required</Text>
+          <Text style={[styles.body, { color: theme.textMuted }]}>{state.policy?.message || UPDATE_MESSAGE}</Text>
+          <Text style={[styles.helper, { color: theme.textMuted }]}>Installed {installed.version} ({installed.build}) · Latest {state.policy?.latestVersion}</Text>
+          <AppButton title="Update app" onPress={handleUpdate} loading={opening} style={styles.button} />
+          <AppButton title="Retry check" variant="outline" onPress={() => { setStoreError(""); controllerRef.current?.check(); }} loading={state.checking} style={styles.button} />
+          {storeError || state.error ? <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={[styles.error, { color: theme.text }]}>{storeError || state.error}</Text> : null}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  helperText: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  updateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-  body: {
-    fontSize: 16,
-    lineHeight: 23,
-    marginBottom: 14,
-  },
-  versionText: {
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 22,
-  },
-  updateButton: {
-    minHeight: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    paddingHorizontal: 18,
-  },
-  updateButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
+  safeArea: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  content: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  title: { fontSize: 28, fontWeight: "900", marginBottom: 12 },
+  body: { fontSize: 16, lineHeight: 24, marginBottom: 14 },
+  helper: { fontSize: 14, lineHeight: 21, marginTop: 12, marginBottom: 12 },
+  button: { marginTop: 12 },
+  error: { fontSize: 15, lineHeight: 23, marginTop: 20 },
 });

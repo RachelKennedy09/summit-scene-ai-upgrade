@@ -12,6 +12,7 @@ import compression from "compression";
 import { connectDB } from "./config/db.js"; // MongoDB connection helper
 
 // Route modules
+import appVersionRoutes from "./routes/appVersion.js";
 import eventRoutes from "./routes/events.js";
 import eventImportRoutes from "./routes/eventImport.js";
 import authRouter from "./routes/auth.js";
@@ -160,25 +161,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "SummitScene API is healthy" });
 });
 
-app.get("/api/app-version", (req, res) => {
-  res.json({
-    minimumSupportedVersion:
-      process.env.MIN_SUPPORTED_APP_VERSION || "1.0.2",
-    latestVersion: process.env.LATEST_APP_VERSION || "1.0.2",
-    iosStoreUrl:
-      process.env.IOS_APP_STORE_URL ||
-      "https://apps.apple.com/app/summit-scene/id6777819596",
-    androidStoreUrl:
-      process.env.ANDROID_PLAY_STORE_URL ||
-      "https://play.google.com/store/apps/details?id=com.rachellauren.summitscene",
-    optionalUpdateMessage:
-      process.env.APP_OPTIONAL_UPDATE_MESSAGE ||
-      "A newer version of Summit Scene is available. Update for the latest fixes and improvements.",
-    message:
-      process.env.APP_UPDATE_MESSAGE ||
-      "Newer version available - please download the latest Summit Scene update before using the app.",
-  });
-});
+app.use("/api/app-version", appVersionRoutes);
 
 app.get("/api/admin/bandwidth", authMiddleware, isAdmin, (req, res) => {
   const limit = Math.min(
