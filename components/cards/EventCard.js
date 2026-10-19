@@ -2,11 +2,12 @@
 // A reusable card for displaying a single event on the Hub screen.
 
 import React from "react";
+import { getEventCategory } from "../../utils/eventCategory.js";
 import { Alert, Image, Linking, Text, Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
 import TrustBadgeRow from "../common/TrustBadges";
 import { getCardScheduleLabels } from "../../utils/eventSchedule";
-import { getCategoryAccent, getVisibleTags } from "../../utils/categoryVisuals";
+import { getCategoryAccent } from "../../utils/categoryVisuals";
 import {
   getImportedEventHostLabel,
   isImportedEventListing,
@@ -31,27 +32,11 @@ function EventCard({ event, onPress, onWebsitePress }) {
     event.locationName || event.location || event.address || "Location TBA";
   const isImportedListing = isImportedEventListing(event);
   const importedHostLabel = getImportedEventHostLabel(event);
-  const categoryList =
-    Array.isArray(event.categories) && event.categories.length
-      ? event.categories
-      : event.category
-        ? [event.category]
-        : [];
-  const categoryLabel = categoryList.join(", ") || "Event";
-  const categoryTags = Array.isArray(event.categoryTags) ? event.categoryTags : [];
-  const vibeTags = Array.isArray(event.vibeTags) ? event.vibeTags : [];
-  const communityTags = Array.isArray(event.communityTags)
-    ? event.communityTags
-    : [];
+  const categoryList = [getEventCategory(event)].filter(Boolean);
+  const categoryLabel = categoryList[0] || "Event";
   const audience = event.audience || "";
   const shouldShowAudienceBadge =
     audience && audience !== "Everyone welcome";
-  const combinedTags = [
-    ...communityTags,
-    ...vibeTags,
-    ...categoryTags,
-  ];
-  const { visible: visibleTags, hiddenCount } = getVisibleTags(combinedTags, 3);
   const categoryAccent = getCategoryAccent(categoryList[0], theme);
   const host =
     !isImportedListing &&
@@ -229,36 +214,6 @@ function EventCard({ event, onPress, onWebsitePress }) {
             },
           ]}
         >
-          <View style={styles.footerCopy}>
-            <Text style={[styles.footerText, { color: theme.textMuted }]}>
-              {categoryLabel}
-            </Text>
-            {visibleTags.length ? (
-              <View style={styles.tagRow}>
-                {visibleTags.map((tag) => (
-                  <View
-                    key={tag}
-                    style={[
-                      styles.tagChip,
-                      {
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.tagChipText, { color: theme.textMuted }]}>
-                      {tag}
-                    </Text>
-                  </View>
-                ))}
-                {hiddenCount ? (
-                  <Text style={[styles.moreTagsText, { color: theme.textMuted }]}>
-                    +{hiddenCount}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
           <View style={styles.footerActions}>
             {bookingUrl ? (
               <Pressable
@@ -440,36 +395,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  footerText: {
-    fontSize: 14,
-  },
-  footerCopy: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: 12,
-  },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 6,
-  },
-  tagChip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 5,
-  },
-  tagChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  moreTagsText: {
-    fontSize: 12,
-    fontWeight: "700",
+    justifyContent: "flex-end",
   },
   footerCta: {
     fontSize: 14,

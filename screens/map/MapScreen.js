@@ -12,6 +12,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { getEventCategory } from "../../utils/eventCategory.js";
 import {
   View,
   Text,
@@ -252,11 +253,7 @@ function getSearchTerms(searchTerm) {
 }
 
 function getEventCategoryList(event) {
-  return Array.isArray(event?.categories) && event.categories.length
-    ? event.categories
-    : event?.category
-      ? [event.category]
-      : [];
+  return [getEventCategory(event)].filter(Boolean);
 }
 
 function eventHasCategoryValue(event, values) {

@@ -127,7 +127,7 @@ const eventSchema = new mongoose.Schema(
       default: "Other",
     },
 
-    // Additional searchable categories. The first item mirrors `category`.
+    // Compatibility array containing the single event category.
     categories: {
       type: [
         {
@@ -412,7 +412,7 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
 
   if (Array.isArray(this.categories)) {
     this.categories = [
-      ...new Set(this.categories.map(normalizeCategory).filter(Boolean)),
+      ...new Set(this.categories.map(normalizeCategory).filter(Boolean).slice(0, 1)),
     ];
   }
 
@@ -423,6 +423,9 @@ eventSchema.pre("validate", function normalizeLegacyCategories(next) {
   if (this.categories?.length) {
     this.category = this.categories[0];
   }
+
+  this.categoryTags = [];
+  this.vibeTags = [];
 
   next();
 });

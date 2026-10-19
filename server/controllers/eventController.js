@@ -25,10 +25,8 @@ import {
 } from "../../utils/eventSchedule.js";
 import { getEventDistanceKm } from "../../utils/proximity.js";
 import {
-  EVENT_CATEGORY_TAGS,
   EVENT_CATEGORY_VALUES,
   COMMUNITY_SUPPORT_CATEGORIES,
-  VIBE_TAGS,
   getMainCategoryForTag,
   getEventCategoryFilterOptions,
 } from "../../constants/eventCategories.js";
@@ -143,7 +141,7 @@ function normalizeRequiredString(value) {
 }
 
 function normalizeEventCategories({ category, categories } = {}) {
-  const rawCategories = Array.isArray(categories) ? categories : [category];
+  const rawCategories = category ? [category] : (Array.isArray(categories) ? categories.slice(0, 1) : []);
   const normalizedCategories = [
     ...new Set(
       rawCategories
@@ -156,7 +154,7 @@ function normalizeEventCategories({ category, categories } = {}) {
   ];
 
   if (!normalizedCategories.length) {
-    throw new Error("Please choose at least one category.");
+    throw new Error("Please choose a category.");
   }
 
   const invalidCategory = normalizedCategories.find(
@@ -167,49 +165,6 @@ function normalizeEventCategories({ category, categories } = {}) {
   }
 
   return normalizedCategories;
-}
-
-function normalizeCategoryTags({ categoryTags, category, categories } = {}) {
-  const rawCategories = Array.isArray(categories) ? categories : [category];
-  const legacyDetailTags = rawCategories
-    .map((item) => normalizeRequiredString(item))
-    .filter((item) => EVENT_CATEGORY_TAGS.includes(item));
-  const rawTags = Array.isArray(categoryTags) ? categoryTags : [];
-  const normalizedTags = [
-    ...new Set(
-      [...legacyDetailTags, ...rawTags]
-        .map((item) => normalizeRequiredString(item))
-        .filter(Boolean)
-    ),
-  ];
-
-  const invalidTag = normalizedTags.find(
-    (item) => !EVENT_CATEGORY_TAGS.includes(item)
-  );
-  if (invalidTag) {
-    throw new Error(`"${invalidTag}" is not a valid category tag.`);
-  }
-
-  return normalizedTags;
-}
-
-function normalizeVibeTags(value) {
-  if (!Array.isArray(value)) return [];
-
-  const normalizedTags = [
-    ...new Set(
-      value
-        .map((item) => normalizeRequiredString(item))
-        .filter(Boolean)
-    ),
-  ];
-
-  const invalidTag = normalizedTags.find((item) => !VIBE_TAGS.includes(item));
-  if (invalidTag) {
-    throw new Error(`"${invalidTag}" is not a valid vibe tag.`);
-  }
-
-  return normalizedTags;
 }
 
 function normalizeEventAudience(value) {
@@ -1081,8 +1036,6 @@ export async function createEvent(req, res) {
       town,
       category,
       categories,
-      categoryTags,
-      vibeTags,
       audience,
       communityTags,
       date,
@@ -1112,24 +1065,8 @@ export async function createEvent(req, res) {
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
-    let normalizedVibeTags;
-    let normalizedCategoryTags;
     let normalizedAudience;
     let normalizedCommunityTags;
-    try {
-      normalizedVibeTags = normalizeVibeTags(vibeTags);
-    } catch (error) {
-      return res.status(400).json({ message: error.message });
-    }
-    try {
-      normalizedCategoryTags = normalizeCategoryTags({
-        categoryTags,
-        category,
-        categories,
-      });
-    } catch (error) {
-      return res.status(400).json({ message: error.message });
-    }
     try {
       normalizedAudience = normalizeEventAudience(audience);
       normalizedCommunityTags = normalizeCommunityTags(communityTags);
@@ -1248,8 +1185,8 @@ export async function createEvent(req, res) {
       town: normalizedTown,
       category: normalizedCategories[0],
       categories: normalizedCategories,
-      categoryTags: normalizedCategoryTags,
-      vibeTags: normalizedVibeTags,
+      categoryTags: [],
+      vibeTags: [],
       audience: normalizedAudience,
       communityTags: normalizedCommunityTags,
       date: normalizedDate,
@@ -1432,8 +1369,6 @@ export async function updateEvent(req, res) {
       town,
       category,
       categories,
-      categoryTags,
-      vibeTags,
       audience,
       communityTags,
       date,
@@ -1481,7 +1416,7 @@ export async function updateEvent(req, res) {
       let normalizedCategories;
       try {
         normalizedCategories = normalizeEventCategories({
-          category: category ?? event.category,
+          category: category ?? (categories !== undefined ? undefined : event.category),
           categories: categories ?? event.categories,
         });
       } catch (error) {
@@ -1491,24 +1426,8 @@ export async function updateEvent(req, res) {
       event.category = normalizedCategories[0];
       event.categories = normalizedCategories;
     }
-    if (categoryTags !== undefined || category !== undefined || categories !== undefined) {
-      try {
-        event.categoryTags = normalizeCategoryTags({
-          categoryTags: categoryTags ?? event.categoryTags,
-          category: category ?? event.category,
-          categories: categories ?? event.categories,
-        });
-      } catch (error) {
-        return res.status(400).json({ message: error.message });
-      }
-    }
-    if (vibeTags !== undefined) {
-      try {
-        event.vibeTags = normalizeVibeTags(vibeTags);
-      } catch (error) {
-        return res.status(400).json({ message: error.message });
-      }
-    }
+    event.categoryTags = [];
+    event.vibeTags = [];
     if (audience !== undefined) {
       try {
         event.audience = normalizeEventAudience(audience);

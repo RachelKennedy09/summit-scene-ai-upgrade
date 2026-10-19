@@ -4,7 +4,7 @@
 // - Validates required fields an sends a POST request via createEvent()
 // - Only business accounts (role=business) are allowed to publish events.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -35,8 +35,6 @@ import PageHeader from "../../components/common/PageHeader";
 import EventCard from "../../components/cards/EventCard";
 import {
   EVENT_MAIN_CATEGORIES,
-  VIBE_TAG_GROUPS,
-  getCategoryTagGroupsForCategories,
 } from "../../constants/eventCategories";
 import { EVENT_AUDIENCE_OPTIONS } from "../../constants/eventAudience";
 import { recordEventCreatedForReviewPrompt } from "../../utils/appReviewPrompt";
@@ -106,10 +104,7 @@ export default function PostEventScreen() {
   const [duration, setDuration] = useState("");
   const [priceRange, setPriceRange] = useState("");
   const [town, setTown] = useState("");
-  const [categories, setCategories] = useState([]);
-  const category = categories[0] || "";
-  const [categoryTags, setCategoryTags] = useState([]);
-  const [vibeTags, setVibeTags] = useState([]);
+  const [category, setCategory] = useState("");
   const [audience, setAudience] = useState("Everyone welcome");
 
   // Date + Time state
@@ -164,14 +159,8 @@ export default function PostEventScreen() {
   const [showSelectedDatePicker, setShowSelectedDatePicker] = useState(false);
   const [showTownModal, setShowTownModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
-  const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
   const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
-  const categoryTagGroups = useMemo(
-    () => getCategoryTagGroupsForCategories(categories),
-    [categories]
-  );
   const canUseTypedAddress =
     Boolean(town && TOWN_COORDS[town]) &&
     address.trim().length >= 3 &&
@@ -299,36 +288,6 @@ export default function PostEventScreen() {
     setSelectedDates((current) =>
       current.filter((selectedDate) => selectedDate !== dateToRemove)
     );
-  };
-
-  const toggleCategory = (nextCategory) => {
-    setCategories((current) => {
-      if (current.includes(nextCategory)) {
-        return current.filter((item) => item !== nextCategory);
-      }
-
-      return [...current, nextCategory];
-    });
-  };
-
-  const toggleCategoryTag = (nextTag) => {
-    setCategoryTags((current) => {
-      if (current.includes(nextTag)) {
-        return current.filter((item) => item !== nextTag);
-      }
-
-      return [...current, nextTag];
-    });
-  };
-
-  const toggleVibeTag = (nextTag) => {
-    setVibeTags((current) => {
-      if (current.includes(nextTag)) {
-        return current.filter((item) => item !== nextTag);
-      }
-
-      return [...current, nextTag];
-    });
   };
 
   const addExtraTimeSlot = () => {
@@ -471,9 +430,9 @@ export default function PostEventScreen() {
           priceRange: trimmedPriceRange || undefined,
           town,
           category,
-          categories,
-          categoryTags,
-          vibeTags,
+          categories: [category],
+          categoryTags: [],
+          vibeTags: [],
           audience,
           communityTags: [],
           date,
@@ -552,9 +511,7 @@ export default function PostEventScreen() {
             setTime("");
             setEndTime("");
             setTown("");
-            setCategories([]);
-            setCategoryTags([]);
-            setVibeTags([]);
+            setCategory("");
             setAudience("Everyone welcome");
             setDateObj(new Date());
             setTimeObj(new Date());
@@ -663,9 +620,9 @@ export default function PostEventScreen() {
     priceRange: priceRange.trim(),
     town: town || "Town",
     category: category || "",
-    categories,
-    categoryTags,
-    vibeTags,
+    categories: category ? [category] : [],
+    categoryTags: [],
+    vibeTags: [],
     audience,
     communityTags: [],
     date: date || formatDateForApi(dateObj),
@@ -846,10 +803,7 @@ export default function PostEventScreen() {
 
           {/* Categories */}
           <Text style={[styles.label, { color: theme.textMuted }]}>
-            Main categories (Required)
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose broad categories. Use tags below for specifics.
+            Category (Required)
           </Text>
           <Pressable
             style={[
@@ -863,55 +817,7 @@ export default function PostEventScreen() {
             onPress={() => setShowCategoryModal(true)}
           >
             <Text style={{ color: category ? theme.text : theme.textMuted }}>
-              {categories.length
-                ? categories.join(", ")
-                : "Choose main categories"}
-            </Text>
-          </Pressable>
-
-          <Text style={[styles.label, { color: theme.textMuted }]}>
-            Category tags (Optional)
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Add searchable details like Sober Events, Strength Training, Coffee, or Book Clubs.
-          </Text>
-          <Pressable
-            style={[
-              styles.selectButton,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-                borderWidth: 1,
-              },
-            ]}
-            onPress={() => setShowCategoryTagsModal(true)}
-          >
-            <Text style={{ color: categoryTags.length ? theme.text : theme.textMuted }}>
-              {categoryTags.length
-                ? categoryTags.join(", ")
-                : "Choose tags that fit"}
-            </Text>
-          </Pressable>
-
-          <Text style={[styles.label, { color: theme.textMuted }]}>
-            Vibe tags (Optional)
-          </Text>
-          <Text style={[styles.helperText, { color: theme.textMuted }]}>
-            Choose any vibe tags people can search for.
-          </Text>
-          <Pressable
-            style={[
-              styles.selectButton,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-                borderWidth: 1,
-              },
-            ]}
-            onPress={() => setShowVibeTagsModal(true)}
-          >
-            <Text style={{ color: vibeTags.length ? theme.text : theme.textMuted }}>
-              {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
+              {category || "Choose a category"}
             </Text>
           </Pressable>
 
@@ -1726,36 +1632,14 @@ export default function PostEventScreen() {
       {/* Category Select Modal (shared) */}
       <GroupedCategoryModal
         visible={showCategoryModal}
-        title="Choose main categories"
+        title="Choose a category"
         groups={FORM_CATEGORY_GROUPS}
-        selectedValues={categories}
-        onSelect={toggleCategory}
+        selectedValue={category}
+        onSelect={(value) => {
+          setCategory(value);
+          setShowCategoryModal(false);
+        }}
         onClose={() => setShowCategoryModal(false)}
-        closeLabel="Done"
-      />
-
-      <GroupedCategoryModal
-        visible={showCategoryTagsModal}
-        title="Choose category tags"
-        groups={categoryTagGroups}
-        selectedValues={categoryTags}
-        onSelect={toggleCategoryTag}
-        onClose={() => setShowCategoryTagsModal(false)}
-        closeLabel="Done"
-        searchable
-        searchPlaceholder="Search category tags"
-      />
-
-      <GroupedCategoryModal
-        visible={showVibeTagsModal}
-        title="Choose vibe tags"
-        groups={VIBE_TAG_GROUPS}
-        selectedValues={vibeTags}
-        onSelect={toggleVibeTag}
-        onClose={() => setShowVibeTagsModal(false)}
-        closeLabel="Done"
-        searchable
-        searchPlaceholder="Search vibe tags"
       />
 
       <SelectModal

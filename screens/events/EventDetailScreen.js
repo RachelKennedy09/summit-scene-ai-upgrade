@@ -6,6 +6,7 @@
 // - Includes "Open in Maps" deep link for the event location
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { getEventCategory } from "../../utils/eventCategory.js";
 import {
   View,
   Text,
@@ -49,7 +50,6 @@ import {
   isEventUpcoming,
 } from "../../utils/eventSchedule";
 import { getEventImageSource, getEventImageUrl } from "../../utils/eventImages";
-import { getVisibleTags } from "../../utils/categoryVisuals";
 import {
   getImportedEventHostLabel,
   isImportedEventListing,
@@ -202,7 +202,6 @@ export default function EventDetailScreen({ route }) {
   const [profileUser, setProfileUser] = useState(null);
   const [updatingAttendance, setUpdatingAttendance] = useState(false);
   const [attendeesModalOpen, setAttendeesModalOpen] = useState(false);
-  const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [eventPreference, setEventPreference] = useState(null);
   const [updatingPreference, setUpdatingPreference] = useState(false);
   const trackedEventViewsRef = useRef(new Set());
@@ -284,21 +283,9 @@ export default function EventDetailScreen({ route }) {
   const title = event?.title || "Untitled event";
   const eventImageUrl = getEventImageUrl(event);
   const eventImageSource = getEventImageSource(event);
-  const eventCategories =
-    Array.isArray(event?.categories) && event.categories.length
-      ? event.categories
-      : event?.category
-        ? [event.category]
-        : [];
+  const eventCategories = [getEventCategory(event)].filter(Boolean);
   const category = eventCategories[0] || "Event";
-  const categoryLabel = eventCategories.join(", ") || category;
-  const categoryTags = Array.isArray(event?.categoryTags) ? event.categoryTags : [];
-  const vibeTags = Array.isArray(event?.vibeTags) ? event.vibeTags : [];
-  const allEventTags = [...vibeTags, ...categoryTags];
-  const {
-    visible: visibleEventTags,
-    hiddenCount: hiddenEventTagCount,
-  } = getVisibleTags(allEventTags, 3);
+  const categoryLabel = category;
   const town = event?.town || "";
   const locationName = event?.locationName || event?.location || "";
   const address = event?.address || "";
@@ -396,9 +383,7 @@ export default function EventDetailScreen({ route }) {
       eventBuddy: {
         type: "event",
         category,
-        categories: eventCategories,
-        categoryTags,
-        vibeTags: Array.isArray(event?.vibeTags) ? event.vibeTags : [],
+        categories: [category],
         communityType: "local-plan",
         activityText: `Anyone going to ${title}?`,
         date: event?.date,
@@ -921,37 +906,6 @@ export default function EventDetailScreen({ route }) {
               <Text style={[styles.importedSourceText, { color: theme.textMuted }]}>
                 Listed by Summit Scene
               </Text>
-            ) : null}
-
-            {visibleEventTags.length ? (
-              <View style={styles.vibeRow}>
-                {visibleEventTags.map((tag) => (
-                  <View
-                    key={tag}
-                    style={[
-                      styles.vibePill,
-                      {
-                        backgroundColor: theme.pill || "rgba(0,0,0,0.06)",
-                        borderColor: theme.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.vibeText, { color: theme.textMuted }]}>
-                      {tag}
-                    </Text>
-                  </View>
-                ))}
-                {hiddenEventTagCount ? (
-                  <Pressable
-                    style={[styles.moreTagsButton, { borderColor: theme.border }]}
-                    onPress={() => setTagsModalOpen(true)}
-                  >
-                    <Text style={[styles.moreTagsText, { color: theme.accent }]}>
-                      +{hiddenEventTagCount}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
             ) : null}
 
             {/* Date + time row */}
@@ -1686,50 +1640,6 @@ export default function EventDetailScreen({ route }) {
           </View>
         </View>
       </Modal>
-      <Modal
-        visible={tagsModalOpen}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setTagsModalOpen(false)}
-      >
-        <View style={styles.tagsModalOverlay}>
-          <View
-            style={[
-              styles.tagsModalCard,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <View style={styles.tagsModalHeader}>
-              <Text style={[styles.tagsModalTitle, { color: theme.text }]}>
-                Event tags
-              </Text>
-              <Pressable onPress={() => setTagsModalOpen(false)}>
-                <Text style={[styles.tagsModalClose, { color: theme.accent }]}>
-                  Close
-                </Text>
-              </Pressable>
-            </View>
-            <View style={styles.vibeRow}>
-              {allEventTags.map((tag) => (
-                <View
-                  key={tag}
-                  style={[
-                    styles.vibePill,
-                    {
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.vibeText, { color: theme.textMuted }]}>
-                    {tag}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1822,34 +1732,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: -4,
     marginBottom: 10,
-  },
-  vibeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-  },
-  vibePill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  vibeText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  moreTagsText: {
-    fontSize: 12,
-    fontWeight: "800",
-    alignSelf: "center",
-  },
-  moreTagsButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignSelf: "center",
   },
   metaRow: {
     flexDirection: "row",
@@ -2226,32 +2108,5 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-  },
-  tagsModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    padding: 18,
-  },
-  tagsModalCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    maxHeight: "70%",
-  },
-  tagsModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 12,
-  },
-  tagsModalTitle: {
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  tagsModalClose: {
-    fontSize: 13,
-    fontWeight: "900",
   },
 });

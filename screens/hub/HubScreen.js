@@ -6,6 +6,7 @@
 // - Navigates to EventDetail when an event card is tapped.
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { getEventCategory } from "../../utils/eventCategory.js";
 import {
   View,
   Text,
@@ -187,11 +188,7 @@ function parseTimeToMinutes(value, fallback = 23 * 60 + 59) {
 }
 
 function getEventCategoryList(event) {
-  return Array.isArray(event?.categories) && event.categories.length
-    ? event.categories
-    : event?.category
-      ? [event.category]
-      : [];
+  return [getEventCategory(event)].filter(Boolean);
 }
 
 function getFirstName(user) {

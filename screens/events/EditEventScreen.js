@@ -2,7 +2,8 @@
 // Edit an existing event
 // Let business users update events they've already created
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { getEventCategory } from "../../utils/eventCategory.js";
 import {
   View,
   Text,
@@ -32,9 +33,6 @@ import AppButton from "../../components/common/AppButton.js";
 import PageHeader from "../../components/common/PageHeader";
 import {
   EVENT_MAIN_CATEGORIES,
-  VIBE_TAG_GROUPS,
-  getCategoryTagGroupsForCategories,
-  getMainCategoryForTag,
 } from "../../constants/eventCategories";
 import { EVENT_AUDIENCE_OPTIONS } from "../../constants/eventAudience";
 import { isSummitSceneAdmin } from "../../utils/adminAccess";
@@ -150,23 +148,9 @@ export default function EditEventScreen({ route, navigation }) {
     event.town && TOWNS.includes(event.town) ? event.town : TOWNS[0]
   );
   const [category, setCategory] = useState(
-    FORM_CATEGORIES.includes(getMainCategoryForTag(event.category) || event.category)
-      ? getMainCategoryForTag(event.category) || event.category
+    FORM_CATEGORIES.includes(getEventCategory(event))
+      ? getEventCategory(event)
       : FORM_CATEGORIES[0]
-  );
-  const [categoryTags, setCategoryTags] = useState(
-    [
-      ...new Set([
-        ...(Array.isArray(event.categoryTags) ? event.categoryTags : []),
-        ...(Array.isArray(event.communityTags) ? event.communityTags : []),
-        ...(event.category && !FORM_CATEGORIES.includes(event.category)
-          ? [event.category]
-          : []),
-      ]),
-    ]
-  );
-  const [vibeTags, setVibeTags] = useState(
-    Array.isArray(event.vibeTags) ? event.vibeTags : []
   );
   const [audience, setAudience] = useState(
     event.audience && EVENT_AUDIENCE_OPTIONS.includes(event.audience)
@@ -257,14 +241,8 @@ export default function EditEventScreen({ route, navigation }) {
   const [showSelectedDatePicker, setShowSelectedDatePicker] = useState(false);
   const [showTownModal, setShowTownModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showCategoryTagsModal, setShowCategoryTagsModal] = useState(false);
-  const [showVibeTagsModal, setShowVibeTagsModal] = useState(false);
   const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [showRecurrenceModal, setShowRecurrenceModal] = useState(false);
-  const categoryTagGroups = useMemo(
-    () => getCategoryTagGroupsForCategories([category]),
-    [category]
-  );
   const canUseTypedAddress =
     Boolean(town && TOWN_COORDS[town]) &&
     address.trim().length >= 3 &&
@@ -375,26 +353,6 @@ export default function EditEventScreen({ route, navigation }) {
     setSelectedDates((current) =>
       current.filter((selectedDate) => selectedDate !== dateToRemove)
     );
-  };
-
-  const toggleVibeTag = (nextTag) => {
-    setVibeTags((current) => {
-      if (current.includes(nextTag)) {
-        return current.filter((item) => item !== nextTag);
-      }
-
-      return [...current, nextTag];
-    });
-  };
-
-  const toggleCategoryTag = (nextTag) => {
-    setCategoryTags((current) => {
-      if (current.includes(nextTag)) {
-        return current.filter((item) => item !== nextTag);
-      }
-
-      return [...current, nextTag];
-    });
   };
 
   const addExtraTimeSlot = () => {
@@ -525,8 +483,8 @@ export default function EditEventScreen({ route, navigation }) {
         town,
         category,
         categories: [category],
-        categoryTags,
-        vibeTags,
+        categoryTags: [],
+        vibeTags: [],
         audience,
         communityTags: [],
         date,
@@ -777,10 +735,7 @@ export default function EditEventScreen({ route, navigation }) {
 
         {/* Category */}
         <Text style={[styles.label, { color: theme.textMuted }]}>
-          Main category (Required)
-        </Text>
-        <Text style={[styles.helperText, { color: theme.textMuted }]}>
-          Choose the broad category. Use tags below for specifics.
+          Category (Required)
         </Text>
         <Pressable
           style={[
@@ -791,52 +746,6 @@ export default function EditEventScreen({ route, navigation }) {
         >
         <Text style={[styles.selectButtonText, { color: theme.text }]}>
             {category}
-          </Text>
-        </Pressable>
-
-        <Text style={[styles.label, { color: theme.textMuted }]}>
-          Category tags (Optional)
-        </Text>
-        <Text style={[styles.helperText, { color: theme.textMuted }]}>
-          Add searchable details like Sober Events, Strength Training, Coffee, or Book Clubs.
-        </Text>
-        <Pressable
-          style={[
-            styles.selectButton,
-            { backgroundColor: theme.card, borderColor: theme.border },
-          ]}
-          onPress={() => setShowCategoryTagsModal(true)}
-        >
-          <Text
-            style={[
-              styles.selectButtonText,
-              { color: categoryTags.length ? theme.text : theme.textMuted },
-            ]}
-          >
-            {categoryTags.length ? categoryTags.join(", ") : "Choose tags that fit"}
-          </Text>
-        </Pressable>
-
-        <Text style={[styles.label, { color: theme.textMuted }]}>
-          Vibe tags (Optional)
-        </Text>
-        <Text style={[styles.helperText, { color: theme.textMuted }]}>
-          Choose any vibe tags people can search for.
-        </Text>
-        <Pressable
-          style={[
-            styles.selectButton,
-            { backgroundColor: theme.card, borderColor: theme.border },
-          ]}
-          onPress={() => setShowVibeTagsModal(true)}
-        >
-          <Text
-            style={[
-              styles.selectButtonText,
-              { color: vibeTags.length ? theme.text : theme.textMuted },
-            ]}
-          >
-            {vibeTags.length ? vibeTags.join(", ") : "Search and choose vibe tags"}
           </Text>
         </Pressable>
 
@@ -1575,43 +1484,14 @@ export default function EditEventScreen({ route, navigation }) {
       {/* Category Select */}
       <GroupedCategoryModal
         visible={showCategoryModal}
-        title="Choose main category"
+        title="Choose a category"
         groups={FORM_CATEGORY_GROUPS}
         selectedValue={category}
         onSelect={(value) => {
           setCategory(value);
-          const nextTagOptions = getCategoryTagGroupsForCategories([value])
-            .flatMap((group) => group.options);
-          setCategoryTags((current) =>
-            current.filter((tag) => nextTagOptions.includes(tag))
-          );
           setShowCategoryModal(false);
         }}
         onClose={() => setShowCategoryModal(false)}
-      />
-
-      <GroupedCategoryModal
-        visible={showCategoryTagsModal}
-        title="Choose category tags"
-        groups={categoryTagGroups}
-        selectedValues={categoryTags}
-        onSelect={toggleCategoryTag}
-        onClose={() => setShowCategoryTagsModal(false)}
-        closeLabel="Done"
-        searchable
-        searchPlaceholder="Search category tags"
-      />
-
-      <GroupedCategoryModal
-        visible={showVibeTagsModal}
-        title="Choose vibe tags"
-        groups={VIBE_TAG_GROUPS}
-        selectedValues={vibeTags}
-        onSelect={toggleVibeTag}
-        onClose={() => setShowVibeTagsModal(false)}
-        closeLabel="Done"
-        searchable
-        searchPlaceholder="Search vibe tags"
       />
 
       <SelectModal

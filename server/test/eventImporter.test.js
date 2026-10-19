@@ -5,6 +5,7 @@ import { findDuplicateEvent, normalizeTitle } from "../services/eventImporter/de
 import { extractEvents } from "../services/eventImporter/extractEvents.js";
 import { mapTourismDetailToExtractedEvent } from "../services/eventImporter/banffLakeLouiseSource.js";
 import { normalizeExtractedEvent } from "../services/eventImporter/normalizeEvent.js";
+import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 import {
   buildSourceKey,
   diffSourceSnapshots,
@@ -18,6 +19,85 @@ describe("event importer helpers", () => {
     url: "https://example.com/events",
     town: "Banff",
   };
+
+  const categoryCases = [
+    { title: "Community Concert", category: "Inclusive Community", expected: "Music & Nightlife" },
+    { title: "Live Music for Everyone", category: "Community", expected: "Music & Nightlife" },
+    { title: "Pride DJ Night", category: "Inclusive Community", expected: "Music & Nightlife" },
+    { title: "Canmore Eagles Hockey Game", category: "Inclusive Community", expected: "Outdoors & Sports" },
+    { title: "Community Hocky Night", category: "Inclusive Community", expected: "Outdoors & Sports" },
+    { title: "NHL Watch Party", category: "Music & Nightlife", expected: "Outdoors & Sports" },
+    { title: "Family Curling Day", category: "Family & Pets", expected: "Outdoors & Sports" },
+    { title: "Community Night", description: "Watch a hockey game with friends and enjoy live music afterward.", category: "Inclusive Community", expected: "Outdoors & Sports" },
+    { title: "Friday Together", description: "A local concert welcoming the whole community.", category: "Inclusive Community", expected: "Music & Nightlife" },
+    { title: "Community Dinner", description: "Dinner with background music.", category: "Inclusive Community", expected: "Food & Drink" },
+    { title: "Spring Brunch", expected: "Food & Drink" },
+    { title: "Community Gathering", venue: "Mountain Music Hall", address: "Hockey Street", expected: "Community" },
+    { title: "Pride Meetup", expected: "Inclusive Community" },
+    { title: "Evening Together", description: "Everyone is welcome to join us.", expected: "Other" },
+  ];
+
+  for (const { expected, ...extracted } of categoryCases) {
+    it(`categorizes "${extracted.title}" as ${expected}`, () => {
+      const candidate = normalizeExtractedEvent(
+        { ...extracted, startDate: "2026-12-20" }, source, { now: fixedNow }
+      );
+      expect(candidate.category).to.equal(expected);
+      expect(candidate.categories).to.deep.equal([expected]);
+    });
+  }
+
+  const sunshineSource = STARTER_EVENT_SOURCES.find((entry) =>
+    entry.url === "https://www.skibanff.com/events/events/events-calendar"
+  );
+  function sunshineCard({ title = "Santa On The Mountain", slug = "santa", dates = [["Dec", "12"], ["Dec", "13"]], description = "Ski with Santa.", time = "", heading = "h3" } = {}) {
+    return `<div class="card-event">
+      <span class="date">${dates.map(([month, day]) => `<span class="date-part"><span class="month">${month}</span><span class="day">${day}</span></span>`).join(" - ")}</span>
+      <div class="copy"><${heading}><a href="/events/events/events-calendar/${slug}">${title}</a></${heading}>
+      <div class="card-detail icon-clock">${time}</div><p>${description}</p></div>
+    </div>`;
+  }
+
+  it("registers the Sunshine Village calendar and extracts separate date-range events", () => {
+    expect(sunshineSource).to.include({ town: "Banff", enabled: true, trusted: true });
+    const events = extractEvents(
+      `<nav><a href="/events/events/events-calendar">Events Calendar</a></nav>` +
+      sunshineCard() + sunshineCard({ slug: "santa-0", dates: [["Dec", "19"], ["Dec", "20"]] }),
+      sunshineSource
+    );
+    expect(events).to.have.length(2);
+    const candidate = normalizeExtractedEvent(events[0], sunshineSource, { now: fixedNow });
+    expect(candidate).to.include({
+      title: "Santa On The Mountain", startDate: "2026-12-12", endDate: "2026-12-13",
+      town: "Banff", venue: "Banff Sunshine Village", category: "Outdoors & Sports",
+      sourceUrl: "https://www.skibanff.com/events/events/events-calendar/santa",
+    });
+    expect(events[1]).to.include({ startDate: "Dec 19", endDate: "Dec 20" });
+  });
+
+  it("deduplicates Sunshine featured cards while retaining the listed time range", () => {
+    const details = {
+      title: "Christmas Eve Torch Light Parade", slug: "christmas-eve",
+      dates: [["Dec", "24"]], description: "At 7:00 PM on Thursday, December 24th, 2026, watch the parade.",
+    };
+    const events = extractEvents(
+      sunshineCard({ ...details, heading: "h2" }) + sunshineCard({ ...details, time: "7:00pm - 8:00pm" }),
+      sunshineSource
+    );
+    expect(events).to.have.length(1);
+    expect(events[0]).to.include({ startDate: "Dec 24 2026", startTime: "7:00pm", endTime: "8:00pm" });
+  });
+
+  it("uses explicit Sunshine event years and ignores malformed cards and navigation", () => {
+    const events = extractEvents(
+      sunshineCard({ title: "Slush Cup", slug: "slush-cup", dates: [["May", "24"]], description: "Join us Monday, May 24th, 2027." }) +
+      sunshineCard({ dates: [] }) + sunshineCard({ dates: [["Dec", "99"]] }),
+      sunshineSource
+    );
+    expect(events).to.have.length(1);
+    expect(normalizeExtractedEvent(events[0], sunshineSource, { now: fixedNow }).startDate).to.equal("2027-05-24");
+    expect(extractEvents('<nav><li>Events Calendar May 24</li></nav>', sunshineSource)).to.deep.equal([]);
+  });
 
   it("parses ISO and month-name event dates", () => {
     expect(parseEventDate("2026-09-15T19:00:00-06:00", { now: fixedNow })).to.equal("2026-09-15");

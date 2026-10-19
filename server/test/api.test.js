@@ -1523,123 +1523,50 @@ describe("SummitScene API", function () {
     process.env.ADMIN_EMAILS = originalAdminEmails;
   });
 
-  it("should create an event with multiple searchable categories", async () => {
+  it("should save one event category and discard extra category and vibe tags", async () => {
     process.env.ADMIN_EMAILS = testEmail;
-    const title = `Multi Category Event ${testRunId}`;
+    try {
+      const createRes = await request(app)
+        .post("/api/events")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          title: `Single Category Event ${testRunId}`,
+          town: "Canmore",
+          category: "Wellness",
+          categories: ["Wellness", "Tours & Experiences", "Outdoors & Sports"],
+          categoryTags: ["Strength Training", "Basketball"],
+          vibeTags: ["Sober-friendly", "Beginner-friendly"],
+          date: "2099-12-29",
+          time: "18:00",
+          address: "100 Banff Avenue, Banff, AB",
+          latitude: 51.1762,
+          longitude: -115.5708,
+        });
 
-    const createRes = await request(app)
-      .post("/api/events")
-      .set("Authorization", `Bearer ${authToken}`)
-      .send({
-        title,
-        description: "A class and sports meetup that should be found by each category.",
-        town: "Canmore",
-        category: "Wellness",
-        categories: ["Wellness", "Tours & Experiences", "Outdoors & Sports"],
-        categoryTags: [
-          "Strength Training",
-          "Sober Events",
-          "Yoga Retreats",
-          "Basketball",
-          "Senior Events",
-          "Youth Events",
-        ],
-        vibeTags: ["Sober-friendly", "Beginner-friendly"],
-        duration: "3 hours",
-        priceRange: "$60-$90",
-        bookingUrl: "https://example.com/book-yoga-retreat",
-        date: "2026-12-29",
-        time: "18:00",
-        address: "100 Banff Avenue, Banff, AB",
-        latitude: 51.1762,
-        longitude: -115.5708,
-      });
+      expect(createRes.status).to.equal(201);
+      expect(createRes.body.category).to.equal("Wellness");
+      expect(createRes.body.categories).to.deep.equal(["Wellness"]);
+      expect(createRes.body.categoryTags).to.deep.equal([]);
+      expect(createRes.body.vibeTags).to.deep.equal([]);
 
-    expect(createRes.status).to.equal(201);
-    expect(createRes.body.category).to.equal("Wellness");
-    expect(createRes.body.categories).to.deep.equal([
-      "Wellness",
-      "Tours & Experiences",
-      "Outdoors & Sports",
-    ]);
-    expect(createRes.body.categoryTags).to.deep.equal([
-      "Strength Training",
-      "Sober Events",
-      "Yoga Retreats",
-      "Basketball",
-      "Senior Events",
-      "Youth Events",
-    ]);
-    expect(createRes.body.vibeTags).to.deep.equal([
-      "Sober-friendly",
-      "Beginner-friendly",
-    ]);
-    expect(createRes.body.duration).to.equal("3 hours");
-    expect(createRes.body.priceRange).to.equal("$60-$90");
-    expect(createRes.body.bookingUrl).to.equal(
-      "https://example.com/book-yoga-retreat"
-    );
+      const updateRes = await request(app)
+        .put(`/api/events/${createRes.body._id}`)
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({
+          category: "Food & Drink",
+          categories: ["Food & Drink", "Wellness"],
+          categoryTags: ["Coffee"],
+          vibeTags: ["Sober-friendly"],
+        });
 
-    const filterRes = await request(app).get(
-      "/api/events?category=Sober%20Events"
-    );
-
-    expect(filterRes.status).to.equal(200);
-    expect(filterRes.body.some((event) => event.title === title)).to.equal(true);
-
-    const sportsFilterRes = await request(app).get(
-      "/api/events?category=Basketball"
-    );
-
-    expect(sportsFilterRes.status).to.equal(200);
-    expect(sportsFilterRes.body.some((event) => event.title === title)).to.equal(
-      true
-    );
-
-    const youthFilterRes = await request(app).get(
-      "/api/events?category=Youth%20Events"
-    );
-
-    expect(youthFilterRes.status).to.equal(200);
-    expect(youthFilterRes.body.some((event) => event.title === title)).to.equal(
-      true
-    );
-
-    const seniorSearchRes = await request(app).get(
-      "/api/events?search=senior"
-    );
-
-    expect(seniorSearchRes.status).to.equal(200);
-    expect(seniorSearchRes.body.some((event) => event.title === title)).to.equal(
-      true
-    );
-
-    const vibeSearchRes = await request(app).get(
-      "/api/events?search=Sober-friendly"
-    );
-
-    expect(vibeSearchRes.status).to.equal(200);
-    expect(vibeSearchRes.body.some((event) => event.title === title)).to.equal(
-      true
-    );
-
-    const priceSearchRes = await request(app).get("/api/events?search=90");
-
-    expect(priceSearchRes.status).to.equal(200);
-    expect(priceSearchRes.body.some((event) => event.title === title)).to.equal(
-      true
-    );
-
-    const partialPhraseSearchRes = await request(app).get(
-      "/api/events?search=mountain%20basketball"
-    );
-
-    expect(partialPhraseSearchRes.status).to.equal(200);
-    expect(
-      partialPhraseSearchRes.body.some((event) => event.title === title)
-    ).to.equal(true);
-
-    process.env.ADMIN_EMAILS = originalAdminEmails;
+      expect(updateRes.status).to.equal(200);
+      expect(updateRes.body.category).to.equal("Food & Drink");
+      expect(updateRes.body.categories).to.deep.equal(["Food & Drink"]);
+      expect(updateRes.body.categoryTags).to.deep.equal([]);
+      expect(updateRes.body.vibeTags).to.deep.equal([]);
+    } finally {
+      process.env.ADMIN_EMAILS = originalAdminEmails;
+    }
   });
 
   it("should filter events by a main category group", async () => {
@@ -1702,7 +1629,7 @@ describe("SummitScene API", function () {
         town: "Banff",
         category: "Community",
         categories: ["Community"],
-        categoryTags: ["Free community meal"],
+        communityTags: ["Free community meal"],
         audience: "Everyone welcome",
         date: "2099-07-02",
         time: "17:00",

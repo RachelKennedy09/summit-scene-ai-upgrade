@@ -26,28 +26,43 @@ function inferTown(text, fallbackTown) {
     normalizeTown(fallbackTown);
 }
 
-function normalizeCategory(value, text = "") {
+const ACTIVITY_CATEGORY_RULES = [
+  { pattern: /\b(hock(?:e)?y|nhl|puck|basketball|baseball|softball|soccer|football|rugby|volleyball|tennis|pickleball|curling|golf|biathlon|super bowl|grey cup|stanley cup|sports? watch part(?:y|ies))\b/i, category: "Outdoors & Sports" },
+  { pattern: /\b(live music|music|concerts?|djs?|bands?|karaoke|open mic|acoustic|songwriters?|jazz|gig|nightclub|dance night|après[- ]ski party|apres[- ]ski party)\b/i, category: "Music & Nightlife" },
+  { pattern: /\b(yoga|wellness|fitness|meditation|breathwork|pilates|sound bath|mental health)\b/i, category: "Wellness" },
+  { pattern: /\b(hik(?:e|es|ing)|ski(?:s|ing)?|snowboard(?:ing)?|snowshoe(?:ing)?|bik(?:e|es|ing)|cycling|run(?:ning)?|races?|marathon|climb(?:ing)?|skat(?:e|es|ing)|canoe(?:ing)?|kayak(?:ing)?|paddleboard(?:ing)?|outdoors?)\b/i, category: "Outdoors & Sports" },
+  { pattern: /\b(art|gallery|exhibitions?|film|cinema|theatre|theater|pottery|painting|craft fair|craft market|makers? market)\b/i, category: "Arts & Creativity" },
+  { pattern: /\b(food|beer|wine|brunch|dinner|restaurant|culinary|tasting|coffee|cocktails?|happy hour|farmers? market|bbq|community meal)\b/i, category: "Food & Drink" },
+  { pattern: /\b(workshops?|class(?:es)?|courses?|lectures?|seminars?|learn(?:ing)?|training)\b/i, category: "Learning" },
+  { pattern: /\b(tours?|sightseeing|guided experience)\b/i, category: "Tours & Experiences" },
+];
+
+function inferActivityCategory(text) {
+  return ACTIVITY_CATEGORY_RULES.find(({ pattern }) => pattern.test(text || ""))?.category;
+}
+
+function normalizeCategory(value, extracted = {}) {
   const exact = cleanText(value);
-  if (EVENT_CATEGORY_VALUES.includes(exact)) {
-    return getMainCategoryForTag(exact) || exact;
-  }
+  const suppliedCategory = EVENT_CATEGORY_VALUES.includes(exact)
+    ? getMainCategoryForTag(exact) || exact
+    : undefined;
+  // Classify the activity before accepting broad source labels such as
+  // "Inclusive Community". Venue names and addresses are not activity clues.
+  const titleCategory = inferActivityCategory(extracted.title);
+  if (titleCategory) return titleCategory;
 
-  const lower = `${exact} ${text}`.toLowerCase();
-  const keywordMap = [
-    { keywords: ["music", "concert", "dj", "band", "karaoke"], category: "Music & Nightlife" },
-    { keywords: ["market", "vendor", "maker"], category: "Food & Drink" },
-    { keywords: ["yoga", "wellness", "fitness"], category: "Wellness" },
-    { keywords: ["hike", "ski", "bike", "run", "outdoor"], category: "Outdoors & Sports" },
-    { keywords: ["workshop", "class", "course", "learn"], category: "Learning" },
-    { keywords: ["art", "gallery", "film", "theatre", "craft"], category: "Arts & Creativity" },
-    { keywords: ["food", "beer", "wine", "brunch", "restaurant"], category: "Food & Drink" },
-    { keywords: ["family", "kids", "pet"], category: "Family & Pets" },
-    { keywords: ["community", "fundraiser", "volunteer"], category: "Inclusive Community" },
-  ];
+  const broadCategories = ["Inclusive Community", "Community", "Family & Pets", "Other"];
+  if (suppliedCategory && !broadCategories.includes(suppliedCategory)) return suppliedCategory;
 
-  return keywordMap.find((item) =>
-    item.keywords.some((keyword) => lower.includes(keyword))
-  )?.category || "Other";
+  const text = cleanText([extracted.title, extracted.description, exact].filter(Boolean).join(" "));
+  const activityCategory = inferActivityCategory(text);
+  if (activityCategory) return activityCategory;
+  if (suppliedCategory && suppliedCategory !== "Other") return suppliedCategory;
+
+  if (/\b(lgbtq\w*|pride|queer|bipoc|allyship|accessibility|sensory friendly|inclusive)\b/i.test(text)) return "Inclusive Community";
+  if (/\b(family|kids|children|pets?)\b/i.test(text)) return "Family & Pets";
+  if (/\b(community|fundraiser|volunteer|charity|meetup|meetups|trivia|bingo)\b/i.test(text)) return "Community";
+  return "Other";
 }
 
 export function buildOriginalSummary({
@@ -270,7 +285,7 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
     scheduleType === "recurring"
   );
   const town = normalizeTown(extracted?.town) || inferTown(text, source?.town);
-  const category = normalizeCategory(extracted?.category, text);
+  const category = normalizeCategory(extracted?.category, extracted);
   const title = cleanText(extracted?.title);
   const venue = cleanText(extracted?.venue);
   const startTime = cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text);

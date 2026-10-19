@@ -436,9 +436,10 @@ function inferExploreCanmoreCategory(text) {
   if (/(music|musical|concert|country|dj|duo|band|festival)/i.test(lower)) return "Music & Nightlife";
   if (/(dinner|food|brew|wine|market|restaurant|friends)/i.test(lower)) return "Food & Drink";
   if (/(paint|art|journal|gallery|theatre|cultural)/i.test(lower)) return "Arts & Creativity";
-  if (/(disc golf|biathlon|race|sport|run|bike|trail)/i.test(lower)) return "Outdoors & Sports";
+  if (/\b(hockey|nhl|basketball|football|soccer|curling|disc golf|biathlon|race|sport|run|bike|trail)\b/i.test(lower)) return "Outdoors & Sports";
   if (/(family|kids|children)/i.test(lower)) return "Family & Pets";
-  return "Inclusive Community";
+  if (/\b(community|fundraiser|volunteer|meetup)\b/i.test(lower)) return "Community";
+  return "Other";
 }
 
 function inferRockyMountainLiveTown(venue, text) {
@@ -895,6 +896,58 @@ function readExploreCanmoreEvents($, sourceUrl) {
   return events;
 }
 
+function readSunshineVillageEvents($, sourceUrl) {
+  const eventsByUrl = new Map();
+
+  $(".card-event").each((_, element) => {
+    const card = $(element);
+    const link = card.find("h2 a[href],h3 a[href]").first();
+    const title = cleanText(link.text());
+    const sourceLink = resolveUrl(link.attr("href"), sourceUrl);
+    const dates = card.find(".date-part").map((__, part) => {
+      const month = cleanText($(part).find(".month").text());
+      const day = cleanText($(part).find(".day").text());
+      if (!new RegExp(`^(?:${MONTH_PATTERN})$`, "i").test(month) ||
+          !/^(?:[1-9]|[12]\d|3[01])$/.test(day)) return null;
+      return { month, day };
+    }).get();
+    if (!title || !sourceLink || !dates.length) return;
+
+    const description = cleanText(card.find("p").text());
+    // Badges omit the year. Prefer an explicit date in the card copy when present.
+    const dateWithYear = ({ month, day }) => {
+      const explicit = description.match(new RegExp(
+        `\\b${month}\\w*\\.?\\s+${day}(?:st|nd|rd|th)?[,]?\\s+(\\d{4})\\b`, "i"
+      ));
+      return cleanText(`${month} ${day} ${explicit?.[1] || ""}`);
+    };
+    const startDate = dateWithYear(dates[0]);
+    const endDate = dates.length > 1 ? dateWithYear(dates[dates.length - 1]) : "";
+    const times = cleanText(card.find(".icon-clock").text()).match(
+      /\d{1,2}(?::\d{2})?\s*(?:am|pm)/gi
+    ) || [];
+    const existing = eventsByUrl.get(sourceLink);
+    eventsByUrl.set(sourceLink, {
+      title,
+      description: description || existing?.description,
+      dateText: [startDate, endDate].filter(Boolean).join(" - "),
+      startDate,
+      endDate,
+      startTime: times[0] || existing?.startTime,
+      endTime: times[1] || existing?.endTime,
+      town: "Banff",
+      venue: "Banff Sunshine Village",
+      address: "Banff, AB",
+      category: "Outdoors & Sports",
+      ticketUrl: sourceLink,
+      sourceUrl: sourceLink,
+      extractionMethod: "sunshine-village-card",
+    });
+  });
+
+  return [...eventsByUrl.values()];
+}
+
 function readSkiLouiseEvents($, sourceUrl) {
   if (!String(sourceUrl || "").toLowerCase().includes("skilouise.com")) {
     return [];
@@ -1325,6 +1378,9 @@ export function extractEvents(html, source) {
   const $ = cheerio.load(html || "");
   const sourceUrl = source?.url || "";
   const lowerSourceUrl = sourceUrl.toLowerCase();
+  if (/^https?:\/\/(?:www\.)?skibanff\.com(?:\/|$)/i.test(sourceUrl)) {
+    return readSunshineVillageEvents($, sourceUrl);
+  }
   const jsonLdEvents = readJsonLdEvents($, sourceUrl);
   const nextDataEvents = readNextDataEvents($, sourceUrl);
   if (nextDataEvents.length) {

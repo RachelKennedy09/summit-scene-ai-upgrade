@@ -1,5 +1,13 @@
 export const STARTER_EVENT_SOURCES = [
   {
+    name: "Banff Sunshine Village Events",
+    url: "https://www.skibanff.com/events/events/events-calendar",
+    town: "Banff",
+    sourceType: "html",
+    enabled: true,
+    trusted: true,
+  },
+  {
     name: "Banff Centre Events",
     url: "https://www.banffcentre.ca/events",
     town: "Banff",
