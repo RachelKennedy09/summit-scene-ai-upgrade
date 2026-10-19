@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import PageHeader from "../../components/common/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
 
-const LAST_UPDATED = "August 13, 2026";
+const LAST_UPDATED = "October 19, 2026";
 
 const LEGAL_LINKS = [
   {
@@ -204,6 +204,11 @@ export default function LegalScreen() {
             records and device push tokens so users can see comments, replies,
             likes, interest on their own posts, and optional daily event-count
             alerts.
+          </LegalBullet>
+          <LegalBullet theme={theme}>
+            App usage data: a random installation identifier, recorded app visits,
+            platform, app version, and native build number help us measure usage
+            without requiring sign-in. First recorded opens are not download counts.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Technical and support data: device or app diagnostics, request logs,

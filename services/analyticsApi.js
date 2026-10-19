@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createAnalyticsIdentity } from "../utils/analyticsIdentity.js";
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
-const ANALYTICS_SESSION_KEY = "analyticsSessionId";
 const AUTH_TOKEN_KEY = "authToken";
 const REQUEST_TIMEOUT_MS = 5000;
 const impressionCache = new Set();
@@ -15,19 +15,7 @@ function buildHeaders(token) {
   };
 }
 
-function buildSessionId() {
-  const randomPart = Math.random().toString(36).slice(2, 12);
-  return `anon_${Date.now().toString(36)}_${randomPart}`;
-}
-
-async function getAnalyticsSessionId() {
-  const existing = await AsyncStorage.getItem(ANALYTICS_SESSION_KEY);
-  if (existing) return existing;
-
-  const nextSessionId = buildSessionId();
-  await AsyncStorage.setItem(ANALYTICS_SESSION_KEY, nextSessionId);
-  return nextSessionId;
-}
+export const getAnalyticsInstallationId = createAnalyticsIdentity(AsyncStorage);
 
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
@@ -64,7 +52,7 @@ export function trackAnalytics(type, payload = {}) {
   Promise.resolve()
     .then(async () => {
       const [sessionId, token] = await Promise.all([
-        getAnalyticsSessionId(),
+        getAnalyticsInstallationId(),
         AsyncStorage.getItem(AUTH_TOKEN_KEY).catch(() => null),
       ]);
 
@@ -88,6 +76,15 @@ export function trackAnalytics(type, payload = {}) {
         console.log("Analytics tracking issue", type, error?.message);
       }
     });
+}
+
+export async function sendAppUsage(payload) {
+  const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY).catch(() => null);
+  const response = await fetchWithTimeout(`${API_BASE_URL}/api/analytics/track`, {
+    method: "POST", headers: buildHeaders(token),
+    body: JSON.stringify({ ...payload, type: "app_open" }),
+  });
+  if (!response.ok) throw new Error("Usage report unavailable.");
 }
 
 async function readJsonSafely(response) {

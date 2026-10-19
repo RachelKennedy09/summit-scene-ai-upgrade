@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const { Schema } = mongoose;
 
 export const ANALYTICS_EVENT_TYPES = [
+  "app_open",
   "event_impression",
   "event_view",
   "business_view",
@@ -83,6 +84,12 @@ const analyticsEventSchema = new Schema(
       maxlength: 120,
       default: null,
     },
+    installationId: { type: String, maxlength: 120, default: null },
+    visitId: { type: String, maxlength: 120, default: null },
+    platform: { type: String, enum: ["ios", "android", null], default: null },
+    appVersion: { type: String, maxlength: 40, default: null },
+    nativeBuild: { type: String, maxlength: 40, default: null },
+    isReturning: { type: Boolean, default: null },
     metadata: {
       type: Schema.Types.Mixed,
       default: {},
@@ -101,6 +108,7 @@ analyticsEventSchema.index({ businessId: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index({ attributionKey: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index({ eventId: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index({ type: 1, createdAt: -1 });
+analyticsEventSchema.index({ installationId: 1, type: 1, createdAt: -1 });
 analyticsEventSchema.index(
   { dedupeKey: 1 },
   {

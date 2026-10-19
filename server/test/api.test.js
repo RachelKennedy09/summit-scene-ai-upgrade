@@ -302,6 +302,7 @@ describe("SummitScene API", function () {
       expect(res.status).to.equal(200);
       expect(res.body).to.include.keys([
         "uniqueSessions",
+        "appUsage",
         "eventImpressions",
         "eventViews",
         "businessViews",

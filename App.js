@@ -16,6 +16,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import AppUpdateGate from "./components/AppUpdateGate";
 import RateAppPrompt from "./components/RateAppPrompt";
+import AppUsageTracker from "./components/AppUsageTracker";
 import RootNavigator from "./navigation/RootNavigator";
 
 const navigationRef = createNavigationContainerRef();
@@ -108,6 +109,7 @@ function AppNavigation() {
       <AppUpdateGate>
         <NavigationContainer ref={navigationRef} theme={navTheme} linking={linking}>
           <RateAppPrompt />
+          <AppUsageTracker />
           <RootNavigator />
         </NavigationContainer>
       </AppUpdateGate>

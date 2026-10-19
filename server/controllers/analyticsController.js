@@ -5,6 +5,7 @@ import AnalyticsEvent, {
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 import { isAdminEmail } from "../utils/adminAccess.js";
+import { getAppUsageSummary, recordAppOpen, validateAppUsage } from "../services/appUsageAnalytics.js";
 
 const SUMMARY_KEYS = {
   event_impression: "eventImpressions",
@@ -104,6 +105,7 @@ async function countUniqueSessions(match) {
     {
       $match: {
         ...match,
+        type: { $ne: "app_open" },
         sessionId: { $type: "string", $ne: "" },
       },
     },
@@ -230,6 +232,13 @@ export async function trackAnalytics(req, res) {
       }
     }
 
+    if (type === "app_open") {
+      try { validateAppUsage(req.body); }
+      catch (error) { return res.status(400).json({ message: error.message }); }
+      await recordAppOpen(req.body);
+      return res.status(202).json({ ok: true });
+    }
+
     const { event, business } = await resolveAnalyticsContext({
       eventId,
       businessId,
@@ -291,9 +300,10 @@ export async function getAnalyticsSummary(req, res) {
 
     const days = normalizeDays(req.query?.days);
     const match = buildDateMatch(days);
-    const summary = await aggregateSummary(match);
-    const uniqueSessions = await countUniqueSessions(match);
-    return res.json({ days, uniqueSessions, ...summary });
+    const [summary, uniqueSessions, appUsage] = await Promise.all([
+      aggregateSummary(match), countUniqueSessions(match), getAppUsageSummary(match),
+    ]);
+    return res.json({ days, uniqueSessions, ...summary, appUsage });
   } catch (error) {
     console.error("Analytics summary issue:", error.message);
     return res.status(500).json({ message: "Could not load analytics summary." });

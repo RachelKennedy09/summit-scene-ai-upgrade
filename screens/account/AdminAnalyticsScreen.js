@@ -24,7 +24,7 @@ import {
 
 const DAY_OPTIONS = ["7", "30", "90", "all"];
 const METRICS = [
-  ["uniqueSessions", "Unique sessions"],
+  ["uniqueSessions", "Engaged installations"],
   ["eventImpressions", "Event impressions"],
   ["eventViews", "Event views"],
   ["businessViews", "Business views"],
@@ -33,15 +33,26 @@ const METRICS = [
   ["going", "Going"],
   ["shares", "Shares"],
 ];
+const USAGE_METRICS = [
+  ["appOpens", "App opens"],
+  ["activeInstallations", "Active installations"],
+  ["firstRecordedOpens", "First recorded opens"],
+  ["returningInstallations", "Returning installations"],
+];
+const ACTIVE_METRICS = [
+  ["active24h", "Active · last 24 hours"],
+  ["active7d", "Active · last 7 days"],
+  ["active30d", "Active · last 30 days"],
+];
 
 function formatCount(value) {
   return Number(value || 0).toLocaleString();
 }
 
-function MetricGrid({ data, theme }) {
+function MetricGrid({ data, theme, metrics = METRICS }) {
   return (
     <View style={styles.metricGrid}>
-      {METRICS.map(([key, label]) => (
+      {metrics.map(([key, label]) => (
         <View
           key={key}
           style={[
@@ -57,6 +68,29 @@ function MetricGrid({ data, theme }) {
           </Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function UsageBreakdown({ title, rows = [], theme, versions = false }) {
+  if (!rows.length) return null;
+  return (
+    <View style={styles.section}>
+      <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+      {rows.map((row) => {
+        const platform = row.platform === "ios" ? "iOS" : "Android";
+        const label = versions ? `${platform} · ${row.appVersion || "Unknown version"} (${row.nativeBuild || "Unknown build"})` : platform;
+        return (
+          <View key={label} style={[styles.eventRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.eventCopy}>
+              <Text style={[styles.eventTitle, { color: theme.text }]}>{label}</Text>
+              <Text style={[styles.eventMeta, { color: theme.textMuted }]}>
+                {formatCount(row.appOpens)} opens · {formatCount(row.activeInstallations)} active installations
+              </Text>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -225,7 +259,7 @@ export default function AdminAnalyticsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <PageHeader
           title="Analytics"
-          subtitle="Aggregate event and business activity collected by Summit Scene."
+          subtitle="Anonymous app usage, event activity, and business reports."
           rightAccessory={
             <Pressable onPress={loadSummary} disabled={loading}>
               {loading ? (
@@ -281,6 +315,21 @@ export default function AdminAnalyticsScreen() {
           </Text>
         ) : null}
 
+        <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.text }]}>App usage</Text>
+        <Text style={[styles.lookupHelp, { color: theme.textMuted }]}>
+          Visits begin on launch or after 30 minutes away. First recorded opens include existing installations using this tracking for the first time; they are not downloads. Returning installations had an earlier recorded visit and can also appear in first recorded opens during this period.
+        </Text>
+        <MetricGrid data={summary?.appUsage} theme={theme} metrics={USAGE_METRICS} />
+        <Text style={[styles.lookupHelp, { color: theme.textMuted }]}>
+          Active installations below use rolling windows, independent of the period selected above.
+        </Text>
+        <MetricGrid data={summary?.appUsage} theme={theme} metrics={ACTIVE_METRICS} />
+        <Text style={[styles.lookupHelp, { color: theme.textMuted }]}>
+          Counts estimate installations, not people. Multiple devices or reinstalling can affect counts. Downloads and installed audience are available in App Store Connect and Google Play Console; they are not connected to this dashboard.
+        </Text>
+        <UsageBreakdown title="Usage by platform" rows={summary?.appUsage?.platforms} theme={theme} />
+        <UsageBreakdown title="Usage by app version · top 50" rows={summary?.appUsage?.versions} theme={theme} versions />
+        <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.text }]}>Event and business activity</Text>
         <MetricGrid data={summary} theme={theme} />
 
         <View style={styles.section}>

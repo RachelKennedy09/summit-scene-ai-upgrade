@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "test:app-usage": "mocha --exit --timeout 10000 server/test/appUsage.test.js",
     "test:app-updates": "mocha --exit --timeout 10000 server/test/appUpdate.test.js",
     "start": "expo start",
     "start:clear": "expo start --clear",
