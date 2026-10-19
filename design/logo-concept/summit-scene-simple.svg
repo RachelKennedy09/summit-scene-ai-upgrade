@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="1200" viewBox="0 0 1000 1000">
+  <title>Summit Scene — Three Sisters badge concept</title>
+  <desc>Flat, editable mountain badge with rounded custom path lettering. Transparent outside the badge. Four colours, three mountain peaks, and three simple trees.</desc>
+  <defs>
+    <clipPath id="badge-clip"><circle cx="500" cy="505" r="311"/></clipPath>
+    <!-- Each letter starts as one simple brush stroke. No installed font needed. -->
+    <path id="s" d="M 30,-39 C 7,-59 -35,-48 -33,-20 C -30,5 32,-4 33,24 C 35,51 -6,62 -32,40"/>
+    <path id="u" d="M -33,-47 L -33,15 Q -33,51 0,51 Q 33,51 33,15 L 33,-47"/>
+    <path id="m" d="M -36,48 L -36,-46 Q -36,-54 -29,-39 L 0,4 L 29,-39 Q 36,-54 36,-46 L 36,48"/>
+    <path id="i" d="M 0,-49 L 0,49"/>
+    <path id="t" d="M -35,-47 L 35,-47 M 0,-47 L 0,49"/>
+    <path id="c" d="M 31,-39 C -47,-77 -52,77 31,39"/>
+    <path id="e" d="M 30,-47 L -31,-47 L -31,47 L 30,47 M -31,0 L 20,0"/>
+    <path id="n" d="M -33,48 L -33,-48 L 33,48 L 33,-48"/>
+    <g id="summit" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <use xlink:href="#s" transform="translate(215 260) rotate(-35)"/>
+      <use xlink:href="#u" transform="translate(315 203) rotate(-21)"/>
+      <use xlink:href="#m" transform="translate(435 173) rotate(-7)"/>
+      <use xlink:href="#m" transform="translate(565 173) rotate(7)"/>
+      <use xlink:href="#i" transform="translate(675 204) rotate(21)"/>
+      <use xlink:href="#t" transform="translate(775 261) rotate(35)"/>
+    </g>
+    <g id="scene" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <use xlink:href="#s" transform="translate(270 782) rotate(25)"/>
+      <use xlink:href="#c" transform="translate(380 823) rotate(12)"/>
+      <use xlink:href="#e" transform="translate(500 838)"/>
+      <use xlink:href="#n" transform="translate(620 823) rotate(-12)"/>
+      <use xlink:href="#e" transform="translate(730 782) rotate(-25)"/>
+    </g>
+    <path id="pine" d="M 0,-74 L -24,-34 L -12,-34 L -35,5 L -20,5 L -46,47 L -8,47 L -8,68 L 8,68 L 8,47 L 46,47 L 20,5 L 35,5 L 12,-34 L 24,-34 Z"/>
+  </defs>
+
+  <g id="badge">
+    <circle cx="500" cy="505" r="321" fill="#173f31"/>
+    <circle cx="500" cy="505" r="308" fill="#f6ebd4"/>
+    <g clip-path="url(#badge-clip)">
+      <g id="sun" fill="#dc9a4c"><circle cx="672" cy="367" r="66"/></g>
+      <g id="mountain-silhouette" fill="#82967a" stroke="#173f31" stroke-width="8" stroke-linejoin="round">
+        <path d="M 168,657 L 261,486 L 300,448 L 337,352 L 357,337 L 402,410 L 433,451 L 481,371 L 506,360 L 553,430 L 585,478 L 645,414 L 666,402 L 717,482 L 814,630 L 830,740 L 170,740 Z"/>
+      </g>
+      <g id="mountain-shadow" fill="#173f31">
+        <path d="M 357,337 L 342,443 L 408,569 L 364,536 L 427,665 L 497,665 L 402,410 Z"/>
+        <path d="M 506,360 L 493,452 L 548,533 L 519,511 L 590,649 L 647,665 L 553,430 Z"/>
+        <path d="M 666,402 L 655,473 L 697,530 L 682,523 L 760,665 L 814,630 L 717,482 Z"/>
+      </g>
+      <g id="snow-caps" fill="#f6ebd4">
+        <path d="M 337,352 L 357,337 L 387,386 L 369,377 L 364,404 L 348,388 L 322,403 Z"/>
+        <path d="M 481,371 L 506,360 L 532,399 L 515,393 L 512,414 L 491,402 L 466,411 Z"/>
+        <path d="M 645,414 L 666,402 L 695,447 L 673,435 L 669,453 L 651,442 L 632,445 Z"/>
+      </g>
+      <g id="foreground" fill="#173f31">
+        <path d="M 180,683 Q 335,630 500,689 Q 661,638 820,680 L 820,850 L 180,850 Z"/>
+        <use xlink:href="#pine" transform="translate(294 651) scale(.82)"/>
+        <use xlink:href="#pine" transform="translate(500 657)"/>
+        <use xlink:href="#pine" transform="translate(708 650) scale(.82)"/>
+      </g>
+    </g>
+    <circle cx="500" cy="505" r="313" fill="none" stroke="#f6ebd4" stroke-width="10"/>
+  </g>
+  <!-- Three passes form the green edge, cream border, and bubble-letter ink. -->
+  <g id="lettering" stroke-linecap="round" stroke-linejoin="round">
+    <use xlink:href="#summit" stroke="#173f31" stroke-width="66"/>
+    <use xlink:href="#scene" stroke="#173f31" stroke-width="66"/>
+    <use xlink:href="#summit" stroke="#f6ebd4" stroke-width="56"/>
+    <use xlink:href="#scene" stroke="#f6ebd4" stroke-width="56"/>
+    <use xlink:href="#summit" stroke="#173f31" stroke-width="36"/>
+    <use xlink:href="#scene" stroke="#173f31" stroke-width="36"/>
+  </g>
+</svg>
