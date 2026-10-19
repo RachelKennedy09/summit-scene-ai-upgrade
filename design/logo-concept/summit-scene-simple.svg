@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="1200" viewBox="0 0 1000 1000">
   <title>Summit Scene — Three Sisters badge concept</title>
-  <desc>Flat, editable mountain badge with rounded custom path lettering. Transparent outside the badge. Four colours, three mountain peaks, and three simple trees.</desc>
+  <desc>Flat mountain badge based on the supplied Three Sisters photograph: stepped left summit, broad middle tower and pointed right summit with a long ridge. Rounded custom path lettering and a transparent outer background.</desc>
   <defs>
     <clipPath id="badge-clip"><circle cx="500" cy="505" r="311"/></clipPath>
     <!-- Each letter starts as one simple brush stroke. No installed font needed. -->
@@ -36,17 +36,17 @@
     <g clip-path="url(#badge-clip)">
       <g id="sun" fill="#dc9a4c"><circle cx="672" cy="367" r="66"/></g>
       <g id="mountain-silhouette" fill="#82967a" stroke="#173f31" stroke-width="8" stroke-linejoin="round">
-        <path d="M 168,657 L 261,486 L 300,448 L 337,352 L 357,337 L 402,410 L 433,451 L 481,371 L 506,360 L 553,430 L 585,478 L 645,414 L 666,402 L 717,482 L 814,630 L 830,740 L 170,740 Z"/>
+        <path d="M 145,535 L 210,478 L 242,466 L 258,416 L 266,380 L 285,385 L 293,375 L 313,374 L 335,362 L 351,360 L 363,375 L 374,407 L 389,419 L 396,438 L 415,444 L 433,461 L 446,421 L 458,385 Q 471,373 483,371 Q 494,371 505,385 L 520,391 L 534,411 L 540,432 L 561,435 L 580,433 L 601,422 L 617,411 L 629,390 L 638,374 L 646,377 L 657,398 L 667,411 L 686,424 L 704,445 L 728,459 L 756,477 L 855,523 L 855,740 L 145,740 Z"/>
       </g>
       <g id="mountain-shadow" fill="#173f31">
-        <path d="M 357,337 L 342,443 L 408,569 L 364,536 L 427,665 L 497,665 L 402,410 Z"/>
-        <path d="M 506,360 L 493,452 L 548,533 L 519,511 L 590,649 L 647,665 L 553,430 Z"/>
-        <path d="M 666,402 L 655,473 L 697,530 L 682,523 L 760,665 L 814,630 L 717,482 Z"/>
+        <path d="M 285,385 L 298,434 L 322,441 L 337,494 L 376,507 L 397,561 L 457,612 L 433,461 L 415,444 L 396,438 L 389,419 L 374,407 L 363,375 L 351,360 L 351,422 L 330,408 L 319,384 L 313,374 L 293,375 Z"/>
+        <path d="M 483,371 L 488,437 L 471,473 L 504,493 L 531,550 L 584,614 L 580,507 L 561,467 L 561,435 L 540,432 L 534,411 L 520,391 L 505,385 L 494,373 Z"/>
+        <path d="M 638,374 L 635,421 L 606,440 L 585,466 L 641,457 L 697,489 L 755,501 L 855,546 L 855,523 L 756,477 L 728,459 L 704,445 L 686,424 L 667,411 L 657,398 L 646,377 Z"/>
       </g>
-      <g id="snow-caps" fill="#f6ebd4">
-        <path d="M 337,352 L 357,337 L 387,386 L 369,377 L 364,404 L 348,388 L 322,403 Z"/>
-        <path d="M 481,371 L 506,360 L 532,399 L 515,393 L 512,414 L 491,402 L 466,411 Z"/>
-        <path d="M 645,414 L 666,402 L 695,447 L 673,435 L 669,453 L 651,442 L 632,445 Z"/>
+      <g id="ridge-highlights" fill="#f6ebd4">
+        <path d="M 293,440 L 327,453 L 333,447 L 345,466 L 373,473 L 371,481 L 337,474 L 328,461 L 292,449 Z"/>
+        <path d="M 439,466 L 466,462 L 474,470 L 495,466 L 489,476 L 470,480 L 463,472 L 439,475 Z"/>
+        <path d="M 583,456 L 601,449 L 603,441 L 616,442 L 620,449 L 603,448 L 600,457 L 583,463 Z"/>
       </g>
       <g id="foreground" fill="#173f31">
         <path d="M 180,683 Q 335,630 500,689 Q 661,638 820,680 L 820,850 L 180,850 Z"/>
