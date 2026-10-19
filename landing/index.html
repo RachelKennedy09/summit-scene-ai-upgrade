@@ -3,301 +3,89 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Summit Scene | Rocky Mountain Social & Events Hub</title>
-    <meta
-      name="description"
-      content="Download Summit Scene to discover events, make plans, meet newcomers, join groups, and share community notices around Banff, Canmore, and Lake Louise."
-    />
+    <meta name="theme-color" content="#1f5139" />
+    <title>Summit Scene | Events in Banff, Canmore &amp; Lake Louise</title>
+    <meta name="description" content="Find events, live music, sports, food, and things to do in Banff, Canmore, and Lake Louise. Browse Summit Scene without creating an account." />
+    <meta property="og:title" content="Summit Scene &mdash; Find your next mountain-town plan" />
+    <meta property="og:description" content="Local events. Three mountain towns. No account needed to explore." />
     <link rel="icon" href="./assets/app-icon.png" />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./events-refresh.css" />
+    <script src="./navigation.js" defer></script>
   </head>
-  <body>
+  <body class="events-home">
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <a class="brand" href="#top" aria-label="Summit Scene home">
-        <img
-          src="./assets/logo-app-earth-transparent-alpha.png"
-          alt="Summit Scene"
-          class="brand-logo"
-        />
+        <img src="./assets/logo-app-earth-transparent-alpha.png" alt="" class="brand-logo" width="58" height="62" />
         <span>Summit Scene</span>
       </a>
-      <input
-        class="nav-toggle"
-        type="checkbox"
-        id="nav-toggle"
-        aria-label="Toggle navigation menu"
-      />
-      <label class="hamburger" for="nav-toggle" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-      </label>
-      <nav class="nav-links" aria-label="Main navigation">
-        <a href="#overview">Overview</a>
-        <a href="#download">Download</a>
-        <a href="#community">Community</a>
-        <a href="#business">Business</a>
-        <a href="#contact">Contact</a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">&#9776;</span></button>
+      <nav id="main-nav" class="nav-links" aria-label="Main navigation">
+        <a href="#features">Explore</a><a href="#how-it-works">How it works</a><a href="#business">For organizers</a><a class="nav-download" href="#download">Get the app <span aria-hidden="true">&#8599;</span></a>
       </nav>
     </header>
-
-    <main id="top">
-      <section class="hero">
-        <picture class="hero-picture">
-          <source
-            media="(max-width: 700px)"
-            srcset="./assets/landing-hero-mobile.png"
-          />
-          <img
-            src="./assets/landing-hero-desktop.png"
-            alt="Summit Scene - Your Rocky Mountain Social and Events Hub"
-            class="hero-image"
-          />
-        </picture>
-        <div class="hero-content">
+    <main id="main">
+      <section class="event-hero" id="top">
+        <div class="hero-text">
           <p class="eyebrow">Banff &middot; Canmore &middot; Lake Louise</p>
-          <h1>Summit Scene</h1>
-          <p class="hero-copy">
-            Your Rocky Mountain social and events hub for finding local events,
-            making plans, meeting people, and sharing practical community notices.
-          </p>
+          <h1>Less searching.<br />More <em>getting out.</em></h1>
+          <p class="hero-description">Find your next mountain-town plan. Discover local events, live music, sports, and experiences across the Bow Valley.</p>
+          <p class="browse-note"><span aria-hidden="true">&#10003;</span> Open the app. Start exploring. No account needed.</p>
           <div class="hero-actions">
-            <a
-              class="app-store-badge hero-badge"
-              href="https://apps.apple.com/app/summit-scene/id6777819596"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Download Summit Scene on the App Store"
-            >
-              <img src="./black.svg" alt="Download on the App Store" />
-            </a>
-            <a class="button secondary" href="#overview">See what it does</a>
+            <a class="app-store-badge" href="https://apps.apple.com/app/summit-scene/id6777819596" target="_blank" rel="noopener noreferrer" aria-label="Download Summit Scene on the App Store"><img src="./black.svg" alt="Download on the App Store" width="162" height="48" /></a>
+            <a class="text-link" href="#features">Take a look <span aria-hidden="true">&#8595;</span></a>
           </div>
+          <p class="availability">Available on iOS &middot; Android coming soon</p>
+        </div>
+        <div class="hero-art">
+          <svg class="mountain-backdrop" viewBox="0 0 600 650" aria-hidden="true" focusable="false">
+            <circle cx="440" cy="140" r="78" fill="#e2a361" />
+            <path d="M0 390 125 155 245 340 340 205 600 470V650H0Z" fill="#c6d1bd" />
+            <path d="m0 475 160-165 117 95 130-145 193 260v130H0Z" fill="#81997e" />
+            <path d="m50 650 125-165 70 85 115-123 100 85 140-70v188Z" fill="#345c43" />
+            <path d="m125 155-34 65 35-18 26 25ZM340 205l-39 55 40-15 40 20Z" fill="#fffdf8" />
+          </svg>
+          <div class="event-preview" role="img" aria-label="Illustrative event preview showing one category per event, town filters, and list and map browsing.">
+            <div class="preview-top"><img src="./assets/logo-app-earth-transparent-alpha.png" alt="" width="38" height="38" /><strong>Summit Scene</strong><span aria-hidden="true">&#9906;</span></div>
+            <p class="preview-eyebrow">A little closer to your next plan</p>
+            <h2>What's happening?</h2>
+            <div class="town-options"><span class="selected">Banff</span><span>Canmore</span><span>Lake Louise</span></div>
+            <div class="preview-event"><div class="preview-symbol music" aria-hidden="true">&#9834;</div><div><span class="preview-tag">Music &amp; Nightlife</span><h3>A night of live music</h3><p>Find your next local show</p></div></div>
+            <div class="preview-event"><div class="preview-symbol sports" aria-hidden="true">&#8599;</div><div><span class="preview-tag">Outdoors &amp; Sports</span><h3>Get out. Catch a game.</h3><p>Make time for a mountain-town day</p></div></div>
+            <div class="preview-event"><div class="preview-symbol food" aria-hidden="true">&#9749;</div><div><span class="preview-tag">Food &amp; Drink</span><h3>Something worth going out for</h3><p>Explore local food and drink events</p></div></div>
+            <div class="preview-bottom"><span>Explore events</span><span>Map view &#8599;</span></div>
+          </div>
+          <span class="preview-caption">An illustration of event discovery, not live listings.</span>
         </div>
       </section>
-
-      <section id="overview" class="section intro-section">
-        <div class="section-heading">
-          <p class="eyebrow">Built for the Bow Valley</p>
-          <h2>A local app for events, plans, people, and community businesses</h2>
-          <p>
-            Summit Scene brings together the pieces people usually have to hunt
-            for separately: what is happening, who wants to make plans, who is
-            new in town, and what locals need to know.
-          </p>
-        </div>
-      </section>
-
-      <section id="download" class="section download-section">
-        <div class="section-heading">
-          <p class="eyebrow">Available now</p>
-          <h2>Download Summit Scene on the App Store</h2>
-          <p>
-            Summit Scene is live for iPhone. Download the app to browse events,
-            save plans, invite friends, and connect around Banff, Canmore, and
-            Lake Louise.
-          </p>
-        </div>
-        <div class="download-panel">
-          <div class="app-icon-preview" aria-label="Summit Scene app icon preview">
-            <img
-              src="./assets/app-icon.png"
-              alt="Summit Scene app icon"
-            />
-          </div>
-          <div class="download-copy">
-            <h3>Summit Scene is ready to download</h3>
-            <p>
-              Open the App Store to install Summit Scene and start finding local
-              events, community posts, groups, jobs and volunteer opportunities,
-              and community notices.
-            </p>
-            <div class="download-buttons">
-              <a
-                class="app-store-badge large"
-                href="https://apps.apple.com/app/summit-scene/id6777819596"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Download Summit Scene on the App Store"
-              >
-                <img src="./black.svg" alt="Download on the App Store" />
-              </a>
-              <span class="launch-note">Android version planned for a future release.</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="features" class="section">
-        <div class="section-heading">
-          <p class="eyebrow">What it helps with</p>
-          <h2>One place for local plans and events</h2>
-        </div>
+      <div class="town-strip" aria-label="Discover events in three mountain towns"><span>Three towns. Plenty of possibilities.</span><strong>Banff</strong><span aria-hidden="true">&#10035;</span><strong>Canmore</strong><span aria-hidden="true">&#10035;</span><strong>Lake Louise</strong></div>
+      <section id="features" class="section discover-section">
+        <span id="overview" aria-hidden="true"></span>
+        <div class="section-heading"><p class="eyebrow">Made for finding things to do</p><h2>Your plans, with a little less planning.</h2><p>Whether you live here, work a season, or are visiting for the weekend, start with what's happening nearby.</p></div>
         <div class="feature-grid">
-          <article class="feature-card">
-            <span class="feature-kicker">Events</span>
-            <h3>Find what is happening</h3>
-            <p>
-              Browse local events, save what looks interesting, set optional
-              reminders, and use the map to see what is nearby.
-            </p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-kicker">Plans</span>
-            <h3>Make a plan</h3>
-            <p>
-              Post when you want someone to join a hike, coffee, ski day, walk,
-              event, or casual meetup.
-            </p>
-          </article>
-          <article class="feature-card">
-            <span class="feature-kicker">People</span>
-            <h3>Meet newcomers</h3>
-            <p>
-              New in town, here for the season, or just open to saying hello?
-              Summit Scene makes introductions easier.
-            </p>
-          </article>
+          <article class="feature-card"><span class="feature-number">01 / Discover</span><h3>Find your kind of event</h3><p>Browse by town, date, and category. Live music, sports, food, arts, wellness, and more&mdash;easy to scan, with one clear category per event.</p></article>
+          <article class="feature-card"><span class="feature-number">02 / Explore</span><h3>See what's nearby</h3><p>Switch to the map to explore events around you, or browse another town to plan your next day out.</p></article>
+          <article class="feature-card"><span class="feature-number">03 / Make it happen</span><h3>Go straight to the details</h3><p>Check the event time, venue, and organizer information. Follow the event's website or booking link for the latest details.</p></article>
         </div>
+        <div class="category-list" aria-label="Example event categories"><span>Music &amp; Nightlife</span><span>Outdoors &amp; Sports</span><span>Food &amp; Drink</span><span>Arts &amp; Creativity</span><span>Wellness</span><span>Tours &amp; Experiences</span></div>
       </section>
-
-      <section id="community" class="section split-section">
-        <div>
-          <p class="eyebrow">Community side</p>
-          <h2>Browse by what you actually need</h2>
-          <p>
-            Community is organized around simple paths: Make a Plan, New in
-            Town, Groups, and Community Notices & Info. That keeps browsing clear without
-            mixing every post into one confusing feed.
-          </p>
-        </div>
-        <div class="phone-preview" aria-label="Community feature preview">
-          <div class="phone-bar"></div>
-          <div class="phone-title">Community</div>
-          <div class="pill-row">
-            <span>Make a Plan</span>
-            <span>New in Town</span>
-          </div>
-          <div class="pill-row">
-            <span>Groups</span>
-            <span>Notices & Info</span>
-          </div>
-          <div class="preview-post">
-            <strong>Anyone up for a sunset walk?</strong>
-            <p>Banff &middot; Walking &middot; Tonight</p>
-          </div>
-          <div class="preview-post muted">
-            <strong>Gear swap this weekend</strong>
-            <p>Canmore &middot; Community Notice</p>
-          </div>
-        </div>
+      <section id="how-it-works" class="section how-section">
+        <div class="section-heading"><p class="eyebrow">A simpler Summit Scene</p><h2>Open. Explore. Head out.</h2><p>Event discovery comes first. No profile to fill out before you can see what's on.</p></div>
+        <ol class="steps"><li><h3>Choose your town</h3><p>Start in Banff, Canmore, or Lake Louise.</p></li><li><h3>Find something you like</h3><p>Browse the list or map and narrow down your options.</p></li><li><h3>Check the details</h3><p>Confirm availability and booking with the organizer, then make your plan.</p></li></ol>
       </section>
-
-      <section id="business" class="section">
-        <div class="section-heading">
-          <p class="eyebrow">For organizers</p>
-          <h2>Businesses and event hosts can be found locally</h2>
-          <p>
-            Summit Scene supports business and organizer profiles so official
-            events, venues, and experiences can appear where locals and visitors
-            are already browsing.
-          </p>
-        </div>
+      <section id="business" class="section organizer-section">
+        <div><p class="eyebrow">For venues &amp; organizers</p><h2>Put your event on the local radar.</h2><p>Have an event in the Bow Valley? Get in touch about sharing your listing on Summit Scene.</p></div>
+        <div class="organizer-actions"><a class="button primary" href="mailto:hello@summitscene.ca?subject=List%20an%20event%20on%20Summit%20Scene">Ask about listing an event <span aria-hidden="true">&#8599;</span></a><a class="text-link" href="./business.html">Organizer information</a></div>
       </section>
-
-      <section class="section safety-section">
-        <div>
-          <p class="eyebrow">Safety</p>
-          <h2>Built with community controls</h2>
-        </div>
-        <ul class="safety-list">
-          <li>Public-place reminders for first plans.</li>
-          <li>Optional saved-event reminders and daily event-count alerts with device notification permission.</li>
-          <li>Profile checks before meeting new people.</li>
-          <li>Report and block tools for posts, replies, and profiles.</li>
-          <li>Community guidelines and account review flows.</li>
-        </ul>
+      <section id="download" class="section download-refresh">
+        <img class="download-icon" src="./assets/app-icon.png" alt="Summit Scene app icon" width="96" height="96" loading="lazy" />
+        <p class="eyebrow">Your next plan starts here</p><h2>A mountain town.<br />A whole lot happening.</h2><p>Download Summit Scene and explore events in Banff, Canmore, and Lake Louise. Browsing is free and needs no account.</p>
+        <a class="app-store-badge" href="https://apps.apple.com/app/summit-scene/id6777819596" target="_blank" rel="noopener noreferrer" aria-label="Download Summit Scene on the App Store"><img src="./black.svg" alt="Download on the App Store" width="162" height="48" /></a>
+        <p class="availability">Available on iOS. Android coming soon.</p>
       </section>
-
-      <section id="contact" class="section contact-section">
-        <p class="eyebrow">Questions?</p>
-        <h2>Need help or want to follow along?</h2>
-        <p>
-          Download Summit Scene on the App Store or reach out for support,
-          business questions, or community updates.
-        </p>
-        <a
-          class="button primary"
-          href="https://apps.apple.com/app/summit-scene/id6777819596"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Download on the App Store
-        </a>
-        <a
-          class="button secondary contact-email-link"
-          href="mailto:hello@summitscene.ca?subject=Summit%20Scene%20Support"
-        >
-          Email Support
-        </a>
-        <div class="social-links" aria-label="Summit Scene social links">
-          <a
-            href="https://www.instagram.com/summitscene/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Instagram @summitscene
-          </a>
-          <a
-            href="https://www.facebook.com/profile.php?id=61589425073694"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Facebook Summit Scene
-          </a>
-        </div>
-      </section>
+      <section id="contact" class="section contact-refresh"><div><p class="eyebrow">Say hello</p><h2>Have a question?</h2><p>Need help with the app or spotted an event detail that needs updating?</p></div><a class="text-link" href="mailto:hello@summitscene.ca">hello@summitscene.ca <span aria-hidden="true">&#8599;</span></a></section>
     </main>
-
-    <a class="back-to-top" href="#top" aria-label="Back to top">&uarr;</a>
-
-    <footer class="site-footer">
-      <div class="footer-brand">&copy; 2026 Summit Scene</div>
-      <nav class="footer-links" aria-label="Footer navigation">
-        <span class="footer-link-group">
-          <a
-            href="https://www.instagram.com/summitscene/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Instagram
-          </a>
-          <span aria-hidden="true">/</span>
-          <a
-            href="https://www.facebook.com/profile.php?id=61589425073694"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Facebook
-          </a>
-        </span>
-        <span class="footer-link-group">
-          <a href="./privacy.html">Privacy Policy</a>
-          <span aria-hidden="true">/</span>
-          <a href="./terms.html">Terms</a>
-        </span>
-        <span class="footer-link-group">
-          <a href="./community-guidelines.html">Community Guidelines</a>
-          <span aria-hidden="true">/</span>
-          <a href="./safety.html">Safety</a>
-        </span>
-        <span class="footer-link-group">
-          <a href="./support.html">Support</a>
-          <span aria-hidden="true">/</span>
-          <a href="./business.html">Business Info</a>
-        </span>
-        <a href="./delete-account.html">Account & Data Deletion</a>
-      </nav>
-    </footer>
+    <footer class="site-footer"><div class="footer-brand">&copy; 2026 Summit Scene<br /><span>Made for the Bow Valley.</span></div><nav class="footer-links" aria-label="Footer navigation"><a href="./privacy.html">Privacy</a><a href="./terms.html">Terms</a><a href="./support.html">Support</a><a href="./safety.html">Event safety</a><a href="./delete-account.html">Data requests</a><a href="https://www.instagram.com/summitscene/" target="_blank" rel="noopener noreferrer">Instagram</a></nav></footer>
   </body>
 </html>
