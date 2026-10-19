@@ -232,6 +232,10 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
         req.user.userId
       );
       delete updatePayload.createdBy;
+      // These fields are cleared by $unset below. MongoDB rejects any path
+      // present in both operators, even when the source payload is stale.
+      delete updatePayload.sourceMissingSince;
+      delete updatePayload.importReviewReason;
 
       const event = await Event.findByIdAndUpdate(
         candidate.approvedEvent,
@@ -239,6 +243,7 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
           $set: {
             ...updatePayload,
             needsImportReview: false,
+            sourceMissingChecks: 0,
           },
           $unset: {
             sourceMissingSince: "",
