@@ -4,6 +4,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "build:website": "node scripts/buildWebsite.mjs",
+    "preview:website": "node scripts/previewWebsite.mjs",
+    "test:website": "mocha --exit --timeout 10000 server/test/publicWebsite.test.js",
     "test:event-importer": "mocha --exit --timeout 10000 server/test/eventImporter.test.js server/test/eventCategory.test.js server/test/eventImportRejection.test.js server/test/eventImportApproval.test.js server/test/eventImporterReliability.test.js server/test/eventImportBulkRejection.test.js",
     "test:app-usage": "mocha --exit --timeout 10000 server/test/appUsage.test.js",
     "test:app-updates": "mocha --exit --timeout 10000 server/test/appUpdate.test.js",
@@ -51,6 +54,7 @@
   "private": true,
   "devDependencies": {
     "chai": "^6.2.1",
+    "mingo": "^7.2.5",
     "mocha": "^11.7.5",
     "supertest": "^7.1.4"
   }

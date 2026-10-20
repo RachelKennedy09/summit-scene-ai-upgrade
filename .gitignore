@@ -42,3 +42,5 @@ GoogleService-Info.plist
 # generated native folders
 /ios
 /android
+# Generated website output (source lives in landing/, website/, netlify/).
+.website-dist/

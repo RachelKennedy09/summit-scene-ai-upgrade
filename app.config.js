@@ -50,6 +50,7 @@ export default {
     plugins,
     ios: {
       bundleIdentifier: "com.rachellauren.summitscene",
+      associatedDomains: ["applinks:summitscene.ca"],
       buildNumber: "2",
       icon: "./assets/app-icon-ios-padded.png",
       supportsTablet: true,
@@ -93,6 +94,11 @@ export default {
         "android.permission.WRITE_EXTERNAL_STORAGE",
       ],
       package: "com.rachellauren.summitscene",
+      intentFilters: [{
+        action: "VIEW", autoVerify: true,
+        data: [{ scheme: "https", host: "summitscene.ca", pathPrefix: "/events" }],
+        category: ["BROWSABLE", "DEFAULT"],
+      }],
     },
     web: {
       favicon: "./assets/app-icon.png",

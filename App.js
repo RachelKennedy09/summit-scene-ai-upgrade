@@ -8,6 +8,7 @@ import { StatusBar } from "react-native";
 import {
   NavigationContainer,
   createNavigationContainerRef,
+  getStateFromPath,
 } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
@@ -18,6 +19,7 @@ import AppUpdateGate from "./components/AppUpdateGate";
 import RateAppPrompt from "./components/RateAppPrompt";
 import AppUsageTracker from "./components/AppUsageTracker";
 import RootNavigator from "./navigation/RootNavigator";
+import { appLinkingConfig, eventLinkState } from "./utils/appLinking.js";
 
 const navigationRef = createNavigationContainerRef();
 const API_BASE_URL =
@@ -25,12 +27,12 @@ const API_BASE_URL =
   "https://summit-scene-backend.onrender.com";
 
 const linking = {
-  prefixes: ["summitscene://"],
-  config: {
-    screens: {
-      VerifyEmail: "verify-email",
-      ResetPassword: "reset-password",
-    },
+  ...appLinkingConfig,
+  getStateFromPath(path, options) {
+    const eventState = eventLinkState(path);
+    if (eventState) return eventState;
+    if (/^\/?events\//.test(path)) return undefined;
+    return getStateFromPath(path, options);
   },
 };
 

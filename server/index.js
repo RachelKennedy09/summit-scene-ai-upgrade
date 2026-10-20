@@ -14,6 +14,7 @@ import { connectDB } from "./config/db.js"; // MongoDB connection helper
 // Route modules
 import appVersionRoutes from "./routes/appVersion.js";
 import eventRoutes from "./routes/events.js";
+import publicEventRoutes from "./routes/publicEvents.js";
 import eventImportRoutes from "./routes/eventImport.js";
 import authRouter from "./routes/auth.js";
 import authMiddleware from "./middleware/auth.js";
@@ -211,6 +212,7 @@ app.use("/api/reports", reportRoutes);
 
 // Event routes: create, list, update, delete events
 app.use("/api/events", eventRoutes);
+app.use("/api/public/events", publicEventRoutes);
 
 // Admin-only event discovery/import review routes
 app.use("/api/event-import", eventImportRoutes);

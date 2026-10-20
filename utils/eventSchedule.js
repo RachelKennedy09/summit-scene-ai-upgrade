@@ -217,7 +217,7 @@ export function getNextOccurrenceDate(event, fromDate = new Date()) {
   if (frequency === "biweekly") {
     const daysSinceStart = Math.max(
       0,
-      Math.floor((candidate.getTime() - startDate.getTime()) / 86400000)
+      Math.round((Date.UTC(candidate.getFullYear(), candidate.getMonth(), candidate.getDate()) - Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())) / 86400000)
     );
     const daysToAdd = (14 - (daysSinceStart % 14)) % 14;
     const next = new Date(candidate);

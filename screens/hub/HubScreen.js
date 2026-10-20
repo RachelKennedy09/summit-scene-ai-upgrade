@@ -547,14 +547,14 @@ export default function HubScreen({ route }) {
   );
 
   useEffect(() => {
-    if (!route?.params?.dailyEventsOpenedAt) return;
+    if (!route?.params?.dailyEventsOpenedAt && !route?.params?.publicEventsLink) return;
 
     showEventBrowser({
       town: route.params.town || "All",
       dateFilter: route.params.dateFilter || "Today",
       listingType: "events",
     });
-  }, [route?.params?.dailyEventsOpenedAt, route?.params?.dateFilter, route?.params?.town, showEventBrowser]);
+  }, [route?.params?.dailyEventsOpenedAt, route?.params?.publicEventsLink, route?.params?.dateFilter, route?.params?.town, showEventBrowser]);
 
   const todayContext = useMemo(() => getAlbertaTodayContext(), []);
   const weekendRange = useMemo(

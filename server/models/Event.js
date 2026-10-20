@@ -443,6 +443,9 @@ eventSchema.virtual("summary").get(function () {
 // MODEL EXPORT
 // -------------------------------------------
 // Creates/uses the "events" collection in MongoDB.
+eventSchema.index({ town: 1, date: 1, _id: 1 });
+eventSchema.index({ date: 1, _id: 1 });
+eventSchema.index({ scheduleType: 1, "recurrence.untilDate": 1 });
 const Event = mongoose.model("Event", eventSchema);
 
 export default Event;

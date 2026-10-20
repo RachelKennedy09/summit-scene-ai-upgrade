@@ -706,7 +706,7 @@ function buildDirectoryListingConditions() {
   ];
 }
 
-function buildListingTypeCondition(listingType) {
+export function buildListingTypeCondition(listingType) {
   if (!listingType || listingType === "All") return null;
   if (listingType === "tours") return { $or: buildToursListingConditions() };
   if (listingType === "restaurant_specials") {

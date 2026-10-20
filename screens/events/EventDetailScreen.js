@@ -7,6 +7,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getEventCategory } from "../../utils/eventCategory.js";
+import { eventUrl } from "../../utils/eventLinks.js";
 import {
   View,
   Text,
@@ -712,7 +713,7 @@ export default function EventDetailScreen({ route }) {
       town ? `Town: ${town}` : "",
       "",
       "Found on Summit Scene.",
-      `Download Summit Scene to browse more events: ${APP_STORE_DOWNLOAD_URL}`,
+      eventUrl({ _id: eventId, title }) || APP_STORE_DOWNLOAD_URL,
     ]
       .filter(Boolean)
       .join("\n");
