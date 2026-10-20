@@ -4,6 +4,26 @@ Run focused offline checks with `npm run test:event-importer` from the repositor
 
 ## Deploying these changes
 
+The updated admin client starts a background run with authenticated, admin-only
+`POST /api/event-import/runs` (optional `sourceId` for a single-source retry), then
+reads `GET /api/event-import/runs/current`. Deploy the backend before releasing
+the updated app. Older installed clients retain their synchronous `/run` and
+source retry endpoints and can still hit their existing 90-second timeout.
+
+Run status and the completion summary are saved in the `EventImportRun` MongoDB
+collection. A shared singleton slot prevents simultaneous background admin runs
+across instances; pressing Run while one is active reconnects to it. Status
+responses are not cached. The app polls for three minutes, then reports that the
+run is still in progress rather than reporting a failed import. Press Run again
+to reconnect while it remains active. Source failures are included in the summary.
+
+The worker runs inside the backend process, so deploys, process termination or
+free-service suspension can interrupt it. It does not automatically resume after
+a restart. A run with no heartbeat for ten minutes is marked interrupted and can
+be retried; already saved candidates and rejection history remain. Use an always-on
+backend for reliable long runs. This is not an external durable job queue, and
+standalone CLI imports should not be run concurrently with admin imports.
+
 Deploy the backend for the importer fixes. The admin review checklist requires the updated client as well; deploy the backend before releasing that client so its bulk rejection endpoint is available. Ensure the `ImportCandidate` model's unique partial `identityKey` index is installed in MongoDB. Existing rows without that field remain valid, including older duplicate records. If production disables Mongoose automatic indexes, create the equivalent index through the normal database migration process:
 
 ```javascript

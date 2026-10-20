@@ -7,6 +7,7 @@ import EventSource from "../models/EventSource.js";
 import ImportCandidate from "../models/ImportCandidate.js";
 import { findDuplicateEvent } from "../services/eventImporter/detectDuplicate.js";
 import { runEventImport } from "../services/eventImporter/runEventImport.js";
+import { importJobs } from "../services/eventImporter/importJobs.js";
 import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
 const router = express.Router();
@@ -457,6 +458,36 @@ router.post("/candidates/cleanup-duplicates", authMiddleware, isAdmin, async (re
   }
 });
 
+router.get("/runs/current", authMiddleware, isAdmin, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    return res.json({ job: await importJobs.current() });
+  } catch (error) {
+    console.error("Could not read importer status", error);
+    return res.status(503).json({ message: "Could not check importer progress. The import may still be running." });
+  }
+});
+
+router.post("/runs", authMiddleware, isAdmin, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    const sourceId = req.body?.sourceId;
+    if (sourceId !== undefined) {
+      if (!/^[a-f0-9]{24}$/i.test(String(sourceId))) {
+        return res.status(400).json({ message: "Invalid source id." });
+      }
+      if (!await EventSource.exists({ _id: sourceId })) {
+        return res.status(404).json({ message: "Source not found." });
+      }
+    }
+    return res.status(202).json({ job: await importJobs.start(sourceId) });
+  } catch (error) {
+    console.error("Could not start background import", error);
+    return res.status(503).json({ message: "Could not confirm the import started. Check importer progress before retrying." });
+  }
+});
+
+// Retained for older installed admin clients. Updated clients use /runs.
 router.post("/run", authMiddleware, isAdmin, async (req, res) => {
   try {
     const summary = await runEventImport();

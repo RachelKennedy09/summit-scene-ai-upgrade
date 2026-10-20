@@ -1,8 +1,8 @@
 // services/eventsApi.js
 // Centralized helper functions for interacting with the Events API.
 
-import { getNextOccurrenceDateString } from "../utils/eventSchedule";
-import { toUserFriendlyError } from "../utils/friendlyErrors";
+import { getNextOccurrenceDateString } from "../utils/eventSchedule.js";
+import { toUserFriendlyError } from "../utils/friendlyErrors.js";
 //
 // Endpoints used:
 //   GET    /api/events                     → fetch all events
@@ -273,9 +273,8 @@ function filterFetchedEventsByListingType(data, listingType) {
     return {
       ...data,
       events,
-      totalCount: events.length,
-      totalPages: 1,
-      hasMore: false,
+      // Filtering this page must not discard the server's pagination. Even
+      // an empty filtered page can have matching events on later pages.
     };
   }
 

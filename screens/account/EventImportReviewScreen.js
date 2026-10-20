@@ -313,12 +313,17 @@ export default function EventImportReviewScreen() {
   async function handleRunImporter() {
     try {
       setWorking(true);
-      setWorkingLabel("Running importer. This can take a minute...");
+      setWorkingLabel("Running importer on the server. Checking progress...");
       const summary = await runEventImporter(token);
+      if (summary.inProgress) {
+        Alert.alert("Importer still running", summary.message);
+        await loadImportData();
+        return;
+      }
       const sourceErrorText = Array.isArray(summary.sourceErrors) && summary.sourceErrors.length
         ? `\nSource errors: ${summary.sourceErrors
-            .map((item) => item.sourceName || item.message)
-            .join(", ")}`
+            .map((item) => `${item.sourceName || "Source"}: ${item.message || "Could not import"}`)
+            .join("\n")}`
         : "";
       Alert.alert(
         "Event import completed",
@@ -460,6 +465,11 @@ export default function EventImportReviewScreen() {
       setWorking(true);
       setWorkingLabel("Retrying source import...");
       const summary = await retryEventSource(sourceId, token);
+      if (summary.inProgress) {
+        Alert.alert("Importer still running", summary.message);
+        await loadImportData();
+        return;
+      }
       Alert.alert(
         "Source retry completed",
         `Events discovered: ${summary.eventsDiscovered}\nNew candidates: ${summary.newCandidates}\nDuplicates: ${summary.duplicates}\nErrors: ${summary.errors}`

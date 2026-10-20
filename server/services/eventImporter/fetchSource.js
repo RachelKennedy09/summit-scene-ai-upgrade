@@ -53,8 +53,11 @@ async function readRobotsRules(url) {
   const origin = parsed.origin;
   if (robotsCache.has(origin)) return robotsCache.get(origin);
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), EVENT_IMPORT_CONFIG.timeoutMs);
   try {
     const response = await fetch(`${origin}/robots.txt`, {
+      signal: controller.signal,
       headers: {
         "User-Agent":
           "SummitSceneBot/1.0 (+https://summitscene.ca; event discovery)",
@@ -73,6 +76,8 @@ async function readRobotsRules(url) {
   } catch {
     robotsCache.set(origin, new Map());
     return robotsCache.get(origin);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

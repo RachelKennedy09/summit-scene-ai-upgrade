@@ -1,10 +1,10 @@
-import { toUserFriendlyError } from "../utils/friendlyErrors";
+import { toUserFriendlyError } from "../utils/friendlyErrors.js";
+import { waitForImportJob } from "../utils/importJobClient.js";
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
 const REQUEST_TIMEOUT_MS = 15000;
-const IMPORT_RUN_TIMEOUT_MS = 90000;
 
 function buildHeaders(token) {
   return {
@@ -345,21 +345,41 @@ export async function cleanupStaleImportCandidates(token) {
   return data;
 }
 
-export async function runEventImporter(token) {
-  const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/run`, {
-    method: "POST",
-    headers: buildHeaders(token),
-  }, IMPORT_RUN_TIMEOUT_MS);
+async function runImportJob(token, sourceId) {
+  let res;
+  try {
+    res = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/runs`, {
+      method: "POST",
+      headers: buildHeaders(token),
+      body: JSON.stringify(sourceId ? { sourceId } : {}),
+    });
+  } catch {
+    throw new Error("Could not confirm the import started. It may already be running. Check your connection, then press Run Importer to reconnect.");
+  }
   const data = await readJsonSafely(res);
 
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("The backend needs the importer update deployed before this app can run imports.");
+    }
     throw toUserFriendlyError(
       new Error(data.message || `Failed to run event importer (${res.status})`),
       "We couldn't run the event importer right now."
     );
   }
 
-  return data;
+  return waitForImportJob(data.job, async () => {
+    const status = await fetchWithTimeout(`${API_BASE_URL}/api/event-import/runs/current`, {
+      headers: buildHeaders(token),
+    });
+    const result = await readJsonSafely(status);
+    if (!status.ok) throw new Error(result.message || "Could not read importer status.");
+    return result.job;
+  });
+}
+
+export async function runEventImporter(token) {
+  return runImportJob(token);
 }
 
 export async function seedStarterEventSources(token) {
@@ -458,22 +478,5 @@ export async function deleteEventSource(sourceId, token) {
 }
 
 export async function retryEventSource(sourceId, token) {
-  const res = await fetchWithTimeout(
-    `${API_BASE_URL}/api/event-import/sources/${sourceId}/retry`,
-    {
-      method: "POST",
-      headers: buildHeaders(token),
-    },
-    IMPORT_RUN_TIMEOUT_MS
-  );
-  const data = await readJsonSafely(res);
-
-  if (!res.ok) {
-    throw toUserFriendlyError(
-      new Error(data.message || `Failed to retry event source (${res.status})`),
-      "We couldn't retry that event source right now."
-    );
-  }
-
-  return data;
+  return runImportJob(token, sourceId);
 }
