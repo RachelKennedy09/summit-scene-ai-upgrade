@@ -1,5 +1,5 @@
 // navigation/TabNavigator.js
-// Bottom tab navigation for the app - Hub, Map, Account
+// Public tabs are Home and Map; admins also get their account tools.
 // Verified businesses also get a Create tab for official events.
 
 import React from "react";
@@ -89,11 +89,21 @@ export default function TabNavigator() {
         />
       )}
 
-      {/* Everyone gets Account */}
+      {/* Keep the route for account settings and back navigation, but only
+          expose a bottom tab for authenticated admins. API authorization
+          remains responsible for protecting admin operations. */}
       <Tab.Screen
         name="Account"
         component={AccountScreen}
-        options={{ title: "Account" }}
+        options={{
+          title: user?.isAdmin ? "Admin" : "Account",
+          ...(user?.isAdmin
+            ? {}
+            : {
+                tabBarButton: () => null,
+                tabBarItemStyle: { display: "none" },
+              }),
+        }}
       />
     </Tab.Navigator>
   );

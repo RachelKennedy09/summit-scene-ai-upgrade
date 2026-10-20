@@ -1497,7 +1497,22 @@ export default function HubScreen({ route }) {
               </View>
             </View>
           ) : null}
-          ListFooterComponent={isBrowseMode ? renderFooter : null}
+          ListFooterComponent={
+            <>
+              {isBrowseMode ? renderFooter() : null}
+              {!isBrowseMode && !user?.isAdmin ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => navigation.navigate(user ? "Account" : "Login")}
+                  style={styles.accountAccess}
+                >
+                  <Text style={{ color: theme.textMuted }}>
+                    {user ? "Account settings" : "Admin login"}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </>
+          }
           onEndReached={isBrowseMode ? handleLoadMore : undefined}
           onEndReachedThreshold={0.6}
           onScroll={
@@ -1523,6 +1538,12 @@ export default function HubScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
+  accountAccess: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 16,
+  },
   safeArea: {
     flex: 1,
   },
