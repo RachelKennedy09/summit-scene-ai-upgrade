@@ -15,6 +15,8 @@ Rendering choice: retain the static marketing/legal pages and Netlify domain. A 
 
 Relevant implementation: `server/services/publicEvents.js`, `server/routes/publicEvents.js`, `website/render.js`, `netlify/functions/events.mjs`, `landing/events-web.css`, `utils/publicEventDates.js`, `utils/publicEventFilters.js`, `utils/eventLinks.js`, `utils/appLinking.js`, and `scripts/buildWebsite.mjs`.
 
+Event photos use the stored public photo URL when available. For events without a photo, `website/eventImages.js` selects the app's existing category illustration. Optimized 320px/800px copies are committed in `landing/assets/event-categories/`; all 20 total less than 700 KB. The build verifies these files exist. `landing/event-images.js` recovers from failed remote photos; ordinary fallback images render without JavaScript. Detail pages label generic illustrations, and those illustrations are not included as event-specific photos in search markup. To regenerate the website copies after replacing the original app artwork, run `./scripts/prepareWebsiteCategoryImages.ps1` on Windows and commit the updated JPGs. Netlify itself needs no image conversion dependency. This image-display fix needs a website redeploy only, with no backend deployment or mobile build.
+
 ## Local review
 
 From the repository root:
@@ -41,7 +43,7 @@ Tests cover public visibility/field privacy, promotion separation, database pagi
 | `MONGODB_URI` | Backend only, existing | Keep the existing database connection. Never add it to Netlify or Expo public variables. |
 | `PUBLIC_API_BASE_URL` | Netlify Functions; local preview | `https://summit-scene-backend.onrender.com` if that remains the deployed backend. Origin only, without `/api`. Set this explicitly; the deployed renderer does not default to an unconfigured API. |
 | `PUBLIC_SITE_URL` | Netlify Build **and** Functions | `https://summitscene.ca`. Controls canonical URLs, sitemap URLs and generated robots.txt. |
-| `PUBLIC_GOOGLE_PLAY_URL` | Netlify Functions, optional | Existing repository listing: `https://play.google.com/store/apps/details?id=com.rachellauren.summitscene`. Set only after verifying the intended public release can be installed. Otherwise new pages display only the verified existing iOS download link. Store availability could not be verified from this environment. |
+| `PUBLIC_GOOGLE_PLAY_URL` | Netlify Functions, optional | Optional override for `https://play.google.com/store/apps/details?id=com.rachellauren.summitscene`. The owner confirmed Android availability, so the homepage and event pages now show both store links by default. |
 | `EXPO_PUBLIC_WEBSITE_URL` | Expo/EAS builds, optional | `https://summitscene.ca` (the default). Controls mobile shared URLs and accepted HTTPS links. Native domain declarations currently intentionally target `summitscene.ca`; update them together if the domain changes. |
 | `APPLE_APP_ID_PREFIX` | Netlify Build, optional | Actual App ID prefix from Apple; takes precedence over `APPLE_TEAM_ID`. Usually the Team ID, but verify for transferred/older apps. |
 | `APPLE_TEAM_ID` | Netlify Build | Owner-supplied Team ID `8KSNLDY8AS`, configured in `netlify.toml` under `build.environment` and shown in `.env.example`. Combined with the Bundle ID, it generates `8KSNLDY8AS.com.rachellauren.summitscene`. |

@@ -9,8 +9,8 @@ The refreshed homepage focuses on event discovery without a browsing account.
 `events-refresh.css` scopes the homepage design so existing support and legal
 pages retain their layout. `navigation.js` provides the accessible mobile menu;
 navigation remains visible if JavaScript is unavailable. The event preview is
-illustrative and does not fetch or advertise live listings. Android remains
-labelled coming soon until the production release is available.
+illustrative and does not fetch or advertise live listings. The homepage and
+event pages link to both the App Store and Google Play releases.
 
 Netlify now runs `npm run build:website` and publishes `.website-dist` through
 the repository's `netlify.toml`. The build copies these pages, adds canonical

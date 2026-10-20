@@ -123,3 +123,5 @@ footer nav{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;margin:22px 0}
 .card-image img{transition:none}
 }
 
+
+.detail-media{margin:0 0 24px}.detail-media figcaption{margin-top:8px}.detail-media [hidden]{display:none}

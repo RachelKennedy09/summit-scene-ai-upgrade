@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { CATEGORY_IMAGE_FILES } from "../website/eventImages.js";
 
 export function associationFiles(env = process.env) {
   const prefix = env.APPLE_APP_ID_PREFIX || env.APPLE_TEAM_ID;
@@ -20,6 +21,8 @@ export async function buildWebsite(env = process.env) {
   const output = resolve(".website-dist");
   await mkdir(output, { recursive: true });
   await cp(resolve("landing"), output, { recursive: true });
+  // A missing generated illustration must fail the build, not ship broken URLs.
+  for (const file of CATEGORY_IMAGE_FILES) await readFile(resolve(output, file));
   for (const page of ["verify-email", "verify-email-change", "reset-password"]) {
     const file = resolve(output, `${page}.html`);
     const source = await readFile(file, "utf8");

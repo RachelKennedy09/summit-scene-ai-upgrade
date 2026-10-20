@@ -13,6 +13,9 @@ import { renderListing, renderDetail, eventSchema } from "../../website/render.j
 import { handleEvents } from "../../netlify/functions/events.mjs";
 import { associationFiles } from "../../scripts/buildWebsite.mjs";
 import { sampleEvents } from "../../website/fixtures.js";
+import { categoryImagePath, CATEGORY_IMAGE_FILES } from "../../website/eventImages.js";
+import { readFileSync, statSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 
 const now = new Date("2026-10-20T15:00:00Z");
 const base = { ...sampleEvents[0] };
@@ -131,8 +134,8 @@ describe("server rendered website and links", () => {
     const html = renderDetail({ ...base, title: '<script>alert("x")</script>', description: '</script><script>alert("x")</script>' }, env.PUBLIC_SITE_URL);
     const $ = cheerio.load(html);
     expect($("h1").text()).to.equal('<script>alert("x")</script>');
-    expect($("script")).to.have.length(1); // Escaped JSON-LD only.
-    expect(JSON.parse($("script").text()).name).to.equal('<script>alert("x")</script>');
+    expect($("script:not([src])")).to.have.length(1); // Escaped JSON-LD only.
+    expect(JSON.parse($("script[type='application/ld+json']").text()).name).to.equal('<script>alert("x")</script>');
   });
   it("creates eligible schema using visible data and handles cancellation and rescheduling", () => {
     const schema = eventSchema(base, env.PUBLIC_SITE_URL);
@@ -164,6 +167,64 @@ describe("server rendered website and links", () => {
     expect(configured.apple.applinks.details[0].appID).to.equal("1234567890.com.rachellauren.summitscene");
     expect(configured.android[0].target.package_name).to.equal("com.rachellauren.summitscene");
   });
+});
+
+describe("website event photos and app category illustrations", () => {
+  it("renders category images without JavaScript when events have no photo URL", () => {
+    const $ = cheerio.load(renderListing(listing(), new URL("https://summitscene.ca/events"), env.PUBLIC_SITE_URL));
+    const image = $(".event-card img");
+    expect(image.attr("src")).to.equal("/assets/event-categories/music-800.jpg");
+    expect(image.attr("srcset")).to.contain("music-320.jpg 320w");
+    expect(image.attr("loading")).to.equal("lazy");
+    expect(categoryImagePath({ category: "Unknown" })).to.equal("/assets/event-categories/other-800.jpg");
+  });
+  it("preserves real photos and provides a category fallback when they fail", () => {
+    const event = { ...base, imageUrl: "https://venue.example/photo.jpg" };
+    const $ = cheerio.load(renderDetail(event, env.PUBLIC_SITE_URL));
+    expect($(".detail-image").attr("src")).to.equal(event.imageUrl);
+    expect($(".detail-image").attr("data-fallback-src")).to.equal(categoryImagePath(event));
+    expect($(".detail-media figcaption").attr("hidden")).to.not.equal(undefined);
+    const fallback = cheerio.load(renderDetail(base, env.PUBLIC_SITE_URL));
+    expect(fallback(".detail-media figcaption").attr("hidden")).to.equal(undefined);
+    expect(fallback(".detail-image").attr("alt")).to.contain("category illustration");
+    expect(eventSchema(base, env.PUBLIC_SITE_URL)).to.not.have.property("image");
+  });
+  it("does not render unsafe image URLs as an image source", () => {
+    const $ = cheerio.load(renderDetail({ ...base, imageUrl: "javascript:alert(1)" }, env.PUBLIC_SITE_URL));
+    expect($(".detail-image").attr("src")).to.equal(categoryImagePath(base));
+  });
+  it("includes every optimized image required by the category resolver", () => {
+    let total = 0;
+    for (const file of CATEGORY_IMAGE_FILES) {
+      const path = new URL(`../../landing/${file}`, import.meta.url);
+      const data = readFileSync(path);
+      expect(data.subarray(0, 2).toString("hex"), file).to.equal("ffd8");
+      total += statSync(path).size;
+    }
+    expect(CATEGORY_IMAGE_FILES).to.have.length(20);
+    expect(total).to.be.below(1000000);
+  });
+  for (const cached of [false, true]) {
+    it(`recovers from ${cached ? "cached" : "new"} image failures without a retry loop`, () => {
+      const caption = { hidden: true };
+      const attributes = { src: "https://venue.example/broken.jpg", "data-fallback-src": categoryImagePath(base), srcset: "old" };
+      let listener;
+      const image = {
+        complete: cached, naturalWidth: 0, alt: base.title, hidden: false,
+        getAttribute: (key) => attributes[key], removeAttribute: (key) => { delete attributes[key]; },
+        closest: () => ({ querySelector: () => caption }), addEventListener: (_, fn) => { listener = fn; },
+        set src(value) { attributes.src = value; }, get src() { return attributes.src; },
+      };
+      runInNewContext(readFileSync(new URL("../../landing/event-images.js", import.meta.url), "utf8"), { document: { querySelectorAll: () => [image] } });
+      if (!cached) listener();
+      expect(attributes.src).to.equal(categoryImagePath(base));
+      expect(attributes).to.not.have.property("srcset");
+      expect(caption.hidden).to.equal(false);
+      expect(image.alt).to.equal("Event category illustration");
+      listener();
+      expect(image.hidden).to.equal(true);
+    });
+  }
 });
 
 describe("website HTTP responses without production data", () => {
