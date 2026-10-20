@@ -72,6 +72,28 @@ Version and build floors are independent: either falling below its configured mi
 
 ## Enabling and reversing
 
+### Guided command (no database editing or new app build)
+
+From the repository root, use the protected API through:
+
+```powershell
+npm run configure:app-updates -- --platform android --version 1.0.10
+```
+
+Use `--platform ios` for iOS or `--platform both` only when the same target version is fully available to all affected users on both stores. Enter your existing app admin account's email and password in your terminal. Password input is hidden; credentials and the returned token are not written to files or printed. The command uses the existing login endpoint and server-side admin authorization, reads current revisions, and previews the full before/after settings. Nothing is saved until you type its confirmation phrase. Enabling sets store availability and mandatory updating true and uses version-only floors (`minimumBuild`/`latestBuild` null); it preserves the real store URL and message, and never lowers a newer latest version.
+
+Each platform is saved separately and verified from the API response. If one save fails, earlier successful saves remain active and are reported. The command does not automatically retry writes or overwrite revision conflicts. Rerun to review actual current policies after a failure. It does not change the shared legacy Render environment settings. The default API origin is the existing production backend; `APP_UPDATE_API_BASE_URL` can explicitly select a different HTTPS origin for staging.
+
+To disable a platform without changing its other fields:
+
+```powershell
+npm run configure:app-updates -- --platform android --disable
+```
+
+To reverse both, use `--platform both --disable`. Reversing older clients' shared Render minimum remains a separate environment change. Agent development/testing of this helper uses mocked requests and does not activate production requirements.
+
+### Release sequence
+
 1. Deploy the backend changes first. Inspect the public response and admin response. Missing platform documents must report `mandatoryEnabled: false`; do not raise the legacy environment minimum as part of deployment.
 2. Build and test iOS **1.0.10** with production EAS auto-increment. Record its actual build number and verify the archive's marketing version. The new gate uses `expo-application` to read the installed native binary. A JS/OTA version cannot substitute for a native update.
 3. Submit/release iOS first with mandatory updating disabled. Approval, TestFlight availability, or a scheduled release is not sufficient. Verify that the correct binary is installable from the real App Store listing in every supported country and on every supported device/OS. Keep the new release compatible with all users whom the minimum would affect.
