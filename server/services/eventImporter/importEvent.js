@@ -6,6 +6,7 @@ import { isValidFutureDateString } from "./dateParsing.js";
 import { normalizeWithAi } from "./aiNormalizer.js";
 import { normalizeExtractedEvent } from "./normalizeEvent.js";
 import { buildSourceKey, recordSeenSourceCandidate } from "./sourceSync.js";
+import { findPreviousSourceCandidate } from "./previousDecision.js";
 
 function buildCandidateQuery(candidate) {
   if (candidate.existingCandidateId) return {
@@ -78,6 +79,7 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     rejectedQuery.$or.push({ source: candidate.source, sourceUrl: candidate.sourceUrl });
   }
   let rejected = await ImportCandidate.findOne(rejectedQuery);
+  if (!rejected) rejected = await findPreviousSourceCandidate(candidate, source, ["rejected"]);
   if (!rejected && candidate.town && candidate.startDate) {
     // The same listing is often syndicated by tourism and venue calendars.
     // Keep rejection decisions across sources, while preserving other dates.
@@ -109,10 +111,12 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     checkedAt: options.checkedAt || new Date(),
   });
   const sourceChanged = Boolean(syncFields.sourceChangedThisRun);
+  const alreadyApproved = syncFields.existingCandidateStatus === "approved";
+  delete syncFields.existingCandidateStatus;
   const qualityReason = candidate.reviewReason;
   Object.assign(candidate, syncFields);
   candidate.identityKey = createHash("sha256").update(`${source._id}|${candidate.sourceKey}`).digest("hex");
-  if (qualityReason) {
+  if (qualityReason && (!alreadyApproved || sourceChanged)) {
     candidate.needsReview = true;
     candidate.reviewReason = syncFields.reviewReason?.includes(qualityReason)
       ? syncFields.reviewReason : [qualityReason, syncFields.reviewReason].filter(Boolean).join(" ");

@@ -2,6 +2,7 @@ import Event from "../../models/Event.js";
 import ImportCandidate from "../../models/ImportCandidate.js";
 import { canonicalEventUrl } from "./detectDuplicate.js";
 import { parseEventTime } from "./dateParsing.js";
+import { findPreviousSourceCandidate } from "./previousDecision.js";
 
 const REVIEW_AFTER_MISSING_CHECKS = 2;
 const TRACKED_CHANGE_FIELDS = [
@@ -98,7 +99,9 @@ export function buildSourceSnapshot(candidate) {
   return TRACKED_CHANGE_FIELDS.reduce((snapshot, field) => {
     const value = candidate?.[field];
     if (value !== undefined && value !== null && value !== "") {
-      snapshot[field] = normalizeComparableValue(value);
+      snapshot[field] = field === "sourceUrl" || field === "ticketUrl"
+        ? normalizeUrl(value)
+        : normalizeComparableValue(value);
     }
     return snapshot;
   }, {});
@@ -194,7 +197,7 @@ export async function reconcileSourceSync({
 
   for (const candidate of seenCandidates || []) {
     if (!isCandidateFuture(candidate, todayString)) continue;
-    const sourceKey = buildSourceKey(candidate, source);
+    const sourceKey = candidate.sourceKey || buildSourceKey(candidate, source);
     if (!sourceKey) continue;
     seenKeys.add(sourceKey);
     summary.seenTracked += 1;
@@ -271,20 +274,32 @@ export async function recordSeenSourceCandidate(candidate, source, { checkedAt =
     // Only reuse a previous time when the page identifies one occurrence.
     if (possibleOccurrences.length === 1) existingCandidate = possibleOccurrences[0];
   }
+  if (!existingCandidate) existingCandidate = await findPreviousSourceCandidate(candidate, source,
+    ["pending", "approved", "duplicate", "error"]);
   const previousSnapshot = existingCandidate?.sourceSnapshot || {};
+  const nextSnapshot = buildSourceSnapshot(candidate);
   // A partial calendar response must not erase details already reviewed.
   for (const field of ["venue", "address", "startTime", "endTime"]) {
     if (!cleanText(candidate[field]) && cleanText(existingCandidate?.[field])) {
-      candidate[field] = existingCandidate[field];
+      candidate[field] = previousSnapshot[field] || existingCandidate[field];
+      if (previousSnapshot[field] || !Object.keys(previousSnapshot).length) {
+        nextSnapshot[field] = previousSnapshot[field] || candidate[field];
+      }
     }
   }
   sourceKey = buildSourceKey(candidate, source);
-  const nextSnapshot = buildSourceSnapshot(candidate);
-  const diff = existingCandidate ? diffSourceSnapshots(previousSnapshot, nextSnapshot) : {};
+  const diff = existingCandidate ? diffSourceSnapshots(buildSourceSnapshot(previousSnapshot), nextSnapshot) : {};
   const hasDiff = Object.keys(diff).length > 0;
+  if (existingCandidate?.status === "approved" && !hasDiff) {
+    // Keep accepted/manual corrections separate from the source baseline.
+    for (const field of TRACKED_CHANGE_FIELDS) {
+      if (existingCandidate[field] !== undefined) candidate[field] = existingCandidate[field];
+    }
+  }
 
   return {
     existingCandidateId: existingCandidate?._id,
+    existingCandidateStatus: existingCandidate?.status,
     sourceKey,
     sourceSnapshot: nextSnapshot,
     sourceChangeDiff: hasDiff ? diff : existingCandidate?.sourceChangeDiff,

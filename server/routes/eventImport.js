@@ -8,6 +8,7 @@ import ImportCandidate from "../models/ImportCandidate.js";
 import { findDuplicateEvent } from "../services/eventImporter/detectDuplicate.js";
 import { runEventImport } from "../services/eventImporter/runEventImport.js";
 import { importJobs } from "../services/eventImporter/importJobs.js";
+import { buildSourceSnapshot } from "../services/eventImporter/sourceSync.js";
 import { STARTER_EVENT_SOURCES } from "../services/eventImporter/starterSources.js";
 
 const router = express.Router();
@@ -118,6 +119,18 @@ async function checkLiveDuplicate(payload, candidate) {
     await candidate.save();
   }
   return duplicate;
+}
+
+function acceptReview(candidate, overrides = {}) {
+  // Retain admin corrections without replacing the separate source baseline.
+  for (const field of [...Object.keys(buildSourceSnapshot(overrides)), "latitude", "longitude", "imageUrl"]) {
+    if (overrides[field] !== undefined) candidate[field] = overrides[field];
+  }
+  candidate.needsReview = false;
+  candidate.reviewReason = undefined;
+  candidate.sourceMissingSince = undefined;
+  candidate.sourceMissingChecks = 0;
+  candidate.sourceChangeDiff = {};
 }
 
 function candidateToDuplicateComparable(candidate) {
@@ -278,6 +291,7 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
       // present in both operators, even when the source payload is stale.
       delete updatePayload.sourceMissingSince;
       delete updatePayload.importReviewReason;
+      updatePayload.sourceChangeDiff = {};
 
       const event = await Event.findByIdAndUpdate(
         candidate.approvedEvent,
@@ -295,10 +309,8 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
         { new: true, runValidators: true }
       );
 
-      candidate.needsReview = false;
-      candidate.reviewReason = undefined;
-      candidate.sourceMissingSince = undefined;
-      candidate.sourceMissingChecks = 0;
+      if (!event) return res.status(404).json({ message: "The published event no longer exists. Refresh the review list." });
+      acceptReview(candidate, req.body?.event);
       candidate.reviewedAt = new Date();
       candidate.reviewedBy = req.user.userId;
       await candidate.save();
@@ -313,9 +325,15 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
     const payload = candidateToEventPayload(candidate, req.body?.event || {}, req.user.userId);
     const duplicate = await checkLiveDuplicate(payload, candidate);
     if (duplicate) return res.status(409).json({ message: "This event is already published. The duplicate has been removed from the approval queue.", candidate, existingEventId: duplicate.event._id });
+    payload.needsImportReview = false;
+    payload.importReviewReason = undefined;
+    payload.sourceMissingSince = undefined;
+    payload.sourceMissingChecks = 0;
+    payload.sourceChangeDiff = {};
     const event = await Event.create(payload);
 
     candidate.status = "approved";
+    acceptReview(candidate, req.body?.event);
     candidate.reviewedAt = new Date();
     candidate.reviewedBy = req.user.userId;
     candidate.approvedEvent = event._id;
@@ -354,6 +372,7 @@ router.post("/candidates/approve-high-confidence", authMiddleware, isAdmin, asyn
         if (await checkLiveDuplicate(payload, candidate)) continue;
         const event = await Event.create(payload);
         candidate.status = "approved";
+        acceptReview(candidate);
         candidate.reviewedAt = new Date();
         candidate.reviewedBy = req.user.userId;
         candidate.approvedEvent = event._id;

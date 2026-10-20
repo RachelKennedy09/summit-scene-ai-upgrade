@@ -35,6 +35,16 @@ db.importcandidates.createIndex(
 
 Run the importer again through the admin screen. Rejected records are retained as suppression history, including matching occurrences imported from another source. A matching rejected listing also suppresses pending copies encountered on that run. Do not delete rejected records to clean up the queue: deleting them removes that history. Different dates/showtimes remain separate occurrences; the same rejected source detail URL continues to suppress that source listing if its details change.
 
+Approval and Apply Update acknowledge the current source snapshot and clear review
+flags on both the candidate and published event. An unchanged later import keeps
+accepted manual corrections and does not reapply missing-detail warnings. The raw
+source baseline remains separate, so genuine subsequent source changes can still
+be reviewed. Tracking-link changes are normalized, and legacy records can be
+matched using their original snapshot and canonical detail URL. Seen-source checks
+use the stored source key even when an admin corrected the title or date. These
+decision-preservation changes require a backend deployment; the existing admin
+client uses the same approval and rejection endpoints.
+
 Use the existing duplicate cleanup action for old pending records. It marks duplicates without deleting published events. Already published duplicate events need an admin review and removal of the unwanted copies; this importer does not delete live events automatically.
 
 The review checklist supports selecting individual unpublished events or all loaded events (up to 100), then rejecting them in one batch. It retains rejection history, excludes published events, and reports selections that changed or disappeared before the request completed. Failed requests keep the client selection available for retry.
