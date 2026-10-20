@@ -8,6 +8,25 @@ describe("imported event reapproval", () => {
     layer.route?.path === "/candidates/:id/approve"
   ).route.stack.at(-1).handle;
 
+  it("blocks approval of a duplicate already published after the queue was loaded", async () => {
+    const original = { findById: ImportCandidate.findById, find: Event.find, create: Event.create };
+    let created = false;
+    const candidate = { status: "pending", title: "Literary Cabaret", town: "Banff", startDate: "2026-12-20", startTime: "8 PM",
+      toObject() { return { ...this }; }, async save() {} };
+    try {
+      ImportCandidate.findById = async () => candidate;
+      Event.find = () => ({ select() { return this; }, limit: async () => [{ _id: "published", title: candidate.title, town: "Banff", date: candidate.startDate, time: "20:00" }] });
+      Event.create = async () => { created = true; };
+      const res = { code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } };
+      await handler({ params: { id: "candidate" }, body: {}, user: { userId: "admin" } }, res);
+      expect(res.code).to.equal(409);
+      expect(res.body.existingEventId).to.equal("published");
+      expect(candidate.status).to.equal("duplicate");
+      expect(candidate.needsReview).to.equal(false);
+      expect(created).to.equal(false);
+    } finally { ImportCandidate.findById = original.findById; Event.find = original.find; Event.create = original.create; }
+  });
+
   for (const stale of [true, false]) {
     it(`approves an existing event ${stale ? "with" : "without"} missing-source markers without conflicting update paths`, async () => {
       const originalFind = ImportCandidate.findById;

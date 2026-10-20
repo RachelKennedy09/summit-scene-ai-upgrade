@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "test:event-importer": "mocha --exit --timeout 10000 server/test/eventImporter.test.js server/test/eventCategory.test.js server/test/eventImportRejection.test.js server/test/eventImportApproval.test.js server/test/eventImporterReliability.test.js server/test/eventImportBulkRejection.test.js",
     "test:app-usage": "mocha --exit --timeout 10000 server/test/appUsage.test.js",
     "test:app-updates": "mocha --exit --timeout 10000 server/test/appUpdate.test.js",
     "start": "expo start",

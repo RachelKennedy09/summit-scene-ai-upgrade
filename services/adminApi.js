@@ -265,6 +265,25 @@ export async function updateImportCandidate(candidateId, updates, token) {
   return data;
 }
 
+export async function rejectSelectedImportCandidates(candidateIds, token) {
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/event-import/candidates/reject-selected`,
+    {
+      method: "POST",
+      headers: buildHeaders(token),
+      body: JSON.stringify({ candidateIds }),
+    }
+  );
+  const data = await readJsonSafely(res);
+  if (!res.ok) {
+    throw toUserFriendlyError(
+      new Error(data.message || `Failed to reject selected candidates (${res.status})`),
+      "We couldn't reject those events right now."
+    );
+  }
+  return data;
+}
+
 export async function rejectImportCandidate(candidateId, token, importNotes = "") {
   const res = await fetchWithTimeout(
     `${API_BASE_URL}/api/event-import/candidates/${candidateId}/reject`,

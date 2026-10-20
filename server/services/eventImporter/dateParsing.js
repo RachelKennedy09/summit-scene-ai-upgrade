@@ -88,15 +88,51 @@ export function parseEventDate(rawValue, { now = new Date() } = {}) {
 
 export function parseEventTime(rawValue) {
   const text = String(rawValue || "");
+  const iso = text.match(/\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?/i);
+  if (iso) {
+    if (iso[3]?.toUpperCase() === "Z") {
+      const date = new Date(iso[0]);
+      if (!Number.isNaN(date.getTime())) return new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Edmonton", hour: "numeric", minute: "2-digit", hour12: true,
+      }).format(date);
+    }
+    return formatClock(Number(iso[1]), iso[2]);
+  }
   const match = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/i);
-  if (!match) return undefined;
+  if (!match) {
+    const clock = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+    return clock ? formatClock(Number(clock[1]), clock[2]) : undefined;
+  }
 
   const hour = Number(match[1]);
   const minutes = match[2] || "00";
   const meridiem = match[3].toUpperCase().replace(/\./g, "");
-  if (!hour || hour > 12) return undefined;
+  if (!hour || hour > 12 || Number(minutes) > 59) return undefined;
 
   return `${hour}:${minutes} ${meridiem}`;
+}
+
+function formatClock(hour, minutes) {
+  if (hour > 23 || Number(minutes) > 59) return undefined;
+  return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? "PM" : "AM"}`;
+}
+
+export function parseEventTimeRange(rawValue) {
+  const text = String(rawValue || "");
+  const range = text.match(/\b(\d{1,2}(?::\d{2})?)\s*(am|pm)?\s*(?:[-–—]|to)\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)\b/i);
+  if (range) {
+    let startMeridiem = range[2] || range[4];
+    if (!range[2] && Number(range[1].split(":")[0]) % 12 > Number(range[3].split(":")[0]) % 12) {
+      startMeridiem = range[4].toLowerCase() === "pm" ? "am" : "pm";
+    }
+    return {
+      startTime: parseEventTime(`${range[1]} ${startMeridiem}`),
+      endTime: parseEventTime(`${range[3]} ${range[4]}`),
+    };
+  }
+  const clockRange = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*[-–—]\s*([01]?\d|2[0-3]):([0-5]\d)\b/);
+  return clockRange ? { startTime: formatClock(Number(clockRange[1]), clockRange[2]), endTime: formatClock(Number(clockRange[3]), clockRange[4]) }
+    : { startTime: parseEventTime(text), endTime: undefined };
 }
 
 export function isValidFutureDateString(dateString, now = new Date()) {

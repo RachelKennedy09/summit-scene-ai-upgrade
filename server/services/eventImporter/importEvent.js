@@ -1,4 +1,5 @@
 import Event from "../../models/Event.js";
+import { createHash } from "node:crypto";
 import ImportCandidate from "../../models/ImportCandidate.js";
 import { findDuplicateEvent } from "./detectDuplicate.js";
 import { isValidFutureDateString } from "./dateParsing.js";
@@ -7,6 +8,10 @@ import { normalizeExtractedEvent } from "./normalizeEvent.js";
 import { buildSourceKey, recordSeenSourceCandidate } from "./sourceSync.js";
 
 function buildCandidateQuery(candidate) {
+  if (candidate.existingCandidateId) return {
+    _id: candidate.existingCandidateId,
+    status: { $in: ["pending", "approved", "duplicate", "error"] },
+  };
   return {
     $or: [
       ...(candidate.existingCandidateId ? [{ _id: candidate.existingCandidateId }] : []),
@@ -15,6 +20,7 @@ function buildCandidateQuery(candidate) {
         sourceUrl: candidate.sourceUrl,
         startDate: candidate.startDate,
         title: candidate.title,
+        ...(candidate.startTime ? { startTime: candidate.startTime } : {}),
       },
     ],
     status: { $in: ["pending", "approved", "duplicate", "error"] },
@@ -62,11 +68,56 @@ export async function importExtractedEvent(extracted, source, options = {}) {
   candidate.imageUrl = deterministicCandidate.imageUrl;
   candidate.rawExtractedData = deterministicCandidate.rawExtractedData;
   candidate.sourceKey = buildSourceKey(candidate, source);
+  candidate.identityKey = createHash("sha256").update(`${source._id}|${candidate.sourceKey}`).digest("hex");
+
+  // A rejection is a persistent decision about this source listing. Check it
+  // before source-change tracking so edits cannot bring it back for review.
+  const rejectedQuery = { ...buildCandidateQuery(candidate), status: "rejected" };
+  if (candidate.sourceUrl &&
+      candidate.sourceUrl.replace(/\/+$/, "") !== String(source.url || "").replace(/\/+$/, "")) {
+    rejectedQuery.$or.push({ source: candidate.source, sourceUrl: candidate.sourceUrl });
+  }
+  let rejected = await ImportCandidate.findOne(rejectedQuery);
+  if (!rejected && candidate.town && candidate.startDate) {
+    // The same listing is often syndicated by tourism and venue calendars.
+    // Keep rejection decisions across sources, while preserving other dates.
+    const rejectedOccurrences = await ImportCandidate.find({
+      status: "rejected", town: candidate.town,
+      $or: [{ startDate: candidate.startDate }, { scheduleType: "recurring" }],
+    }).select("title town startDate endDate startTime endTime venue sourceUrl ticketUrl scheduleType recurrence reviewedAt reviewedBy").limit(2000);
+    rejected = findDuplicateEvent(candidate, rejectedOccurrences)?.event;
+  }
+  if (rejected) {
+    // Earlier importer versions may already have recreated pending copies.
+    // Keep their audit records, but remove them from the review queue too.
+    await ImportCandidate.updateMany(
+      { $or: [...rejectedQuery.$or,
+          { town: candidate.town, title: candidate.title, startDate: candidate.startDate,
+            ...(candidate.startTime ? { startTime: candidate.startTime } : {}) }],
+        status: { $in: ["pending", "duplicate", "error"] } },
+      { $set: {
+        status: "rejected", needsReview: false,
+        reviewedAt: rejected.reviewedAt || options.checkedAt || new Date(),
+        ...(rejected.reviewedBy ? { reviewedBy: rejected.reviewedBy } : {}),
+        importNotes: "Suppressed: this source event was previously rejected.",
+      }, $unset: { reviewReason: "" } }
+    );
+    return { status: "skipped", reason: "This source event was previously rejected.", candidate: rejected };
+  }
+
   const syncFields = await recordSeenSourceCandidate(candidate, source, {
     checkedAt: options.checkedAt || new Date(),
   });
   const sourceChanged = Boolean(syncFields.sourceChangedThisRun);
+  const qualityReason = candidate.reviewReason;
   Object.assign(candidate, syncFields);
+  candidate.identityKey = createHash("sha256").update(`${source._id}|${candidate.sourceKey}`).digest("hex");
+  if (qualityReason) {
+    candidate.needsReview = true;
+    candidate.reviewReason = syncFields.reviewReason?.includes(qualityReason)
+      ? syncFields.reviewReason : [qualityReason, syncFields.reviewReason].filter(Boolean).join(" ");
+    candidate.confidenceScore = Math.min(candidate.confidenceScore, 75);
+  }
   delete candidate.sourceChangedThisRun;
 
   if (
@@ -119,7 +170,8 @@ export async function importExtractedEvent(extracted, source, options = {}) {
       ImportCandidate.find({
         _id: { $ne: existingCandidate._id },
         town: candidate.town,
-        status: { $in: ["pending", "approved", "duplicate"] },
+        $or: [{ startDate: candidate.startDate }, { scheduleType: "recurring" }],
+        status: { $in: ["pending", "approved"] },
       }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence")
         .limit(500),
     ]);
@@ -137,6 +189,7 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     existingCandidate.set({
       ...candidate,
       status: nextStatus,
+      ...(duplicate ? { needsReview: false, reviewReason: undefined } : {}),
       duplicateOf: duplicate?.event?._id,
       confidenceScore: duplicate ? Math.min(candidate.confidenceScore, 70) : candidate.confidenceScore,
       importNotes: duplicate
@@ -153,7 +206,8 @@ export async function importExtractedEvent(extracted, source, options = {}) {
       .limit(500),
     ImportCandidate.find({
       town: candidate.town,
-      status: { $in: ["pending", "approved", "duplicate"] },
+      $or: [{ startDate: candidate.startDate }, { scheduleType: "recurring" }],
+      status: { $in: ["pending", "approved"] },
     }).select("title town startDate startTime endTime venue ticketUrl sourceUrl scheduleType recurrence")
       .limit(500),
   ]);
@@ -166,9 +220,11 @@ export async function importExtractedEvent(extracted, source, options = {}) {
 
   const candidateStatus = duplicate ? "duplicate" : "pending";
 
-  const savedCandidate = await ImportCandidate.create({
+  let savedCandidate;
+  try { savedCandidate = await ImportCandidate.create({
     ...candidate,
     status: candidateStatus,
+    ...(duplicate ? { needsReview: false, reviewReason: undefined } : {}),
     duplicateOf: duplicate?.event?._id,
     confidenceScore: duplicate
       ? Math.min(candidate.confidenceScore, 70)
@@ -176,7 +232,12 @@ export async function importExtractedEvent(extracted, source, options = {}) {
     importNotes: duplicate
       ? `Possible duplicate: ${duplicate.reason}`
       : candidate.importNotes,
-  });
+  }); } catch (error) {
+    if (error.code !== 11000) throw error;
+    const winner = await ImportCandidate.findOne({ identityKey: candidate.identityKey });
+    if (!winner) throw error;
+    return { status: "skipped", candidate: winner, reason: "Occurrence already imported by another run." };
+  }
 
   return {
     status: duplicate ? "duplicate" : "created",

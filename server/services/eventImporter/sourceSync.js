@@ -1,5 +1,7 @@
 import Event from "../../models/Event.js";
 import ImportCandidate from "../../models/ImportCandidate.js";
+import { canonicalEventUrl } from "./detectDuplicate.js";
+import { parseEventTime } from "./dateParsing.js";
 
 const REVIEW_AFTER_MISSING_CHECKS = 2;
 const TRACKED_CHANGE_FIELDS = [
@@ -32,6 +34,8 @@ function normalizeSourceKeyPart(value) {
 }
 
 function normalizeUrl(value) {
+  const canonical = canonicalEventUrl(value);
+  if (canonical) return canonical;
   const text = cleanText(value);
   if (!text) return "";
 
@@ -76,7 +80,7 @@ export function buildSourceKey(candidate, source = {}) {
   const sourceRootUrl = normalizeUrl(source?.url);
 
   if (sourceUrl && sourceUrl !== sourceRootUrl) {
-    return sourceUrl;
+    return [sourceUrl, candidate?.startDate || "", parseEventTime(candidate?.startTime) || ""].join("|");
   }
 
   return [
@@ -84,7 +88,7 @@ export function buildSourceKey(candidate, source = {}) {
     normalizeSourceKeyPart(candidate?.title),
     normalizeSourceKeyPart(candidate?.town),
     normalizeSourceKeyPart(candidate?.startDate),
-    normalizeSourceKeyPart(candidate?.startTime),
+    normalizeSourceKeyPart(parseEventTime(candidate?.startTime)),
   ]
     .filter(Boolean)
     .join("|");
@@ -244,24 +248,38 @@ export async function reconcileSourceSync({
 }
 
 export async function recordSeenSourceCandidate(candidate, source, { checkedAt = new Date() } = {}) {
-  const sourceKey = buildSourceKey(candidate, source);
-  const nextSnapshot = buildSourceSnapshot(candidate);
+  let sourceKey = buildSourceKey(candidate, source);
   const sourceUrl = normalizeUrl(candidate?.sourceUrl);
   const sourceRootUrl = normalizeUrl(source?.url);
   const lookupConditions = [];
   if (sourceKey) {
     lookupConditions.push({ source: source?._id, sourceKey });
   }
-  if (sourceUrl && sourceUrl !== sourceRootUrl) {
-    lookupConditions.push({ source: source?._id, sourceUrl });
+  if (sourceUrl && sourceUrl !== sourceRootUrl && candidate.startTime) {
+    lookupConditions.push({ source: source?._id, sourceUrl, startDate: candidate.startDate,
+      $or: [{ startTime: candidate.startTime }, { startTime: "" }, { startTime: { $exists: false } }] });
   }
-  const existingCandidate = sourceKey
+  let existingCandidate = sourceKey
     ? await ImportCandidate.findOne({
         $or: lookupConditions,
         status: { $in: ["pending", "approved", "duplicate", "error"] },
       })
     : null;
+  if (!existingCandidate && !candidate.startTime && sourceUrl && sourceUrl !== sourceRootUrl) {
+    const possibleOccurrences = await ImportCandidate.find({ source: source?._id, sourceUrl,
+      startDate: candidate.startDate, status: { $in: ["pending", "approved", "duplicate", "error"] } }).limit(2);
+    // Only reuse a previous time when the page identifies one occurrence.
+    if (possibleOccurrences.length === 1) existingCandidate = possibleOccurrences[0];
+  }
   const previousSnapshot = existingCandidate?.sourceSnapshot || {};
+  // A partial calendar response must not erase details already reviewed.
+  for (const field of ["venue", "address", "startTime", "endTime"]) {
+    if (!cleanText(candidate[field]) && cleanText(existingCandidate?.[field])) {
+      candidate[field] = existingCandidate[field];
+    }
+  }
+  sourceKey = buildSourceKey(candidate, source);
+  const nextSnapshot = buildSourceSnapshot(candidate);
   const diff = existingCandidate ? diffSourceSnapshots(previousSnapshot, nextSnapshot) : {};
   const hasDiff = Object.keys(diff).length > 0;
 

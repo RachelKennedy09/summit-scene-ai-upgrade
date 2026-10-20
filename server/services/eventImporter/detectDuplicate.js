@@ -1,6 +1,9 @@
+import { parseEventTime } from "./dateParsing.js";
+
 function normalizeTitle(value) {
   return String(value || "")
     .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, " and ")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
@@ -8,7 +11,22 @@ function normalizeTitle(value) {
 }
 
 function tokenSet(value) {
-  return new Set(normalizeTitle(value).split(" ").filter((token) => token.length > 2));
+  return new Set(normalizeTitle(value).split(" ").filter((token) =>
+    (token.length > 2 || /^\d+$/.test(token)) && !["live", "the", "presents"].includes(token)));
+}
+
+export function canonicalEventUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    url.hash = "";
+    url.hostname = url.hostname.replace(/^www\./, "");
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^utm_|^(fbclid|gclid|mc_cid|mc_eid)$/i.test(key)) url.searchParams.delete(key);
+    }
+    url.searchParams.sort();
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString().replace(/\/$/, "");
+  } catch { return ""; }
 }
 
 function jaccardSimilarity(a, b) {
@@ -39,35 +57,44 @@ function recurrenceSignature(value) {
     recurrence.frequency || "",
     weekdays.join(","),
     dates.join(","),
-    value?.startTime || value?.time || "",
-    value?.endTime || "",
+    parseEventTime(value?.startTime || value?.time) || "",
+    parseEventTime(value?.endTime) || "",
   ].join("|");
 }
 
 export function findDuplicateEvent(candidate, existingEvents = []) {
-  const candidateUrl = String(candidate?.sourceUrl || candidate?.ticketUrl || "").trim();
+  const candidateUrl = canonicalEventUrl(candidate?.sourceUrl || candidate?.ticketUrl);
   const candidateIsRecurring =
     candidate?.scheduleType === "recurring" || Boolean(candidate?.recurrence);
 
   for (const event of existingEvents) {
-    const eventUrl = String(event?.sourceUrl || event?.bookingUrl || "").trim();
+    const eventUrl = canonicalEventUrl(event?.sourceUrl || event?.bookingUrl || event?.ticketUrl);
     const eventIsRecurring =
       event?.scheduleType === "recurring" || Boolean(event?.recurrence);
     const recurringMismatch =
-      candidateIsRecurring &&
-      eventIsRecurring &&
+      candidateIsRecurring && eventIsRecurring &&
       recurrenceSignature(candidate) !== recurrenceSignature(event);
-    const sameDate = candidate?.startDate && candidate.startDate === event?.date;
-    const sameTown = candidate?.town && candidate.town === event?.town;
+    const candidateDate = candidate?.startDate || candidate?.date;
+    const eventDate = event?.startDate || event?.date;
+    const sameDate = candidateDate && candidateDate === eventDate;
+    const candidateEnd = candidate?.endDate || candidate?.recurrence?.untilDate || candidateDate;
+    const eventEnd = event?.endDate || event?.recurrence?.untilDate || eventDate;
+    const datesConflict = candidateDate && eventDate && !sameDate &&
+      !(candidateIsRecurring && eventIsRecurring && candidateDate <= eventEnd && eventDate <= candidateEnd);
+    const sameTown = sameText(candidate?.town, event?.town);
+    const candidateTime = parseEventTime(candidate?.startTime || candidate?.time);
+    const eventTime = parseEventTime(event?.startTime || event?.time);
+    const timesConflict = candidateTime && eventTime && candidateTime !== eventTime;
+    if (datesConflict || timesConflict || recurringMismatch) continue;
     const sameTime =
-      candidate?.startTime &&
-      event?.time &&
-      String(candidate.startTime).trim().toLowerCase() ===
-        String(event.time).trim().toLowerCase();
+      candidateTime && candidateTime === eventTime;
     const sameVenue =
-      sameText(candidate?.venue, event?.locationName) ||
+      sameText(candidate?.venue || candidate?.locationName, event?.venue || event?.locationName) ||
       sameText(candidate?.venue, event?.location);
     const titleScore = jaccardSimilarity(candidate?.title, event?.title);
+    // A calendar-wide URL and generic titles cannot identify an occurrence.
+    const genericTitle = /^(live music|live entertainment|happy hour|trivia|bingo|karaoke|open mic)$/i.test(normalizeTitle(candidate?.title));
+    if (genericTitle && !sameVenue) continue;
 
     if (
       candidateUrl &&
@@ -90,7 +117,7 @@ export function findDuplicateEvent(candidate, existingEvents = []) {
       return { event, reason: "same date, town and time with similar title", score: titleScore };
     }
 
-    if (sameTown && sameText(candidate?.title, event?.title)) {
+    if (sameDate && sameTown && sameText(candidate?.title, event?.title)) {
       return { event, reason: "same title and town", score: 1 };
     }
   }

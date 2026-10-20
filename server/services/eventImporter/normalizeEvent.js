@@ -7,6 +7,7 @@ import {
   isValidFutureDateString,
   parseEventDate,
   parseEventTime,
+  parseEventTimeRange,
 } from "./dateParsing.js";
 
 function cleanText(value) {
@@ -288,8 +289,9 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
   const category = normalizeCategory(extracted?.category, extracted);
   const title = cleanText(extracted?.title);
   const venue = cleanText(extracted?.venue);
-  const startTime = cleanText(extracted?.startTime) || parseEventTime(extracted?.dateText || text);
-  const endTime = cleanText(extracted?.endTime);
+  const timeRange = parseEventTimeRange(extracted?.dateText || extracted?.description || "");
+  const startTime = parseEventTime(extracted?.startTime) || parseEventTime(extracted?.startDate) || timeRange.startTime;
+  const endTime = parseEventTime(extracted?.endTime) || parseEventTime(extracted?.endDate) || timeRange.endTime;
   const price = cleanText(extracted?.price);
   const sourceName = cleanText(source?.name);
 
@@ -330,6 +332,15 @@ export function normalizeExtractedEvent(extracted, source, options = {}) {
   };
 
   candidate.confidenceScore = scoreCandidate(candidate, notes, options);
+  const missing = [];
+  if (!venue || ["Banff", "Canmore", "Lake Louise", "Canmore Kananaskis", "SkiBig3", "Rocky Mountain Live"].includes(venue)) missing.push("venue");
+  if (!startTime) missing.push("start time");
+  if (missing.length) {
+    candidate.needsReview = true;
+    candidate.reviewReason = `Missing ${missing.join(" and ")}. Check the source before approval.`;
+    candidate.confidenceScore = Math.min(candidate.confidenceScore, 75);
+    notes.push(candidate.reviewReason);
+  }
   candidate.importNotes = notes.join(" ");
 
   return candidate;

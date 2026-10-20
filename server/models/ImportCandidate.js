@@ -234,6 +234,10 @@ const importCandidateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Only new importer records carry this key, so existing duplicates do not
+// prevent installing the index. Keep rejected records to preserve decisions.
+importCandidateSchema.add({ identityKey: { type: String } });
+importCandidateSchema.index({ identityKey: 1 }, { unique: true, partialFilterExpression: { identityKey: { $type: "string" } } });
 importCandidateSchema.index({ status: 1, discoveredAt: -1 });
 importCandidateSchema.index({ sourceUrl: 1, startDate: 1, title: 1 });
 importCandidateSchema.index({ source: 1, sourceKey: 1 });

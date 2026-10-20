@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { readStructuredEvents } from "./structuredEvents.js";
 import { mapTourismItemToExtractedEvent } from "./banffLakeLouiseSource.js";
 
 const EVENT_SELECTOR =
@@ -277,52 +278,6 @@ function getKnownVenueFromText(text) {
   return KNOWN_BANFF_CENTRE_VENUES.find((venue) =>
     afterDate.toLowerCase().startsWith(venue.toLowerCase())
   );
-}
-
-function readJsonLdEvents($, sourceUrl) {
-  const events = [];
-
-  $("script[type='application/ld+json']").each((_, element) => {
-    const rawJson = $(element).contents().text();
-    if (!rawJson) return;
-
-    try {
-      const parsed = JSON.parse(rawJson);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
-      const flattened = items.flatMap((item) => {
-        if (Array.isArray(item?.["@graph"])) return item["@graph"];
-        if (Array.isArray(item?.itemListElement)) {
-          return item.itemListElement.map((entry) => entry.item || entry);
-        }
-        return [item];
-      });
-
-      flattened
-        .filter((item) => String(item?.["@type"] || "").includes("Event"))
-        .forEach((item) => {
-          events.push({
-            title: cleanText(item.name),
-            dateText: cleanText([item.startDate, item.endDate].filter(Boolean).join(" - ")),
-            startDate: item.startDate,
-            endDate: item.endDate,
-            venue:
-              cleanText(item.location?.name) ||
-              cleanText(item.location?.address?.name),
-            address:
-              cleanText(item.location?.address?.streetAddress) ||
-              cleanText(item.location?.address),
-            price: cleanText(item.offers?.price || item.offers?.lowPrice),
-            ticketUrl: resolveUrl(item.offers?.url || item.url, sourceUrl),
-            sourceUrl: resolveUrl(item.url, sourceUrl) || sourceUrl,
-            extractionMethod: "json-ld",
-          });
-        });
-    } catch {
-      // Broken JSON-LD is common. The generic HTML pass still has a chance.
-    }
-  });
-
-  return events;
 }
 
 function readNextDataEvents($, sourceUrl) {
@@ -1357,7 +1312,7 @@ function readGenericHtmlEvents($, sourceUrl) {
     if (/^Date:/i.test(title)) return;
 
     const link = node.find("a[href]").first().attr("href");
-    const venue = getKnownVenueFromText(text);
+    const venue = cleanText(node.find('[itemprop="location"] [itemprop="name"], [itemprop="location"], .tribe-events-venue-details, [class*="venue" i]').first().text()) || getKnownVenueFromText(text);
     const key = `${title.toLowerCase()}|${text.slice(0, 120).toLowerCase()}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -1365,6 +1320,9 @@ function readGenericHtmlEvents($, sourceUrl) {
     events.push({
       title,
       dateText: text,
+      startDate: node.find('time[datetime], [itemprop="startDate"]').first().attr("datetime") || node.find('[itemprop="startDate"]').first().attr("content"),
+      startTime: node.find('[itemprop="startTime"]').first().attr("content"),
+      address: cleanText(node.find('[itemprop="address"], [class*="address" i]').first().text()),
       venue,
       sourceUrl: resolveUrl(link, sourceUrl) || sourceUrl,
       extractionMethod: "generic-html",
@@ -1381,7 +1339,7 @@ export function extractEvents(html, source) {
   if (/^https?:\/\/(?:www\.)?skibanff\.com(?:\/|$)/i.test(sourceUrl)) {
     return readSunshineVillageEvents($, sourceUrl);
   }
-  const jsonLdEvents = readJsonLdEvents($, sourceUrl);
+  const jsonLdEvents = readStructuredEvents($, sourceUrl);
   const nextDataEvents = readNextDataEvents($, sourceUrl);
   if (nextDataEvents.length) {
     return [...jsonLdEvents, ...nextDataEvents].filter((event) => event.title);

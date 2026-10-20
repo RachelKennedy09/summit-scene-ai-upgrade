@@ -5,6 +5,7 @@ import { extractEvents } from "./extractEvents.js";
 import { importExtractedEvent } from "./importEvent.js";
 import { fetchBanffLakeLouiseEvents } from "./banffLakeLouiseSource.js";
 import { reconcileSourceSync } from "./sourceSync.js";
+import { coalesceExtractedEvents, enrichExtractedEvents } from "./enrichEvents.js";
 
 let isImportRunning = false;
 
@@ -79,10 +80,12 @@ export async function runEventImport(options = {}) {
           html,
           options
         );
-        const extractedEvents = (sourceSpecificEvents || extractEvents(html, source)).slice(
+        const discoveredEvents = coalesceExtractedEvents(sourceSpecificEvents || extractEvents(html, source), source, options);
+        const selectedEvents = discoveredEvents.slice(
           0,
           Math.max(0, maxEvents - summary.eventsDiscovered)
         );
+        const extractedEvents = await enrichExtractedEvents(selectedEvents, source, options);
         summary.sourcesChecked += 1;
         summary.eventsDiscovered += extractedEvents.length;
 
@@ -104,12 +107,13 @@ export async function runEventImport(options = {}) {
           }
         }
 
-        const sourceSyncSummary = await reconcileSourceSync({
+        // A batch limit is not evidence that omitted events were cancelled.
+        const sourceSyncSummary = selectedEvents.length === discoveredEvents.length ? await reconcileSourceSync({
           source,
           seenCandidates,
           todayString: buildTodayString(options.now || checkedAt),
           checkedAt,
-        });
+        }) : null;
         addSourceSyncSummary(summary, sourceSyncSummary);
 
         source.lastSuccessfulCheckAt = checkedAt;

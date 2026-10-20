@@ -103,6 +103,22 @@ function candidateToEventPayload(candidate, overrides = {}, userId) {
   };
 }
 
+async function checkLiveDuplicate(payload, candidate) {
+  const existing = await Event.find({ town: payload.town,
+    $or: [{ date: payload.date }, { scheduleType: "recurring" }] })
+    .select("title town date time locationName location bookingUrl sourceUrl scheduleType recurrence").limit(2000);
+  const duplicate = findDuplicateEvent(payload, existing);
+  if (duplicate) {
+    candidate.status = "duplicate";
+    candidate.needsReview = false;
+    candidate.reviewReason = undefined;
+    candidate.duplicateOf = duplicate.event._id;
+    candidate.importNotes = `Already published: ${duplicate.reason}`;
+    await candidate.save();
+  }
+  return duplicate;
+}
+
 function candidateToDuplicateComparable(candidate) {
   return {
     _id: candidate._id,
@@ -126,9 +142,9 @@ router.get("/candidates", authMiddleware, isAdmin, async (req, res) => {
       status === "all"
         ? {}
         : status === "review" || status === "needs-review"
-          ? { needsReview: true }
+          ? { needsReview: true, status: { $in: ["pending", "approved", "error"] } }
           : status === "pending"
-            ? { $or: [{ status: "pending" }, { needsReview: true }] }
+            ? { $or: [{ status: "pending" }, { needsReview: true, status: { $in: ["approved", "error"] } }] }
             : { status };
     const candidates = await ImportCandidate.find(query)
       .sort({ needsReview: -1, sourceLastChangedAt: -1, discoveredAt: -1 })
@@ -202,12 +218,37 @@ router.patch("/candidates/:id", authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
+router.post("/candidates/reject-selected", authMiddleware, isAdmin, async (req, res) => {
+  const requestedIds = req.body?.candidateIds;
+  if (!Array.isArray(requestedIds) || requestedIds.length === 0 || requestedIds.length > 100 ||
+      requestedIds.some((id) => typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id))) {
+    return res.status(400).json({ message: "Select between 1 and 100 valid imported events." });
+  }
+  const candidateIds = [...new Set(requestedIds.map((id) => id.toLowerCase()))];
+  try {
+    // Retain rejection history for the importer. Published events are excluded.
+    await ImportCandidate.updateMany({ _id: { $in: candidateIds }, status: { $in: ["pending", "duplicate", "error"] } }, {
+      $set: { status: "rejected", needsReview: false, reviewedAt: new Date(), reviewedBy: req.user.userId },
+      $unset: { reviewReason: "" },
+    });
+    const rejected = await ImportCandidate.find({ _id: { $in: candidateIds }, status: "rejected" }).select("_id");
+    const rejectedIds = rejected.map((candidate) => String(candidate._id));
+    const rejectedSet = new Set(rejectedIds);
+    return res.json({ rejectedIds, skippedIds: candidateIds.filter((id) => !rejectedSet.has(id)) });
+  } catch (error) {
+    console.error("Error rejecting selected import candidates:", error);
+    return res.status(500).json({ message: "Could not reject selected events. Refresh the list and try again." });
+  }
+});
+
 router.post("/candidates/:id/reject", authMiddleware, isAdmin, async (req, res) => {
   try {
     const candidate = await ImportCandidate.findById(req.params.id);
     if (!candidate) return res.status(404).json({ message: "Candidate not found." });
 
     candidate.status = "rejected";
+    candidate.needsReview = false;
+    candidate.reviewReason = undefined;
     candidate.reviewedAt = new Date();
     candidate.reviewedBy = req.user.userId;
     candidate.importNotes = normalizeString(req.body?.importNotes) || candidate.importNotes;
@@ -268,9 +309,10 @@ router.post("/candidates/:id/approve", authMiddleware, isAdmin, async (req, res)
       return res.status(400).json({ message: "Only pending candidates can be approved." });
     }
 
-    const event = await Event.create(
-      candidateToEventPayload(candidate, req.body?.event || {}, req.user.userId)
-    );
+    const payload = candidateToEventPayload(candidate, req.body?.event || {}, req.user.userId);
+    const duplicate = await checkLiveDuplicate(payload, candidate);
+    if (duplicate) return res.status(409).json({ message: "This event is already published. The duplicate has been removed from the approval queue.", candidate, existingEventId: duplicate.event._id });
+    const event = await Event.create(payload);
 
     candidate.status = "approved";
     candidate.reviewedAt = new Date();
@@ -300,7 +342,16 @@ router.post("/candidates/approve-high-confidence", authMiddleware, isAdmin, asyn
 
     for (const candidate of candidates) {
       try {
-        const event = await Event.create(candidateToEventPayload(candidate, {}, req.user.userId));
+        // Recheck legacy candidates too: their saved score may predate quality checks.
+        if (!candidate.venue || !candidate.startTime) {
+          candidate.needsReview = true;
+          candidate.reviewReason = "Missing venue or start time. Check the source before approval.";
+          await candidate.save();
+          continue;
+        }
+        const payload = candidateToEventPayload(candidate, {}, req.user.userId);
+        if (await checkLiveDuplicate(payload, candidate)) continue;
+        const event = await Event.create(payload);
         candidate.status = "approved";
         candidate.reviewedAt = new Date();
         candidate.reviewedBy = req.user.userId;
@@ -376,9 +427,13 @@ router.post("/candidates/cleanup-duplicates", authMiddleware, isAdmin, async (re
 
       const olderMatchingCandidate = await ImportCandidate.findOne({
         _id: { $ne: candidate._id },
-        status: { $in: ["pending", "approved", "duplicate"] },
+        status: { $in: ["pending", "approved"] },
         town: candidate.town,
         title: candidate.title,
+        startDate: candidate.startDate,
+        startTime: candidate.startTime,
+        $or: [{ discoveredAt: { $lt: candidate.discoveredAt } },
+          { discoveredAt: candidate.discoveredAt, _id: { $lt: candidate._id } }],
       }).sort({ discoveredAt: 1 });
 
       if (olderMatchingCandidate) {

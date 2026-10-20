@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
-import { assertCanFetchUrl, waitForRateLimit } from "./fetchSource.js";
+import { fetchSource } from "./fetchSource.js";
+import { parseEventTime, parseEventTimeRange } from "./dateParsing.js";
 
 function cleanText(value) {
   return String(value || "")
@@ -28,15 +29,7 @@ function detailUrlForSlug(slug, sourceUrl) {
 
 function formatTimeFromIso(value) {
   if (!value || !/T\d{2}:\d{2}/.test(String(value))) return undefined;
-
-  const [, hourText, minuteText] = String(value).match(/T(\d{2}):(\d{2})/) || [];
-  const hour24 = Number(hourText);
-  const minute = Number(minuteText);
-  if (!Number.isFinite(hour24) || !Number.isFinite(minute)) return undefined;
-
-  const meridiem = hour24 >= 12 ? "PM" : "AM";
-  const hour12 = hour24 % 12 || 12;
-  return `${hour12}:${String(minute).padStart(2, "0")} ${meridiem}`;
+  return parseEventTime(value);
 }
 
 function formatAddress(address) {
@@ -139,8 +132,8 @@ function mapTourismDetailToExtractedEvent(data, detailUrl, sourceUrl, jsonLdEven
     dateText: cleanText(data.dateInfo || firstDate?.start),
     startDate: firstDate?.start,
     endDate: firstDate?.end,
-    startTime: formatTimeFromIso(firstDate?.start),
-    endTime: formatTimeFromIso(firstDate?.end),
+    startTime: formatTimeFromIso(firstDate?.start) || formatTimeFromIso(jsonLdEvent?.startDate) || parseEventTimeRange(data.dateInfo).startTime,
+    endTime: formatTimeFromIso(firstDate?.end) || formatTimeFromIso(jsonLdEvent?.endDate) || parseEventTimeRange(data.dateInfo).endTime,
     venue,
     address,
     ticketUrl: resolveUrl(exactLink, sourceUrl),
@@ -151,22 +144,12 @@ function mapTourismDetailToExtractedEvent(data, detailUrl, sourceUrl, jsonLdEven
   };
 }
 
-async function fetchEventDetail(item, sourceUrl) {
+async function fetchEventDetail(item, sourceUrl, options) {
   const detailUrl = detailUrlForSlug(item?.slug, sourceUrl);
   if (!detailUrl) return null;
 
-  await assertCanFetchUrl(detailUrl);
-  await waitForRateLimit(detailUrl);
-  const response = await fetch(detailUrl, {
-    headers: {
-      Accept: "text/html,application/xhtml+xml",
-      "User-Agent":
-        "SummitSceneBot/1.0 (+https://summitscene.ca; event discovery)",
-    },
-  });
-  if (!response.ok) return null;
-
-  const { data, jsonLdEvent } = readDetailPayload(await response.text());
+  const { html } = await fetchSource({ url: detailUrl }, options);
+  const { data, jsonLdEvent } = readDetailPayload(html);
   return mapTourismDetailToExtractedEvent(data, detailUrl, sourceUrl, jsonLdEvent);
 }
 
@@ -210,7 +193,7 @@ function readListConfigFromHtml(html) {
   }
 }
 
-async function fetchListPage(sourceUrl, page, listConfig) {
+async function fetchListPage(sourceUrl, page, listConfig, options) {
   const config = {
     selected: {},
     dateStart: null,
@@ -227,20 +210,8 @@ async function fetchListPage(sourceUrl, page, listConfig) {
   const endpoint = new URL("/api/list-data/", sourceUrl);
   endpoint.searchParams.set("config", JSON.stringify(config));
 
-  await assertCanFetchUrl(endpoint.toString());
-  await waitForRateLimit(endpoint.toString());
-  const response = await fetch(endpoint.toString(), {
-    headers: {
-      Accept: "application/json",
-      "User-Agent":
-        "SummitSceneBot/1.0 (+https://summitscene.ca; event discovery)",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Banff Lake Louise list-data returned HTTP ${response.status}`);
-  }
-
-  return response.json();
+  const { html } = await fetchSource({ url: endpoint.toString() }, options);
+  return JSON.parse(html);
 }
 
 export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
@@ -260,7 +231,7 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
   const seenUrls = new Set();
 
   for (let page = 1; page <= totalPages; page += 1) {
-    const data = await fetchListPage(source.url, page, listConfig).catch((error) => {
+    const data = await fetchListPage(source.url, page, listConfig, options).catch((error) => {
       if (/robots\.txt/i.test(error.message)) return null;
       throw error;
     });
@@ -268,7 +239,7 @@ export async function fetchBanffLakeLouiseEvents(source, html, options = {}) {
 
     for (const item of data.items || []) {
       const baseEvent = mapTourismItemToExtractedEvent(item, source.url);
-      const detailEvent = await fetchEventDetail(item, source.url).catch(
+      const detailEvent = await fetchEventDetail(item, source.url, options).catch(
         () => null
       );
       const event = {

@@ -29,6 +29,7 @@ import {
   fetchEventSources,
   fetchImportCandidates,
   rejectImportCandidate,
+  rejectSelectedImportCandidates,
   retryEventSource,
   runEventImporter,
   seedStarterEventSources,
@@ -70,6 +71,7 @@ export default function EventImportReviewScreen() {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const [candidates, setCandidates] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
   const [workingLabel, setWorkingLabel] = useState("");
@@ -82,6 +84,47 @@ export default function EventImportReviewScreen() {
   const [timePickerTarget, setTimePickerTarget] = useState(null);
   const [sourceEditing, setSourceEditing] = useState(null);
   const [sourceForm, setSourceForm] = useState({});
+  const selectableIds = candidates.filter((candidate) => candidate.status !== "approved")
+    .map(getCandidateId).filter(Boolean);
+  const selectedCandidateIds = selectedIds.filter((id) => selectableIds.includes(id));
+  const allSelected = selectableIds.length > 0 && selectedCandidateIds.length === selectableIds.length;
+
+  useEffect(() => {
+    const visibleIds = new Set(candidates.filter((candidate) => candidate.status !== "approved").map(getCandidateId));
+    setSelectedIds((current) => current.filter((id) => visibleIds.has(id)));
+  }, [candidates]);
+
+  function toggleSelection(candidateId) {
+    setSelectedIds((current) => current.includes(candidateId)
+      ? current.filter((id) => id !== candidateId) : [...current, candidateId]);
+  }
+
+  function handleRejectSelected() {
+    if (working || !selectedCandidateIds.length) return;
+    const ids = [...selectedCandidateIds];
+    Alert.alert(`Reject ${ids.length} selected event${ids.length === 1 ? "" : "s"}?`,
+      "These events will leave the review list and matching imports will stay rejected.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Reject selected", style: "destructive", onPress: async () => {
+          try {
+            setWorking(true);
+            setWorkingLabel(`Rejecting ${ids.length} selected events...`);
+            const result = await rejectSelectedImportCandidates(ids, token);
+            const rejected = new Set(result.rejectedIds || []);
+            setCandidates((current) => current.filter((candidate) => !rejected.has(getCandidateId(candidate))));
+            setSelectedIds((current) => current.filter((id) => !rejected.has(id)));
+            if (result.skippedIds?.length) {
+              Alert.alert("Some events were skipped", "They may have already been approved or removed. Refresh the list to check them.");
+            }
+          } catch (rejectError) {
+            Alert.alert("Could not reject selected events", rejectError.message);
+          } finally {
+            setWorking(false);
+            setWorkingLabel("");
+          }
+        } },
+      ]);
+  }
 
   async function loadImportData() {
     if (!user?.isAdmin || !token) return;
@@ -720,6 +763,34 @@ export default function EventImportReviewScreen() {
           </Text>
         </View>
 
+        {selectableIds.length > 0 ? (
+          <View style={styles.rowActions}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityLabel="Select all loaded events"
+              accessibilityState={{ checked: allSelected ? true : selectedCandidateIds.length ? "mixed" : false, disabled: working || loading }}
+              disabled={working || loading}
+              onPress={() => setSelectedIds(allSelected ? [] : selectableIds)}
+              style={[styles.smallOutlineButton, { borderColor: theme.border }]}
+            >
+              <Text style={[styles.smallOutlineText, { color: theme.text }]}>
+                {allSelected ? "☑ Clear selection" : "☐ Select all loaded"}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={working || loading || !selectedCandidateIds.length}
+              onPress={handleRejectSelected}
+              style={[styles.smallButton, { backgroundColor: theme.danger || "#B42318" },
+                (working || loading || !selectedCandidateIds.length) && styles.buttonDisabled]}
+            >
+              <Text style={[styles.smallButtonText, { color: theme.textOnAccent }]}>
+                Reject selected ({selectedCandidateIds.length})
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {loading ? (
           <ActivityIndicator size="small" color={theme.accent} style={styles.loader} />
         ) : null}
@@ -735,6 +806,21 @@ export default function EventImportReviewScreen() {
             key={getCandidateId(candidate)}
             style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
           >
+            {candidate.status !== "approved" ? (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel={`Select ${candidate.title || "event"} for rejection`}
+                accessibilityState={{ checked: selectedCandidateIds.includes(getCandidateId(candidate)), disabled: working || loading }}
+                disabled={working || loading}
+                onPress={() => toggleSelection(getCandidateId(candidate))}
+                style={styles.selectionControl}
+              >
+                <Text style={[styles.selectionCheck, { color: theme.accent }]}>
+                  {selectedCandidateIds.includes(getCandidateId(candidate)) ? "☑" : "☐"}
+                </Text>
+                <Text style={[styles.smallOutlineText, { color: theme.text }]}>Select event</Text>
+              </Pressable>
+            ) : null}
             {candidate.needsReview ? (
               <View
                 style={[
@@ -1364,6 +1450,18 @@ export default function EventImportReviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  selectionControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 44,
+    gap: 10,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 4,
+  },
+  selectionCheck: {
+    fontSize: 28,
+  },
   safeArea: { flex: 1 },
   content: { padding: 16, paddingBottom: 32 },
   actions: { gap: 10, marginBottom: 16 },

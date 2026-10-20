@@ -892,7 +892,9 @@ describe("event importer helpers", () => {
       frequency: "selected_weekdays",
     });
     expect(candidate.recurrence.weekdays).to.deep.equal(["Friday"]);
-    expect(candidate.confidenceScore).to.be.at.least(90);
+    expect(candidate.needsReview).to.equal(true);
+    expect(candidate.reviewReason).to.contain("venue");
+    expect(candidate.confidenceScore).to.be.below(90);
   });
 
   it("extracts Banff Lake Louise Next.js event cards", () => {
@@ -1028,7 +1030,7 @@ describe("event importer helpers", () => {
     });
   });
 
-  it("uses detail URLs as stable source sync keys when source event details change", () => {
+  it("keeps separate occurrences on a shared detail URL", () => {
     const source = {
       _id: "507f1f77bcf86cd799439011",
       url: "https://www.banfflakelouise.com/events",
@@ -1050,7 +1052,7 @@ describe("event importer helpers", () => {
       source
     );
 
-    expect(changedKey).to.equal(originalKey);
+    expect(changedKey).to.not.equal(originalKey);
   });
 
   it("captures source detail changes for admin review", () => {
