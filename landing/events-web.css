@@ -14,6 +14,9 @@ button,a,input,select{-webkit-tap-highlight-color:transparent}
 .brand img{object-fit:contain}
 .header nav{display:flex;align-items:center;gap:28px;font-size:14px;font-weight:650}
 .nav-app{padding:12px 18px;background:var(--green);color:white;border-radius:8px}
+.download-banner{background:var(--stone);padding:16px 24px;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+.download-banner>span{font-size:14px;font-weight:650;color:var(--green)}
+@media(max-width:620px){.download-banner{padding:14px 16px;gap:10px}.download-banner .download-actions{width:100%;flex-wrap:nowrap;gap:10px}.download-banner a{flex:1;padding:10px 8px;font-size:12px;text-align:center}}
 main{min-height:45vh}
 .events-hero{max-width:1300px;margin:auto;padding:58px 40px 44px;display:grid;grid-template-columns:1.35fr 1fr;gap:60px;align-items:center}
 .eyebrow{text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--green)}

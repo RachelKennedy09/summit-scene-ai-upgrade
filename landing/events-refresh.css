@@ -8,6 +8,11 @@
 .events-home .nav-links { font-size: 14px; font-weight: 650; gap: 28px; text-shadow: none; }
 .events-home .nav-download { background: var(--green); color: #fffdf8; border-radius: 6px; padding: 12px 18px; }
 .events-home .menu-button { display: none; }
+.events-home .mobile-download { display: none; }
+.events-home .download-banner { background: #1f5139; color: #fffdf8; padding: 16px clamp(22px, 5vw, 80px); display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; }
+.events-home .download-banner > span { font-size: 14px; font-weight: 650; }
+.events-home .download-banner-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.events-home .download-banner-actions a { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 7px; background: #fffdf8; color: #1f5139; font-size: 14px; font-weight: 750; text-align: center; }
 .events-home .event-hero { padding: 60px clamp(22px, 6vw, 90px) 50px; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; gap: 38px; max-width: 1600px; margin: auto; }
 .events-home h1, .events-home h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.045em; }
 .events-home h1 { font-size: clamp(44px, 5.5vw, 84px); line-height: 1.06; margin: 22px 0; }
@@ -90,6 +95,10 @@
   .events-home .town-strip { gap: 18px; }
 }
 @media (max-width: 760px) {
+  .events-home .mobile-download { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; min-height: 44px; padding: 10px 12px; background: var(--green); color: #fffdf8; border-radius: 6px; font-size: 13px; font-weight: 750; }
+  .events-home .download-banner { gap: 10px; padding: 14px 16px; }
+  .events-home .download-banner-actions { width: 100%; flex-wrap: nowrap; }
+  .events-home .download-banner-actions a { flex: 1; padding: 10px 8px; font-size: 12px; }
   .events-home .site-header { flex-wrap: wrap; gap: 12px; min-height: 80px; }
   .events-home .brand { font-size: 18px; }
   .events-home .brand-logo { width: 44px; height: 46px; }
@@ -129,6 +138,7 @@
   .events-home .category-list span { font-size: 11px; padding: 9px 11px; }
   .events-home .nav-links.is-open { flex-direction: column; align-items: stretch; gap: 0; }
 }
+@media (max-width: 400px) { .events-home .site-header { padding-inline: 16px; gap: 8px; } .events-home .brand > span { display: none; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 .events-home .google-play-link { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 162px; min-height: 48px; padding: 6px 14px; border: 1px solid #777; border-radius: 7px; background: #050505; color: #fff; text-decoration: none; vertical-align: middle; }
