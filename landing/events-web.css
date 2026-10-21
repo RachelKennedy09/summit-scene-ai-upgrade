@@ -69,7 +69,7 @@ h1 em{font-style:italic;color:var(--green)}
 .download{background:var(--stone);padding:48px max(24px,calc((100% - 1220px)/2));display:flex;gap:32px;justify-content:space-between;align-items:center}
 .download h2{font:500 32px/1.2 Georgia,serif;letter-spacing:-.8px;margin:8px 0}
 .download p{color:var(--muted)}
-.download-actions{display:flex;flex-wrap:wrap;gap:12px}
+.download-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 footer{padding:38px clamp(24px,5vw,80px);border-top:1px solid var(--border)}
 footer p,footer small{font-size:12px;color:var(--muted)}
 footer nav{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;margin:22px 0}
