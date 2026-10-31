@@ -14,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
 import { accountDestination } from "../../utils/accountNavigation";
+import { configureGoogleSignIn } from "../../utils/googleSignInConfig";
 
 function getGoogleSignInModule() {
   try {
@@ -70,19 +71,6 @@ export default function SocialSignInButtons({
       isMounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!googleWebClientId) {
-      return;
-    }
-
-    const googleModule = getGoogleSignInModule();
-    googleModule?.GoogleSignin?.configure({
-      webClientId: googleWebClientId,
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      offlineAccess: false,
-    });
-  }, [googleWebClientId]);
 
   function setBusy(nextValue) {
     setIsSubmitting(nextValue);
@@ -151,15 +139,14 @@ export default function SocialSignInButtons({
       clearAuthNoticeMessage?.();
       setBusy(true);
 
-      if (!googleWebClientId) {
-        throw new Error("Google sign-in is not configured yet.");
-      }
-
       const googleModule = getGoogleSignInModule();
       const googleSignIn = googleModule?.GoogleSignin;
-      if (!googleSignIn) {
-        throw new Error("Google sign-in requires a development or store build.");
-      }
+      await configureGoogleSignIn({
+        googleSignIn,
+        platform: Platform.OS,
+        webClientId: googleWebClientId,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      });
 
       if (Platform.OS === "android") {
         await googleSignIn.hasPlayServices({ showPlayServicesUpdateDialog: true });
