@@ -1329,7 +1329,7 @@ export default function HubScreen({ route }) {
               style={styles.backHomeIcon}
             />
             <Text style={[styles.backHomeText, { color: theme.accent }]}>
-              Back to Today
+              Back to Home
             </Text>
           </Pressable>
         </View>

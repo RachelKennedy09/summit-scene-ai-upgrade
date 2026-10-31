@@ -119,7 +119,7 @@ describe("Home event browser transitions", () => {
     for (let i = 0; i < 3; i++) {
       home.click("See all today"); await home.settle();
       expect(home.list()).to.exist;
-      home.click("Back to Today"); await home.settle();
+      home.click("Back to Home"); await home.settle();
       expect(home.text()).to.include("See all today");
     }
   });
