@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  NativeModules,
   Platform,
   Pressable,
   StyleSheet,
@@ -17,10 +16,6 @@ import { useTheme } from "../../context/ThemeContext";
 import { accountDestination } from "../../utils/accountNavigation";
 
 function getGoogleSignInModule() {
-  if (!NativeModules.RNGoogleSignin) {
-    return null;
-  }
-
   try {
     return require("@react-native-google-signin/google-signin");
   } catch {

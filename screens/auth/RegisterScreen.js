@@ -880,6 +880,7 @@ function RegisterScreen() {
         profileImageUrl: profileImageUpload,
         acceptedAgeTerms: hasAcceptedAgreements,
       });
+      navigation.reset({ index: 0, routes: [{ name: "tabs", params: { screen: "Account" } }] });
       if (isBusiness) {
         Alert.alert(
           "Pending approval",

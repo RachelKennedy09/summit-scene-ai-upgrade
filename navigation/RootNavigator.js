@@ -160,7 +160,7 @@ function AuthLoadingScreen({
             <Text style={styles.primaryButtonText}>Retry</Text>
           </Pressable>
           <Pressable style={styles.secondaryButton} onPress={onContinueToLogin}>
-            <Text style={styles.secondaryButtonText}>Continue to Login</Text>
+            <Text style={styles.secondaryButtonText}>Continue browsing</Text>
           </Pressable>
         </View>
       ) : null}

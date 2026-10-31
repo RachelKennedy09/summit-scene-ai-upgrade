@@ -406,7 +406,7 @@ export default function EventDetailScreen({ route }) {
     });
   };
 
-  const handleToggleEventAttendance = async () => {
+  const handleToggleEventAttendance = async (ensureGoing = false) => {
     if (!eventIsUpcoming) {
       Alert.alert(
         "Event has passed",
@@ -417,12 +417,12 @@ export default function EventDetailScreen({ route }) {
 
     if (!token) {
       showAccountRequired(
-        "Log in with an existing account to mark that you're going."
+        "Create an account or log in to mark that you're going.", "going"
       );
       return;
     }
 
-    if (!eventId || updatingAttendance) return;
+    if (!eventId || updatingAttendance || (ensureGoing === true && isGoing)) return;
 
     try {
       setUpdatingAttendance(true);
@@ -456,7 +456,7 @@ export default function EventDetailScreen({ route }) {
       return;
     }
 
-    if (!eventId || updatingPreference) return;
+    if (!eventId || updatingPreference || nextSaved === isSaved) return;
 
     try {
       setUpdatingPreference(true);
@@ -468,7 +468,7 @@ export default function EventDetailScreen({ route }) {
       setEventPreference(preference);
       trackAnalytics("event_save", {
         eventId,
-        metadata: { action: isSaved ? "removed" : "added" },
+        metadata: { action: nextSaved ? "added" : "removed" },
       });
       if (isSaved) {
         await cancelEventReminderNotification({ eventId, source: "saved" });
@@ -513,6 +513,7 @@ export default function EventDetailScreen({ route }) {
     setPendingEventAction(null);
     if (action === "save") handleToggleSavedEvent(true);
     if (action === "like") handleToggleLikedEvent(true);
+    if (action === "going") handleToggleEventAttendance(true);
   }, [token, eventId, event, pendingEventAction, preferenceReady]);
 
   const handleReminderChange = async (source, reminderTime) => {
@@ -1016,6 +1017,53 @@ export default function EventDetailScreen({ route }) {
                 { backgroundColor: theme.background, borderColor: theme.border },
               ]}
             >
+              {eventIsUpcoming ? (
+                <Pressable
+                  style={[
+                    styles.primaryActionButton,
+                    {
+                      backgroundColor: isGoing
+                        ? theme.accentSoft || theme.card
+                        : theme.accent,
+                      borderColor: theme.accent,
+                    },
+                  ]}
+                  onPress={() => handleToggleEventAttendance()}
+                  disabled={updatingAttendance}
+                >
+                  <Text
+                    style={[
+                      styles.primaryActionText,
+                      {
+                        color: isGoing
+                          ? theme.accent
+                          : theme.onAccent || theme.textOnAccent,
+                      },
+                    ]}
+                  >
+                    {updatingAttendance
+                      ? "Updating..."
+                      : isGoing
+                        ? "Going"
+                        : "I'm Going"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <View
+                  style={[
+                    styles.primaryActionButton,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.primaryActionText, { color: theme.textMuted }]}>
+                    Past Event
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.secondaryActionRow}>
                 {eventIsUpcoming ? <Pressable accessibilityRole="button" accessibilityLabel={isLiked ? "Unlike event" : "Like event"} accessibilityState={{ selected: isLiked }} onPress={() => handleToggleLikedEvent()} disabled={updatingPreference} style={[styles.secondaryActionButton, { borderColor: isLiked ? theme.accent : theme.border, backgroundColor: theme.card }]}>
                   <Ionicons name={isLiked ? "heart" : "heart-outline"} size={20} color={isLiked ? theme.accent : theme.text} />
@@ -1057,6 +1105,58 @@ export default function EventDetailScreen({ route }) {
                   </Text>
                 </Pressable>
               </View>
+
+              {eventIsUpcoming && isGoing ? (
+                <View
+                  style={[
+                    styles.inlineReminderPanel,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  <Text style={[styles.reminderTitle, { color: theme.text }]}>
+                    Going reminder
+                  </Text>
+                  <Text style={[styles.reminderLabel, { color: theme.textMuted }]}>
+                    Choose when Summit Scene should remind you.
+                  </Text>
+                  <View style={styles.reminderOptions}>
+                    {REMINDER_OPTIONS.map((option) => {
+                      const active =
+                        option.value === "none"
+                          ? !goingReminderEnabled
+                          : goingReminderEnabled &&
+                            activeReminderTime === option.value;
+                      return (
+                        <Pressable
+                          key={`going-main-${option.value}`}
+                          style={[
+                            styles.reminderPill,
+                            {
+                              backgroundColor: active
+                                ? theme.accentSoft || theme.card
+                                : theme.background,
+                              borderColor: active ? theme.accent : theme.border,
+                            },
+                          ]}
+                          onPress={() =>
+                            handleReminderChange("going", option.value)
+                          }
+                          disabled={updatingPreference}
+                        >
+                          <Text
+                            style={[
+                              styles.reminderPillText,
+                              { color: active ? theme.accent : theme.textMuted },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
 
               {bookingUrl ? (
                 <Pressable

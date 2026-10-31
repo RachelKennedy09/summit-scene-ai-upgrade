@@ -498,11 +498,14 @@ router.delete("/me", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const user = await User.findById(userId).select("_id +appleRefreshToken");
+    const user = await User.findById(userId).select("_id socialAccounts +appleRefreshToken");
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
+    if (user.socialAccounts?.some(account => account.provider === "apple" && account.verified) && !user.appleRefreshToken) {
+      return res.status(409).json({ message: "Please connect Apple again from Account, then retry deletion so we can disconnect your Apple authorization." });
+    }
     // Revoke first: a provider failure must leave the local account recoverable.
     await revokeAppleAccount(user.appleRefreshToken);
     const ownedEvents = await Event.find({ createdBy: userId }).select("_id");

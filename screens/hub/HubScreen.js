@@ -221,6 +221,7 @@ export default function HubScreen({ route }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [isBrowseMode, setIsBrowseMode] = useState(false);
+  const [filterRefreshVersion, setFilterRefreshVersion] = useState(0);
   const [showAllDiscoveryCategories, setShowAllDiscoveryCategories] =
     useState(false);
 
@@ -382,7 +383,7 @@ export default function HubScreen({ route }) {
       loadRequestIdRef.current += 1;
       dashboardRequestIdRef.current += 1;
     };
-  }, [isFocused, loadDashboardData, loadEvents]);
+  }, [isFocused, loadDashboardData, loadEvents, filterRefreshVersion]);
 
   const handleRefresh = useCallback(() => {
     loadDashboardData({ forceRefresh: true });
@@ -398,6 +399,9 @@ export default function HubScreen({ route }) {
   }, [loading, refreshing, loadingMore, hasMore, page, loadEvents]);
 
   const prepareFilterRefresh = useCallback(() => {
+    // Opening Today (or reselecting a filter) may leave every filter unchanged.
+    // Refs and loading state alone do not rerun the loading effect above.
+    setFilterRefreshVersion((version) => version + 1);
     browseScrollOffsetRef.current = 0;
     shouldRestoreBrowseScrollRef.current = false;
     hasLoadedEventsRef.current = false;
@@ -1507,7 +1511,7 @@ export default function HubScreen({ route }) {
                   style={styles.accountAccess}
                 >
                   <Text style={{ color: theme.textMuted }}>
-                    {user ? "Account settings" : "Admin login"}
+                    {user ? "Account settings" : "Log in / Create account"}
                   </Text>
                 </Pressable>
               ) : null}

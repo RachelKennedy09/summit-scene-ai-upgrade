@@ -44,3 +44,6 @@ GoogleService-Info.plist
 /android
 # Generated website output (source lives in landing/, website/, netlify/).
 .website-dist/
+
+# Apple developer signing keys must remain private.
+*.p8

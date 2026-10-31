@@ -22,7 +22,8 @@
     "seed:event-sources": "npm --prefix server run seed:event-sources",
     "backfill:analytics-attribution": "npm --prefix server run backfill:analytics-attribution",
     "repair:imported-event-ranges": "npm --prefix server run repair:imported-event-ranges",
-    "repair:imported-event-compliance": "npm --prefix server run repair:imported-event-compliance"
+    "repair:imported-event-compliance": "npm --prefix server run repair:imported-event-compliance",
+    "test:accounts": "mocha --exit --timeout 10000 server/test/memberAccounts.test.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
