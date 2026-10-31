@@ -2,7 +2,7 @@
 // Create a new event (Business only)
 // - Uses shared date/time pickers and SelectModal
 // - Validates required fields an sends a POST request via createEvent()
-// - Only business accounts (role=business) are allowed to publish events.
+// - Only Summit Scene admin can publish events.
 
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -483,7 +483,7 @@ export default function PostEventScreen() {
         Alert.alert(
           "Business profile required",
           data?.message ||
-            "Official event listings are for business or organizer profiles. Community members can create local plans and buddy posts from Find People."
+            "Only Summit Scene admin can publish event listings. Contact hello@summitscene.ca to have an event added."
         );
         return;
       }
@@ -674,7 +674,7 @@ export default function PostEventScreen() {
       >
         <PageHeader
           title="Create Official Event"
-          subtitle='For hosted events from businesses, venues, and organizers. Fields marked "Required" must be completed before posting.'
+          subtitle='Admin: create a listing on behalf of a business, venue, or organizer. Fields marked "Required" must be completed before posting.'
         />
 
         <View

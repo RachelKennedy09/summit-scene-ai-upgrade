@@ -1,6 +1,6 @@
 // navigation/TabNavigator.js
 // Public tabs are Home and Map; admins also get their account tools.
-// Verified businesses also get a Create tab for official events.
+// Only admin receives the Manage tab for event listings.
 
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -22,11 +22,8 @@ export default function TabNavigator() {
   const { user } = useAuth();
   const { theme } = useTheme();
 
-  // Official event tools are only available after business review.
-  const canUseBusinessTools =
-    user?.isAdmin ||
-    (user?.role === "business" &&
-      user?.businessVerificationStatus === "verified");
+  // Only admin manages listings, including events submitted by businesses.
+  const canUseBusinessTools = Boolean(user?.isAdmin);
 
   return (
     <Tab.Navigator

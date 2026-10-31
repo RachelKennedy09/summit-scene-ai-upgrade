@@ -138,7 +138,7 @@ export default function LegalScreen() {
           <LegalText theme={theme}>
             Summit Scene collects the information needed to create accounts,
             show local events and tours, support community features, review
-            business and organizer accounts, moderate reports, and keep the app
+            event submissions, moderate reports, and keep the app
             working.
           </LegalText>
           <LegalBullet theme={theme}>
@@ -248,8 +248,7 @@ export default function LegalScreen() {
             going choices.
           </LegalBullet>
           <LegalBullet theme={theme}>
-            To review business and organizer accounts and manage event posting
-            access.
+            To review event submissions and manage admin publication of listings.
           </LegalBullet>
           <LegalBullet theme={theme}>
             To respond to reports, blocks, moderation issues, support requests,
@@ -323,7 +322,7 @@ export default function LegalScreen() {
             administrator access to user data is limited to running the app,
             fixing bugs, investigating security issues, responding to support
             requests, reviewing reports, enforcing community rules, verifying
-            business accounts, and complying with legal obligations.
+            event submissions, and complying with legal obligations.
           </LegalText>
           <LegalText theme={theme}>
             Developers and administrators should not access, copy, disclose,
@@ -408,8 +407,7 @@ export default function LegalScreen() {
             identity or protected characteristics.
           </LegalBullet>
           <LegalBullet theme={theme}>
-            Users must not post official business, venue, or organizer content
-            unless they are authorized to do so.
+            Only Summit Scene admin publishes official event listings. Contact hello@summitscene.ca to request a listing or correction.
           </LegalBullet>
           <LegalBullet theme={theme}>
             Official event and tour listings may link to external booking pages,
@@ -513,16 +511,10 @@ export default function LegalScreen() {
 
         <LegalSection title="Local Event & Business Compliance" theme={theme}>
           <LegalText theme={theme}>
-            Business and organizer profiles are for venues, shops, activity
-            providers, tour guides, tour companies, event hosts, markets,
-            wellness studios, community organizations, and other local operators
-            who want to share official events, tours, or experiences.
+            Businesses, venues, and organizers can email hello@summitscene.ca with event details and an official source or booking link to request a listing.
           </LegalText>
           <LegalText theme={theme}>
-            Business and organizer accounts may be reviewed before they receive
-            posting access. Summit Scene may reject, pause, or remove business
-            access if a profile appears misleading, unauthorized, unsafe, or
-            incomplete.
+            There are no business or organizer accounts. Only Summit Scene admin creates and manages listings. Submissions may be declined or removed if details are misleading, unauthorized, unsafe, or incomplete.
           </LegalText>
           <LegalText theme={theme}>
             Businesses and organizers are responsible for confirming and

@@ -987,12 +987,12 @@ export async function getAllEvents(req, res) {
 // POST /api/events
 //   Create a new event.
 //   - Requires authMiddleware (req.user.userId).
-//   - Requires isBusiness middleware at route level.
+//   - Requires isAdmin middleware at route level.
 //   - This controller double-checks the user + role in DB.
 //
 // FLOW:
 //   1) Check userId from JWT.
-//   2) Look up the user and confirm they're a business.
+//   2) Look up the user and confirm admin access.
 //   3) Validate required event fields.
 //   4) Create and save a new Event linked to createdBy.
 // -------------------------------------------
@@ -1014,16 +1014,14 @@ export async function createEvent(req, res) {
     const canHostOfficialEvents =
       hostUser.isAdmin ||
       isAdminEmail(req.user?.email) ||
-      isAdminEmail(hostUser.email) ||
-      (hostUser.role === "business" &&
-        hostUser.businessVerificationStatus === "verified");
+      isAdminEmail(hostUser.email);
 
     if (!canHostOfficialEvents) {
       return res
         .status(403)
         .json({
           message:
-            "A verified business or organizer profile is required for official event posting.",
+            "Only Summit Scene admin can manage event listings. Contact hello@summitscene.ca to request a listing.",
         });
     }
 
@@ -1353,7 +1351,7 @@ export async function updateEvent(req, res) {
     const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
 
     // Check ownership/admin access
-    if (!isOwner && !isAdminEditor) {
+    if (!isAdminEditor) {
       return res
         .status(403)
         .json({ message: "You are not allowed to edit this event." });
@@ -1606,7 +1604,7 @@ export async function deleteEvent(req, res) {
     const isAdminEditor = canUseSummitSceneImportFlag(editor, req.user);
 
     // Check ownership/admin access
-    if (!isOwner && !isAdminEditor) {
+    if (!isAdminEditor) {
       return res
         .status(403)
         .json({ message: "You are not allowed to delete this event." });

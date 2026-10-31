@@ -1,5 +1,5 @@
 import React from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -38,144 +38,30 @@ export default function BusinessHelpScreen() {
 
   function handleEmail() {
     Linking.openURL(
-      "mailto:hello@summitscene.ca?subject=Summit%20Scene%20Business%20Support"
-    );
+      "mailto:hello@summitscene.ca?subject=List%20an%20event%20on%20Summit%20Scene"
+    ).catch(() => Alert.alert("Contact Summit Scene", "Email hello@summitscene.ca with your event details."));
   }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <PageHeader
-          title="Business Help"
-          subtitle="How verified businesses and organizers post events on Summit Scene."
-        />
-
-        <HelpSection title="Getting verified" theme={theme}>
-          <HelpText theme={theme}>
-            Business accounts are reviewed before official event posting unlocks.
-            Tour guides, tour companies, venues, shops, studios, and organizers
-            can apply. Add your business type, website, and official social
-            links in Edit Profile.
-          </HelpText>
-          <HelpText theme={theme}>
-            To speed up approval, email Summit Scene or DM from the official
-            business account so we can confirm you are authorized to post.
-          </HelpText>
+        <PageHeader title="List your event" subtitle="For businesses, venues, and organizers in the Bow Valley." />
+        <HelpSection title="Let Summit Scene share your event" theme={theme}>
+          <HelpText theme={theme}>Have an event in Banff, Canmore, or Lake Louise? Email hello@summitscene.ca. Summit Scene admin reviews submissions and creates listings on behalf of businesses and organizers.</HelpText>
+          <HelpText theme={theme}>There are no business or organizer accounts. A member account is only for personal features such as saved events, likes, and notifications.</HelpText>
         </HelpSection>
-
-        <HelpSection title="Posting events" theme={theme}>
-          <HelpText theme={theme}>
-            Use Create Event for official events hosted by your venue, shop,
-            organization, tour company, guide service, or event series. Choose
-            a broad category, then add tags like Food Tours, Hiking Tours,
-            Canoe Tours, Wildlife Tours, Photography Tours, Yoga Retreats, or
-            Ski Clinics so users can find it through Events, Map, filters, and
-            buddy posts.
-          </HelpText>
-          <HelpText theme={theme}>
-            If users need to reserve a spot, add the external booking link on
-            the event. Summit Scene shows the tour or event, and users book on
-            your website.
-          </HelpText>
-          <HelpText theme={theme}>
-            Keep titles clear, add accurate time and location details, and update
-            events if anything changes.
-          </HelpText>
-          <HelpText theme={theme}>
-            Only upload event photos you own or have permission to use. Summit
-            Scene imported listings should not reuse third-party event images
-            unless permission is clear.
-          </HelpText>
+        <HelpSection title="What to send" theme={theme}>
+          <HelpText theme={theme}>Include your business or organizer name, event title, date, start and end times, town, venue and address, a short description, price, age restrictions, accessibility details, and a website or booking link.</HelpText>
+          <HelpText theme={theme}>Include a contact email and an official source link so we can confirm the details. If you send an image, confirm you own it or have permission for Summit Scene to use it.</HelpText>
         </HelpSection>
-
-        <HelpSection title="Imported and curated listings" theme={theme}>
-          <HelpText theme={theme}>
-            Summit Scene may curate factual event details from publicly
-            accessible organizer/source webpages, including name, date, time,
-            venue, town, price, organizer, ticket URL, and source URL.
-          </HelpText>
-          <HelpText theme={theme}>
-            Imported listings use short original summaries, keep attribution to
-            the organizer/source, and should be confirmed on the organizer
-            website for the latest details.
-          </HelpText>
+        <HelpSection title="Changes and corrections" theme={theme}>
+          <HelpText theme={theme}>Email the event link and the details to change if your event is rescheduled, cancelled, or needs a correction. Admin manages all listing updates. Submitting an event does not guarantee publication.</HelpText>
         </HelpSection>
-
-        <HelpSection title="Permits and local rules" theme={theme}>
-          <HelpText theme={theme}>
-            You are responsible for checking whether your event needs permits,
-            licences, insurance, venue approval, food approval, liquor licensing,
-            road use approval, Parks Canada approval, or municipal approval.
-          </HelpText>
-          <HelpText theme={theme}>
-            Posting on Summit Scene does not mean an event is approved by Parks
-            Canada, the Town of Banff, the Town of Canmore, Alberta Health
-            Services, AGLC, or the venue.
-          </HelpText>
+        <HelpSection title="Bookings and event responsibilities" theme={theme}>
+          <HelpText theme={theme}>Bookings take place on the organizer's external website. Businesses and organizers remain responsible for accurate event details, cancellations, refunds, safety, and any permits, licences, insurance, or venue approvals that apply. A Summit Scene listing is not an endorsement or approval of an event.</HelpText>
         </HelpSection>
-
-        <HelpSection title="What users can do with your event" theme={theme}>
-          <HelpText theme={theme}>
-            Users can mark I'm Going, save reminders, invite friends outside the
-            app, and create Find Event Buddies posts linked to your event.
-          </HelpText>
-        </HelpSection>
-
-        <HelpSection title="FAQ" theme={theme}>
-          <Question
-            theme={theme}
-            question="Why can I not post yet?"
-            answer="Your business profile may still be pending review. Event posting unlocks after Summit Scene verifies the account."
-          />
-          <Question
-            theme={theme}
-            question="What helps my business get approved?"
-            answer="Use a real business, guide, tour company, or organizer name, add your town, business type, website or official social link, and contact Summit Scene from that official account if needed."
-          />
-          <Question
-            theme={theme}
-            question="Should I use a user account for business posts?"
-            answer="No. Community accounts are for people making plans. Official events should come from verified business or organizer accounts."
-          />
-          <Question
-            theme={theme}
-            question="Can I post events far in the future?"
-            answer="Yes. Add the correct date and details. Users can use date filters to find events happening soon or farther ahead."
-          />
-          <Question
-            theme={theme}
-            question="Can I post recurring events?"
-            answer="Use the recurring schedule options when the event repeats. Keep the end date accurate so old listings do not stay visible too long."
-          />
-          <Question
-            theme={theme}
-            question="Can I edit or remove my event?"
-            answer="Yes. Use My Events to manage events created by your business account."
-          />
-          <Question
-            theme={theme}
-            question="What if my event has alcohol or age restrictions?"
-            answer="Include clear details in the event description and follow venue, ID, alcohol, and local age rules. Summit Scene does not replace legal or venue requirements."
-          />
-          <Question
-            theme={theme}
-            question="What should I do if the map pin is wrong?"
-            answer="Edit the event address or location details. Clear, specific addresses help Summit Scene place events correctly on the map."
-          />
-          <Question
-            theme={theme}
-            question="Can Summit Scene approve my permits?"
-            answer="No. Businesses and organizers are responsible for permits, licences, insurance, venue approvals, and local rules."
-          />
-        </HelpSection>
-
-        <Pressable
-          style={[styles.contactButton, { borderColor: theme.accent }]}
-          onPress={handleEmail}
-        >
-          <Text style={[styles.contactText, { color: theme.accent }]}>
-            Email Support
-          </Text>
+        <Pressable onPress={handleEmail} accessibilityRole="button" style={[styles.contactButton, { backgroundColor: theme.accent }]}>
+          <Text style={[styles.contactText, { color: theme.onAccent || theme.textOnAccent || "#FFFFFF" }]}>Email your event details</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

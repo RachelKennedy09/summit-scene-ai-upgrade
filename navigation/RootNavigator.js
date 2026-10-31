@@ -233,7 +233,7 @@ export default function RootNavigator() {
               component={HostEventsScreen}
               options={{ title: "Host Events" }}
             />
-            {user ? (
+            {user?.isAdmin ? (
               <>
                 <Stack.Screen
                   name="EditEvent"
@@ -314,7 +314,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="BusinessHelp"
               component={BusinessHelpScreen}
-              options={{ title: "Business Help" }}
+              options={{ title: "List an event" }}
             />
             <Stack.Screen
               name="Legal"

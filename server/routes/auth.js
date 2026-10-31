@@ -605,6 +605,11 @@ router.post("/register", async (req, res) => {
       acceptedAgeTerms,
     } = req.body || {};
 
+    // Public accounts are members; listing management is reserved for admin.
+    if (role === "business") {
+      return res.status(403).json({ message: "Business and organizer accounts are not available. Contact hello@summitscene.ca to have your event listed by Summit Scene." });
+    }
+
     // Basic validation for required fields
     if (!email || !password || !name) {
       return res

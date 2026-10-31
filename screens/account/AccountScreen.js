@@ -513,55 +513,6 @@ function AccountScreen() {
           />
         </AccountSection>
 
-        {isBusinessPending && (
-          <AccountSection title="Business Profile" theme={theme}>
-            <View
-              style={[
-                styles.statusCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <Text style={[styles.statusTitle, { color: theme.text }]}>
-                New Organizer
-              </Text>
-              <Text style={[styles.statusText, { color: theme.textMuted }]}>
-                Your profile is saved, but official event posting stays locked
-                until Summit Scene verifies the business or organizer. Add your
-                business category, short description, and one proof link in Edit Profile.
-                If proof is unclear, email Summit Scene or DM from the official
-                business account.
-              </Text>
-              <Pressable
-                style={[styles.emailButton, { borderColor: theme.accent }]}
-                onPress={handleEmailSummitScene}
-              >
-                <Text style={[styles.emailButtonText, { color: theme.accent }]}>
-                  Email hello@summitscene.ca
-                </Text>
-              </Pressable>
-            </View>
-          </AccountSection>
-        )}
-
-        {isBusinessRejected && (
-          <AccountSection title="Business Profile" theme={theme}>
-            <View
-              style={[
-                styles.statusCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <Text style={[styles.statusTitle, { color: theme.text }]}>
-                Business review needed
-              </Text>
-              <Text style={[styles.statusText, { color: theme.textMuted }]}>
-                Update your profile details and contact Summit Scene to review
-                your business or organizer profile again.
-              </Text>
-            </View>
-          </AccountSection>
-        )}
-
         {user.isAdmin ? (
           <AccountSection
             title="Admin Tools"
@@ -630,17 +581,6 @@ function AccountScreen() {
               badge={
                 adminCounts.openReports
                   ? `${adminCounts.openReports} open`
-                  : "Clear"
-              }
-            />
-            <AccountNavRow
-              title="Business verification requests"
-              subtitle="Approve or reject pending business profiles."
-              onPress={() => navigation.navigate("BusinessVerification")}
-              theme={theme}
-              badge={
-                adminCounts.pendingBusinesses
-                  ? `${adminCounts.pendingBusinesses} pending`
                   : "Clear"
               }
             />
@@ -782,35 +722,7 @@ function AccountScreen() {
         </AccountSection>
 
         <AccountSection title="Account Actions" theme={theme}>
-          {isBusiness && (
-            <Pressable
-              style={[
-                styles.accountButtonSecondary,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-                (isAuthLoading || isReverting) && styles.buttonDisabled,
-              ]}
-              onPress={handleRevertToLocal}
-              disabled={isAuthLoading || isReverting}
-            >
-              <Text
-                style={[styles.accountButtonSecondaryText, { color: theme.text }]}
-              >
-                Switch back to community profile
-              </Text>
-              <Text
-                style={[
-                  styles.accountButtonSecondarySubtext,
-                  { color: theme.textMuted },
-                ]}
-              >
-                Use this if you no longer need business tools. Your profile
-                will return to the normal user side.
-              </Text>
-            </Pressable>
-          )}
+
 
           <AppButton
             title={isAuthLoading ? "Logging out..." : "Log Out"}

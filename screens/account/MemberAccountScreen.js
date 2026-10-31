@@ -10,7 +10,7 @@ import AccountScreen from "./AccountScreen";
 
 export default function MemberAccountScreen(props) {
   const { user } = useAuth();
-  return user?.isAdmin || user?.role === "business" ? <AccountScreen {...props} /> : <MemberAccount {...props} />;
+  return user?.isAdmin ? <AccountScreen {...props} /> : <MemberAccount {...props} />;
 }
 function MemberAccount({ navigation }) {
   const { user, logout, deleteAccount, resendVerificationEmail, retrySessionRestore, authNoticeMessage } = useAuth();
@@ -55,6 +55,7 @@ function MemberAccount({ navigation }) {
       <AppButton title="Log out" variant="outline" onPress={async () => { await logout(); navigation.reset({ index: 0, routes: [{ name: "tabs" }] }); }} disabled={busy} style={{ marginTop: 24 }} />
       <AppButton title="Delete account" variant="outline" onPress={removeAccount} disabled={busy} loading={busy} style={{ marginTop: 12 }} />
     </>}
+    {row("List an event / Business information", "BusinessHelp")}
     {row("Privacy & Terms", "Legal")}{user ? row("Report a problem", "ReportBug") : null}
   </ScrollView></SafeAreaView>;
 }

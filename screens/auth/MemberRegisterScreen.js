@@ -7,11 +7,11 @@ import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { PASSWORD_RULES_TEXT, validatePasswordStrength } from "../../utils/passwordPolicy";
-import BusinessRegisterScreen from "./RegisterScreen";
+import BusinessHelpScreen from "../account/BusinessHelpScreen";
 
 export default function MemberRegisterScreen(props) {
   return props.route.params?.initialRole === "business"
-    ? <BusinessRegisterScreen {...props} /> : <MemberForm {...props} />;
+    ? <BusinessHelpScreen {...props} /> : <MemberForm {...props} />;
 }
 
 function MemberForm({ navigation }) {

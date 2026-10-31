@@ -32,10 +32,7 @@ export default function MyEventsScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const { theme } = useTheme();
   const isFocused = useIsFocused();
-  const canUseBusinessTools =
-    isSummitSceneAdmin(user) ||
-    (user?.role === "business" &&
-      user?.businessVerificationStatus === "verified");
+  const canUseBusinessTools = isSummitSceneAdmin(user);
   const isBusiness =
     user?.role === "business" &&
     user?.businessVerificationStatus === "verified";
@@ -73,7 +70,7 @@ export default function MyEventsScreen({ navigation, route }) {
 
       if (!canUseBusinessTools) {
         throw new Error(
-          "My Events is for official hosted events from business or organizer profiles."
+          "Only Summit Scene admin can manage listings. Contact hello@summitscene.ca to list an event."
         );
       }
 

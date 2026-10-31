@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
@@ -18,11 +18,11 @@ const COPY = {
     secondaryParams: undefined,
   },
   organizer: {
-    title: "Organizer account required",
+    title: "List your event",
     subtitle:
-      "Log in or create a business account to post and create official events as an organizer. Business and organizer accounts are reviewed before posting unlocks.",
-    primaryLabel: "Log In",
-    secondaryLabel: "Create Business Account",
+      "Summit Scene admin creates and manages event listings. Businesses and organizers can email hello@summitscene.ca to request a listing.",
+    primaryLabel: "How to list an event",
+    secondaryLabel: "Email event details",
     secondaryParams: { initialRole: "business" },
   },
 };
@@ -36,6 +36,7 @@ export default function AuthGateScreen() {
   const copy = COPY[mode];
 
   function handlePrimaryPress() {
+    if (mode === "organizer") { navigation.navigate("BusinessHelp"); return; }
     if (user && mode === "organizer") {
       navigation.navigate("Account");
       return;
@@ -45,6 +46,7 @@ export default function AuthGateScreen() {
   }
 
   function handleSecondaryPress() {
+    if (mode === "organizer") { Linking.openURL("mailto:hello@summitscene.ca?subject=List%20an%20event").catch(() => navigation.navigate("BusinessHelp")); return; }
     if (user && mode === "organizer") {
       navigation.navigate("BusinessHelp");
       return;
@@ -69,23 +71,19 @@ export default function AuthGateScreen() {
           </Text>
           <Text style={[styles.cardText, { color: theme.textMuted }]}>
             {mode === "organizer"
-              ? "Browsing events and maps is open without an account. Creating hosted event listings requires a reviewed business or organizer profile."
+              ? "Browsing events and maps is open without an account. Email hello@summitscene.ca to request a listing; admin handles publication."
               : "Browsing events and maps is open without an account. Community is account-based because posts, replies, reports, blocks, and moderation tools need a real profile."}
           </Text>
         </View>
 
         <AppButton
-          title={user && mode === "organizer" ? "Open Account" : copy.primaryLabel}
+          title={copy.primaryLabel}
           onPress={handlePrimaryPress}
           size="lg"
           style={{ marginTop: 16 }}
         />
         <AppButton
-          title={
-            user && mode === "organizer"
-              ? "Business Help"
-              : copy.secondaryLabel
-          }
+          title={copy.secondaryLabel}
           onPress={handleSecondaryPress}
           variant="outline"
           size="lg"

@@ -213,7 +213,7 @@ export default function EventDetailScreen({ route }) {
 
   const isImportedListing = isImportedEventListing(event);
   const host = isImportedListing ? null : getEventHost(event);
-  const canManageEvent = isEventOwner(event, user) || isSummitSceneAdmin(user);
+  const canManageEvent = isSummitSceneAdmin(user);
   const eventId = event?._id || event?.id || route.params?.eventId;
   const currentUserId = user?._id || user?.id || "";
   const attendees = Array.isArray(event?.attendees) ? event.attendees : [];

@@ -136,7 +136,7 @@ export default function UserHelpScreen() {
             items={[
               "Edit Profile lets you update your public name, town, interests, photo, bio, and social links.",
               "Saved Events and I'm Going help you keep track of upcoming plans you care about.",
-              "Business accounts can manage business profile details, verification, and posted events from Account.",
+              "For business or organizer listings, email hello@summitscene.ca. Summit Scene admin creates and manages events.",
               "Help & FAQ, Safety, Privacy, Terms, and Community Guidelines are available from Account so public rules are easy to find.",
               "Report a Bug is for app issues. Contact Summit Scene is for support questions or account help.",
               "Delete Account removes your account and associated activity where Summit Scene can safely remove it.",
@@ -191,7 +191,7 @@ export default function UserHelpScreen() {
           <Question
             theme={theme}
             question="Can I create business events from a user account?"
-            answer="No. Business and organizer accounts are separate and must be created as business accounts during signup."
+            answer="Only Summit Scene admin can publish events. There are no business or organizer accounts. Email hello@summitscene.ca with your event details and an official website or booking link."
           />
           <Question
             theme={theme}
