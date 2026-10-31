@@ -1,9 +1,55 @@
 import { expect } from "chai";
-import { parseOptions, configurationPlan, saveConfigurationPlan } from "../../scripts/configureAppUpdates.mjs";
+import { PassThrough } from "node:stream";
+import { ask, parseOptions, configurationPlan, saveConfigurationPlan } from "../../scripts/configureAppUpdates.mjs";
 import { defaultUpdatePolicy } from "../../utils/appUpdatePolicy.js";
 
 const settings = () => ({ ios: { revision: 3, config: defaultUpdatePolicy("ios") }, android: { revision: 7, config: defaultUpdatePolicy("android") } });
+describe("interactive update prompts", () => {
+  function terminal() {
+    const input = new PassThrough();
+    const output = new PassThrough();
+    let printed = "";
+    output.on("data", chunk => { printed += chunk.toString(); });
+    return { input, output, printed: () => printed };
+  }
+  it("keeps the email label visible while waiting for input", async () => {
+    const tty = terminal();
+    const answer = ask("Admin account email: ", false, tty);
+    // A terminal redraw clears separately written text; the label must be
+    // supplied as readline's actual question after its clear-line sequence.
+    expect(tty.printed()).to.match(/Admin account email: (?:\x1b\[[\d;]*[A-Za-z])*$/);
+    tty.input.write("admin@example.com\r");
+    expect(await answer).to.equal("admin@example.com");
+  });
+  it("shows the password label without echoing the password", async () => {
+    const tty = terminal();
+    const answer = ask("Admin account password (hidden): ", true, tty);
+    expect(tty.printed()).to.include("Admin account password (hidden): ");
+    const beforeTyping = tty.printed();
+    tty.input.write("test-private-password");
+    expect(tty.printed()).to.equal(beforeTyping);
+    tty.input.write("\r");
+    expect(await answer).to.equal("test-private-password");
+    expect(tty.printed()).not.to.include("test-private-password");
+  });
+  it("exits cleanly on Ctrl+C without waiting forever", async () => {
+    const tty = terminal();
+    const answer = ask("Admin account email: ", false, tty);
+    tty.input.write("\x03");
+    let message;
+    try { await answer; } catch (error) { message = error.message; }
+    expect(message).to.equal("Cancelled.");
+  });
+});
 describe("guided admin update configuration", () => {
+  it("prepares the 1.0.11 requirement and its message independently for both stores", () => {
+    const plan = configurationPlan(settings(), { platform: "both", version: "1.0.11" });
+    expect(plan.map(item => item.platform)).to.deep.equal(["ios", "android"]);
+    for (const { config } of plan) {
+      expect(config).to.include({ minimumVersion: "1.0.11", latestVersion: "1.0.11", mandatoryEnabled: true, storeAvailable: true, minimumBuild: null, latestBuild: null });
+      expect(config.message).to.equal("Summit Scene 1.0.11 is available. Please update to continue using the app.");
+    }
+  });
   it("requires a deliberate platform and valid version", () => {
     expect(parseOptions(["--platform", "android", "--version", "1.0.10"])).to.deep.equal({ platform: "android", version: "1.0.10" });
     for (const args of [[], ["--platform", "both"], ["--platform", "web", "--version", "1.0.10"], ["--platform", "android", "--version", "beta"], ["--disable", "--platform", "android", "--version", "1.0.10"]]) expect(() => parseOptions(args)).to.throw();

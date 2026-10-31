@@ -14,6 +14,17 @@ const payload = (ios = enabled("ios"), android = defaultUpdatePolicy("android"))
 const installed = { version: "1.0.9", build: "9" };
 
 describe("app update policies", () => {
+  it("blocks versions below 1.0.11 while allowing 1.0.11 and newer on both platforms", () => {
+    for (const platform of ["ios", "android"]) {
+      const policy = enabled(platform, { minimumVersion: "1.0.11", latestVersion: "1.0.11" });
+      for (const version of ["1.0.2", "1.0.9", "1.0.10"]) {
+        expect(evaluateUpdatePolicy(policy, { version, build: "20" }, platform).required).to.equal(true);
+      }
+      for (const version of ["1.0.11", "1.0.12", "1.1.0"]) {
+        expect(evaluateUpdatePolicy(policy, { version, build: "20" }, platform).required).to.equal(false);
+      }
+    }
+  });
   it("compares numeric versions, including 1.10.0 versus 1.9.0", () => {
     expect(compareVersions("1.10.0", "1.9.0")).to.equal(1);
     expect(compareVersions("1.0.9", "1.0.10")).to.equal(-1);

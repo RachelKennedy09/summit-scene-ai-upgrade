@@ -28,6 +28,7 @@ export function configurationPlan(settings, options) {
       ...previous, minimumVersion: options.version, minimumBuild: null,
       latestVersion: compareVersions(previous.latestVersion, options.version) > 0 ? previous.latestVersion : options.version,
       latestBuild: null, mandatoryEnabled: true, storeAvailable: true,
+      message: `Summit Scene ${options.version} is available. Please update to continue using the app.`,
     };
     return { platform, expectedRevision: current.revision, previous, config: validateUpdatePolicy(config, platform) };
   });
@@ -57,19 +58,41 @@ export async function saveConfigurationPlan(base, plan, { token, fetchImpl = fet
     onSaved(item.platform, verified);
   }
 }
-function ask(prompt, secret = false) {
+export function ask(prompt, secret = false, { input = process.stdin, output = process.stdout } = {}) {
   return new Promise((resolveAnswer, reject) => {
-    process.stdout.write(prompt);
-    const silent = new Writable({ write(_chunk, _encoding, done) { done(); } });
-    const readline = createInterface({ input: process.stdin, output: secret ? silent : process.stdout, terminal: true });
-    readline.once("SIGINT", () => { readline.close(); reject(new Error("Cancelled.")); });
-    readline.question("", (answer) => { readline.close(); if (secret) process.stdout.write("\n"); resolveAnswer(answer); });
+    let muted = false;
+    let settled = false;
+    const hiddenOutput = new Writable({
+      write(chunk, encoding, done) {
+        if (muted) done();
+        else output.write(chunk, encoding, done);
+      },
+    });
+    const readline = createInterface({ input, output: secret ? hiddenOutput : output, terminal: true });
+    const cancel = () => {
+      if (settled) return;
+      settled = true;
+      if (secret) output.write("\n");
+      reject(new Error("Cancelled."));
+    };
+    readline.once("SIGINT", () => { cancel(); readline.close(); });
+    readline.once("close", cancel);
+    // readline redraws its own prompt. Writing it separately followed by an
+    // empty question lets Windows terminals erase the label while waiting.
+    readline.question(prompt, (answer) => {
+      settled = true;
+      readline.close();
+      if (secret) output.write("\n");
+      resolveAnswer(answer);
+    });
+    // Show the password label once, then suppress all input echo/redraws.
+    muted = secret;
   });
 }
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   if (options.help) {
-    console.log("Enable: npm run configure:app-updates -- --platform android --version 1.0.10\nBoth:   npm run configure:app-updates -- --platform both --version 1.0.10\nUndo:   npm run configure:app-updates -- --platform android --disable\nSigns in with your existing admin account. Previews changes and asks for confirmation before saving.");
+    console.log("Enable: npm run configure:app-updates -- --platform ios --version 1.0.11\nBoth:   npm run configure:app-updates -- --platform both --version 1.0.11\nUndo:   npm run configure:app-updates -- --platform both --disable\nSigns in with your existing admin account. Previews changes and asks for confirmation before saving.");
     return;
   }
   if (!process.stdin.isTTY) throw new Error("Run this command in an interactive terminal. Password input stays hidden.");
