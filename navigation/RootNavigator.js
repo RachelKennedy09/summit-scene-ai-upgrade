@@ -370,7 +370,6 @@ export default function RootNavigator() {
             component={VerifyEmailScreen}
             options={{ title: "Verify Email" }}
           />
-        </>
       </>
     </Stack.Navigator>
   );

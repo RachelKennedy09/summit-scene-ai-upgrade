@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toUserFriendlyError } from "../utils/friendlyErrors";
-import { cancelAllEventReminderNotifications } from "../utils/eventReminderNotifications";
+import { cancelAllEventReminderNotifications, syncEventReminderNotifications } from "../utils/eventReminderNotifications";
 import {
   registerDeviceForPushNotifications,
   unregisterDeviceForPushNotifications,
@@ -20,6 +20,8 @@ const API_BASE_URL =
   "https://summit-scene-backend.onrender.com";
 
 // Single place for token key
+import { fetchEventPreferences } from "../services/eventPreferencesApi";
+
 const TOKEN_KEY = "authToken";
 const SESSION_RESTORE_TIMEOUT_MS = 30000;
 const SESSION_RESTORE_ATTEMPTS = 2;
@@ -250,6 +252,9 @@ export function AuthProvider({ children }) {
       console.log("Push notification registration skipped:", error.message);
     });
 
+    fetchEventPreferences(nextToken)
+      .then(preferences => syncEventReminderNotifications(preferences, normalizedUser._id || normalizedUser.id))
+      .catch(error => console.log("Reminder sync deferred:", error.message));
     return normalizedUser;
   }
 

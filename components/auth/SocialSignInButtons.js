@@ -202,12 +202,6 @@ export default function SocialSignInButtons({
             style={[styles.appleButton, { opacity: isDisabled ? 0.65 : 1 }]}
             onPress={isDisabled ? undefined : handleAppleSignIn}
           />
-          {showTermsNote ? (
-            <Text style={[styles.termsNote, { color: theme.textMuted }]}>
-              By continuing, you confirm you are 18+ and agree to Summit Scene's
-              Privacy & Terms.
-            </Text>
-          ) : null}
         </>
       ) : null}
 

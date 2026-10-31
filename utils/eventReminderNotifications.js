@@ -162,6 +162,10 @@ export async function updateEventReminderNotification({
 
 export async function syncEventReminderNotifications(preferences, currentUserId) {
   await cancelAllEventReminderNotifications();
+  // Background reconciliation never prompts for notification permission.
+  if (Platform.OS === "web") return [];
+  const permissions = await Notifications.getPermissionsAsync();
+  if (!permissions.granted && permissions.ios?.status !== Notifications.IosAuthorizationStatus.PROVISIONAL) return [];
 
   const results = [];
   for (const preference of preferences || []) {

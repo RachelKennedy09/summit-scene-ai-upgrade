@@ -45,6 +45,13 @@ export async function requestAndRegisterDeviceForPushNotifications(authToken) {
     return { registered: false, reason: "unsupported-platform" };
   }
 
+  // Android 13 needs a channel before it can show the permission prompt.
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("daily-events", {
+      name: "Daily What's Happening",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
   const current = await Notifications.getPermissionsAsync();
   let finalStatus = current.status;
   if (finalStatus !== "granted") {
