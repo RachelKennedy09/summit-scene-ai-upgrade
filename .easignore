@@ -1,0 +1,72 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env*.local
+google-services*.json
+GoogleService-Info.plist
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+# Generated website output (source lives in landing/, website/, netlify/).
+.website-dist/
+
+# Apple developer signing keys must remain private.
+*.p8
+
+# EAS uses this file instead of .gitignore; keep the exclusions above in sync.
+# Local archives, credentials, store artwork, and server/site sources are not
+# inputs to the native app. Leave them on disk, but never upload them to EAS.
+.git/
+.git-disabled-backup/
+.aws/
+.codex/
+.agents/
+.codex-video-review/
+*.apk
+*.aab
+*.ipa
+*.zip
+app-store-screenshots/
+apple-review-previews/
+devlogs/
+docs/
+server/
+landing/
+website/
+.website-dist/
+.tmp-*/
