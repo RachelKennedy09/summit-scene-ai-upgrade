@@ -9,10 +9,12 @@ import { Ionicons } from "@expo/vector-icons";
 import HubScreen from "../screens/hub/HubScreen";
 import MapScreen from "../screens/map/MapScreen";
 import MyEventsScreen from "../screens/events/MyEventsScreen";
-import AccountScreen from "../screens/account/AccountScreen";
+import AccountScreen from "../screens/account/MemberAccountScreen";
 
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+
+import SavedEventsScreen from "../screens/account/SavedEventsScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -53,6 +55,8 @@ export default function TabNavigator() {
             iconName = focused ? "map" : "map-outline";
           } else if (route.name === "MyEvents") {
             iconName = focused ? "calendar" : "calendar-outline";
+          } else if (route.name === "Saved") {
+            iconName = focused ? "bookmark" : "bookmark-outline";
           } else if (route.name === "Account") {
             iconName = focused ? "person" : "person-outline";
           }
@@ -89,22 +93,8 @@ export default function TabNavigator() {
         />
       )}
 
-      {/* Keep the route for account settings and back navigation, but only
-          expose a bottom tab for authenticated admins. API authorization
-          remains responsible for protecting admin operations. */}
-      <Tab.Screen
-        name="Account"
-        component={AccountScreen}
-        options={{
-          title: user?.isAdmin ? "Admin" : "Account",
-          ...(user?.isAdmin
-            ? {}
-            : {
-                tabBarButton: () => null,
-                tabBarItemStyle: { display: "none" },
-              }),
-        }}
-      />
+      <Tab.Screen name="Saved" component={SavedEventsScreen} options={{ title: "Saved" }} />
+      <Tab.Screen name="Account" component={AccountScreen} options={{ title: user?.isAdmin ? "Admin" : "Account" }} />
     </Tab.Navigator>
   );
 }

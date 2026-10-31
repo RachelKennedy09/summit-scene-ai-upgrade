@@ -149,3 +149,9 @@ export async function fetchNotifications(token) {
     );
   }
 }
+
+export async function fetchEventLikeCount(eventId) {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/event-preferences/${eventId}/likes`);
+  if (!res.ok) throw new Error("Could not load event likes.");
+  return res.json();
+}

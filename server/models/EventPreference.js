@@ -18,6 +18,7 @@ const eventPreferenceSchema = new Schema(
       required: true,
       index: true,
     },
+    liked: { type: Boolean, default: false, index: true },
     saved: {
       type: Boolean,
       default: false,

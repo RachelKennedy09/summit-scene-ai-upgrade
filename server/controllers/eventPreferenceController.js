@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Event from "../models/Event.js";
 import EventPreference, {
   EVENT_REMINDER_TIMES,
@@ -119,6 +120,7 @@ export async function updateEventPreference(req, res) {
     }
 
     const update = {};
+    if (typeof req.body?.liked === "boolean") update.liked = req.body.liked;
     if (typeof req.body?.saved === "boolean") {
       update.saved = req.body.saved;
       if (!req.body.saved) {
@@ -131,6 +133,7 @@ export async function updateEventPreference(req, res) {
     if (typeof req.body?.goingReminderEnabled === "boolean") {
       update.goingReminderEnabled = req.body.goingReminderEnabled;
     }
+    if (req.body?.saved === false) update.savedReminderEnabled = false;
     if (req.body?.reminderTime) {
       update.reminderTime = normalizeReminderTime(req.body.reminderTime);
     }
@@ -189,4 +192,14 @@ export async function getNotifications(req, res) {
       error: error.message,
     });
   }
+}
+
+export async function getEventLikeCount(req, res) {
+  if (!mongoose.isValidObjectId(req.params.eventId)) return res.status(400).json({ message: "Invalid event ID." });
+  try {
+    const exists = await Event.exists({ _id: req.params.eventId });
+    if (!exists) return res.status(404).json({ message: "Event not found." });
+    const likeCount = await EventPreference.countDocuments({ eventId: req.params.eventId, liked: true });
+    return res.json({ likeCount });
+  } catch { return res.status(503).json({ message: "Likes are temporarily unavailable." }); }
 }

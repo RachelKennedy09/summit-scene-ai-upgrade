@@ -23,11 +23,15 @@ import { useTheme } from "../../context/ThemeContext";
 import Logo from "../../assets/logo-app-earth-transparent-alpha.png";
 import AppButton from "../../components/common/AppButton";
 
+import SocialSignInButtons from "../../components/auth/SocialSignInButtons";
+import { accountDestination } from "../../utils/accountNavigation";
+
 const REMEMBERED_EMAIL_KEY = "rememberedLoginEmail";
 
 function LoginScreen() {
   const {
     login,
+    pendingEventAction,
     isAuthLoading,
     authNoticeMessage,
     clearAuthNoticeMessage,
@@ -81,13 +85,14 @@ function LoginScreen() {
     try {
       // Hand off to AuthContext to call /login on backend
       const trimmedEmail = email.trim();
-      await login({ email: trimmedEmail, password });
+      const result = await login({ email: trimmedEmail, password });
       if (rememberEmail) {
         await AsyncStorage.setItem(REMEMBERED_EMAIL_KEY, trimmedEmail);
       } else {
         await AsyncStorage.removeItem(REMEMBERED_EMAIL_KEY);
       }
-      navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
+      const routes = accountDestination(result.user, pendingEventAction);
+      navigation.reset({ index: routes.length - 1, routes });
     } catch (error) {
       const message = error.message || "Please try again.";
       setErrorMessage(message);
@@ -119,8 +124,8 @@ function LoginScreen() {
             </View>
 
             <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-              Log in only if you manage Summit Scene, business tools, or event
-              imports. Everyone can browse and share events without an account.
+              Log in to save events, like favourites, and choose reminders.
+              You can always browse and share events without an account.
             </Text>
 
             {authNoticeMessage ? (
@@ -138,6 +143,8 @@ function LoginScreen() {
                 </Text>
               </View>
             ) : null}
+
+            <SocialSignInButtons disabled={isSubmitting || isAuthLoading} />
 
             {/* EMAIL FIELD */}
             <View style={styles.inputGroup}>
@@ -289,6 +296,8 @@ function LoginScreen() {
               size="lg"
               style={styles.secondaryAuthButton}
             />
+
+            <AppButton title="Create an account" variant="outline" onPress={() => navigation.navigate("Register")} disabled={isSubmitting || isAuthLoading} style={{ marginTop: 12 }} />
 
             <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
               <Text style={[styles.linkText, { color: theme.accent }]}>

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
+import AppButton from "../../components/common/AppButton";
 import PageHeader from "../../components/common/PageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -36,6 +37,7 @@ export default function SavedEventsScreen() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [list, setList] = useState("saved");
 
   async function loadSavedEvents() {
     if (!user || !token) return;
@@ -57,12 +59,13 @@ export default function SavedEventsScreen() {
     }
   }
 
-  useEffect(() => {
-    loadSavedEvents();
-  }, [user?._id, user?.id, token]);
+  useFocusEffect(React.useCallback(() => {
+    if (token) loadSavedEvents();
+    else { setEventPreferences([]); setNotifications([]); setError(""); }
+  }, [user?._id, user?.id, token]));
 
   const savedPreferences = eventPreferences.filter(
-    (preference) => preference.saved
+    (preference) => list === "liked" ? preference.liked : preference.saved
   );
   const hasSavedEvents = savedPreferences.some(getEventFromPreference);
 
@@ -74,6 +77,13 @@ export default function SavedEventsScreen() {
       eventId: getEventId(event),
     });
   }
+
+  if (!user) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ padding: 20 }}><PageHeader title="Your saved events" subtitle="Log in or create an account to keep your favourites together across devices." />
+      <AppButton title="Log in" onPress={() => navigation.navigate("Login")} />
+      <AppButton title="Create account" variant="outline" onPress={() => navigation.navigate("Register")} style={{ marginTop: 12 }} />
+    </View>
+  </SafeAreaView>;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -90,6 +100,9 @@ export default function SavedEventsScreen() {
           }
         />
 
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+          {["saved", "liked"].map(value => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: list === value }} onPress={() => setList(value)} style={{ padding: 12, borderWidth: 1, borderRadius: 10, borderColor: list === value ? theme.accent : theme.border }}><Text style={{ color: list === value ? theme.accent : theme.text }}>{value === "saved" ? "Saved" : "Liked"}</Text></Pressable>)}
+        </View>
         {loading ? (
           <Text style={[styles.statusText, { color: theme.textMuted }]}>
             Loading saved events...
@@ -128,7 +141,7 @@ export default function SavedEventsScreen() {
             ]}
           >
             <Text style={[styles.cardTitle, { color: theme.text }]}>
-              No saved events yet
+              {list === "liked" ? "No liked events yet" : "No saved events yet"}
             </Text>
             <Text style={[styles.cardMeta, { color: theme.textMuted }]}>
               Save events or turn on reminders from an event page to see them
@@ -136,7 +149,7 @@ export default function SavedEventsScreen() {
             </Text>
             <Pressable
               style={[styles.outlineButton, { borderColor: theme.accent }]}
-              onPress={() => navigation.navigate("Hub")}
+              onPress={() => navigation.navigate("tabs", { screen: "Hub" })}
             >
               <Text style={[styles.outlineButtonText, { color: theme.accent }]}>
                 Browse events
@@ -147,7 +160,7 @@ export default function SavedEventsScreen() {
 
         {hasSavedEvents ? (
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Saved events
+            {list === "liked" ? "Liked events" : "Saved events"}
           </Text>
         ) : null}
 

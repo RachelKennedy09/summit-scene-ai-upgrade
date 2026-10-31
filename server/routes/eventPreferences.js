@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getEventLikeCount,
   getEventPreferenceByEvent,
   getEventPreferences,
   getNotifications,
@@ -9,6 +10,7 @@ import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
+router.get("/:eventId/likes", getEventLikeCount);
 router.get("/", authMiddleware, getEventPreferences);
 router.get("/notifications", authMiddleware, getNotifications);
 router.get("/:eventId", authMiddleware, getEventPreferenceByEvent);

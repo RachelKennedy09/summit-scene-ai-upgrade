@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 
 import User from "../models/User.js";
+import { exchangeAppleCode } from "../services/appleAccountService.js";
 import authMiddleware from "../middleware/auth.js";
 import { findContentModerationIssue } from "../utils/contentModeration.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
@@ -313,9 +314,13 @@ function normalizePublicName(value = "") {
   return String(value).trim().replace(/\s+/g, " ");
 }
 
-router.post("/apple", async (req, res) => {
+function optionalProviderAuth(req, res, next) {
+  return req.headers.authorization ? authMiddleware(req, res, next) : next();
+}
+
+router.post("/apple", optionalProviderAuth, async (req, res) => {
   try {
-    const { identityToken, fullName, acceptedAgeTerms } = req.body || {};
+    const { identityToken, fullName, authorizationCode, acceptedAgeTerms } = req.body || {};
 
     if (acceptedAgeTerms !== true) {
       return res.status(400).json({
@@ -336,18 +341,22 @@ router.post("/apple", async (req, res) => {
     }
 
     let user = await User.findOne({
-      "socialAccounts.provider": "apple",
-      "socialAccounts.providerUserId": appleUserId,
+      socialAccounts: { $elemMatch: { provider: "apple", providerUserId: appleUserId, verified: true } },
     });
 
-    if (!user && email && appleEmailVerified) {
-      user = await User.findOne({ email });
+    if (req.user) {
+      if (user && String(user._id) !== String(req.user.userId)) return res.status(409).json({ message: "This Apple account is already connected to another account." });
+      user = await User.findById(req.user.userId);
+      if (!user) return res.status(401).json({ message: "Please log in again before connecting Apple." });
+    } else if (!user && email && await User.exists({ email })) {
+      return res.status(409).json({ message: "An account already uses this email. Log in with your existing method, then connect Apple from Account." });
     }
+    const appleRefreshToken = await exchangeAppleCode(authorizationCode, appleUserId);
 
     let isNewUser = false;
 
     if (!user) {
-      if (!email) {
+      if (!email || !appleEmailVerified) {
         return res.status(400).json({
           message:
             "Apple did not share an email address. Please use email signup.",
@@ -365,6 +374,7 @@ router.post("/apple", async (req, res) => {
         email,
         passwordHash,
         name: normalizePublicName(displayName),
+        appleRefreshToken,
         role: "local",
         emailVerified: appleEmailVerified,
         emailVerifiedAt: appleEmailVerified ? new Date() : undefined,
@@ -408,7 +418,8 @@ router.post("/apple", async (req, res) => {
       }
 
       user.socialAccounts = accounts;
-      if (appleEmailVerified) {
+      user.appleRefreshToken = appleRefreshToken;
+      if (appleEmailVerified && email === user.email) {
         user.emailVerified = true;
         user.emailVerifiedAt = user.emailVerifiedAt || new Date();
       }
@@ -429,7 +440,7 @@ router.post("/apple", async (req, res) => {
   }
 });
 
-router.post("/google", async (req, res) => {
+router.post("/google", optionalProviderAuth, async (req, res) => {
   try {
     const { idToken, acceptedAgeTerms } = req.body || {};
 
@@ -449,12 +460,15 @@ router.post("/google", async (req, res) => {
     }
 
     let user = await User.findOne({
-      "socialAccounts.provider": "google",
-      "socialAccounts.providerUserId": googleUserId,
+      socialAccounts: { $elemMatch: { provider: "google", providerUserId: googleUserId, verified: true } },
     });
 
-    if (!user) {
-      user = await User.findOne({ email });
+    if (req.user) {
+      if (user && String(user._id) !== String(req.user.userId)) return res.status(409).json({ message: "This Google account is already connected to another account." });
+      user = await User.findById(req.user.userId);
+      if (!user) return res.status(401).json({ message: "Please log in again before connecting Google." });
+    } else if (!user && await User.exists({ email })) {
+      return res.status(409).json({ message: "An account already uses this email. Log in with your existing method, then connect Google from Account." });
     }
 
     let isNewUser = false;
@@ -517,8 +531,10 @@ router.post("/google", async (req, res) => {
       }
 
       user.socialAccounts = accounts;
-      user.emailVerified = true;
-      user.emailVerifiedAt = user.emailVerifiedAt || new Date();
+      if (email === user.email) {
+        user.emailVerified = true;
+        user.emailVerifiedAt = user.emailVerifiedAt || new Date();
+      }
       if (!user.profileImageUrl && googleProfile.picture) {
         user.profileImageUrl = googleProfile.picture;
       }

@@ -16,6 +16,8 @@ import Event from "../models/Event.js";
 import EventPreference from "../models/EventPreference.js";
 import Report from "../models/Report.js";
 import AppNotification from "../models/AppNotification.js";
+import { revokeAppleAccount } from "../services/appleAccountService.js";
+import NotificationDelivery from "../models/NotificationDelivery.js";
 import PushToken from "../models/PushToken.js";
 import { sendModerationReportNotification } from "../services/emailService.js";
 import { buildProfileUpdates, buildSafeUser } from "../utils/userProfile.js";
@@ -496,11 +498,13 @@ router.delete("/me", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const user = await User.findById(userId).select("_id");
+    const user = await User.findById(userId).select("_id +appleRefreshToken");
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
+    // Revoke first: a provider failure must leave the local account recoverable.
+    await revokeAppleAccount(user.appleRefreshToken);
     const ownedEvents = await Event.find({ createdBy: userId }).select("_id");
     const ownedEventIds = ownedEvents.map((event) => event._id);
 
@@ -550,6 +554,7 @@ router.delete("/me", authMiddleware, async (req, res) => {
         $or: [{ recipient: userId }, { actor: userId }],
       }),
       PushToken.deleteMany({ user: userId }),
+      NotificationDelivery.deleteMany({ user: userId }),
     ]);
 
     await User.deleteOne({ _id: userId });

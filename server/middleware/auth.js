@@ -73,7 +73,11 @@ export default async function authMiddleware(req, res, next) {
         .json({ message: "Token expired. Please log in again." });
     }
 
-    // Any other error means invalid token
+    if (!["JsonWebTokenError", "NotBeforeError"].includes(error.name)) {
+      return res.status(503).json({ message: "Account service temporarily unavailable. Please try again." });
+    }
+
+    // Remaining errors are invalid tokens
     return res
       .status(401)
       .json({ message: "Invalid token. Please log in again." });

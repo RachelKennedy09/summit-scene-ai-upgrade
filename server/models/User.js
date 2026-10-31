@@ -96,6 +96,8 @@ const userSchema = new mongoose.Schema(
     },
 
     // Hashed password (never store plain text)
+    appleRefreshToken: { type: String, select: false },
+
     passwordHash: {
       type: String,
       required: true,

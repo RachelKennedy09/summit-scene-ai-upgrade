@@ -201,7 +201,7 @@ export default function NotificationsScreen() {
               No notifications yet
             </Text>
             <Text style={[styles.stateText, { color: theme.textMuted }]}>
-              Comments, replies, likes, and interest on your posts will appear here.
+              Your daily event updates will appear here. Manage saved-event reminders from Saved.
             </Text>
           </View>
         ) : null}

@@ -13,6 +13,8 @@ import {
 } from "../utils/pushNotifications";
 
 // API base URL (Expo public env OR fallback to Render backend)
+import { shouldClearSession } from "../utils/accountNavigation";
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://summit-scene-backend.onrender.com";
@@ -163,6 +165,7 @@ export function useAuth() {
 // Provider component that wraps the app
 export function AuthProvider({ children }) {
   // user will hold {_id, email, name, role, town, avatarKey, ...} from backend
+  const [pendingEventAction, setPendingEventAction] = useState(null);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // JWT from the backend
   const [isSessionBootstrapping, setIsSessionBootstrapping] = useState(true);
@@ -285,6 +288,9 @@ export function AuthProvider({ children }) {
       const data = await readJsonSafely(response);
 
       if (!response.ok) {
+        if (!shouldClearSession(response.status, response.headers.get("content-type") || "")) {
+          throw new Error("Summit Scene is temporarily unavailable. Your saved login has been kept. Retry from Account.");
+        }
         console.log("Session restore failed:", response.status, data?.message);
         await setLoggedOutState(
           `Session restore failed (${response.status}). Clearing saved token.`,
@@ -294,11 +300,7 @@ export function AuthProvider({ children }) {
       }
       const rawUser = data.user || data;
       if (!rawUser || !rawUser._id) {
-        await setLoggedOutState(
-          "Session restore returned no user. Clearing saved token.",
-          "You've been logged out. Please log in again."
-        );
-        return;
+        throw new Error("Session check returned an incomplete response. Please retry shortly.");
       }
 
       await setLoggedInState(
@@ -316,10 +318,10 @@ export function AuthProvider({ children }) {
         normalizedError,
         "We couldn't restore your session. Please log in again."
       );
-      await setLoggedOutState(
-        `Session restore error: ${friendlyError.message}. Clearing token.`,
-        "You've been logged out. Please log in again."
-      );
+      setUser(null);
+      setToken(null);
+      setAuthNoticeMessage("We could not check your login right now. Your saved login has been kept. Retry from Account when the service returns.");
+      setAuthDebugMessage(`Session restore deferred: ${friendlyError.message}`);
     } finally {
       setAuthDebugMessage((current) => `${current} Done.`);
       setIsSessionBootstrapping(false);
@@ -334,7 +336,9 @@ export function AuthProvider({ children }) {
 
   async function skipSessionRestore() {
     setAuthDebugMessage("Session restore skipped. Opening logged-out app.");
-    await setLoggedOutState("Session restore skipped. Opening logged-out app.");
+    setUser(null);
+    setToken(null);
+    setAuthNoticeMessage("Your saved login has been kept. Retry from Account when you are ready.");
     setIsSessionBootstrapping(false);
   }
 
@@ -476,7 +480,6 @@ export function AuthProvider({ children }) {
         "Registration successful. Opening app."
       );
 
-      console.log("Merged user in AuthContext.register:", mergedUser);
 
       return { ...data, user: mergedUser };
     } catch (error) {
@@ -697,7 +700,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signInWithApple({ identityToken, fullName }) {
+  async function signInWithApple({ identityToken, fullName, authorizationCode, linking = false }) {
     try {
       setIsAuthLoading(true);
 
@@ -707,10 +710,12 @@ export function AuthProvider({ children }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(linking && token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
             identityToken,
             fullName,
+            authorizationCode,
             acceptedAgeTerms: true,
           }),
         },
@@ -741,7 +746,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function signInWithGoogle({ idToken }) {
+  async function signInWithGoogle({ idToken, linking = false }) {
     try {
       setIsAuthLoading(true);
 
@@ -751,6 +756,7 @@ export function AuthProvider({ children }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(linking && token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
             idToken,
@@ -1053,6 +1059,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       setIsAuthLoading(true);
+      setPendingEventAction(null);
       await setLoggedOutState("Logging out. Clearing session.");
     } catch (error) {
       console.error("Error in logout:", error);
@@ -1064,6 +1071,8 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     token,
+    pendingEventAction,
+    setPendingEventAction,
     isSessionBootstrapping,
     isAuthLoading,
     authNoticeMessage,

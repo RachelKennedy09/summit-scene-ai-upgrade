@@ -49,12 +49,14 @@ import DailyEventsNotificationScreen from "../screens/account/DailyEventsNotific
 import UserHelpScreen from "../screens/account/UserHelpScreen";
 
 import LoginScreen from "../screens/auth/LoginScreen";
-import RegisterScreen from "../screens/auth/RegisterScreen";
+import RegisterScreen from "../screens/auth/MemberRegisterScreen";
 import SafetyTipsScreen from "../screens/auth/SafetyTipsScreen";
 import SocialOnboardingScreen from "../screens/auth/SocialOnboardingScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
+
+import MemberProfileScreen from "../screens/account/MemberProfileScreen";
 
 const Stack = createNativeStackNavigator();
 const BOOTSTRAP_FALLBACK_DELAY_MS = 12000;
@@ -213,21 +215,7 @@ export default function RootNavigator() {
         ),
       })}
     >
-      {user && !user.hasSeenSafetyTips ? (
-        <>
-          <Stack.Screen
-            name="SafetyTips"
-            component={SafetyTipsScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SocialOnboarding"
-            component={SocialOnboardingScreen}
-            options={{ headerShown: false }}
-          />
-        </>
-      ) : (
-        <>
+      <>
             <Stack.Screen
               name="tabs"
               component={TabNavigator}
@@ -258,24 +246,10 @@ export default function RootNavigator() {
                   options={{ title: "Create Event" }}
                 />
 
-                {/* Community flow */}
-                <Stack.Screen
-                  name="CommunityPost"
-                  component={CommunityPostScreen}
-                  options={{ title: "New Community Post" }}
-                />
-                <Stack.Screen
-                  name="EditCommunityPost"
-                  component={EditCommunityPostScreen}
-                  options={{ title: "Edit Post" }}
-                />
-                <Stack.Screen
-                  name="CreateBuddyPost"
-                  component={CreateBuddyPostScreen}
-                  options={{ title: "Create Buddy Post" }}
-                />
               </>
             ) : null}
+
+            <Stack.Screen name="MemberProfile" component={MemberProfileScreen} options={{ title: "Your profile" }} />
 
             {/* Account flow */}
             {user ? (
@@ -397,7 +371,7 @@ export default function RootNavigator() {
             options={{ title: "Verify Email" }}
           />
         </>
-      )}
+      </>
     </Stack.Navigator>
   );
 }

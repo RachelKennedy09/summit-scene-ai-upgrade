@@ -14,6 +14,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 
+import { accountDestination } from "../../utils/accountNavigation";
+
 function getGoogleSignInModule() {
   if (!NativeModules.RNGoogleSignin) {
     return null;
@@ -27,6 +29,7 @@ function getGoogleSignInModule() {
 }
 
 export default function SocialSignInButtons({
+  linking = false,
   disabled = false,
   onBeforeSubmit,
   onBusyChange,
@@ -34,6 +37,7 @@ export default function SocialSignInButtons({
 }) {
   const {
     signInWithApple,
+    pendingEventAction,
     signInWithGoogle,
     isAuthLoading,
     clearAuthNoticeMessage,
@@ -80,6 +84,7 @@ export default function SocialSignInButtons({
     const googleModule = getGoogleSignInModule();
     googleModule?.GoogleSignin?.configure({
       webClientId: googleWebClientId,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
       offlineAccess: false,
     });
   }, [googleWebClientId]);
@@ -90,15 +95,9 @@ export default function SocialSignInButtons({
   }
 
   function finishAuthNavigation(result) {
-    const nextUser = result?.user || {};
-    if (result?.isNewUser && nextUser.onboardingCompleted === false) {
-      if (nextUser.hasSeenSafetyTips) {
-        navigation.reset({ index: 0, routes: [{ name: "SocialOnboarding" }] });
-        return;
-      }
-    }
-
-    navigation.reset({ index: 0, routes: [{ name: "tabs" }] });
+    if (linking) { Alert.alert("Sign-in method connected", "You can now use this provider to access the same Summit Scene account."); return; }
+    const routes = accountDestination(result?.user, pendingEventAction);
+    navigation.reset({ index: routes.length - 1, routes });
   }
 
   async function handleAppleSignIn() {
@@ -130,6 +129,8 @@ export default function SocialSignInButtons({
       const result = await signInWithApple({
         identityToken: credential.identityToken,
         fullName: credential.fullName,
+        authorizationCode: credential.authorizationCode,
+        linking,
       });
       finishAuthNavigation(result);
     } catch (error) {
@@ -165,16 +166,16 @@ export default function SocialSignInButtons({
         throw new Error("Google sign-in requires a development or store build.");
       }
 
-      await googleSignIn.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
+      if (Platform.OS === "android") {
+        await googleSignIn.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
       const result = await googleSignIn.signIn();
 
       if (result.type !== "success" || !result.data?.idToken) {
         return;
       }
 
-      const authResult = await signInWithGoogle({ idToken: result.data.idToken });
+      const authResult = await signInWithGoogle({ idToken: result.data.idToken, linking });
       finishAuthNavigation(authResult);
     } catch (error) {
       if (error?.code === "SIGN_IN_CANCELLED") {
@@ -199,7 +200,7 @@ export default function SocialSignInButtons({
             buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
             cornerRadius={8}
             style={[styles.appleButton, { opacity: isDisabled ? 0.65 : 1 }]}
-            onPress={handleAppleSignIn}
+            onPress={isDisabled ? undefined : handleAppleSignIn}
           />
           {showTermsNote ? (
             <Text style={[styles.termsNote, { color: theme.textMuted }]}>
@@ -218,6 +219,7 @@ export default function SocialSignInButtons({
         <Ionicons name="logo-google" size={18} color="#FFFFFF" />
         <Text style={styles.googleButtonText}>Continue with Google</Text>
       </Pressable>
+      {showTermsNote ? <Text style={[styles.termsNote, { color: theme.textMuted }]}>By continuing with Google or Apple, you confirm you are 18+ and agree to the Privacy Policy and Terms.</Text> : null}
     </View>
   );
 }
